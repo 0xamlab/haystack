@@ -86,6 +86,12 @@ from residentk.kernels_prefill_gemma3 import (
     _pf_attn_unpack_hm_f32,
     _pf_embed_rows_g3_kernel_f16,
     _pf_geglu_rows_kernel,
+    _pf_geglu_rows_f16_kernel,
+    _pf_rmsnorm_rows_f16_kernel,
+    _pf_ropewrt_warps_kernel,
+    _G3_ROPE_WARPS_PER_BLOCK,
+    _G3_ROPE_NTHREADS,
+    _pf_fill_scale_kernel,
     _pf_gemm_accum_kernel_v2h,
     _pf_gemm_assign_kernel_v2h,
     _pf_gemm_geglu_kernel_v2h,
@@ -111,6 +117,10 @@ from residentk.tc_shim_bridge import (
     _tc_bgemm_f16_async,
     _tc_attn_softmax_mask_async,
     _tc_stage_f32_to_f16,
+    _tc_fa_layout_probe,
+    _tc_fa_g3_window_async,
+    _tc_gemm_f16_32c_pre_async,
+    _tc_gemm_f16_16c_pre_async,
 )
 from residentk.session import (
     RESIDENT_GPU_BUILD,
@@ -161,6 +171,108 @@ f16, QK^T GemmStridedBatchedEx over the KV heads (GQA: g query heads per KV head
 rows), masked causal+window softmax, PV GemmStridedBatchedEx, unpack — instead of the SIMT
 kernels. Takes precedence over G3_PF_ATTN_FLASH when both are set. Same fact-driven
 capability gate (d_head == 128 + tc_ready); flag-off builds are byte-unmodified."""
+
+comptime G3_PF_FA: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_G3_PF_FA"]()
+"""The FUSED TENSOR-CORE prefill-attention lever (round 5, 2026-09-16): with
+`-D ALGENTA_G3_PF_FA` the tiled prefill's windowed attention dispatches ONE hand-written WMMA
+FlashAttention-2 kernel (`tc_shim_fa_g3_window_async`) instead of G3_PF_TCATTN's five-pass
+cuBLAS chain, deleting four GPU passes per layer per tile:
+
+  * the head-major Q pack (`_pf_q_pack_hm_f16`) and the head-major O unpack
+    (`_pf_attn_unpack_hm_f32`) — the kernel reads Q straight out of `pf_q_rot` and writes O
+    straight into `pf_attn`, both in the session's own position-major f32 layout;
+  * the masked softmax (`_attn_softmax_mask_kernel`) — online softmax keeps the score tile in
+    the WMMA accumulators, so the `[h_q*m, n_keys]` f32 score matrix (134 MB/layer at
+    m=n_keys=1024) and the f16 P twin are never materialized;
+  * the K/V f32->f16 staging (`_f32_to_f16_kernel`) — the kernel reads the RESIDENT f32 KV
+    cache and converts in-register on the way into shared memory (`kv32=1`), so the staging
+    pass and its 6 bytes/element round trip disappear with it.
+
+and adding one the chain never had: the sliding window is applied as a KEY-BLOCK RANGE, so a
+local layer (52 of gemma-3-27b's 62) stops loading keys it would mask away — at RAG-4096 the
+five-pass chain computes a dense 4096-wide QK^T per local layer to keep 1024 columns.
+
+TENSOR-CORE BY CONSTRUCTION: the QK^T and PV products are `wmma::mma_sync` m16n16k16 f16 HMMA
+with an f32 accumulator. This is NOT the SIMT fused-flash twin (`_pf_attn_window_flash_kernel`,
+`-D ALGENTA_G3_PF_ATTN_FLASH`), which is a measured 2x REGRESSION at pp1024 and is kept only
+as the negative control. Takes precedence over G3_PF_TCATTN and G3_PF_ATTN_FLASH when set.
+
+Same fact-driven capability gate (d_head == 128 + integral GQA + tc_ready + the shim's
+on-device WMMA accumulator-layout probe). A DECLINED lever prints DECLINED once at seal() and
+keeps the five-pass chain: -301/-304/-305/-310 fall back, any other non-zero status is a real
+launch failure and is returned as one. Flag-off builds are byte-unmodified."""
+
+comptime G3_PF_F16NORM: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_G3_PF_F16NORM"]()
+"""The pre-staged-A norm lever (round 5, the gemma-3 twin of `-D ALGENTA_7B_PF_F16NORM`): both
+per-layer rmsnorm dispatches write an f16 `pf_xn16` (`_pf_rmsnorm_rows_f16_kernel`) and the
+qkv and gate/up projection GEMMs take it directly (`_tc_gemm_f16_32c_pre_async`), deleting the
+shim's per-call f32->f16 A conversion. BIT-IDENTICAL to the f32 chain: the f16 value is the
+same f32 arithmetic rounded once at the store, which is exactly the rounding the shim's
+`_f32_to_f16_kernel` would have applied to that same f32 one launch later — there is no second
+rounding point to diverge at."""
+
+comptime G3_PF_F16MLP: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_G3_PF_F16MLP"]()
+"""The pre-staged-A MLP lever (round 5, the gemma-3 twin of `-D ALGENTA_7B_PF_F16MLP`): the
+gate/up GEMM writes its `[m, 2*d_ff]` result as f16 C (`_tc_gemm_f16_16c_pre_async`),
+`_pf_geglu_rows_f16_kernel` combines that f16 into the f16 `pf_act16`, and down_proj takes
+`pf_act16` as a pre-staged A. At gemma-3-27b's shapes (m=1024, d_ff=21504) this is the
+layer's largest non-GEMM traffic term: the f32 chain writes 176 MB of C, reads it back, writes
+88 MB of f32 act, reads that back and writes 44 MB of f16 A; this chain writes 88 MB, reads
+88 MB, writes 44 MB and reads 44 MB. NOT bit-identical (the GeGLU inputs round to f16 at the
+GEMM epilogue instead of after it), so it carries its own flag and its own token-identity gate;
+the down_proj A itself IS bit-identical, since `_pf_geglu_rows_f16_kernel` rounds its f32
+result once at the store exactly where the shim's convert pass would have."""
+
+comptime G3_PF_F16ATTN: Bool = G3_PF_FA and is_defined["ALGENTA_G3_PF_F16ATTN"]()
+"""The pre-staged-A attention-output lever (round 5): the fused flash kernel writes its
+position-major output as f16 `pf_attn16` and o_proj takes it directly
+(`_tc_gemm_f16_32c_pre_async`), deleting the o_proj A conversion. Inherits G3_PF_FA's whole
+gate rather than restating it — the f16 O is that kernel's `of16=1` instantiation, so without
+FA there is no producer for the buffer. Bit-identical given FA's own output (one f32->f16
+rounding at the store, where the shim's convert pass would have put it)."""
+
+comptime G3_PF_ROPE2: Bool = is_defined["ALGENTA_G3_PF_ROPE2"]()
+"""The warp-per-head q/k-norm + RoPE + KV-write lever (round 5): step 3 dispatches
+`_pf_ropewrt_warps_kernel` (one WARP per head, 4 elements per lane, a five-step `shuffle_xor`
+reduction, zero `barrier()` and zero shared memory) instead of `_pf_ropewrt_kernel` (one BLOCK
+per head, one element per thread, a seven-step shared-memory tree with a barrier per step).
+
+At gemma-3-27b's shapes the twin launches (h_q + h_kv) * m = 49,152 blocks of 128 threads per
+1024-row tile — 12.2 million block launches over a RAG-4096 prefill — to move 67 MB per layer,
+so it is launch- and barrier-bound rather than bandwidth-bound; round 4's decomposition put this
+bucket 25.355 ms behind TensorRT-LLM's single `applyBiasRopeUpdateKVCacheV2`. This is 8x fewer
+blocks (6,144) with no barriers at all.
+
+BIT-IDENTICAL to the twin, by construction: the lane owns elements {t, t+32, t+64, t+96}, which
+makes the twin's stride-64 and stride-32 reduction steps INTRA-LANE in its exact association and
+its stride-16..1 steps five `shuffle_xor`s over the same operand pairs. See the kernel's own
+docstring for the unrolled proof. Fact-driven capability gate: `d_head == 4 * WARP_SIZE` (128),
+which is also what puts both halves of a RoPE pair in one lane; any other head width keeps the
+twin byte-for-byte."""
+
+comptime _G3_PF_FA_BN: Int = 64
+"""The fused flash attention's key-block width (the shim implements 32/64/128; anything else
+selects 64). 64 is the 7B lane's measured best (`_PF_FA_BN`) and the shared-bandwidth-optimal
+tile for FA_BM=64 / d=128 / 4 warps: 144 KB of shared reads per key block against 2.1 MFLOP
+of HMMA = 0.069 B/FLOP, ~1.1x the sm_90 ratio of 128 B/clk shared to 2048 FLOP/clk tensor."""
+
+comptime _G3_PF_FA_MIN_M: Int = 256
+"""The tile-row crossover at which the fused kernel takes over from the SIMT windowed kernel.
+Held at the five-pass TC chain's OWN measured crossover (H100: TC attention wins from m >= 256,
+loses at m = 160) so the round-5 A/B moves exactly one thing — the attention implementation —
+and not the dispatch shape gate with it."""
+
+comptime _G3_PF_FA_KV32: Int = 1
+"""1 = the fused kernel reads the session's RESIDENT f32 K/V cache and converts to f16
+in-register on the way into shared memory, deleting the `_f32_to_f16_kernel` staging pass (6
+bytes of global traffic per K/V element per layer down to 4, at the identical `__float2half`
+rounding point). 0 = the CONTROL ARM: stage to `pf_tc_k16`/`pf_tc_v16` first and let the
+kernel read f16, which is the same kernel with the staging pass left in — what the A/B
+attributes the staging removal to. Never a model-name branch; the KV cache dtype is the fact."""
+
+comptime G3_ROUND5_FLAGS: Bool = G3_PF_FA or G3_PF_F16NORM or G3_PF_F16MLP or G3_PF_F16ATTN
+"""One gate for the round-5 scratch: any of the four levers needs the f16 pre-staged-A
+buffers, so they are allocated together and are 1-element placeholders in a flag-off build."""
 
 alias _FP = UnsafePointer[Float32]
 
@@ -258,6 +370,25 @@ struct _CudaResidentGemma3F16(Movable):
     var pf_tc_o32: DeviceBuffer[DType.float32]
     var pf_tc_k16: DeviceBuffer[DType.float16]
     var pf_tc_v16: DeviceBuffer[DType.float16]
+
+    # round-5 pre-staged-A scratch (-D ALGENTA_G3_PF_FA / _F16NORM / _F16MLP / _F16ATTN):
+    # the f16 A operands the projection GEMMs read directly, so the shim's per-call
+    # f32->f16 conversion disappears. `pf_xn16` [tile, d_model] is both rmsnorms' output,
+    # `pf_gu16` [tile, 2*d_ff] the gate/up GEMM's f16 C, `pf_act16` [tile, d_ff] the GeGLU
+    # combine's f16 output = down_proj's A, `pf_attn16` [tile, h_q*d] the fused flash
+    # kernel's f16 O = o_proj's A. `pf_fa_scale` is the one-float DEVICE cell the fused
+    # kernel dereferences (the attention scale travels as a pointer, never a float argument:
+    # Mojo's `external_call` has no repo-proven float marshalling and an ABI mismatch there
+    # would be a silent numeric bug). `pf_fa_armed` is 1 only once seal() has verified the
+    # shim's WMMA accumulator layout ON THIS DEVICE — a declined lever keeps the five-pass
+    # chain instead of quietly measuring it and reporting it as the fused one.
+    # Real sizes only under G3_ROUND5_FLAGS; 1-element placeholders otherwise.
+    var pf_xn16: DeviceBuffer[DType.float16]
+    var pf_gu16: DeviceBuffer[DType.float16]
+    var pf_act16: DeviceBuffer[DType.float16]
+    var pf_attn16: DeviceBuffer[DType.float16]
+    var pf_fa_scale: DeviceBuffer[DType.float32]
+    var pf_fa_armed: Int
 
     # decode-graph arm — captured per-token dispatch sequence + dynamic-scalar feed (same design
     # as residentk.session_cuda's graph arm). step_state = [token_id, pos, n_keys].
@@ -358,6 +489,22 @@ struct _CudaResidentGemma3F16(Movable):
         self.pf_tc_o32 = self.ctx.enqueue_create_buffer[DType.float32](1)
         self.pf_tc_k16 = self.ctx.enqueue_create_buffer[DType.float16](1)
         self.pf_tc_v16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_xn16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_gu16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_act16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_attn16 = self.ctx.enqueue_create_buffer[DType.float16](1)
+        self.pf_fa_scale = self.ctx.enqueue_create_buffer[DType.float32](1)
+        self.pf_fa_armed = 0
+        @parameter
+        if G3_ROUND5_FLAGS:
+            # ~151 MB at 27B's shapes (t=1024, d_model=5376, d_ff=21504, h_q*d=4096):
+            # pf_gu16 88 MB + pf_act16 44 MB + pf_xn16 11 MB + pf_attn16 8 MB. These REPLACE
+            # traffic rather than add it — every byte here is a byte the shim's per-call
+            # f32->f16 A convert (or the f32 gate/up C round trip) no longer moves.
+            self.pf_xn16 = self.ctx.enqueue_create_buffer[DType.float16](t * d_model)
+            self.pf_gu16 = self.ctx.enqueue_create_buffer[DType.float16](t * 2 * d_ff)
+            self.pf_act16 = self.ctx.enqueue_create_buffer[DType.float16](t * d_ff)
+            self.pf_attn16 = self.ctx.enqueue_create_buffer[DType.float16](t * h_q * d_head)
         @parameter
         if TC_SHIM_BUILD:
             # The weights ARE the f16 B operand already; the scratch is ONLY the f32->f16 A
@@ -567,13 +714,102 @@ struct _CudaResidentGemma3F16(Movable):
 
     def seal(mut self) raises -> Int:
         # Pay the session's one-time costs here, at setup, so no request is charged for them:
-        # the cuBLAS handle bind, then the lazy per-kernel CUDA module loads.
+        # the cuBLAS handle bind, the round-5 lever arming, then the lazy per-kernel CUDA
+        # module loads (which must come LAST so it also primes whatever the armed levers
+        # dispatch — a priming pass that runs before the lever arms primes the wrong kernels).
         self.ensure_tc_ready()
         @parameter
+        if G3_PF_FA:
+            self._arm_fused_fa()
+        @parameter
         if CUDA_GEMMA3_BUILD:
+            self._print_round5_flag_audit()
             self._prime_prefill_modules()
         self.ctx.synchronize()
         return RESIDENT_OK
+
+    def _arm_fused_fa(mut self) raises:
+        """Publish the attention scale to the device cell the fused kernel dereferences, then
+        ARM the lever only if the shim verified its WMMA accumulator element -> (row, col)
+        mapping ON THIS DEVICE.
+
+        The WMMA API documents that layout as opaque and `_fa_g3_window_kernel` indexes it by
+        row for the causal+window mask, the online-softmax O rescale and the final divide, so
+        the mapping is checked on device (`_tc_fa_layout_probe`: A=I, B staged so acc[r][c]
+        reads back r*16+c, plus an f16-accumulator `store_matrix_sync` round trip; the buffer
+        is zeroed first so a fragment carrying FEWER elements than assumed fails rather than
+        passing by luck). A disagreement leaves `pf_fa_armed == 0`, every dispatch then
+        declines, and the prefill keeps the five-pass TC chain — a declined lever can never
+        masquerade as a measured fused-attention number.
+
+        The verdict is printed once per session so it is a per-binary line in the run log,
+        never a silent perf cliff. Runs at seal(), outside every timed region."""
+        self.ctx.enqueue_function[_pf_fill_scale_kernel](
+            self.pf_fa_scale.unsafe_ptr(), self.scale,
+            grid_dim=1, block_dim=1,
+        )
+        self.ctx.synchronize()
+        var rfa = _tc_fa_layout_probe()
+        if rfa == 0 and self.tc_ready == 1 and self.d_head == 128 \
+                and self.h_q % self.h_kv == 0:
+            self.pf_fa_armed = 1
+            print("gemma3-f16: fused windowed TC flash attention ARMED | WMMA accumulator",
+                  "layout verified on device | BN =", _G3_PF_FA_BN, "| d_head =",
+                  self.d_head, "| GQA g =", self.h_q // self.h_kv, "| sliding_window =",
+                  self.sliding_window, "| f16 O =", G3_PF_F16ATTN)
+        else:
+            self.pf_fa_armed = 0
+            print("gemma3-f16: fused windowed TC flash attention DECLINED, status", rfa,
+                  "| tc_ready =", self.tc_ready, "| d_head =", self.d_head, "| h_q/h_kv =",
+                  self.h_q, "/", self.h_kv,
+                  "| prefill attention keeps the five-pass TC chain")
+
+    def _print_round5_flag_audit(self):
+        """── THE FLAG AUDIT BANNER ──
+
+        One print per numeric-path flag, INSIDE that flag's own `@parameter if`, so the literal
+        only exists in a binary that actually has the flag: `strings` on the shipped binary is
+        then a POSITIVE audit of the numerics it will run, and an absent TCFLAG line means OFF
+        (a build cannot print a line it lacks). This closes the failure mode that voided the
+        first gemma-3-27b H200 column — a rebuild that had silently dropped
+        `-D ALGENTA_G3_STREAM`, was wrong at oracle index 0 on 5/6 prompts, and said so nowhere.
+        `scripts/audit_tc_flags.sh` greps exactly these literals.
+
+        Deliberately NOT nested under `-D ALGENTA_G3_PF_FA`: the resolved-bool `G3 FLAGS:` line
+        is the gemma-3 family's positive control (the audit aborts rather than report an empty
+        flag set if a binary that should carry it does not), and the F16NORM / F16MLP banners
+        must be auditable in an arm that measures them WITHOUT the fused attention lever.
+        Prints at seal(), outside every timed region, once per session."""
+        print("G3 FLAGS: TCATTN =", G3_PF_TCATTN, "| ATTN_FLASH =", G3_PF_ATTN_FLASH,
+              "| FA =", G3_PF_FA, "| F16NORM =", G3_PF_F16NORM, "| F16MLP =",
+              G3_PF_F16MLP, "| F16ATTN =", G3_PF_F16ATTN, "| ROPE2 =", G3_PF_ROPE2,
+              "| STREAM =", G3_STREAM,
+              "| GEGLU_U4 =", _G3_GEGLU_U4, "| FA_BN =", _G3_PF_FA_BN, "| FA_KV32 =",
+              _G3_PF_FA_KV32, "| FA_MIN_M =", _G3_PF_FA_MIN_M, "| max_ctx =", self.max_ctx)
+        @parameter
+        if G3_PF_ROPE2:
+            print("TCFLAG ALGENTA_G3_PF_ROPE2=1 (warp-per-head q/k-norm + RoPE + KV-write,",
+                  "zero barriers, bit-identical to the block-per-head twin)")
+        @parameter
+        if G3_PF_FA:
+            print("TCFLAG ALGENTA_G3_PF_FA=1 (fused windowed tensor-core FlashAttention-2,",
+                  "BN =", _G3_PF_FA_BN, ", kv32 =", _G3_PF_FA_KV32, ") — replaces the Q pack",
+                  "/ QK^T / masked softmax / PV / O unpack / KV staging chain")
+        @parameter
+        if G3_PF_F16NORM:
+            print("TCFLAG ALGENTA_G3_PF_F16NORM=1 (both rmsnorms write the f16 pre-staged A)")
+        @parameter
+        if G3_PF_F16MLP:
+            print("TCFLAG ALGENTA_G3_PF_F16MLP=1 (f16 gate/up C + f16 GeGLU -> f16 down A)")
+        @parameter
+        if G3_PF_F16ATTN:
+            print("TCFLAG ALGENTA_G3_PF_F16ATTN=1 (fused attention writes the f16 o_proj A)")
+        @parameter
+        if G3_STREAM:
+            print("TCFLAG ALGENTA_G3_STREAM=1 (legacy-stream-bound cuBLAS, zero seam syncs)")
+        @parameter
+        if G3_PF_TCATTN:
+            print("TCFLAG ALGENTA_G3_PF_TCATTN=1 (five-pass tensor-core prefill attention)")
 
     def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
         """The WHOLE prompt, tiled — the f16-weight twin of `_CudaResidentGemma3.prefill`'s
@@ -637,24 +873,50 @@ struct _CudaResidentGemma3F16(Movable):
                     ref lw = self.layers[layer]
                     var is_global = self.layer_is_global[layer]
 
-                    # 1 ── rmsnorm(input_layernorm) over every row
-                    self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
-                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
-                        lw.ln1.unsafe_ptr(),
-                        Int64(self.d_model), self.eps, Int64(m),
-                        grid_dim=m, block_dim=_TG,
-                    )
+                    # 1 ── rmsnorm(input_layernorm) over every row. Under
+                    #    -D ALGENTA_G3_PF_F16NORM the TC seam's A operand is written f16 BY
+                    #    ITS OWN PRODUCER, so this dispatches the f16 twin and step 2 takes it
+                    #    pre-staged. The choice rides `use_tc`, never the flag alone: the
+                    #    native v2h chain (short tiles, or a shim-less build) reads the f32
+                    #    row block, so a sub-TC_MIN_M tile must still get f32.
+                    var xn_f16 = False
+                    @parameter
+                    if G3_PF_F16NORM:
+                        xn_f16 = use_tc
+                    if xn_f16:
+                        self.ctx.enqueue_function[_pf_rmsnorm_rows_f16_kernel](
+                            self.pf_xn16.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                            lw.ln1.unsafe_ptr(),
+                            Int64(self.d_model), self.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                    else:
+                        self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                            lw.ln1.unsafe_ptr(),
+                            Int64(self.d_model), self.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
                     # 2 ── fused Q/K/V projection (ASSIGN) — TC seam or the v2h kernel
                     if use_tc:
                         @parameter
                         if not G3_STREAM:
                             self.ctx.synchronize()
-                        var r = _tc_gemm_dispatch_auto(
-                            Int(self.pf_xn.unsafe_ptr()),
-                            Int(lw.w_qkv.unsafe_ptr()), 0,
-                            m, self.d_model, n_qkv,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.pf_qkv.unsafe_ptr()), 0)
+                        var r = 0
+                        if xn_f16:
+                            r = _tc_gemm_f16_32c_pre_async(
+                                Int(self.pf_xn16.unsafe_ptr()),
+                                Int(lw.w_qkv.unsafe_ptr()),
+                                m, self.d_model, n_qkv,
+                                Int(self.pf_qkv.unsafe_ptr()), 0)
+                        else:
+                            r = _tc_gemm_dispatch_auto(
+                                Int(self.pf_xn.unsafe_ptr()),
+                                Int(lw.w_qkv.unsafe_ptr()), 0,
+                                m, self.d_model, n_qkv,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.pf_qkv.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                     else:
@@ -670,15 +932,40 @@ struct _CudaResidentGemma3F16(Movable):
                         else self.cos_local.unsafe_ptr()
                     var sin_p = self.sin_global.unsafe_ptr() if is_global == 1 \
                         else self.sin_local.unsafe_ptr()
-                    self.ctx.enqueue_function[_pf_ropewrt_kernel](
-                        self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
-                        self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
-                        cos_p, sin_p,
-                        Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
-                        self.eps, Int64(m),
-                        Int64(1),  # gemma3 always has QK-norm
-                        grid_dim=(self.h_q + self.h_kv) * m, block_dim=self.d_head,
-                    )
+                    var use_rope2 = False
+                    @parameter
+                    if G3_PF_ROPE2:
+                        # fact-driven capability gate: the warp-per-head twin's lane contract is
+                        # d_head == 4 * WARP_SIZE == 128, which is what puts both halves of a
+                        # RoPE pair (e, e + d_head/2) in one lane and makes the twin's
+                        # stride-64/32 reduction steps intra-lane. Any other head width stays
+                        # byte-for-byte on the block-per-head kernel. (Written as the literal
+                        # 128 to match this session's other head-dim capability gates, which
+                        # do not import WARP_SIZE.)
+                        use_rope2 = self.d_head == 128
+                    if use_rope2:
+                        self.ctx.enqueue_function[_pf_ropewrt_warps_kernel](
+                            self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                            self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                            cos_p, sin_p,
+                            Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                            self.eps, Int64(m),
+                            Int64(1),  # gemma3 always has QK-norm
+                            Int64(_ceil_div(self.h_q + self.h_kv, _G3_ROPE_WARPS_PER_BLOCK)),
+                            grid_dim=m * _ceil_div(self.h_q + self.h_kv,
+                                                  _G3_ROPE_WARPS_PER_BLOCK),
+                            block_dim=_G3_ROPE_NTHREADS,
+                        )
+                    else:
+                        self.ctx.enqueue_function[_pf_ropewrt_kernel](
+                            self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                            self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                            cos_p, sin_p,
+                            Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                            self.eps, Int64(m),
+                            Int64(1),  # gemma3 always has QK-norm
+                            grid_dim=(self.h_q + self.h_kv) * m, block_dim=self.d_head,
+                        )
                     # 4 ── windowed causal attention (per-row key lower bound)
                     var use_pf_flash = False
                     @parameter
@@ -699,7 +986,83 @@ struct _CudaResidentGemma3F16(Movable):
                         # the dispatch is shape-fact-gated on the tile row count, never the
                         # model name.
                         use_tc_attn = self.d_head == 128 and self.tc_ready == 1 and m >= 256
-                    if use_tc_attn:
+                    # ── ROUND-5 LEVER (`-D ALGENTA_G3_PF_FA`): ONE fused windowed
+                    #    tensor-core FlashAttention-2 kernel INSTEAD OF the five-pass chain
+                    #    below. It deletes (i) the head-major Q pack, (iv) the masked softmax,
+                    #    (vi) the head-major O unpack and (ii) the K/V f32->f16 staging, and
+                    #    folds (iii)+(v) — the QK^T and PV strided-batched GemmEx — into its
+                    #    own `wmma::mma_sync` HMMA, so the `[h_q*m, n_keys]` f32 score matrix
+                    #    (134 MB/layer at m=n_keys=1024, 8.3 GB over a pp1024 prefill) and its
+                    #    67 MB f16 P twin are never materialized. It also does something the
+                    #    chain structurally cannot: the sliding window is a KEY-BLOCK RANGE, so
+                    #    a local layer never loads the keys it would mask away.
+                    #
+                    #    The gate is shape facts only, never a model name: `pf_fa_armed` is set
+                    #    at seal() only after the shim verified its WMMA accumulator layout ON
+                    #    THIS DEVICE, d_head 128 is the one head width the kernel implements,
+                    #    integral GQA is what its `hk = h / (h_q/h_kv)` mapping requires, and
+                    #    `m >= _G3_PF_FA_MIN_M` is the tile-row crossover the five-pass chain's
+                    #    own dispatch uses (kept identical so the A/B moves one thing).
+                    #
+                    #    DECLINE IS A FALLBACK, NOT AN ERROR: -301 (wrong head_dim), -304
+                    #    (non-integral GQA), -305 (out-of-list bn/kv32/of16 selection) and -310
+                    #    (the accumulator-layout probe disagreed) all leave `attn_done` False,
+                    #    so the five-pass chain below runs and produces the identical result it
+                    #    always did. ANY OTHER status is a real CUDA failure and is returned as
+                    #    one — a launch error must never be laundered into a slower-but-green
+                    #    benchmark cell.
+                    var attn_done = False
+                    var attn_o_f16 = False
+                    @parameter
+                    if G3_PF_FA:
+                        if self.pf_fa_armed == 1 and self.d_head == 128 \
+                                and self.h_q % self.h_kv == 0 and m >= _G3_PF_FA_MIN_M:
+                            var n_keys_fa = pos + m
+                            var window_fa = 0 if is_global == 1 else self.sliding_window
+                            var k_ptr = Int(lw.ck.unsafe_ptr())
+                            var v_ptr = Int(lw.cv.unsafe_ptr())
+                            @parameter
+                            if _G3_PF_FA_KV32 == 0:
+                                # CONTROL ARM: the staged-f16 K/V route, i.e. the fused kernel
+                                # with the staging pass the native-f32 route deletes. Same
+                                # kernel, same numerics, one extra launch and 6 bytes/element
+                                # of traffic instead of 4 — what the A/B attributes the
+                                # staging removal to.
+                                var kvn = n_keys_fa * self.h_kv * self.d_head
+                                var rk = _tc_stage_f32_to_f16(
+                                    Int(lw.ck.unsafe_ptr()),
+                                    Int(self.pf_tc_k16.unsafe_ptr()), kvn)
+                                if rk == 0:
+                                    rk = _tc_stage_f32_to_f16(
+                                        Int(lw.cv.unsafe_ptr()),
+                                        Int(self.pf_tc_v16.unsafe_ptr()), kvn)
+                                if rk != 0:
+                                    return _StepOut(-1, 0.0, issued,
+                                                    RESIDENT_ERR_LAUNCH_FAILED)
+                                k_ptr = Int(self.pf_tc_k16.unsafe_ptr())
+                                v_ptr = Int(self.pf_tc_v16.unsafe_ptr())
+                            var o_ptr = Int(self.pf_attn.unsafe_ptr())
+                            var of16 = 0
+                            @parameter
+                            if G3_PF_F16ATTN:
+                                o_ptr = Int(self.pf_attn16.unsafe_ptr())
+                                of16 = 1
+                            var rfa = _tc_fa_g3_window_async(
+                                Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr, o_ptr,
+                                Int(self.pf_fa_scale.unsafe_ptr()),
+                                m, n_keys_fa, self.h_q, self.h_kv, self.d_head, pos,
+                                window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32, of16)
+                            if rfa == 0:
+                                attn_done = True
+                                attn_o_f16 = of16 == 1
+                                use_tc_attn = False
+                            elif rfa != -301 and rfa != -304 and rfa != -305 \
+                                    and rfa != -310:
+                                return _StepOut(-1, 0.0, issued,
+                                                RESIDENT_ERR_LAUNCH_FAILED)
+                    if attn_done:
+                        issued += 1
+                    elif use_tc_attn:
                         var n_keys_tc = pos + m
                         var gqa = self.h_q // self.h_kv
                         var gm = gqa * m
@@ -782,17 +1145,31 @@ struct _CudaResidentGemma3F16(Movable):
                             grid_dim=self.h_q * m, block_dim=self.d_head,
                         )
                     # 5 ── o_proj into the BRANCH scratch (ASSIGN — the post-branch norm
-                    #      forbids the llama-style residual accumulate)
+                    #      forbids the llama-style residual accumulate). Under
+                    #      -D ALGENTA_G3_PF_F16ATTN the fused attention kernel already wrote
+                    #      its output as the f16 A this GEMM reads, so the shim's convert pass
+                    #      is skipped; `attn_o_f16` is set only by a dispatch that actually
+                    #      ran, so a DECLINED fused attention falls back to the f32 A and the
+                    #      ordinary ladder with it.
                     if use_tc:
                         @parameter
                         if not G3_STREAM:
                             self.ctx.synchronize()
-                        var r = _tc_gemm_dispatch_auto(
-                            Int(self.pf_attn.unsafe_ptr()),
-                            Int(lw.w_o.unsafe_ptr()), 0,
-                            m, n_q, self.d_model,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.pf_branch.unsafe_ptr()), 0)
+                        var r = 0
+                        if attn_o_f16:
+                            r = _tc_gemm_f16_32c_pre_async(
+                                Int(self.pf_attn16.unsafe_ptr()),
+                                Int(lw.w_o.unsafe_ptr()),
+                                m, n_q, self.d_model,
+                                Int(self.pf_branch.unsafe_ptr()), 0)
+                        else:
+                            r = _tc_gemm_dispatch_auto(
+                                Int(self.pf_attn.unsafe_ptr()),
+                                Int(lw.w_o.unsafe_ptr()), 0,
+                                m, n_q, self.d_model,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.pf_branch.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                     else:
@@ -810,32 +1187,84 @@ struct _CudaResidentGemma3F16(Movable):
                         Int64(self.d_model), self.eps, Int64(m),
                         grid_dim=m, block_dim=_TG,
                     )
-                    # 7 ── rmsnorm(pre_feedforward_layernorm) over every row
-                    self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
-                        self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
-                        lw.ln3.unsafe_ptr(),
-                        Int64(self.d_model), self.eps, Int64(m),
-                        grid_dim=m, block_dim=_TG,
-                    )
+                    # 7 ── rmsnorm(pre_feedforward_layernorm) over every row (the f16 twin
+                    #      under -D ALGENTA_G3_PF_F16NORM, for the same reason as step 1)
+                    if xn_f16:
+                        self.ctx.enqueue_function[_pf_rmsnorm_rows_f16_kernel](
+                            self.pf_xn16.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                            lw.ln3.unsafe_ptr(),
+                            Int64(self.d_model), self.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
+                    else:
+                        self.ctx.enqueue_function[_pf_rmsnorm_rows_kernel](
+                            self.pf_xn.unsafe_ptr(), self.pf_hidden.unsafe_ptr(),
+                            lw.ln3.unsafe_ptr(),
+                            Int64(self.d_model), self.eps, Int64(m),
+                            grid_dim=m, block_dim=_TG,
+                        )
                     # 8 ── gate/up + GeGLU — TC seam (+ native GeGLU epilogue) or the fused
-                    #      v2h kernel
+                    #      v2h kernel. Under -D ALGENTA_G3_PF_F16MLP the gate/up GEMM writes
+                    #      its [m, 2*d_ff] C as f16 and the GeGLU combine reads that f16 and
+                    #      writes the f16 A down_proj takes directly: the layer's largest
+                    #      non-GEMM traffic term (176 MB of f32 C written + 176 MB read back +
+                    #      88 MB of f32 act written + 88 MB read + 44 MB of f16 A written at
+                    #      m=1024, d_ff=21504) becomes 88 + 88 + 44 + 44.
+                    var gu_f16 = False
+                    @parameter
+                    if G3_PF_F16MLP:
+                        gu_f16 = use_tc
                     if use_tc:
                         @parameter
                         if not G3_STREAM:
                             self.ctx.synchronize()
-                        var r = _tc_gemm_dispatch_auto(
-                            Int(self.pf_xn.unsafe_ptr()),
-                            Int(lw.w_gu.unsafe_ptr()), 0,
-                            m, self.d_model, 2 * self.d_ff,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.pf_gu.unsafe_ptr()), 0)
+                        var a_gu = Int(self.pf_xn.unsafe_ptr())
+                        if xn_f16:
+                            a_gu = Int(self.pf_xn16.unsafe_ptr())
+                        elif gu_f16:
+                            # F16MLP without F16NORM: the A still needs one convert, but into
+                            # the f16 the 16c GEMM reads. The lever's own traffic win is the
+                            # C + act round trip, which does not depend on the norm lever, so
+                            # the two stay independently measurable.
+                            var rs = _tc_stage_f32_to_f16(
+                                Int(self.pf_xn.unsafe_ptr()),
+                                Int(self.tc_a16.unsafe_ptr()), m * self.d_model)
+                            if rs != 0:
+                                return _StepOut(-1, 0.0, issued,
+                                                RESIDENT_ERR_LAUNCH_FAILED)
+                            a_gu = Int(self.tc_a16.unsafe_ptr())
+                        var r = 0
+                        if gu_f16:
+                            r = _tc_gemm_f16_16c_pre_async(
+                                a_gu, Int(lw.w_gu.unsafe_ptr()),
+                                m, self.d_model, 2 * self.d_ff,
+                                Int(self.pf_gu16.unsafe_ptr()), 0)
+                        elif xn_f16:
+                            r = _tc_gemm_f16_32c_pre_async(
+                                a_gu, Int(lw.w_gu.unsafe_ptr()),
+                                m, self.d_model, 2 * self.d_ff,
+                                Int(self.pf_gu.unsafe_ptr()), 0)
+                        else:
+                            r = _tc_gemm_dispatch_auto(
+                                a_gu, Int(lw.w_gu.unsafe_ptr()), 0,
+                                m, self.d_model, 2 * self.d_ff,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.pf_gu.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
-                        self.ctx.enqueue_function[_pf_geglu_rows_kernel](
-                            self.pf_act.unsafe_ptr(), self.pf_gu.unsafe_ptr(),
-                            Int64(m * self.d_ff), Int64(self.d_ff),
-                            grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
-                        )
+                        if gu_f16:
+                            self.ctx.enqueue_function[_pf_geglu_rows_f16_kernel](
+                                self.pf_act16.unsafe_ptr(), self.pf_gu16.unsafe_ptr(),
+                                Int64(m * self.d_ff), Int64(self.d_ff),
+                                grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
+                            )
+                        else:
+                            self.ctx.enqueue_function[_pf_geglu_rows_kernel](
+                                self.pf_act.unsafe_ptr(), self.pf_gu.unsafe_ptr(),
+                                Int64(m * self.d_ff), Int64(self.d_ff),
+                                grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
+                            )
                     else:
                         self.ctx.enqueue_function[_pf_gemm_geglu_kernel_v2h](
                             self.pf_act.unsafe_ptr(), self.pf_xn.unsafe_ptr(),
@@ -844,17 +1273,29 @@ struct _CudaResidentGemma3F16(Movable):
                             grid_dim=_ceil_div(m, _G2_BM) * _ceil_div(self.d_ff, _G2_BN),
                             block_dim=_G2_NTHREADS,
                         )
-                    # 9 ── down_proj into the branch scratch (ASSIGN)
+                    # 9 ── down_proj into the branch scratch (ASSIGN); pre-staged A under
+                    #      -D ALGENTA_G3_PF_F16MLP, where `pf_act16` IS the f16 A and the
+                    #      22.0M-element convert pass (132 MB of traffic per layer at m=1024)
+                    #      has nothing left to do.
                     if use_tc:
                         @parameter
                         if not G3_STREAM:
                             self.ctx.synchronize()
-                        var r = _tc_gemm_dispatch_auto(
-                            Int(self.pf_act.unsafe_ptr()),
-                            Int(lw.w_down.unsafe_ptr()), 0,
-                            m, self.d_ff, self.d_model,
-                            Int(self.tc_a16.unsafe_ptr()), Int(self.tc_c16.unsafe_ptr()),
-                            Int(self.pf_branch.unsafe_ptr()), 0)
+                        var r = 0
+                        if gu_f16:
+                            r = _tc_gemm_f16_32c_pre_async(
+                                Int(self.pf_act16.unsafe_ptr()),
+                                Int(lw.w_down.unsafe_ptr()),
+                                m, self.d_ff, self.d_model,
+                                Int(self.pf_branch.unsafe_ptr()), 0)
+                        else:
+                            r = _tc_gemm_dispatch_auto(
+                                Int(self.pf_act.unsafe_ptr()),
+                                Int(lw.w_down.unsafe_ptr()), 0,
+                                m, self.d_ff, self.d_model,
+                                Int(self.tc_a16.unsafe_ptr()),
+                                Int(self.tc_c16.unsafe_ptr()),
+                                Int(self.pf_branch.unsafe_ptr()), 0)
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                     else:

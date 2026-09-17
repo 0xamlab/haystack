@@ -347,6 +347,50 @@ def _tc_lt_count() -> Int:
         return 0
 
 
+def _tc_gemm_f16_32c_pre_async(a16: Int, w16: Int, m: Int, k: Int, n: Int, c32: Int,
+                              accum: Int) -> Int:
+    """`_tc_gemm_f16_32c_pre` with NO sync path at all — the seam discipline the gemma-3 lane
+    needs. `_pre` honours `g_noseam`, which only `-D ALGENTA_TC_NOSEAM` sets; the gemma-3
+    build gets its zero-sync ordering from `-D ALGENTA_G3_STREAM` (`tc_shim_use_stream` binds
+    the handle to the legacy stream, `g_noseam` stays 0), so `_pre` there would put a
+    `cudaStreamSynchronize(legacy)` back at every projection seam. This is the identical
+    GemmEx (f16 A already staged, f16 W, COMPUTE_32F, f32 C, beta by `accum`) enqueueing and
+    returning, exactly like `_tc_gemm_f16_32c_async`. ONLY legal when the session's Mojo
+    enqueues ride the same stream the shim is bound to; the caller owns the eventual sync.
+    0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_gemm_f16_32c_pre_async", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c32), Int64(accum))
+        )
+    else:
+        return -1
+
+
+def _tc_gemm_f16_16c_pre_async(a16: Int, w16: Int, m: Int, k: Int, n: Int, c16: Int,
+                              accum: Int) -> Int:
+    """The f16-C twin of `_tc_gemm_f16_32c_pre_async` (A already f16, W f16, HMMA with an f32
+    accumulator, C written as f16), with no sync path — the gate/up GEMM's output under
+    `-D ALGENTA_G3_PF_F16MLP`, whose `[m, 2*d_ff]` result the GeGLU epilogue reads straight
+    back. Halves both legs of the layer's largest non-GEMM traffic term (176 MB -> 88 MB at
+    m=1024, d_ff=21504). NOT bit-identical to the f32-C path (the epilogue's inputs round to
+    f16 at the GEMM epilogue instead of after it), so it carries its own build flag and its own
+    token-identity gate. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_gemm_f16_16c_pre_async", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c16), Int64(accum))
+        )
+    else:
+        return -1
+
+
 def _tc_last_error() -> Int:
     """The shim's last recorded error (raw cudaError_t/cublasStatus_t, or a negative
     shim-defined class) — diagnostics when a wrapper returns non-zero."""
@@ -668,6 +712,48 @@ def _tc_stage_f32_to_f16_v8(src: Int, dst: Int, n: Int) -> Int:
         return Int(
             external_call["tc_shim_f32_to_f16_v8", Int64, Int64, Int64, Int64](
                 Int64(src), Int64(dst), Int64(n))
+        )
+    else:
+        return -1
+
+
+def _tc_fa_g3_window_async(q32: Int, k: Int, v: Int, o: Int, scale32: Int, m: Int,
+                           n_keys: Int, h_q: Int, h_kv: Int, d: Int, pos_base: Int,
+                           window: Int, bn: Int, kv32: Int, of16: Int) -> Int:
+    """FUSED WINDOWED FLASH ATTENTION for the Gemma 3 lane (round 5, `-D ALGENTA_G3_PF_FA`):
+    `_tc_fa_causal_async`'s kernel with the three things Gemma 3 needs and the 7B family does
+    not have.
+
+    * `window` — the sliding-window lower bound. `window <= 0` is full-context causal (a global
+      layer); `window > 0` is a local layer, and the predicate is
+      `_attn_softmax_mask_kernel`'s verbatim (`j <= qpos AND j >= qpos + 1 - window AND
+      j < n_keys`). The window is applied as a KEY-BLOCK RANGE, so a local layer stops paying
+      for keys it discards: at RAG-4096 the five-pass chain computes a dense 4096-wide QK^T
+      per local layer and masks 3072 of those columns away, while this kernel never loads them.
+    * `kv32` — 1 reads the session's RESIDENT f32 K/V cache and converts to f16 in-register on
+      the way into shared memory, which deletes the `_f32_to_f16_kernel` staging pass (6 bytes
+      of global traffic per K/V element per layer down to 4) at the identical `__float2half`
+      rounding point; 0 takes an f16 staging twin exactly like `_tc_fa_causal_async`.
+    * `of16` — 1 writes the position-major output as f16 (`pf_attn16`, the pre-staged A the
+      o_proj GEMM reads under `-D ALGENTA_G3_PF_F16ATTN`); 0 writes f32 (`pf_attn`).
+
+    Layouts are the session's own, all row-major: `q32` = `pf_q_rot` `[m, h_q*d]` f32, `o` =
+    `pf_attn`/`pf_attn16` in the same layout, `k`/`v` = `[n_keys, h_kv*d]`. `scale32` is a
+    DEVICE POINTER to one f32 (see `_tc_fa_causal_async` for why the scale is not an argument).
+    `bn` selects the key-block width (32/64/128; anything else -> 64). 0 = success; -301 wrong
+    head_dim; -304 h_q not a multiple of h_kv; -305 an out-of-list (bn, kv32, of16) selection;
+    -310 the shim's on-device WMMA accumulator-layout probe disagreed with the mapping the
+    kernel indexes by. The caller MUST fall back to the five-pass chain on -301/-304/-305/-310
+    and MUST return any other non-zero status as a real launch failure."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_fa_g3_window_async", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+            ](Int64(q32), Int64(k), Int64(v), Int64(o), Int64(scale32), Int64(m),
+              Int64(n_keys), Int64(h_q), Int64(h_kv), Int64(d), Int64(pos_base),
+              Int64(window), Int64(bn), Int64(kv32), Int64(of16))
         )
     else:
         return -1

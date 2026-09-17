@@ -18623,3 +18623,426 @@ this round's `_g2` decomposition (260.967 ms busy, 1.367 ms gap):
 `4d8cf86cec7e3bec847e9437b9afdf0f`, driver `c3afba5686f5bf95e59705bbb7e51d4f` before this
 round's edits). VM left at 1410 MHz / 0 MiB, no containers, no processes, no watchers, then
 **STOPPED** per the owner's lifecycle mandate.
+
+
+## GEMMA-3-27B H200 LEVER ROUND 5 — ALL THREE CELLS FLIP: pp1024 0.914x → 1.104x, RAG-4096 0.787x → 1.014x, pp256 1.108x → 1.293x (2026-09-16, trtllm-gemma-us-west1-c a3-ultragpu-8g, GPU1, clocks pinned 1410 MHz)
+
+### branch feat/gemma-fused-tc-attn, based on main @ 4c5f097a6 (post-#993). LEDGER + the two flipped cells; nothing published to gitbook by this front.
+
+Round 4 left pp256 a WIN (37.541 vs 41.297 ms = 1.1001x, published in #995) and two losses:
+pp1024 121.473 vs 110.710 = 0.9114x (gap +10.76 ms) and RAG-4096 542.702 vs 425.954 = 0.7849x
+(gap +116.75 ms). This round flips **both**, and makes the already-won pp256 stronger. The
+bracketing baseline is PR #993's own build rebuilt from this branch (`R5_base`), and it reproduces
+the standing column: 121.261–121.429 ms measured against 121.473 stored (+0.04%), 37.455–37.479
+against 37.541, 542.096–542.891 against 542.702. That is what makes every delta below attributable
+to the levers and not to the tree.
+
+### FINAL STANDINGS — `R5_all2`, the full round-5 stack (post-restart session, TRT-LLM re-served 17:09Z)
+
+| cell | PR #993 (`R5_base`) | round 5 (`R5_all2`) | delta | TRT-LLM 1.2.1 | #993 ratio | **round-5 ratio** |
+|---|---|---|---|---|---|---|
+| pp256 | 37.479 ms | 32.108 ms (`R5_all`¹) | −5.371 ms (−14.3%) | 41.520 ms | 1.1078x WIN | **1.2931x WIN** |
+| pp1024 | 121.261 ms | **100.361 ms** | −20.900 ms (−17.2%) | 110.782 ms | 0.9136x LOSS | **1.1038x WIN — FLIPPED** |
+| rag4096 | 542.096 ms | **421.085 ms** | −121.011 ms (−22.3%) | 426.766 ms | 0.7873x LOSS | **1.0135x WIN — FLIPPED** |
+
+¹ pp256 was not re-run on `R5_all2`; ROPE2 is bit-identical and strictly removes work (8x fewer
+blocks, zero barriers), and its measured effect on the two cells it was run on is −4.5% and −4.4%.
+The pp256 figure is `R5_all`'s, from its own contiguous bracket.
+
+### The five levers (each its own build flag, default OFF; `R5_base` is byte-identical without them)
+
+| arm | sha256_16 | flags on top of PR #993 | numerics |
+|---|---|---|---|
+| `R5_base` | `a4b7d8cc6219efdb` | — (PR #993) | the shipped path |
+| `R5_fa` | `9839f26323a2cb04` | `G3_PF_FA` | online softmax reorders the sum → own gate |
+| `R5_mlp` | `a789839b99c8a2d2` | `G3_PF_F16NORM` + `_F16MLP` | F16NORM bit-identical; F16MLP rounds the gate/up C at the GEMM epilogue → own gate |
+| `R5_all` | `c02fa6607c9a05f1` | + `_F16ATTN` (all four) | bit-identical given FA |
+| `R5_all2` | `fc357d9b92d184eb` | all four + `G3_PF_ROPE2` | **bit-identical** (arithmetic proof in the kernel docstring) |
+
+**1. `-D ALGENTA_G3_PF_FA` — one fused WINDOWED WMMA FlashAttention-2 kernel**
+(`_fa_g3_window_kernel` in `tc_shim.cu`) replacing the five-pass TC chain: the head-major Q pack,
+the strided-batched QK^T GemmEx, the masked softmax, the strided-batched PV GemmEx, the head-major
+O unpack, **and** the per-layer f32→f16 K/V staging. QK^T and PV are `wmma::mma_sync` m16n16k16
+f16 HMMA with an f32 accumulator — tensor-core by construction. This is NOT the SIMT fused-flash
+twin (`_pf_attn_window_flash_kernel`), which is a measured 2x REGRESSION at pp1024 and stays in the
+tree only as the negative control.
+
+Three things gemma-3 needs that the 7B lane's `_fa_causal_kernel` (#991) does not have:
+
+* **A sliding window as a KEY-BLOCK RANGE.** 52 of gemma-3-27b's 62 layers are local with
+  `sliding_window=1024`. The five-pass chain computes the FULL dense `[g*m, n_keys]` QK^T and then
+  throws everything outside the window away in `_attn_softmax_mask_kernel` — at RAG-4096 a local
+  layer pays for 4096 keys to keep 1024. Here `kb_min` derives from the CTA's first query row's
+  lower bound (`lo` is monotone in `qpos`, so the CTA's first row has its smallest `lo`, and a block
+  below `kb_min` is outside the window for every row that CTA owns and is never loaded); the
+  per-element predicate runs only on blocks that straddle a boundary. The predicate itself is
+  `_attn_softmax_mask_kernel`'s verbatim. Local-layer attention stops scaling with `n_keys` past
+  `window + FA_BM`.
+* **Native f32 K/V.** The resident cache is f32, so the chain stages it to f16 first: 6 bytes of
+  global traffic per K/V element per layer (4 read + 2 write) before the GEMM reads 2 more. The
+  fused kernel converts in-register on the way into shared memory — 4 bytes per element, no staging
+  launch, identical `__float2half` rounding point. `kv32=0` keeps the staged route as a control arm.
+* **Optional f16 O** so o_proj can take its A pre-staged (lever 4).
+
+The WMMA accumulator element layout is documented as OPAQUE and this kernel indexes it by row for
+the mask, the O rescale and the final divide, so `tc_shim_fa_layout_probe()` verifies the mapping
+ON DEVICE before the first launch; a disagreement returns −310, the session prints DECLINED once at
+`seal()` and keeps the five-pass chain, so a declined lever can never masquerade as a measured
+fused-attention number. −301/−304/−305/−310 fall back; ANY OTHER status is returned as a real
+launch failure, so a CUDA error is never laundered into a slower-but-green benchmark cell.
+
+**2. `-D ALGENTA_G3_PF_F16NORM`** — both per-layer rmsnorms write an f16 `pf_xn16` and the qkv and
+gate/up GEMMs take it pre-staged. BIT-IDENTICAL: the same f32 arithmetic rounded once at the store,
+exactly where the shim's `_f32_to_f16_kernel` would have rounded the same value one launch later.
+
+**3. `-D ALGENTA_G3_PF_F16MLP`** — the gate/up GEMM writes its `[m, 2*d_ff]` C as f16, the new
+`_pf_geglu_rows_f16_kernel` combines that into an f16 `pf_act16`, and down_proj takes it directly.
+At m=1024, d_ff=21504 the layer's largest non-GEMM traffic term goes 176 MB C written + 176 read +
+88 act written + 88 read + 44 f16 A written → 88 + 88 + 44 + 44. The GeGLU expression is the f32
+twin's verbatim, so the down A is bit-identical; the only numeric change is where the gate/up C
+rounds. `nvjet_hss_*` → `nvjet_hsh_*` in the traces is cuBLAS's own confirmation.
+
+**4. `-D ALGENTA_G3_PF_F16ATTN`** — the fused kernel writes f16 O and o_proj takes it pre-staged.
+Inherits FA's whole gate: the f16 O is that kernel's `of16=1` instantiation, so without FA there is
+no producer for the buffer.
+
+**5. `-D ALGENTA_G3_PF_ROPE2`** — `_pf_ropewrt_warps_kernel`, one WARP per head instead of one
+BLOCK per head. The twin launches `(h_q+h_kv)*m` = 49,152 blocks of 128 threads per 1024-row tile,
+one element per thread, with a seven-step SHARED-MEMORY reduction tree carrying a `barrier()` at
+every step: 344,064 block-wide barriers per layer per tile to move 67 MB, and 12.2 million block
+launches over a RAG-4096 prefill. The replacement is 6,144 blocks (8x fewer), zero `barrier()`,
+zero shared memory, five `shuffle_xor` steps. BIT-IDENTICAL, and the proof is arithmetic rather
+than a tolerance: lane `t` owns elements {t, t+32, t+64, t+96}, which makes the twin's stride-64
+and stride-32 reduction steps **intra-lane in its exact association** and its stride-16..1 steps
+five xor-shuffles over the same operand pairs; `inv`, `x = v*inv*g` and the rotation are the twin's
+expressions verbatim.
+
+**Why two new shim entries exist (a seam trap).** The pre-staged-A entries #991 added
+(`tc_shim_gemm_f16_32c_pre` / `_16c_pre`) honour `g_noseam`, which only `-D ALGENTA_TC_NOSEAM`
+sets. The gemma-3 lane gets its zero-sync ordering from a DIFFERENT switch: `-D ALGENTA_G3_STREAM`
+binds cuBLAS to the legacy stream and leaves `g_noseam == 0`. Dispatching `_pre` from this build
+would have put a `cudaStreamSynchronize(legacy)` back at every one of the 248 projection seams of a
+62-layer prefill — the exact per-GEMM sync the stream-ordered lever exists to delete, charged to
+the number the lever is supposed to improve. `tc_shim_gemm_f16_{32c,16c}_pre_async` are the
+identical GemmEx with no sync path at all.
+
+### REFUTATION: `_f32_to_f16_kernel`'s 8.682 ms at pp1024 was NOT KV-cache staging
+
+Round 4's named lever charged all 8.682 ms to "f32→f16 KV staging … NOT weight conversion", on the
+evidence that its instance count scales with tiles (373 at pp256, 1489 at RAG-4096). The counts are
+right; the attribution is not. That one kernel is SHARED — it is also the shim's per-call f32→f16
+**A-operand** conversion for all four projection GEMMs and the lm_head:
+
+```
+373 launches for one pp1024 prefill = 4 seams x 62 layers (248) + K and V x 62 (124) + 1 lm_head
+1489 for one rag4096 prefill        = 4 tiles x 372 + 1
+```
+
+and by ELEMENTS per layer (m=1024, d_model=5376, n_q=4096, d_ff=21504, h_kv=16, d_head=128,
+n_keys=1024):
+
+| caller | elements/layer | share | of the 8.682 ms |
+|---|---|---|---|
+| down_proj A (`m*d_ff`) | 22,020,096 | 53.0% | 4.60 ms |
+| qkv A + gate/up A (`2*m*d_model`) | 11,010,048 | 26.5% | 2.30 ms |
+| o_proj A (`m*n_q`) | 4,194,304 | 10.1% | 0.88 ms |
+| **K + V staging (`2*n_keys*h_kv*d`)** | **4,194,304** | **10.1%** | **0.88 ms** |
+| total | 41,518,752 | 100% | 8.68 ms |
+
+So "make KV natively f16" was worth ~0.88 ms at pp1024, not 8.68 ms, and the named lever's real
+total was **+15.4 ms, not +18.20 ms** (softmax 9.429 + Q pack/O unpack 5.099 + KV staging 0.88).
+That still flips pp1024 — but it does NOT flip RAG-4096, which is why this round also built the
+pre-staged-A chain that deletes the other 89.9%.
+
+**The model is confirmed twice, by count and by measured time.** By COUNT: the traces are
+whole-process, so they include PR #993's four seal()-time priming prefills (tile rows
+128/256/512/1024 = 249+373+373+373 = 1368 launches), and on that basis every trace reconciles
+exactly —
+
+| trace | predicted | observed | |
+|---|---|---|---|
+| R5_base pp1024 | 1368 + 373 = 1741 | **1741** | MATCH |
+| R5_base rag4096 | 1368 + 4×372 + 1 = 2857 | **2857** | MATCH |
+| R5_fa pp1024 | 1741 − 4×124 = 1245 | **1245** | MATCH |
+| R5_mlp pp1024 | 1741 − 3×62×5 = 811 | **811** | MATCH |
+| R5_all pp1024 / rag4096 | 5 lm_head + 62 o_proj = 67 | **67 / 67** | MATCH |
+
+6/6 exact. The 62 that survive in `R5_all` are themselves a prediction and they confirm the
+dispatch gates: they are the o_proj A stagings of the m=128 priming prefill, where the fused
+attention declines at `m < _G3_PF_FA_MIN_M = 256`, the SIMT kernel writes f32 `pf_attn`, and o_proj
+falls back to the staging ladder. `R5_mlp` keeps o_proj's staging for the same structural reason —
+`_F16ATTN` is the fused kernel's f16 O and that arm has no fused kernel. By MEASURED TIME:
+`R5_base` → `R5_fa` at pp1024 moves the bucket 25.692 ms / 1741 launches → 22.599 ms / 1245, i.e.
+**3.093 ms for exactly the 496 removed KV launches**; the timed pp1024 prefill contributes 124 of
+those at the largest `n_keys`, so its share is ≈0.8–0.9 ms — the byte-share model's 0.88 ms, within
+13%, from an independent measurement.
+
+### Per-kernel decomposition (nsys, whole-process GPU busy, clocks 1410 MHz)
+
+| bucket | R5_base pp1024 | R5_all pp1024 | R5_base rag4096 | R5_all rag4096 |
+|---|---|---|---|---|
+| gemm_projection | 239.945 ms | 226.688 | 497.196 | 447.607 |
+| mojo_per_layer | 59.756 | 53.467 | 105.374 | 89.509 |
+| attention (5-pass `_attn_softmax_mask_kernel`) | 23.304 / 248 | — | 84.274 / 434 | — |
+| fused_tc_attention (`_fa_g3_window_kernel`) | — | 28.462 / 248 | — | 86.379 / 434 |
+| f32_f16_convert | 25.692 / 1741 | **0.191 / 67** | 57.531 / 2857 | **0.192 / 67** |
+| rope_bias_kv | 18.540 / 310 | 18.536 / 310 | 37.573 / 496 | 37.558 / 496 |
+| norms | 8.420 / 625 | 0.057 / 5² | 14.656 / 997 | 0.057 / 5² |
+| **GPU busy total** | **375.657** | **327.407** | **796.604** | **661.306** |
+
+² Not a disappearance — a re-bucketing. Under `_F16NORM` the producer is
+`_pf_rmsnorm_rows_f16_kernel`, which lives in `kernels_prefill_gemma3`, so Mojo mangles it into the
+`residentk_kernels_prefill_gemma*` family and it lands in `mojo_per_layer`. Reading the norms row as
+"−8.4 ms" would be wrong; the honest reading is that the f32 rmsnorm symbol is gone because the
+kernel that replaced it is named differently.
+
+`gemm_projection` falls 49.6 ms at rag4096 with **no change to the projection math**, for two
+reasons the traces support: the gate/up C is now f16 (`nvjet_hss` → `nvjet_hsh`), halving the
+widest epilogue write in the layer, and the strided-batched QK^T/PV GemmEx moved into the fused
+kernel and out of this bucket. `rope_bias_kv` is identical to three decimals between the two arms —
+which is precisely what ranked ROPE2 as the fifth lever, and what made it the one that flipped
+rag4096.
+
+### Oracle gates — BEFORE any speed claim, on every arm measured
+
+`gate_any.py` against the cache-free fp32 transformers oracle in `~/adj/oracle3`, one process per
+cell, watchdog-wrapped, clocks read before and after every cell. `R5_all` was gated TWICE (once
+before and once after an instance stop/start, against a regenerated checkpoint) and `R5_all2` once;
+all three produced identical verdicts:
+
+```
+prompt     max_new verdict                        note
+pp256           16 16/16 PASS                     n_gen=16 det=n/a (single run)
+pp256           64 64/64 PASS                     n_gen=64 det=2/2 bit-identical
+pp1024          16 16/16 PASS                     n_gen=16 det=n/a (single run)
+pp1024          64 64/64 PASS                     n_gen=64 det=2/2 bit-identical
+val550          16 16/16 PASS                     n_gen=16 det=n/a (single run)
+val550          64 64/64 PASS                     n_gen=64 det=2/2 bit-identical
+rag4096         64 22/22 + EOS-stop PASS          n_gen=22 det=n/a (single run)
+
+GATE ALL_PASS = True
+```
+
+RAG-4096 is the load-bearing cell for the WINDOW: it is the only gated prompt whose tiles make the
+window bind (4 tiles → n_keys 1024/2048/3072/4096 against `sliding_window=1024`, so tiles 2–4
+exercise `kb_min > 0` on all 52 local layers), and it stops at the oracle's own EOS at 22 tokens.
+`val550` (m=550 < window) and pp256/pp1024 (n_keys ≤ window) exercise the causal path, and 10 of
+62 layers are global (`window <= 0`) at every shape.
+
+### Element-wise verification of the windowed kernel
+
+`fa_g3_probe.cu` compares `_fa_g3_window_kernel` against a HOST DOUBLE-PRECISION windowed reference
+over the same rounded operands the kernel sees (Q pre-scaled and rounded to f16 where the kernel
+rounds it, K/V rounded to f16 where the kernel rounds them, P rounded to f16 where both round it),
+at twelve shapes — pp256, pp1024, the four RAG-4096 tiles as local AND global layers, plus an odd
+`m%64 / n_keys%64 / pos_base%64 != 0` tail — across all four `(kv32, of16)` combinations:
+
+```
+[1] WMMA accumulator-layout probe: VERIFIED ON DEVICE (status 0)
+48/48 rows PASS, max_abs <= 1.6e-4, max_rel <= 7.1e-3, rms <= 7.0e-6, >2%rel count 0
+=== fa_g3_probe: 0 FAIL(s) ===
+```
+
+`kv32=1` and `kv32=0` produce **identical** max_abs and rms at every one of the twelve shapes,
+which is the direct element-wise proof that the in-register f32→f16 K/V conversion matches the
+staged path bit for bit — the claim the native-f16-KV lever rests on.
+
+The first run of this probe reported 4 of 12 shapes as gross failures (`max_rel` exactly 1.000,
+rms ~0.39, ~half the sampled cells) on the `kv32=1 of16=0` arm ONLY, while the `kv32=0` arm of the
+same shape writing to the SAME buffer agreed to 1.5e-5. Same math, two instantiations, agreeing at
+eight shapes and disagreeing at four — a harness race, not a kernel defect: the kernel launches on
+the shim's own `cudaStreamNonBlocking` stream, which is not ordered against the legacy stream the
+two output-zeroing `cudaMemset`s were issued on, so the memsets could land after the kernel had
+written and zero whole output rows, which reads back exactly as "the kernel returned zeros". Fixed
+with a device sync between the zeroing and the launch; the session cannot hit this because it
+launches the kernel and its consumer on the SAME shim stream. The probe's metric was wrong too — it
+divided by `fmax(1e-6, |want|)`, and an attention output legitimately lands within 1e-5 of zero, so
+a 1e-5 absolute disagreement (exactly the f16-P rounding level this kernel is designed to sit at)
+read as a 100%+ relative error. 44 of the 48 original "FAIL" rows were the reference's zero
+crossings, not the kernel.
+
+### Results — three independent brackets, same binaries, same protocol
+
+The instance was stopped mid-sweep by the kill-when-unused mandate, so pp256/pp1024/rag4096 each
+have a complete pre-stop bracket AND a complete post-restart one, and `R5_all` was additionally
+re-bracketed a third time as the reference arm of the ROPE2 A/B. The tmpfs was wiped by the
+restart, so the checkpoint was reconverted and every prompt fixture regenerated — and
+`check_fixtures_gemma3_round5.py` proves the regenerated fixtures are **token-identical** to the
+ones the pre-stop gate certified (pp256 256/256, pp1024 1024/1024, val550 550/550, rag4096
+4096/4096) by comparing them against the prompt id list each pre-stop driver run echoed into its
+own JSON.
+
+TRT-LLM 1.2.1 was re-served FRESH in each session with the stored H200 config byte-identical
+(pytorch backend, FLASHINFER, bf16, block reuse off, max_input_len 8192, max_seq_len 8192,
+max_batch 64, tp 1, GPU1, 1410 MHz, same prompts, same client, 3 warmup + 7 measured):
+
+| cell | stored column | pre-stop re-serve (09:18Z) | post-restart re-serve (17:09Z) |
+|---|---|---|---|
+| pp256 | 41.297 ms | 41.341 (+0.107%) | 41.520 (+0.540%) |
+| pp1024 | 110.710 ms | 110.821 (+0.100%) | 110.782 (+0.065%) |
+| rag4096 | 425.954 ms | 425.945 (−0.002%) | 426.766 (+0.191%) |
+
+All six reproduce the stored column well inside the 1% same-session bar, so every ratio below is
+SAME-SESSION, not cross-session.
+
+**Session A (pre-stop, 06:57–09:19Z), `R5_base` vs `R5_all`:**
+
+| prompt | R5_base | rel-IQR | R5_all | rel-IQR | delta | drift armor | TRT-LLM | base | **all** |
+|---|---|---|---|---|---|---|---|---|---|
+| pp256 | 37.455 ms | 0.585% | **32.036** | 0.100% | −5.419 ms (−14.5%) YES | −0.222% (0.083 ms) | 41.341 | 1.1038x WIN | **1.2905x WIN** |
+| pp1024 | 121.429 ms | 0.116% | **105.133** | 0.029% | −16.296 ms (−13.4%) YES | +0.031% (0.038 ms) | 110.821 | 0.9126x LOSS | **1.0541x WIN — FLIPPED** |
+| rag4096 | 542.891 ms | 0.082% | **440.757** | 0.067% | −102.134 ms (−18.8%) YES | +0.222% (1.205 ms) | 425.945 | 0.7846x LOSS | 0.9664x LOSS |
+
+**Session B (post-restart, 14:58–17:09Z), `R5_base` vs `R5_all`:**
+
+| prompt | R5_base | rel-IQR | R5_all | rel-IQR | delta | drift armor | TRT-LLM | base | **all** |
+|---|---|---|---|---|---|---|---|---|---|
+| pp256 | 37.479 ms | 0.685% | **32.108** | 0.157% | −5.371 ms (−14.3%) YES | −0.462% (0.173 ms) | 41.520 | 1.1078x WIN | **1.2931x WIN** |
+| pp1024 | 121.261 ms | 0.164% | **105.009** | 0.043% | −16.252 ms (−13.4%) YES | +0.018% (0.022 ms) | 110.782 | 0.9136x LOSS | **1.0550x WIN — FLIPPED** |
+| rag4096 | 542.096 ms | 0.179% | **440.231** | 0.045% | −101.865 ms (−18.8%) YES | +0.031% (0.168 ms) | 426.766 | 0.7873x LOSS | 0.9694x LOSS |
+
+**Session B follow-on (18:09–19:36Z), `R5_all` vs `R5_all2 = R5_all + ROPE2`, same TRT-LLM
+re-serve (17:09Z):**
+
+| prompt | R5_all | rel-IQR | **R5_all2** | rel-IQR | delta | drift armor | TRT-LLM | all | **all2** |
+|---|---|---|---|---|---|---|---|---|---|
+| pp1024 | 105.106 ms | 0.020% | **100.361** | 0.143% | −4.745 ms (−4.5%) YES | +0.044% (0.046 ms) | 110.782 | 1.0540x WIN | **1.1038x WIN** |
+| rag4096 | 440.504 ms | 0.098% | **421.085** | 0.063% | −19.419 ms (−4.4%) YES | −0.110% (0.485 ms) | 426.766 | 0.9688x LOSS | **1.0135x WIN — FLIPPED** |
+
+Reproducibility of `R5_all` across the three brackets: pp1024 105.133 / 105.009 / 105.106 ms
+(span **0.12%**), rag4096 440.757 / 440.231 / 440.504 ms (span **0.12%**), pp256 32.036 / 32.108
+(span 0.22%). Every delta in every table is one to three orders of magnitude larger than its own
+bracket drift (pp1024: −16.252 ms against 0.022 ms of drift), every cell's rel-IQR is ≤ 0.685%
+against the ≤1% target, and **every measured cell in all three brackets read 1410 MHz before and
+after with every 1 Hz sample on-pin** — there is no off-pin cell to report.
+
+### How rag4096 flipped: the remainder was one untouched bucket
+
+After four levers rag4096 sat at 0.9694x, 13.465 ms short. The decomposition named the remainder
+without ambiguity: `rope_bias_kv` was 37.573 ms in `R5_base` and 37.558 ms in `R5_all` — identical
+to three decimals, 496 launches in both — while round 4 had already ranked that bucket +25.355 ms
+behind TRT-LLM's single `applyBiasRopeUpdateKVCacheV2`. One bit-identical kernel rewrite against
+it returned −19.419 ms, more than the 13.465 ms gap, and flipped the cell to 1.0135x. The lesson
+recorded here is the method: the flip came from reading which bucket the first four levers did NOT
+move, not from estimating which would be biggest.
+
+Cumulative rag4096: **542.096 ms (#993) → 440.231 (four levers, −101.865) → 421.085 ms (+ROPE2,
+−19.419) = −121.011 ms, −22.3%, 0.7873x → 1.0135x.**
+
+### Integrity notes (anomalies diagnosed before reporting, including five of my own tools being wrong)
+
+* **The flag banners were unauditable in the arm that needed them most.** The first cut put all
+  four `TCFLAG ALGENTA_G3_*` prints inside `_arm_fused_fa()`, which only compiles under
+  `-D ALGENTA_G3_PF_FA` — so `R5_mlp`, the arm measuring `_F16NORM` + `_F16MLP` WITHOUT the
+  attention lever, carried **zero** flag literals. The `strings` count caught it before any cell
+  was measured (`R5_mlp: 0 literals`, expected 2). They now live in `_print_round5_flag_audit()`,
+  called unconditionally for the family, with `G3 FLAGS: TCATTN =` as the gemma-3 positive control.
+* **This round's battery reproduced the SIGPIPE/pipefail failure mode `scripts/audit_tc_flags.sh`
+  exists to prevent.** `strings -a "$bin" | grep -q -F "<control>"` exits on the first match,
+  `strings` dies of SIGPIPE, `set -o pipefail` turns the pipeline non-zero, and EVERY arm read as
+  carrying no positive control — an audit failing in the "nothing is enabled" direction, which looks
+  like a clean result. The guard rail was already written down in the repo and the bug happened
+  anyway, in new code, one directory over. Both now use a bash string match.
+* **A quiescence check that can only be satisfied by a process that is not us has to exclude us.**
+  The first cut carried its own script name in its busy-pattern, `pgrep -f` matched the running
+  script on every poll, `clean` never reached 2, and the smoke stage sat in `sleep 15` for ten
+  minutes with the GPUs at 0 MiB reporting nothing. Fixed by walking pgrep's PIDs and skipping `$$`
+  and `$PPID`.
+* **The summariser asserted "same-session" for a comparator it had not checked.** A stale
+  `trtllm_*.json` left in the runs directory satisfies the glob just as happily as the current
+  chain's own re-serve, and this round's cells straddle an instance stop/start. The label now
+  carries the file mtime — which is how the ROPE2 A/B's comparator is visibly the 17:09Z re-serve
+  copied into its own measurement tree, not a fresh one. Likewise the within-1% reproduction check
+  is suppressed when no re-serve exists, because comparing the stored column against itself printed
+  "+0.000% reproduces within 1%" for a session in which TRT-LLM was never served.
+* **The decomposition's instance-count prediction was on the wrong basis** and so printed MISMATCH
+  against a correct measurement (per-prefill vs whole-process, the difference being PR #993's four
+  priming prefills). Fixed; 6/6 traces now reconcile exactly. Its geometry table also only knew the
+  1024-row tile, so the priming launches (grid 4096×128 = the SIMT attention at m=128, 43008×256
+  and 21504×256 = GeGLU at m=512 and m=256) landed in UNATTRIBUTED — reported, not guessed, which
+  is the intended behaviour, and now attributed.
+* **The probe harness raced and the probe metric lied** — both diagnosed above rather than worked
+  around, and both fixed in the shipped file.
+* **`tc_shim.cu` needs a GENERATED header.** It `#include`s `tc_rt_ptx.h` (embedded PTX from
+  `tc_rt_kernels.cu`), so a bare `nvcc` on a fresh box dies at the last step of a long chain. It
+  only ever worked before because an older run had left the header in the `-I` directory — which an
+  instance restart wipes. `build_shim_gemma3_round5.sh` now generates it; the rebuilt object is the
+  same 962,728 bytes the measured arms linked.
+* **The all-masked-prefix case in the windowed online softmax, and why it is safe.** With
+  `window > 0`, a warp whose rows have a larger `lo` than the CTA's first row can see its FIRST key
+  block entirely outside the window. Every element then masks to −1e30, `t = NEG`,
+  `n = max(m, t) = NEG` and `p = __expf(NEG − NEG) = 1`, so that block contributes 64 spurious unit
+  weights to `l` and a spurious `V` sum to `O`. It cannot survive: the first block that does contain
+  a valid key gives a real maximum, and the FA2 rescale `alpha = __expf(NEG − real) = 0` multiplies
+  both the spurious `O` and the spurious `l` away exactly. No block is all-masked for every warp
+  (the diagonal block always contains each row's own key), so a real block always arrives. Written
+  down because it is the one place the window interacts with the online softmax non-obviously, and
+  the probe's windowed shapes are what prove it empirically.
+* **Fixture provenance after the restart.** The checkpoint and all four prompt fixtures were
+  regenerated from the deterministic generator; `check_fixtures_gemma3_round5.py` proves they are
+  token-identical to the gated ones before the chain is allowed to measure. The first cut of that
+  check was an inline heredoc inside a triple-nested ssh quote: the python never ran, the marker
+  never appeared, and the chain fail-closed on a check that had not executed. Right failure
+  direction, wrong tool.
+* Clocks: 1410 MHz read before AND after every cell, re-pinned on drift, 1 Hz sampler during every
+  cell. Zero off-pin samples in any of the three brackets.
+* Resident serve discipline: TRT-LLM was served ONLY inside its own chain stage and stopped
+  immediately after its three cells; every other cell is a one-shot driver process. The box was
+  verified at 0 MiB on all 8 GPUs with no watchers and no containers, then the instance was
+  STOPPED — the VM is off by default and is only started to measure.
+
+### Tooling shipped
+
+`run_ab_gemma3_round5.sh` (one invocation = build every arm from one tree with the shim compiled
+from that same tree's `tc_shim.cu`, probe, gate, interleaved bracketed sweep, same-session
+re-serve, nsys, report), `run_gemma3_round5_cells.sh` (the cell runner: watchdog, clock pinning,
+1 Hz sampler, per-arm gate directories so gating a second arm cannot overwrite the first arm's
+cells), `summarize_gemma3_round5.py` (medians, rel-IQR, outliers, bracket drift,
+`exceeds_bracket_drift` / `resolved` verdicts, clock audit, and the gate verdicts + flag audit
+carried IN the results JSON), `run_nsys_gemma3_round5.sh` + `decomp_gemma3_round5.py`,
+`fa_g3_probe.cu`, `check_fixtures_gemma3_round5.py`, `build_shim_gemma3_round5.sh`, and
+`scripts/audit_tc_flags.sh` extended to the gemma-3 family (family decided by which positive-control
+literal the binary carries, never by its filename; a binary carrying neither aborts the audit with
+exit 3 rather than reporting an empty flag set).
+
+### Contract
+
+Regenerated off this base with the project's own generators, in dependency order (the inventory
+generator reads the contract, so running it first leaves it one kernel stale and `--check` reports
+DRIFT):
+
+```
+python3 scripts/generate_algenta_runtime_contract.py
+python3 scripts/generate_engine_kernel_floor.py
+python3 scripts/docs/gen_kernel_inventory.py
+python3 scripts/generate_algenta_capability_manifest.py
+```
+
+Floor 175 → **180** kernels, exactly the five new published symbols:
+`residentk.tc_shim_bridge.tc_fa_g3_window_async`,
+`residentk.tc_shim_bridge.tc_gemm_f16_32c_pre_async`,
+`residentk.tc_shim_bridge.tc_gemm_f16_16c_pre_async`,
+`residentk.kernels_prefill_gemma3.pf_geglu_rows_f16_kernel`,
+`residentk.kernels_prefill_gemma3.pf_ropewrt_warps_kernel`.
+All four `--check` modes pass (contract OK, floor OK 180, kernel-inventory.md OK 180, capability
+manifest OK at 649 declared functions in 122 modules).
+
+### Ranked next levers (all three raced cells are wins; these are margin, not gaps)
+
+1. **Fused-attention long-`n_keys` efficiency.** `fused_tc_attention` is 86.379 ms whole-process at
+   rag4096 over 434 launches and 28.462 ms at pp1024 over 248 — now the largest non-GEMM bucket
+   this round ships. Only the 10 global layers still scan the full cache (the 52 local ones are
+   window-bounded), so the 7B ledger's ranked lever applies with less headroom but unchanged shape:
+   `cp.async` K/V double-buffering, then raw `mma.sync` m16n8k16 PTX to drop the P shared
+   round-trip, targeting ~44% MFU.
+2. **The per-layer residual/norm passes.** `_pf_norm_accum_rows_kernel` runs twice per layer over
+   `[m, d_model]` f32 (read branch + read hidden + write hidden = 66 MB per call, ~33 GB per
+   rag4096 prefill). Vectorising it is bandwidth-only and safe; making `pf_branch` f16 is a
+   numerics decision on the residual path and is NOT proposed here.
+3. **`_G3_PF_FA_MIN_M` and `_G3_PF_FA_BN` are untuned.** The crossover is inherited from the
+   five-pass chain's measured 256 so this round's A/B moved one thing at a time, and BN=64 is
+   inherited from the 7B lane. The shim implements BN 32/64/128 and both K/V routes; a sweep is
+   cheap now that the probe verifies each combination element-wise.
+4. **Publication.** pp256 (1.2931x), pp1024 (1.1038x) and rag4096 (1.0135x) are all wins and are
+   candidates for `gitbook/benchmarks/nvidia-llm-throughput.md`. Per the publish-wins-only rule and
+   this front's brief, nothing was published to gitbook here; that is a top-level decision.

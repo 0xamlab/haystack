@@ -278,6 +278,172 @@ def _pf_geglu_rows_kernel(act: _FP, gu: _FP, total_i64: Int64, n_ff_i64: Int64):
         act[i] = Float32(0.5) * g * (Float32(1.0) + tanh(inner)) * u
 
 
+def _pf_geglu_rows_f16_kernel(act16: _HP, gu16: _HP, total_i64: Int64, n_ff_i64: Int64):
+    """`_pf_geglu_rows_kernel` with BOTH operands f16 — the GeGLU half of the A-convert
+    elimination (`-D ALGENTA_G3_PF_F16MLP`, the gemma-3 twin of the 7B lane's
+    `_pf_swiglu_rows_f16_kernel`): the gate/up GEMM writes its `[m, 2*d_ff]` result as f16 C
+    (`_tc_gemm_f16_16c_pre`) and this combine reads that f16 and writes the f16 A the
+    down_proj GEMM consumes directly (`_tc_gemm_f16_32c_pre`), so neither the widest activation
+    tensor in the layer nor the down A round-trips f32 and neither needs a shim convert pass.
+
+    The gelu_pytorch_tanh expression is the f32 twin's VERBATIM — same constants, same
+    operation order, same f32 intermediate arithmetic — and the output rounds to f16 once at
+    the store, which is exactly the rounding the shim's `_f32_to_f16_kernel` would have applied
+    to the same f32 value one launch later. So the down_proj A is bit-identical to the f32
+    chain's; the ONLY numeric difference this lever introduces is upstream of it, where the
+    gate/up C rounds to f16 at the GEMM epilogue instead of after it. That is why the lever
+    carries its own build flag and its own token-identity gate.
+
+    Grid: `ceil(m * n_ff / _TG)`, block `_TG`."""
+    var total = Int(total_i64)
+    var n_ff = Int(n_ff_i64)
+    var i = Int(block_idx.x) * Int(block_dim.x) + Int(thread_idx.x)
+    if i < total:
+        var row = i // n_ff
+        var j = i - row * n_ff
+        var g = Float32(gu16[row * 2 * n_ff + j])
+        var u = Float32(gu16[row * 2 * n_ff + n_ff + j])
+        var inner = Float32(0.7978845608028654) * (g + Float32(0.044715) * g * g * g)
+        act16[i] = Float16(Float32(0.5) * g * (Float32(1.0) + tanh(inner)) * u)
+
+
+comptime _G3_ROPE_WARPS_PER_BLOCK: Int = 8
+comptime _G3_ROPE_NTHREADS: Int = _G3_ROPE_WARPS_PER_BLOCK * WARP_SIZE
+
+
+def _pf_ropewrt_warps_kernel(
+    q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
+    cos_t: _FP, sin_t: _FP, pos_base_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64,
+    d_head_i64: Int64, eps: Float32, m_rows_i64: Int64, qk_norm_i64: Int64,
+    blocks_per_row_i64: Int64,
+):
+    """`residentk.kernels._pf_ropewrt_kernel` with ONE WARP PER HEAD instead of one BLOCK per
+    head — `-D ALGENTA_G3_PF_ROPE2`, and BIT-IDENTICAL to it (proof below).
+
+    WHY. The twin it replaces launches `(h_q + h_kv) * m_rows` blocks of `d_head` threads, so at
+    gemma-3-27b's shapes (h_q=32, h_kv=16, d_head=128) one 1024-row tile is 49,152 blocks of 128
+    threads in which every thread owns ONE element, and the q_norm/k_norm sum-of-squares is a
+    seven-step SHARED-MEMORY tree with a `barrier()` at every step. That is 344,064 block-wide
+    barriers per layer per tile to move 67 MB — at RAG-4096 (4 tiles x 62 layers) 12.2 million
+    block launches, and round 4's decomposition put this bucket 25.355 ms behind TensorRT-LLM's
+    single `applyBiasRopeUpdateKVCacheV2`. The kernel is barrier- and launch-bound, not
+    bandwidth-bound.
+
+    Here one WARP owns one head: 32 lanes x 4 elements = d_head, so a 256-thread block covers 8
+    heads and a 1024-row tile is 6 x 1024 = 6,144 blocks — 8x fewer launches — with ZERO
+    `barrier()` calls and ZERO shared memory, because the reduction is five `shuffle_xor` steps.
+    Lane `t` owns elements {t, t+32, t+64, t+96} (stride WARP_SIZE, not contiguous), which keeps
+    every load and store a fully coalesced 128-byte warp transaction AND puts each RoPE pair
+    (e, e + d_head/2) inside one lane — and that is what makes the reduction tree reproducible.
+
+    BIT-IDENTICAL, by construction. The twin's tree is `red[e] = v[e]^2` for e < d_head, then
+    `red[i] += red[i + stride]` for stride = 64, 32, 16, 8, 4, 2, 1. Unrolled for lane t:
+      stride 64: red[t] = v[t]^2 + v[t+64]^2 ; red[t+32] = v[t+32]^2 + v[t+96]^2   (intra-lane)
+      stride 32: red[t] = (v[t]^2 + v[t+64]^2) + (v[t+32]^2 + v[t+96]^2)           (intra-lane)
+      stride 16..1: red[i] += red[i + stride]                                       (cross-lane)
+    so the first two steps happen inside one lane's registers in the written order and the last
+    five are `shuffle_xor(16)`, `(8)`, `(4)`, `(2)`, `(1)` — the same operand pairs in the same
+    association. The lanes the twin leaves stale (i >= stride) carry the same value by f32
+    addition's commutativity, and every lane ends with the total the twin reads out of `red[0]`.
+    `inv = 1 / sqrt(total / d_head + eps)`, `x = v * inv * g` and the rotation
+    `o0 = a0*c - a1*s`, `o1 = a0*s + a1*c` are the twin's expressions verbatim, so every stored
+    byte is the same f32 bit pattern.
+
+    STRUCTURAL CONTRACT: `d_head == 4 * WARP_SIZE` (128), which is also what makes
+    `n_pairs == d_head/2 == 2 * WARP_SIZE` put both halves of a pair in one lane. The dispatch
+    site gates on that fact and keeps the twin for any other head width; `blocks_per_row` is
+    `ceil((h_q + h_kv) / _G3_ROPE_WARPS_PER_BLOCK)` and warps past `h_q + h_kv` return.
+    Grid `m_rows * blocks_per_row`, block `_G3_ROPE_NTHREADS`."""
+    var pos_base = Int(pos_base_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var m_rows = Int(m_rows_i64)
+    var qk_norm = Int(qk_norm_i64)
+    var bpr = Int(blocks_per_row_i64)
+    var n_units = h_q + h_kv
+
+    var m = Int(block_idx.x) // bpr
+    if m >= m_rows:
+        return
+    var sub = Int(block_idx.x) - m * bpr
+    var b = sub * _G3_ROPE_WARPS_PER_BLOCK + Int(warp_id())
+    if b >= n_units:
+        return
+    var t = Int(lane_id())
+    var pos = pos_base + m
+    var n_qkv = h_q * d_head + 2 * h_kv * d_head
+    var row_qkv = m * n_qkv
+    var is_q = b < h_q
+    var head = b if is_q else b - h_q
+
+    var w1 = WARP_SIZE
+    var w2 = 2 * WARP_SIZE
+    var w3 = 3 * WARP_SIZE
+    var src = row_qkv + (head * d_head if is_q else (h_q + head) * d_head)
+    var v0 = qkv[src + t]
+    var v1 = qkv[src + t + w1]
+    var v2 = qkv[src + t + w2]
+    var v3 = qkv[src + t + w3]
+
+    var x0 = v0
+    var x1 = v1
+    var x2 = v2
+    var x3 = v3
+    if qk_norm == 1:
+        # the twin's stride-64 then stride-32 steps, intra-lane, in its exact association
+        var ss = (v0 * v0 + v2 * v2) + (v1 * v1 + v3 * v3)
+        ss = ss + _shuffle_xor(ss, 16)
+        ss = ss + _shuffle_xor(ss, 8)
+        ss = ss + _shuffle_xor(ss, 4)
+        ss = ss + _shuffle_xor(ss, 2)
+        ss = ss + _shuffle_xor(ss, 1)
+        var inv = 1.0 / sqrt(ss / Float32(d_head) + eps)
+        if is_q:
+            x0 = v0 * inv * qn_w[t]
+            x1 = v1 * inv * qn_w[t + w1]
+            x2 = v2 * inv * qn_w[t + w2]
+            x3 = v3 * inv * qn_w[t + w3]
+        else:
+            x0 = v0 * inv * kn_w[t]
+            x1 = v1 * inv * kn_w[t + w1]
+            x2 = v2 * inv * kn_w[t + w2]
+            x3 = v3 * inv * kn_w[t + w3]
+
+    var n_pairs = d_head // 2
+    var cb = pos * n_pairs
+    var c0 = cos_t[cb + t]
+    var s0 = sin_t[cb + t]
+    var c1 = cos_t[cb + t + w1]
+    var s1 = sin_t[cb + t + w1]
+    # pair (t, t + n_pairs) is (x0, x2) and pair (t + w1, t + w1 + n_pairs) is (x1, x3), because
+    # n_pairs == 2 * WARP_SIZE at d_head == 4 * WARP_SIZE
+    var o0 = x0 * c0 - x2 * s0
+    var o1 = x0 * s0 + x2 * c0
+    var o2 = x1 * c1 - x3 * s1
+    var o3 = x1 * s1 + x3 * c1
+
+    if is_q:
+        var qb = m * h_q * d_head + head * d_head
+        q_rot[qb + t] = o0
+        q_rot[qb + t + w1] = o2
+        q_rot[qb + t + w2] = o1
+        q_rot[qb + t + w3] = o3
+    else:
+        var kb = (pos * h_kv + head) * d_head
+        ck[kb + t] = o0
+        ck[kb + t + w1] = o2
+        ck[kb + t + w2] = o1
+        ck[kb + t + w3] = o3
+        # V is neither normalized nor rotated: the twin copies it straight through and so does
+        # this. Its slice starts after the h_q + h_kv Q and K slices of the fused qkv row.
+        var vsrc = row_qkv + (h_q + h_kv + head) * d_head
+        cv[kb + t] = qkv[vsrc + t]
+        cv[kb + t + w1] = qkv[vsrc + t + w1]
+        cv[kb + t + w2] = qkv[vsrc + t + w2]
+        cv[kb + t + w3] = qkv[vsrc + t + w3]
+
+
 def _pf_row_copy_kernel(dst: _FP, src: _FP, row_i64: Int64, n_i64: Int64):
     """`dst[0:n] = src[row, 0:n]` — one row of a [m, n] buffer into a flat buffer (the prefill's
     final residual row into the decode-shaped `hidden`). Grid `ceil(n / _TG)`, block `_TG`."""

@@ -523,6 +523,60 @@ extern "C" int64_t tc_shim_gemm_f16_16c_pre(const void* a16, const void* w_f16,
     return (int64_t)e;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// PRE-STAGED-A ASYNC TWINS (gemma-3 round 5, 2026-09-16) — `-D ALGENTA_G3_PF_F16NORM` /
+// `_F16MLP` / `_F16ATTN`.
+//
+// The two `_pre` entries above honour `g_noseam`, which is the 7B lane's seam discipline
+// (`-D ALGENTA_TC_NOSEAM` repoints g_stream at the legacy stream AND sets g_noseam, so their
+// `cudaStreamSynchronize` never runs). The gemma-3 lane gets its zero-sync ordering from a
+// DIFFERENT switch — `-D ALGENTA_G3_STREAM` calls `tc_shim_use_stream(cudaStreamLegacy)`,
+// which binds the handle to the legacy stream so Mojo's device-ordered enqueues interleave
+// with the GemmEx, but leaves `g_noseam == 0`. Dispatching the sync-bearing `_pre` entries
+// from that build would therefore put a `cudaStreamSynchronize(legacy)` back at every one of
+// the 248 projection seams of a 62-layer prefill — the exact per-GEMM sync the stream-ordered
+// lever exists to delete, and it would be charged to the number the lever is supposed to
+// improve. These two are the `_pre` compute with NO sync path at all: identical GemmEx call,
+// identical dtypes, identical beta, enqueue-and-return, so the caller's stream owns ordering
+// exactly as it does for `tc_shim_gemm_f16_32c_async`.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+extern "C" int64_t tc_shim_gemm_f16_32c_pre_async(const void* a16, const void* w_f16,
+                                                  int64_t M, int64_t K, int64_t N,
+                                                  void* c_f32, int64_t accum) {
+    float alpha = 1.0f, beta = (accum != 0) ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha,
+        w_f16, CUDA_R_16F, (int)K,
+        a16, CUDA_R_16F, (int)K,
+        &beta,
+        c_f32, CUDA_R_32F, (int)N,
+        CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    return 0;
+}
+
+extern "C" int64_t tc_shim_gemm_f16_16c_pre_async(const void* a16, const void* w_f16,
+                                                  int64_t M, int64_t K, int64_t N,
+                                                  void* c_f16, int64_t accum) {
+    float alpha = 1.0f, beta = (accum != 0) ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasGemmEx(
+        g_handle,
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        (int)N, (int)M, (int)K,
+        &alpha,
+        w_f16, CUDA_R_16F, (int)K,
+        a16, CUDA_R_16F, (int)K,
+        &beta,
+        c_f16, CUDA_R_16F, (int)N,
+        CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    return 0;
+}
+
 // Fallback ladder rung 2 (only if the 32F-acc token gates ever fail): TF32 with a beta
 // select — f32 weights DIRECTLY (zero dual residency), ASSIGN (beta 0) or ACCUMULATE
 // (beta 1) into the f32 residual.
@@ -2433,6 +2487,351 @@ extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void* gu16, void* act1
     return (int64_t)e;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// GEMMA-3 WINDOWED FUSED FLASH ATTENTION (round 5, 2026-09-16) — `-D ALGENTA_G3_PF_FA`
+//
+// `_fa_causal_kernel` above is the 7B lane's fused FlashAttention-2: causal-only, f16 K/V, f32
+// O. Gemma 3 needs three things it does not have, and this is that kernel with them:
+//
+//   1. A SLIDING WINDOW. 52 of gemma-3-27b's 62 layers are local with sliding_window=1024; the
+//      five-pass chain computes the FULL dense [g*m, n_keys] QK^T and then throws everything
+//      outside the window away in `_attn_softmax_mask_kernel`, so at RAG-4096 a local layer
+//      pays for 4096 keys to keep 1024. Here the window is a KEY-BLOCK RANGE: kb_min comes
+//      from the CTA's first query row's lower bound (lo is monotone in qpos, so the smallest
+//      lo in the CTA is its first row's — a block below kb_min is outside the window for EVERY
+//      row this CTA owns and is never loaded), and the per-element predicate only runs on
+//      blocks that straddle either boundary. Local-layer attention cost stops growing with
+//      n_keys past window + FA_BM.
+//   2. NATIVE f32 K/V. gemma-3's resident KV cache is f32, so the five-pass chain stages it to
+//      f16 with `_f32_to_f16_kernel` first — 6 bytes of global traffic per K/V element per
+//      layer (4 read + 2 write) before the GEMM reads 2 more. This kernel converts in-register
+//      on the way into shared memory: 4 bytes per element, no staging launch, and the
+//      conversion lands on the identical `__float2half` rounding the staging kernel applied.
+//      `KV32=false` keeps the f16-staged route available as an A/B control.
+//   3. OPTIONAL f16 O. Under `-D ALGENTA_G3_PF_F16ATTN` the o_proj GEMM takes its A
+//      pre-staged (`tc_shim_gemm_f16_32c_pre`), so the attention output is written f16
+//      directly at the rounding point the shim's convert pass would otherwise have applied.
+//
+// The predicate is `_attn_softmax_mask_kernel`'s verbatim: key j is attended by query row at
+// global position qpos iff `j <= qpos AND (window <= 0 OR j >= qpos + 1 - window)`, plus the
+// cache bound `j < n_keys`. Online softmax, f32 running max/sum, f32 O accumulation, f16 P into
+// the PV HMMA — the same dtypes the five-pass chain uses, so the only numeric differences are
+// the summation ORDER and the per-block O rescale, which is why the lever carries its own build
+// flag and its own token-identity gate.
+//
+// The opaque-fragment guard is shared: this kernel indexes the WMMA accumulator by the same
+// FA_ACC_ROW / FA_ACC_COL mapping, so `tc_shim_fa_layout_probe()` runs before the first launch
+// here too and a disagreement returns -310 (the session prints DECLINED and keeps the
+// five-pass chain).
+//
+// LAYOUT CONTRACT (all row-major):
+//   q  f32 [m, h_q*d]        post-RoPE query rows (the session's `pf_q_rot`)
+//   k  f32|f16 [n_keys, h_kv*d]  resident K cache (`ck`) or its f16 staging twin
+//   v  f32|f16 [n_keys, h_kv*d]  resident V cache (`cv`) or its f16 staging twin
+//   o  f32|f16 [m, h_q*d]    attention output, position-major (`pf_attn` / `pf_attn16`)
+// GQA: query head h reads KV head h/(h_q/h_kv). The attention scale rides the Q f32->f16
+// conversion, exactly as `_pf_q_pack_hm_f16` folds it, so the scores are pre-scaled at the
+// identical rounding point.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+template <int BN, bool KV32, bool OF16>
+__global__ void __launch_bounds__(FA_NWARP * 32)
+_fa_g3_window_kernel(const float* __restrict__ qg, const void* __restrict__ kgv,
+                     const void* __restrict__ vgv, void* __restrict__ ogv,
+                     const float* __restrict__ scalep,
+                     int m, int n_keys, int h_q, int h_kv, int d, int pos_base, int window) {
+    const float scale = *scalep;
+    extern __shared__ __half smem[];
+    __half* sQ = smem;                          // [FA_BM][FA_LD]
+    __half* sK = sQ + FA_BM * FA_LD;            // [BN][FA_LD]
+    __half* sV = sK + BN * FA_LD;               // [BN][FA_LD]
+    __half* sP = sV + BN * FA_LD;               // [FA_BM][BN + FA_PLD]
+    const int sPld = BN + FA_PLD;
+
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5;
+    const int lane = tid & 31;
+    const int grp = lane >> 2;
+    const int tig = lane & 3;
+    const int qi = blockIdx.x;
+    const int h = blockIdx.y;
+    const int hk = h / (h_q / h_kv);
+    const int row0 = qi * FA_BM;
+    const int kvld = h_kv * d;
+    const int qld = h_q * d;
+
+    // ── Q tile: f32 -> f16, attention scale folded in (the `_pf_q_pack_hm_f16` rounding) ──
+    {
+        const int nvec = FA_BM * (FA_D / 4);
+        for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+            int r = t / (FA_D / 4);
+            int c4 = t - r * (FA_D / 4);
+            int gr = row0 + r;
+            float4 val = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+            if (gr < m)
+                val = *reinterpret_cast<const float4*>(qg + (size_t)gr * qld + h * d + c4 * 4);
+            __half2* dst = reinterpret_cast<__half2*>(sQ + r * FA_LD + c4 * 4);
+            dst[0] = __floats2half2_rn(val.x * scale, val.y * scale);
+            dst[1] = __floats2half2_rn(val.z * scale, val.w * scale);
+        }
+    }
+    __syncthreads();
+
+    wmma::fragment<wmma::matrix_a, 16, 16, 16, __half, wmma::row_major> fa[FA_D / 16];
+    for (int kk = 0; kk < FA_D / 16; kk++)
+        wmma::load_matrix_sync(fa[kk], sQ + (warp * 16) * FA_LD + kk * 16, FA_LD);
+
+    wmma::fragment<wmma::accumulator, 16, 16, 16, float> oacc[FA_D / 16];
+    for (int i = 0; i < FA_D / 16; i++) wmma::fill_fragment(oacc[i], 0.0f);
+
+    const float NEG = -1.0e30f;
+    float m0 = NEG, m1 = NEG, l0 = 0.0f, l1 = 0.0f;
+
+    int rows_here = m - row0;
+    if (rows_here > FA_BM) rows_here = FA_BM;
+    int kb_causal = (pos_base + row0 + rows_here - 1) / BN;
+    int kb_keys = (n_keys - 1) / BN;
+    int kb_max = kb_causal < kb_keys ? kb_causal : kb_keys;
+    // ── the window's key-block floor. `lo(qpos) = max(0, qpos + 1 - window)` is monotone in
+    //    qpos, so the CTA's FIRST row has its smallest lo; a block whose last key is below
+    //    that is outside the window for every row this CTA owns and is never loaded. ──
+    int kb_min = 0;
+    if (window > 0) {
+        int lo_cta = pos_base + row0 + 1 - window;
+        if (lo_cta > 0) kb_min = lo_cta / BN;
+    }
+    const int qg0 = pos_base + row0 + warp * 16 + grp;
+    const int qg1 = qg0 + 8;
+    // this warp's per-row window lower bounds (negative == "no lower bound", which the
+    // per-element `j < lo` test then never fires on)
+    const int w_lo0 = (window > 0) ? (qg0 + 1 - window) : 0;
+    const int w_lo1 = (window > 0) ? (qg1 + 1 - window) : 0;
+
+    for (int kb = kb_min; kb <= kb_max; kb++) {
+        // ── K,V tiles: [BN][d] -> shared f16. KV32 converts in-register (two float4 loads per
+        //    8 elements) so the resident f32 cache needs no staging pass; the f16 route is one
+        //    uint4 load per 8 elements. Rows past the cache zero-fill. ──
+        {
+            const int nvec = BN * (FA_D / 8);
+            const int kbase = kb * BN;
+            for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+                int r = t / (FA_D / 8);
+                int c8 = t - r * (FA_D / 8);
+                int gj = kbase + r;
+                uint4 kv = make_uint4(0u, 0u, 0u, 0u);
+                uint4 vv = make_uint4(0u, 0u, 0u, 0u);
+                if (gj < n_keys) {
+                    const size_t off = (size_t)gj * kvld + hk * d + c8 * 8;
+                    if (KV32) {
+                        const float* kf = reinterpret_cast<const float*>(kgv) + off;
+                        const float* vf = reinterpret_cast<const float*>(vgv) + off;
+                        float4 k0 = *reinterpret_cast<const float4*>(kf);
+                        float4 k1 = *reinterpret_cast<const float4*>(kf + 4);
+                        float4 v0 = *reinterpret_cast<const float4*>(vf);
+                        float4 v1 = *reinterpret_cast<const float4*>(vf + 4);
+                        __half2* kp = reinterpret_cast<__half2*>(&kv);
+                        __half2* vp = reinterpret_cast<__half2*>(&vv);
+                        kp[0] = __floats2half2_rn(k0.x, k0.y);
+                        kp[1] = __floats2half2_rn(k0.z, k0.w);
+                        kp[2] = __floats2half2_rn(k1.x, k1.y);
+                        kp[3] = __floats2half2_rn(k1.z, k1.w);
+                        vp[0] = __floats2half2_rn(v0.x, v0.y);
+                        vp[1] = __floats2half2_rn(v0.z, v0.w);
+                        vp[2] = __floats2half2_rn(v1.x, v1.y);
+                        vp[3] = __floats2half2_rn(v1.z, v1.w);
+                    } else {
+                        kv = *reinterpret_cast<const uint4*>(
+                            reinterpret_cast<const __half*>(kgv) + off);
+                        vv = *reinterpret_cast<const uint4*>(
+                            reinterpret_cast<const __half*>(vgv) + off);
+                    }
+                }
+                *reinterpret_cast<uint4*>(sK + r * FA_LD + c8 * 8) = kv;
+                *reinterpret_cast<uint4*>(sV + r * FA_LD + c8 * 8) = vv;
+            }
+        }
+        __syncthreads();
+
+        // ── S[16,BN] = Q[16,d] @ K^T[d,BN] on the tensor cores, f32 accumulate ──
+        wmma::fragment<wmma::accumulator, 16, 16, 16, float> sacc[BN / 16];
+        for (int n = 0; n < BN / 16; n++) wmma::fill_fragment(sacc[n], 0.0f);
+        for (int kk = 0; kk < FA_D / 16; kk++) {
+            wmma::fragment<wmma::matrix_b, 16, 16, 16, __half, wmma::col_major> fb[BN / 16];
+            for (int n = 0; n < BN / 16; n++)
+                wmma::load_matrix_sync(fb[n], sK + (n * 16) * FA_LD + kk * 16, FA_LD);
+            for (int n = 0; n < BN / 16; n++)
+                wmma::mma_sync(sacc[n], fa[kk], fb[n], sacc[n]);
+        }
+
+        // ── causal + window + cache-tail mask. Off-boundary blocks skip the per-element
+        //    predicate entirely: unmasked iff the block's LAST key is at or below this warp's
+        //    FIRST query row, inside the cache, and at or above this warp's LAST row's window
+        //    floor. ──
+        const bool need_mask = (kb * BN + BN - 1 > qg0) || (kb * BN + BN - 1 >= n_keys) ||
+                               (window > 0 && kb * BN < w_lo1);
+        if (need_mask) {
+            for (int n = 0; n < BN / 16; n++) {
+                for (int i = 0; i < 8; i++) {
+                    int j = kb * BN + n * 16 + 2 * tig + fa_acc_col(i);
+                    bool hi_row = (fa_acc_row(i) != 0);
+                    int qpos = hi_row ? qg1 : qg0;
+                    int lo = hi_row ? w_lo1 : w_lo0;
+                    if (j > qpos || j < lo || j >= n_keys) sacc[n].x[i] = NEG;
+                }
+            }
+        }
+
+        // ── online softmax: row max over this block, alpha rescale of O, exp into f16 P ──
+        float t0 = NEG, t1 = NEG;
+        for (int n = 0; n < BN / 16; n++) {
+            for (int i = 0; i < 8; i++) {
+                if (fa_acc_row(i)) { if (sacc[n].x[i] > t1) t1 = sacc[n].x[i]; }
+                else               { if (sacc[n].x[i] > t0) t0 = sacc[n].x[i]; }
+            }
+        }
+        t0 = fa_wmax(t0);
+        t1 = fa_wmax(t1);
+        const float n0 = fmaxf(m0, t0), n1 = fmaxf(m1, t1);
+        const float a0 = __expf(m0 - n0), a1 = __expf(m1 - n1);
+        for (int n = 0; n < FA_D / 16; n++) {
+            for (int i = 0; i < 8; i++) oacc[n].x[i] *= fa_acc_row(i) ? a1 : a0;
+        }
+        float s0 = 0.0f, s1 = 0.0f;
+        wmma::fragment<wmma::accumulator, 16, 16, 16, __half> ph;
+        for (int n = 0; n < BN / 16; n++) {
+            for (int i = 0; i < 8; i++) {
+                float p = __expf(sacc[n].x[i] - (fa_acc_row(i) ? n1 : n0));
+                sacc[n].x[i] = p;
+                if (fa_acc_row(i)) s1 += p; else s0 += p;
+                ph.x[i] = __float2half(p);
+            }
+            wmma::store_matrix_sync(sP + (warp * 16) * sPld + n * 16, ph, sPld,
+                                    wmma::mem_row_major);
+        }
+        s0 = fa_wsum(s0);
+        s1 = fa_wsum(s1);
+        l0 = l0 * a0 + s0;
+        l1 = l1 * a1 + s1;
+        m0 = n0;
+        m1 = n1;
+        __syncthreads();
+
+        // ── O[16,d] += P[16,BN] @ V[BN,d] ──
+        for (int kk = 0; kk < BN / 16; kk++) {
+            wmma::fragment<wmma::matrix_a, 16, 16, 16, __half, wmma::row_major> fp;
+            wmma::load_matrix_sync(fp, sP + (warp * 16) * sPld + kk * 16, sPld);
+            for (int n = 0; n < FA_D / 16; n++) {
+                wmma::fragment<wmma::matrix_b, 16, 16, 16, __half, wmma::row_major> fv;
+                wmma::load_matrix_sync(fv, sV + (kk * 16) * FA_LD + n * 16, FA_LD);
+                wmma::mma_sync(oacc[n], fp, fv, oacc[n]);
+            }
+        }
+        __syncthreads();
+    }
+
+    // ── epilogue: divide by the row sums, stage through shared, write position-major ──
+    const float inv0 = (l0 > 0.0f) ? (1.0f / l0) : 0.0f;
+    const float inv1 = (l1 > 0.0f) ? (1.0f / l1) : 0.0f;
+    for (int n = 0; n < FA_D / 16; n++) {
+        for (int i = 0; i < 8; i++) oacc[n].x[i] *= fa_acc_row(i) ? inv1 : inv0;
+    }
+    float* sO = reinterpret_cast<float*>(smem);   // reuses sQ/sK/sV: FA_BM*FA_OLDF*4 = 33.8 KB
+    for (int n = 0; n < FA_D / 16; n++)
+        wmma::store_matrix_sync(sO + (warp * 16) * FA_OLDF + n * 16, oacc[n], FA_OLDF,
+                                wmma::mem_row_major);
+    __syncthreads();
+    {
+        const int nvec = FA_BM * (FA_D / 4);
+        for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+            int r = t / (FA_D / 4);
+            int c4 = t - r * (FA_D / 4);
+            int gr = row0 + r;
+            if (gr >= m) continue;
+            const float* src = sO + r * FA_OLDF + c4 * 4;
+            if (OF16) {
+                __half2* dst = reinterpret_cast<__half2*>(
+                    reinterpret_cast<__half*>(ogv) + (size_t)gr * qld + h * d + c4 * 4);
+                dst[0] = __floats2half2_rn(src[0], src[1]);
+                dst[1] = __floats2half2_rn(src[2], src[3]);
+            } else {
+                *reinterpret_cast<float4*>(
+                    reinterpret_cast<float*>(ogv) + (size_t)gr * qld + h * d + c4 * 4) =
+                    make_float4(src[0], src[1], src[2], src[3]);
+            }
+        }
+    }
+}
+
+static int g_fa_g3_attr_done = 0;
+
+// Every instantiation the host entry can select, listed once so the shared-memory attribute
+// opt-in and the dispatch switch cannot drift apart.
+#define FA_G3_INSTANCES(X)                                                     \
+    X(32, true, false) X(32, true, true) X(32, false, false) X(32, false, true) \
+    X(64, true, false) X(64, true, true) X(64, false, false) X(64, false, true) \
+    X(128, true, false) X(128, true, true) X(128, false, false) X(128, false, true)
+
+static int64_t fa_g3_set_attrs(void) {
+    if (g_fa_g3_attr_done) return 0;
+#define FA_G3_ATTR(BN, KV32, OF16)                                                  \
+    {                                                                               \
+        cudaError_t e = cudaFuncSetAttribute(                                       \
+            _fa_g3_window_kernel<BN, KV32, OF16>,                                   \
+            cudaFuncAttributeMaxDynamicSharedMemorySize, fa_smem_bytes<BN>());       \
+        if (e != cudaSuccess) { record_error((int64_t)e); return (int64_t)e; }      \
+    }
+    FA_G3_INSTANCES(FA_G3_ATTR)
+#undef FA_G3_ATTR
+    g_fa_g3_attr_done = 1;
+    return 0;
+}
+
+// The gemma-3 windowed twin of tc_shim_fa_causal_async. `window <= 0` == full-context causal
+// (a global layer); `window > 0` == gemma-3's sliding-window local layers. kv32 selects the
+// resident f32 K/V cache (1) or an f16 staging twin (0); of16 selects an f16 (1) or f32 (0)
+// position-major output. bn: 32 / 64 / 128 key columns per online-softmax block (else 64).
+// scale_f32 is a DEVICE pointer to one float. Returns -301 for an unsupported head_dim, -304
+// for non-integral GQA, -310 if the on-device accumulator-layout probe disagreed with the
+// mapping this file indexes by (the caller MUST fall back), else the cudaError_t. Enqueues on
+// the shim stream and returns WITHOUT syncing (the G3_STREAM / NOSEAM contract).
+extern "C" int64_t tc_shim_fa_g3_window_async(const void* q_f32, const void* k, const void* v,
+                                              void* o, const void* scale_f32,
+                                              int64_t m, int64_t n_keys,
+                                              int64_t h_q, int64_t h_kv, int64_t d,
+                                              int64_t pos_base, int64_t window,
+                                              int64_t bn, int64_t kv32, int64_t of16) {
+    if (d != FA_D) return -301;
+    if (m <= 0 || n_keys <= 0 || h_kv <= 0 || h_q <= 0) return 0;
+    if ((h_q % h_kv) != 0) return -304;
+    int64_t r = tc_shim_fa_layout_probe();
+    if (r != 0) return r;
+    r = fa_g3_set_attrs();
+    if (r != 0) return r;
+    dim3 grid((unsigned)((m + FA_BM - 1) / FA_BM), (unsigned)h_q);
+    dim3 block(FA_NWARP * 32);
+    int im = (int)m, ink = (int)n_keys, ihq = (int)h_q, ihkv = (int)h_kv, id = (int)d;
+    int ipos = (int)pos_base, iwin = (int)window;
+    const float* q = (const float*)q_f32;
+    const float* sp = (const float*)scale_f32;
+    int ibn = (bn == 32) ? 32 : ((bn == 128) ? 128 : 64);
+    bool bkv = (kv32 != 0), bof = (of16 != 0);
+    cudaError_t e;
+#define FA_G3_LAUNCH(BN, KV32, OF16)                                                \
+    if (ibn == BN && bkv == KV32 && bof == OF16) {                                  \
+        _fa_g3_window_kernel<BN, KV32, OF16>                                        \
+            <<<grid, block, fa_smem_bytes<BN>(), g_stream>>>(                       \
+                q, k, v, o, sp, im, ink, ihq, ihkv, id, ipos, iwin);                 \
+    } else
+    FA_G3_INSTANCES(FA_G3_LAUNCH)
+    {
+        return -305;   // unreachable: ibn/bkv/bof are normalized into the list above
+    }
+#undef FA_G3_LAUNCH
+    e = cudaGetLastError();
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
 #else   // TC_SHIM_NO_WMMA
 extern "C" int64_t tc_shim_fa_layout_probe(void) { return -310; }
 extern "C" int64_t tc_shim_fa_causal_async(const void*, const void*, const void*, void*,
@@ -2447,6 +2846,10 @@ extern "C" int64_t tc_shim_fa3_causal_async(const void*, const void*, const void
                                             const void*, int64_t, int64_t, int64_t, int64_t,
                                             int64_t, int64_t, int64_t, int64_t,
                                             int64_t) { return -301; }
+extern "C" int64_t tc_shim_fa_g3_window_async(const void*, const void*, const void*, void*,
+                                              const void*, int64_t, int64_t, int64_t, int64_t,
+                                              int64_t, int64_t, int64_t, int64_t, int64_t,
+                                              int64_t) { return -301; }
 extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void*, void*, int64_t, int64_t) {
     return -302;
 }

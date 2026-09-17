@@ -1,5 +1,5 @@
 {
- "kernel_count": 184,
+ "kernel_count": 189,
  "kernels": [
   {
    "backend": "metal",
@@ -1039,6 +1039,14 @@
     "gemma3"
    ],
    "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_geglu_rows_f16_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
    "name": "pf_geglu_rows_kernel"
   },
   {
@@ -1096,6 +1104,14 @@
    ],
    "module": "residentk.kernels_prefill_gemma3",
    "name": "pf_ropewrt_kernel_h"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_ropewrt_warps_kernel"
   },
   {
    "backend": "cuda",
@@ -1292,6 +1308,14 @@
   {
    "backend": "cuda",
    "families": [
+    "gemma3"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_fa_g3_window_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
@@ -1335,6 +1359,14 @@
     "qwen3_llama"
    ],
    "module": "residentk.tc_shim_bridge",
+   "name": "tc_gemm_f16_16c_pre_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
    "name": "tc_gemm_f16_16c_pre_lt"
   },
   {
@@ -1360,6 +1392,14 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_gemm_f16_32c_pre"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "qwen3_llama"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_gemm_f16_32c_pre_async"
   },
   {
    "backend": "cuda",
