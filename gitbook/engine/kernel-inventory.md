@@ -11,7 +11,7 @@ The engine's racing kernels — the fused CUDA and Metal kernels a resident deco
 
 | Backend | Kernels | Model families | Staging tiers (elements) |
 | --- | --- | --- | --- |
-| CUDA (NVIDIA) | 139 | gemma3, qwen3/llama | 3072, 6144, 8192, 18944 |
+| CUDA (NVIDIA) | 140 | gemma3, qwen3/llama | 3072, 6144, 8192, 18944 |
 | Metal (Apple Silicon) | 57 | qwen3/llama | 3072, 6144 |
 
 Staging is the decode kernels' shared-memory ceiling per build tier — one binary per tier; a checkpoint whose staged vectors exceed every tier of a backend is refused naming the value and the tiers. See the [Model support matrix](model-support-matrix.md) for the fact ranges that decide support.
@@ -119,6 +119,7 @@ Staging is the decode kernels' shared-memory ceiling per build tier — one bina
 | `pf_biasropewrt_vec_kernel` | RoPE + KV-cache write | gemma3 |
 | `pf_ropewrt_kernel_h` | RoPE + KV-cache write | gemma3 |
 | `pf_ropewrt_warps_kernel` | RoPE + KV-cache write | gemma3 |
+| `pf_ropewrt_warps_vec_kernel` | RoPE + KV-cache write | gemma3 |
 | `tc_attn_softmax_mask_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_bgemm_f16_async` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
 | `tc_create_stream` | Tensor-core shim (cuBLAS HMMA escape hatch) | qwen3/llama |
@@ -244,7 +245,7 @@ Each kernel module declares its own evidence in its `@capability-module` block: 
 | `residentk.kernels_prefill_f32_v2` | cuda | 3 | `benchmarks/llm_smoke/nvidia_race/prefill_gemm_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/prefill_gemm_probe.mojo` |
 | `residentk.kernels_prefill_f32_v2n` | cuda | 1 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo` |
 | `residentk.kernels_prefill_f32_v3` | cuda | 3 | `benchmarks/llm_smoke/nvidia_race/h100_gemm_probe.mojo` | `benchmarks/llm_smoke/nvidia_race/h100_gemm_probe.mojo` |
-| `residentk.kernels_prefill_gemma3` | cuda | 21 | `benchmarks/llm_smoke/gemma3/ref_transformers_gemma3.py` | `benchmarks/llm_smoke/nvidia_race/gemma3_correctness_cuda.mojo` |
+| `residentk.kernels_prefill_gemma3` | cuda | 22 | `benchmarks/llm_smoke/gemma3/ref_transformers_gemma3.py` | `benchmarks/llm_smoke/nvidia_race/gemma3_correctness_cuda.mojo` |
 | `residentk.kernels_prefill_v2f16` | cuda | 3 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo --selftest` | `benchmarks/llm_smoke/nvidia_race/ttft_probe.py` |
 | `residentk.session_cuda_batched_p3_graph` | cuda | 1 | `benchmarks/llm_smoke/nvidia_race/qwen3_serve_batched_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/enterprise_bench.py` |
 | `residentk.session_cuda_p3` | cuda | 10 | `benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo` | `benchmarks/llm_smoke/nvidia_race/qwen3_p3_session_cuda.mojo` |

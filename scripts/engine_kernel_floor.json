@@ -1,5 +1,5 @@
 {
- "kernel_count": 196,
+ "kernel_count": 197,
  "kernels": [
   {
    "backend": "metal",
@@ -1112,6 +1112,14 @@
    ],
    "module": "residentk.kernels_prefill_gemma3",
    "name": "pf_ropewrt_warps_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_ropewrt_warps_vec_kernel"
   },
   {
    "backend": "cuda",

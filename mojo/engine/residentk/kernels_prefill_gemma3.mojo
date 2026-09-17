@@ -444,6 +444,158 @@ def _pf_ropewrt_warps_kernel(
         cv[kb + t + w3] = qkv[vsrc + t + w3]
 
 
+comptime _G3_ROPEV_HEADS_PER_WARP: Int = 2
+"""Heads per warp in `_pf_ropewrt_warps_vec_kernel`: one HALF-warp (16 lanes) per head, so a
+lane's two float4 groups are `e0` and `e0 + d_head/2` and both halves of every RoPE pair stay
+inside one lane. That is what keeps the kernel free of cross-lane data movement despite the
+contiguous-per-lane access pattern."""
+
+comptime _G3_ROPEV_HEADS_PER_BLOCK: Int = (
+    _G3_ROPEV_HEADS_PER_WARP * _G3_ROPE_WARPS_PER_BLOCK
+)
+"""Heads per block: 8 warps x 2 = 16, so gemma-3-27b's h_q + h_kv = 48 units take 3 blocks per
+row instead of the warps kernel's 6 — half the launches again."""
+
+
+def _pf_ropewrt_warps_vec_kernel(
+    q_rot: _FP, ck: _FP, cv: _FP, qkv: _FP, qn_w: _FP, kn_w: _FP,
+    cos_t: _FP, sin_t: _FP, pos_base_i64: Int64, h_q_i64: Int64, h_kv_i64: Int64,
+    d_head_i64: Int64, eps: Float32, m_rows_i64: Int64, qk_norm_i64: Int64,
+    blocks_per_row_i64: Int64,
+):
+    """`_pf_ropewrt_warps_kernel` with the scalar 4-byte global accesses replaced by 16-byte
+    `_ld4`/`_st4` — `-D ALGENTA_G3_PF_ROPEVEC`, round 7's compensation lever.
+
+    WHY, AND WHY IT IS NOT ALREADY DONE. `_pf_biasropewrt_vec_kernel` (FRONT 5 lever 2,
+    `-D ALGENTA_7B_PF_ROPEVEC`) already made exactly this change for the 7B lane and measured
+    the family at ~43% of the traffic roof before it, but it DECLINES whenever `qk_norm != 0`
+    because there the norm's sum-of-squares reduction needs every element of the head reachable
+    from one thread. Gemma 3 always has QK-norm (this session's dispatch passes a literal 1),
+    so the 7B vector kernel never runs here and gemma-3 kept the scalar accesses. Round 6's own
+    decomposition is the same signature on this model: the rope bucket is ~6.2 ms measured
+    against a 3.39 ms traffic roof (56 KB/row x 1024 rows x 62 layers x 4 tiles = 14.56 GB at
+    4.8 TB/s), i.e. ~49% of roof, while TensorRT-LLM's `applyBiasRopeUpdateKVCacheV2` sits at
+    3.47 ms — essentially AT that roof. So ~2.7 ms of this bucket is not bandwidth, it is the
+    kernel's own instruction shape.
+
+    WHAT CHANGES. The warps kernel gives lane `t` the four STRIDED elements {t, t+32, t+64,
+    t+96}: four separate coalesced 128-byte warp transactions per array, and four scalar
+    `ld.global.b32` per lane, because without the `alignment=16` annotation that `loadvec`
+    exists to supply, `load[width=4]` lowers to four scalar loads rather than one
+    `ld.global.v4.b32`. Here a HALF-warp owns one head and lane `q = t & 15` takes the two
+    CONTIGUOUS quads `e0 = 4q` and `e0 + d_head/2`, so every access is one `_ld4`/`_st4`:
+
+        per head, scalar warps kernel      ->  this kernel
+        qkv loads        4                 ->  2   (both RoPE halves)
+        norm-weight      4                 ->  2
+        cos, sin         2 + 2             ->  1 + 1
+        q_rot/ck stores  4                 ->  2
+        V copy (K heads) 4 loads + 4 stores->  1 + 1 each
+        -----------------------------------------------
+        memory instrs   ~24                ->  ~8      (3x fewer)
+        cross-lane       5 shuffle_xor     ->  4 shuffle_xor (norm only)
+
+    Because a lane holds BOTH halves of its four pairs, the rotation needs NO cross-lane data
+    movement at all — the only shuffles left are the norm reduction's, and there are fewer of
+    them (4 over a half-warp instead of 5 over a full warp). Launches also drop again: 16 heads
+    per block instead of 8, so gemma-3-27b's 48 units take 3 blocks per row rather than 6.
+
+    NOT BIT-IDENTICAL, AND WHY THAT IS THE RIGHT CALL. Keeping the strided lane mapping is what
+    made the warps kernel bit-exact against its block-per-head twin: it put both halves of a
+    pair in one lane AND made the twin's stride-64/stride-32 reduction steps intra-lane, so the
+    five `shuffle_xor` steps reproduced the twin's tree exactly. Contiguous quads cannot do
+    that — the qk_norm sum-of-squares now associates eight intra-lane terms then four
+    half-warp shuffles instead of four intra-lane terms then five full-warp shuffles, so the
+    f32 rounding of `ss` differs and `inv` differs in the last bits. The rotation and the
+    scaling EXPRESSIONS are the warps kernel's verbatim (`x = v * inv * w`,
+    `o0 = x0*c - x1*s`, `o1 = x0*s + x1*c`, evaluated on SIMD lanes that do not interact), so
+    the only changed quantity is the norm's reduction order. That is the same class of change as
+    round 5's windowed-TC kernel and round 6's raw-mma port, and like them it carries its own
+    build flag and goes through the fp32-oracle token gates rather than being asserted exact on
+    the strength of the source text. The reduction order is written out explicitly below so it
+    is reproducible and so a future round can compare against a stated association.
+
+    STRUCTURAL CONTRACT (gated at the dispatch site, which keeps the warps kernel otherwise):
+    `d_head == 4 * WARP_SIZE == 128`, which is what makes one half-warp of four-element quads
+    cover half a head, and every row stride a multiple of 4 elements so the 16-byte alignment
+    promise `_ld4`/`_st4` make is discharged by the caller. `blocks_per_row` is
+    `ceil((h_q + h_kv) / _G3_ROPEV_HEADS_PER_BLOCK)` and heads past `h_q + h_kv` return.
+    Grid `m_rows * blocks_per_row`, block `_G3_ROPE_NTHREADS`."""
+    var pos_base = Int(pos_base_i64)
+    var h_q = Int(h_q_i64)
+    var h_kv = Int(h_kv_i64)
+    var d_head = Int(d_head_i64)
+    var m_rows = Int(m_rows_i64)
+    var qk_norm = Int(qk_norm_i64)
+    var bpr = Int(blocks_per_row_i64)
+    var n_units = h_q + h_kv
+    var n_pairs = d_head // 2
+
+    var m = Int(block_idx.x) // bpr
+    if m >= m_rows:
+        return
+    var sub = Int(block_idx.x) - m * bpr
+    var t = Int(lane_id())
+    var half = t // 16                      # which head of this warp: 0 or 1
+    var q = t - half * 16                   # lane inside the half-warp: 0..15
+    var b = sub * _G3_ROPEV_HEADS_PER_BLOCK + Int(warp_id()) * 2 + half
+    if b >= n_units:
+        return
+    var pos = pos_base + m
+    var n_qkv = h_q * d_head + 2 * h_kv * d_head
+    var row_qkv = m * n_qkv
+    var is_q = b < h_q
+    var head = b if is_q else b - h_q
+    var e0 = 4 * q                          # 0, 4, ... , 60 — a multiple of 4 by construction
+
+    var src = row_qkv + (head * d_head if is_q else (h_q + head) * d_head)
+    var a0 = _ld4(qkv, src + e0)            # elements e0 .. e0+3
+    var a1 = _ld4(qkv, src + e0 + n_pairs)  # their RoPE partners, e0+64 .. e0+67
+
+    var x0 = a0
+    var x1 = a1
+    if qk_norm == 1:
+        # sum of squares over all d_head elements, in a STATED order: the lane's own eight
+        # terms left-to-right (first quad, then partner quad), then four shuffle_xor steps that
+        # reduce within the 16-lane half-warp only (t ^ 8/4/2/1 never crosses the half).
+        var ss = a0[0] * a0[0] + a0[1] * a0[1] + a0[2] * a0[2] + a0[3] * a0[3]
+        ss = ss + a1[0] * a1[0]
+        ss = ss + a1[1] * a1[1]
+        ss = ss + a1[2] * a1[2]
+        ss = ss + a1[3] * a1[3]
+        ss = ss + _shuffle_xor(ss, 8)
+        ss = ss + _shuffle_xor(ss, 4)
+        ss = ss + _shuffle_xor(ss, 2)
+        ss = ss + _shuffle_xor(ss, 1)
+        var inv = 1.0 / sqrt(ss / Float32(d_head) + eps)
+        var w0 = _ld4(qn_w, e0) if is_q else _ld4(kn_w, e0)
+        var w1 = _ld4(qn_w, e0 + n_pairs) if is_q else _ld4(kn_w, e0 + n_pairs)
+        x0 = a0 * inv * w0
+        x1 = a1 * inv * w1
+
+    # cos/sin are indexed by the LOW half of the pair, so both quads of this lane share one
+    # float4 of each — one load apiece, where the strided mapping needed two.
+    var cb = pos * n_pairs + e0
+    var c = _ld4(cos_t, cb)
+    var s = _ld4(sin_t, cb)
+    var o0 = x0 * c - x1 * s                # -> elements e0 .. e0+3
+    var o1 = x0 * s + x1 * c                # -> elements e0+64 .. e0+67
+
+    if is_q:
+        var qb = m * h_q * d_head + head * d_head
+        _st4(q_rot, qb + e0, o0)
+        _st4(q_rot, qb + e0 + n_pairs, o1)
+    else:
+        var kb = (pos * h_kv + head) * d_head
+        _st4(ck, kb + e0, o0)
+        _st4(ck, kb + e0 + n_pairs, o1)
+        # V is neither normalized nor rotated: the warps kernel copies it straight through and
+        # so does this. Its slice starts after the h_q + h_kv Q and K slices of the fused row.
+        var vsrc = row_qkv + (h_q + h_kv + head) * d_head
+        _st4(cv, kb + e0, _ld4(qkv, vsrc + e0))
+        _st4(cv, kb + e0 + n_pairs, _ld4(qkv, vsrc + e0 + n_pairs))
+
+
 def _pf_row_copy_kernel(dst: _FP, src: _FP, row_i64: Int64, n_i64: Int64):
     """`dst[0:n] = src[row, 0:n]` — one row of a [m, n] buffer into a flat buffer (the prefill's
     final residual row into the decode-shaped `hidden`). Grid `ceil(n / _TG)`, block `_TG`."""

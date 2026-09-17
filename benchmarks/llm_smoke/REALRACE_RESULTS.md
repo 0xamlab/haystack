@@ -19807,3 +19807,250 @@ and the neutral source dir `/tmp/front7_proof/` (wiped with /tmp on the next boo
 `~/front6/repo` with this round's files md5-verified after extraction (`tc_shim.cu`
 `a862763133b7813fc598e0b1f1b6a989`). VM left at 1410 MHz / 0 MiB, no containers, no processes, no
 watchers, then **STOPPED** per the owner's lifecycle mandate.
+
+---
+
+## ROUND 7 — gemma-3-27b-it H200 vs TensorRT-LLM 1.2.1: the attention lever is REGISTER-REFUTED before a timing was taken, and the round is BLOCKED on spot stockout (branch `feat/gemma-margin7`, 2026-09-17)
+
+Front: round 7 of the gemma-3-27b-it CUDA prefill seam, branch `feat/gemma-margin7` off main @
+`afc60709` (#1006, which merged round 6 mid-session and deleted `feat/gemma-fa2-port`), VM
+`trtllm-gemma-us-west1-c` (8xH200 spot, GPU1, 1410 MHz). **Round 6's published standings are
+UNCHANGED by this round and nothing here supersedes them: pp256 1.2931x, pp1024 1.1779x,
+rag4096 1.0959x.** This round produced one hard measured refutation, one fix to round 6's
+decomposition tooling, one authored-but-unmeasured lever, and then lost the GPU.
+
+### THE ROUND IS INCOMPLETE — NO CELL WAS TIMED, NO GATE WAS RUN, NO RATIO IS CLAIMED
+
+The box went to **STOCKOUT**. Two `instances start` attempts both failed with
+`reason: resource_availability`, `state: STOCKOUT`, "The zone 'projects/eplanev2/zones/us-west1-c'
+does not have enough resources available" for `a3-ultragpu-8g` with 8 `nvidia-h200-141gb`. The
+retry loop was stopped at two attempts per the standing instruction. This is the lifecycle
+mandate's own caveat firing: stopping an a3/H200 spot VM can lose the allocation permanently.
+The instance is **TERMINATED with its local SSDs still attached** and MUST NOT BE DELETED —
+round 6's `~/lever6` artifacts, the `~/trtllm` staging scripts and this round's probe logs all
+live on that local SSD and are unrecoverable if the instance is removed. Nothing was left
+running: no idle burn at any point in this round.
+
+Consequences, stated rather than papered over: no oracle gate ran, so **no arm in this round is
+certified**; no timing cell ran, so **no delta and no ratio is claimed**; TRT-LLM was not
+re-served, so **pp256 remains CROSS-SESSION** (it has been since round 6 and this round was
+going to fix that). Everything below labelled MEASURED was measured; everything labelled MODELLED
+is arithmetic on round 6's published numbers and is a forecast, not a result.
+
+### MEASURED — the primary lever is refuted by the register file, not by a timing
+
+Round 6's decomposition named the remainder precisely: at rag4096 the fused attention kernel is
+33.53 ms measured (+4.77 ms of f16 K/V staging) against flashinfer's 21.01 ms, and the ledger
+named "the per-CTA shared-load stream" as the binding constraint at FA_BM=64 / 4 warps. That
+constraint is countable, and it is **INVARIANT IN BN**: per warp per key block v2 issues
+`(FA_D/16)*(BN/16)` ldmatrix.x4 for K and the same for V, each load feeding exactly two mma, so
+per row per key it is 1/32 of an ldmatrix.x4 at EVERY BN — widening BN adds keys to the same
+B-fragment while the row count stays 16 per warp. An ldmatrix.x4 is 512 B = 4 cycles of the SM's
+128 B/cycle shared bandwidth; an m16n8k16 mma is 2048 MAC against ~1024 MAC/cycle/SM. The two
+pipes are CO-BOTTLENECKED, which is exactly why round 6's BN sweep was already flat at the top
+and why KV16 (which fixed the L2 side) did not finish the job. **The only way to cut the shared
+stream is to feed more rows from each B-fragment load.**
+
+`_fa_g3_window3_kernel<BN,KV32,OF16,DBUF,RT,GQA>` did that: RT m16 row-tiles per warp, one
+B-fragment load feeding RT mma, with `GQA=1` spending RT=2 on two query heads of one KV head
+(GQA-packed CTAs, ranked lever #1) and `GQA=0` on FA_BM=128 (ranked lever #2). Probe-only: no
+Mojo bridge symbol, nothing dispatching, floor-neutral at the time it was written.
+
+`-Xptxas -v` on the VM, clocks pinned and verified at 1410 MHz before the build:
+
+| kernel | instantiations | peak registers | spilling | spill bytes |
+|---|---|---|---|---|
+| `_fa_g3_window2_kernel` (round 6, shipped) | 18 | **172** | **0** | 0 |
+| `_fa_g3_window3_kernel` (round 7, RT=2) | 36 | **255 / 255 ceiling** | **24 of 36** | 424-488 B |
+
+The hand-count forecast was ~224 registers at RT=2 (`qa[2][8][4]` + `oacc[2][16][4]` +
+`s[2][NT][4]`). The truth is 255 **plus** spill. **That is this campaign's 4th consecutive
+over-forecast**, and the census gate — added this round specifically because the forecast has
+been wrong every time — caught it in ~30 s of build time instead of an hour of gated cells.
+
+WHY IT SPILLED, AND THE ANSWER WAS ALREADY IN THE TREE. `_fa3_causal_kernel` (FRONT 5 lever 1,
+`-D ALGENTA_7B_PF_FA3`) is GQA-packed and does it the right way: *"Warp w owns ONE 16-row mma
+tile of ONE query head"* — it adds **warps** to the CTA, not tiles to a warp, so per-thread
+accumulators never grow. It also hand-builds the Q A-fragment from strided global f32, deleting
+the sQ window and both its fences (which SAVES registers), and takes `kb_max` at 16-row
+granularity so a warp no longer walks up to three extra key blocks that FA2 walked and masked
+away. v3 did the opposite: two tiles in one warp doubles `oacc` to 128 f32 and hits the file.
+FA3 cannot simply be reused here — `FA3_G` is hardcoded 7 (Qwen2.5-7B 28/4) against gemma-3's
+32/16 = 2, and FA3 is causal-only with no sliding window, which gemma-3's 5-of-6 local layers
+require.
+
+### MODELLED — the finding that reframes the ranked list for round 8
+
+GQA packing done FA3's way (more warps, one tile each) does **not** reduce the shared-load
+stream: two heads' warps each `ldmatrix` the same K tile out of shared, so shared traffic per
+row-head is unchanged and only L2/global traffic halves — and round 6 already fixed the L2 side
+with KV16. So on the H200, post-KV16, the round-4 A100 refutation of GQA packing **does
+transfer**, for a reason round 4 could not have known: the binding constraint moved from L2 to
+shared bandwidth, and GQA packing only ever addressed L2.
+
+The route that actually removes the B-operand shared stream is **sm_90a `wgmma.mma_async`**,
+which reads B directly from shared memory through a matrix descriptor — no ldmatrix, no B
+registers at all — and accumulates 64 rows per warpgroup at roughly the per-thread register cost
+of our 16. That is very likely why flashinfer sits at 21.01 ms where this kernel sits at 33.53:
+**an ISA-generation gap, not a tuning gap.** It needs `-arch=sm_90a` (the shim builds `sm_90`)
+and is a kernel rewrite, not a lever. Ranked #1 for round 8 and priced as such.
+
+### AUTHORING THAT SURVIVES THE BLOCK (committed, pushed, NOT measured)
+
+1. **`-D ALGENTA_G3_PF_ROPEVEC`** — `_pf_ropewrt_warps_vec_kernel`. ROPE2 removed the shared
+   round trip and the barriers (36.6 -> 7.7 ms whole-process) but kept SCALAR 4-byte accesses,
+   because its bit-exactness argument *depends* on the strided lane mapping {t, t+32, t+64, t+96}
+   that makes the twin's stride-64/32 reduction steps intra-lane — and that same mapping forces
+   four `ld.global.b32` per array per lane, since without `loadvec`'s `alignment=16` annotation a
+   `load[width=4]` lowers to four scalar loads rather than one `ld.global.v4.b32`. The half-warp-
+   per-head layout closes that gap: a lane holds both quads of its four pairs (`e0` and
+   `e0 + d_head/2`), so the rotation needs NO cross-lane data movement, the qk_norm reduces in
+   four `shuffle_xor` steps inside the half-warp (`t^8/4/2/1` never crosses it), ~24 memory
+   instructions per head become ~8, and 16 heads per block instead of 8 halves launches again
+   (gemma-3's 48 units take 3 blocks per row, not 6). `_pf_biasropewrt_vec_kernel` already did
+   this for the 7B lane but DECLINES gemma-3 because a qk_norm reduction needs every element of a
+   head reachable from one thread, and gemma-3 always has QK-norm — that decline is the gap.
+   **NOT bit-identical**: contiguous quads re-associate the sum-of-squares, so `ss` and `inv`
+   round differently. Hence its own flag, an explicitly stated reduction order, and the
+   fp32-oracle token gates. Gated on `use_rope2` rather than its own head-dim test, so a shape
+   ROPE2 declines can never fall through to a different re-association; flag off => `use_ropev`
+   is provably False => the arm is dead and the emitted code is unchanged.
+   MODELLED headroom (arithmetic on round 6's numbers, NOT measured): rope traffic is 32 KB read
+   (qkv f32) + 16 KB (`q_rot` f32) + 8 KB (ck+cv f32) = 64 KB/row -> 16.25 GB per rag4096 ->
+   **3.39 ms at the 4.8 TB/s HBM roof**, against round 6's ~6.2 ms measured = **~49% of roof**,
+   while TRT-LLM's `applyBiasRopeUpdateKVCacheV2` is 3.47 ms, i.e. essentially AT the roof. So
+   ~2.7 ms of this bucket is instruction shape, not bandwidth — the same signature FRONT 5
+   measured at ~43% of roof on the 7B lane before fixing it with exactly this change. NOTE this
+   model corrects an earlier draft of this round's reasoning that assumed KV16 made ck/cv f16 at
+   the rope store; the rope kernel writes f32 and a separate `_f32_to_f16` pass narrows, which is
+   why the traffic is 64 KB/row and not 56.
+2. **`mr_extract_gemma3_round7.py --from-first-attn`** — round 6's integrity note 4, fixed.
+   Round 6 could only report norm-accum and rope as GEOMETRY-ATTRIBUTED estimates (instance-share
+   248/310) and hedged both with a "~", because its priming subtraction produced NEGATIVE
+   `norms` / `mojo_per_layer` rows. The cause was the boundary: both traces were bounded by "last
+   cluster after a >3 ms idle gap", and load flows into priming with no such gap, so the two
+   traces bounded DIFFERENT regions and the load term never cancelled. Bounding BOTH at the first
+   fused-attention launch — which model load never issues — makes the boundary identical by
+   construction, so load cancels exactly. It HARD STOPS rather than silently falling back if no
+   launch matches, and `run_nsys_gemma3_round7.sh` now GREPS the subtraction for a negative
+   bucket and labels it invalid rather than quoting it. This is what turns rope / norm-accum /
+   geglu from attributed into measured, and it is a prerequisite for pricing any of them.
+3. A correction to this round's own earlier reasoning, recorded because it changes a forecast:
+   the norm-accum double-read (`_pf_norm_accum_rows_kernel` reads `y` in the sum-of-squares loop
+   and again in the output loop — 16n bytes/row where 12n suffices) is **probably NOT a DRAM
+   lever**. At n = d_model = 5376 and grid = m_rows, the live working set is ~22 MB against the
+   H200's 60 MB L2, so pass 2's re-read is very likely an L2 hit and the DRAM traffic is already
+   ~12n. Staging `y` would still be bit-identical by construction (same f32 bits, unchanged
+   reduction order) but its headroom is L2 traffic and instruction count, not bandwidth, and an
+   earlier ~-4 ms estimate for it was wrong. It was NOT authored this round for that reason;
+   it needs the fixed extractor's exact bucket before it is worth a flag and a gate.
+
+### THE BAR, PREREGISTERED BEFORE ANY MEASUREMENT, AND STILL STANDING
+
+Recorded here because it was derived on CPU from round 6's published decomposition before this
+round touched the GPU, and because it is the reason "widen rag4096 to >=1.15x" was never
+reachable on the compensation levers alone:
+
+* **pp1024 >= 1.25x is arithmetically unreachable.** It needs <= 88.60 ms (-5.43 ms). GEMM at
+  pp1024 is ~73.0 ms (292.05 x 1024/4096) and round 6 proved it is at the pinned roof. The
+  ENTIRE attention bucket there is ~5.64 ms (62 layers x 91.0 us — which cross-checks against
+  round 6's measured -6.573 ms delta from 198.7 -> 91.0 us), so the bar requires deleting ~96%
+  of all attention work. A 30-50% structural win lands 91.2-92.3 ms = 1.20-1.21x.
+* **rag4096 >= 1.15x needs <= 370.73 ms (-18.30 ms).** Full attention parity (33.53 -> 21.01)
+  PLUS full rope parity (6.2 -> 3.47) yields only -15.25 ms -> **1.1406x, still short**. The bar
+  requires our attention kernel at ~17.96 ms, i.e. **1.17x FASTER than flashinfer**, or
+  compensation from norm-accum and geglu on top. With RT=2 register-refuted there is no
+  `mma.sync` route left to that, so the honest round-7 answer is the per-layer proof above plus
+  the ranked round-8 list — which is the branch the brief explicitly provides for.
+
+Best case from the compensation levers as authored: rope -2.2 to -2.7 ms -> rag4096 ~386.3-386.8
+ms -> **~1.102-1.104x**, a modest widening from 1.0959x with no cell regressed. That is a real
+but small win, and it is UNMEASURED.
+
+### EVIDENCE AND STATE
+
+* Rebase onto main: `feat/gemma-margin7` had ZERO own commits when #1006 merged, so the rebase
+  was a clean fast-forward to `afc60709`. Raced-path byte identity **5/5 IDENTICAL** between the
+  measured tree `58de31431` and main (`tc_shim.cu`, `fa_g3_probe.cu`,
+  `session_cuda_gemma3_f16.mojo`, `run_ab_gemma3_round6.sh`, `run_gemma3_round6_cells.sh`) —
+  round 6's measurements remain valid on the rebased base.
+* Contract/floor/inventory regenerated with the project's generators in DEPENDENCY ORDER
+  (contract -> floor -> capability -> runtime-library reference -> kernel inventory; running the
+  inventory before the contract leaves it stale against it, which the first pass did and the
+  `--check` caught). This round was REBASED onto main twice — first onto `afc60709` when #1006
+  merged mid-session, then onto `4c6d081f` after #1003/#1013 (the 7B FRONT 7) landed and
+  conflicted on these same generated artifacts. Generated files were resolved by taking main's
+  version and REGENERATING rather than hand-merging, which is the only resolution that cannot
+  silently drop a symbol; the append-only ledger conflicted once and both sections were kept in
+  merge order. Floor **196 -> 197** on the final base, exactly one new published symbol,
+  `residentk.kernels_prefill_gemma3.pf_ropewrt_warps_vec_kernel`. All five `--check` gates pass.
+* Both changed Mojo files typecheck clean under `mojo build --target-accelerator sm_90`, and the
+  comptime geometry was verified BY EXECUTION rather than by reading: `heads_per_warp=2`,
+  `heads_per_block=16`, `nthreads=256`, `bpr_for_48_units=3`.
+* `fa_g3_probe` was extended for v3 (full `(rt,gqa) x (kv32,dbuf) x of16` cross product at every
+  shape against the host double-precision windowed reference; a **bit-identity** gate against v2
+  rather than tolerance, because v3 changes no rounding point and both GQA=1 and GQA=0 must be
+  bit-exact for the reasons stated in the kernel header; a `[1d]` rejection battery covering
+  -305/-305/-305/-301/-304; and a `[4]` decision table timing v2 against v3 RT1 control / GQA2 /
+  BM128 at the production mapping with BN swept in-process). **None of it ran to completion and
+  was retrieved**: the census gate stopped the chain before the probe, a detached re-run was
+  launched and then gcloud auth expired mid-session, and the box went to STOCKOUT before the logs
+  could be pulled. They should still be on the local SSD at
+  `~/lever7/logs/fa_g3_probe_bn{32,64}.log`. WHETHER RT=2 BEAT v2 DESPITE SPILLING IS STILL AN
+  OPEN QUESTION — the census proved spill SIZE, and spill FREQUENCY in the hot loop is what
+  decides it. It is the first thing to read when capacity returns.
+* Tooling added: `build_shim_gemma3_round7.sh` (`-Xptxas -v` + the census verdict),
+  `chain7probe.sh` (probe-only go/no-go, stops on spill), `chain7stage.sh` (re-stage + fixture
+  identity against round 6's certified gate echoes via `FIXREF_RUNS`, refuses to proceed until
+  proven and 1410 verifies), `chain7full.sh` (the whole window, ordered so a 3 h truncation costs
+  the least-load-bearing phase), `vm_sync_r7.sh` (tar+scp, no github egress; REFUSES a dirty or
+  unpushed tree so the binaries stay traceable), `run_ab_gemma3_round7.sh`,
+  `run_nsys_gemma3_round7.sh`. The cell runner is round 6's, deliberately NOT forked — its own
+  header says the protocol lives in exactly one place. Every chain emits a heartbeat to
+  `~/lever7/heartbeat.log` so the top-level idle audit does not stop the box mid build phase.
+
+### INTEGRITY NOTES
+
+1. The forecast was wrong a 4th time and the gate that caught it was new this round. ~224
+   registers predicted, 255 + 424-488 B of spill actual. The lesson is not "estimate better", it
+   is that a register census costs 30 s of build time and must precede any timing on a
+   register-heavy kernel. `chain7probe.sh` now enforces that ordering.
+2. The round-7 rope traffic model was first written with ck/cv as f16 (56 KB/row, 3.03 ms roof)
+   on the assumption that KV16 narrowed the rope store. Reading the dispatch showed the rope
+   kernel writes f32 and a separate `_f32_to_f16` pass narrows afterwards, so it is 64 KB/row and
+   a 3.39 ms roof. The corrected figure is the one quoted above; the error is recorded rather
+   than silently fixed because it moved the modelled headroom by 0.36 ms.
+3. gcloud auth expired mid-session ("Reauthentication failed. cannot prompt during
+   non-interactive execution") with the VM RUNNING and no service-account or ADC fallback, so the
+   front could not stop its own box and had to escalate. SSH is IAP-only on this instance (no
+   external IP), which means auth loss is total loss of control, not just loss of convenience.
+   The probe had been launched detached with its own heartbeat, so no work was lost and the box
+   was idle-free within the audit's window.
+4. VM lifecycle: started 04:47Z, spot capacity granted (STAGING -> RUNNING in ~4 min), probe
+   phase ran ~04:54-05:0xZ, stopped by the top-level idle audit after auth loss, then
+   **unstartable** — STOCKOUT on both retry attempts. Total VM-on this round ~30 min against a
+   3 h budget. Nothing left running.
+
+### RANKED NEXT LEVERS (round 8 material)
+
+1. **sm_90a `wgmma.mma_async` port of the windowed kernel** — the only route that removes the
+   B-operand shared-load stream without spending registers we do not have. B is read directly
+   from shared via a matrix descriptor (no ldmatrix at all) and a warpgroup accumulates 64 rows
+   at ~our 16-row per-thread cost. This is the structural explanation of the 33.53 vs 21.01 ms
+   gap and needs `-arch=sm_90a` plus a TMA/pipelining redesign. A rewrite, not a lever; price it
+   as such before committing a round to it.
+2. **FA3-style GQA packing with a WINDOW, at G=2** — adds warps to the CTA instead of tiles to a
+   warp, so no register cost, and hand-builds the Q A-fragment (deleting the sQ window and both
+   fences) and takes `kb_max` at 16-row granularity (deleting the masked-away blocks FA2 walks).
+   Expectation, stated honestly: on the H200 post-KV16 this addresses L2 traffic, which is no
+   longer the binding constraint, so the win is likely the `kb_max` granularity and the deleted
+   Q staging rather than the packing — a few percent, not the 12.5 ms gap. Worth doing only after
+   (1) or as a cheap addition to it, since (1) needs the same CTA restructuring.
+3. **ROPEVEC, measured** — authored, committed, typechecked, never run. Needs the re-stage, the
+   fp32-oracle gates (it is not bit-identical) and a cell bracket. Modelled -2.2 to -2.7 ms at
+   rag4096.
+4. **norm-accum, priced before it is authored** — the double-read of `y` is real but its headroom
+   is L2 traffic and instruction count, not DRAM, so run the FIXED extractor first and only then
+   decide whether a flag and a gate are worth it.
+5. `_G3_PF_FA_MIN_M` (256) still untuned since round 6; at m=128 priming the fused kernel
+   declines, which is also what keeps the 62 o_proj A-stagings in every trace.

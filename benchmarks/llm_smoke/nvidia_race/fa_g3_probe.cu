@@ -55,6 +55,9 @@
 #include <math.h>
 #include <algorithm>
 #include <chrono>
+#include <map>
+#include <string>
+#include <tuple>
 #include <vector>
 
 extern "C" int64_t tc_shim_init(void);
@@ -70,6 +73,12 @@ extern "C" int64_t tc_shim_fa_g3_window2_async(const void*, const void*, const v
                                                const void*, int64_t, int64_t, int64_t, int64_t,
                                                int64_t, int64_t, int64_t, int64_t, int64_t,
                                                int64_t, int64_t);
+// round 7's v3: v2's contract plus `rt` (16-row tiles per warp) and `gqa` (1 = pack RT query
+// heads of one KV head per CTA, 0 = pack RT*16 rows of one head, i.e. FA_BM=128).
+extern "C" int64_t tc_shim_fa_g3_window3_async(const void*, const void*, const void*, void*,
+                                               const void*, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t, int64_t, int64_t);
 
 #define CK(x) do { cudaError_t e_ = (x); if (e_ != cudaSuccess) { \
     printf("CUDA ERROR %s:%d %s\n", __FILE__, __LINE__, cudaGetErrorString(e_)); exit(1);} } while (0)
@@ -228,10 +237,17 @@ int main(int argc, char** argv) {
     __half *hk16, *hv16, *ho16;
     float* got;
     CK(cudaMalloc(&hq, (size_t)max_m * h_q * d * sizeof(float)));
-    CK(cudaMalloc(&hk, (size_t)max_nk * h_kv * d * sizeof(float)));
-    CK(cudaMalloc(&hv, (size_t)max_nk * h_kv * d * sizeof(float)));
-    CK(cudaMalloc(&hk16, (size_t)max_nk * h_kv * d * sizeof(__half)));
-    CK(cudaMalloc(&hv16, (size_t)max_nk * h_kv * d * sizeof(__half)));
+    // K/V are allocated at h_q WIDTH, not h_kv, though every measured arm lays them out at
+    // h_kv*d and only the first n_keys*h_kv*d elements are ever filled. The extra capacity exists
+    // for one reason: the [1d] rejection arms deliberately pass an h_kv the GQA packing cannot
+    // divide, and if the host contract were ever violated and such a call launched anyway, it
+    // would stride the buffer at the wider h_kv*d. Over-allocating turns that from an
+    // out-of-bounds read (a crash that would take the whole probe's output with it) into a read
+    // of uninitialized-but-owned memory, so a contract violation is REPORTED instead of fatal.
+    CK(cudaMalloc(&hk, (size_t)max_nk * h_q * d * sizeof(float)));
+    CK(cudaMalloc(&hv, (size_t)max_nk * h_q * d * sizeof(float)));
+    CK(cudaMalloc(&hk16, (size_t)max_nk * h_q * d * sizeof(__half)));
+    CK(cudaMalloc(&hv16, (size_t)max_nk * h_q * d * sizeof(__half)));
     CK(cudaMalloc(&href, (size_t)max_m * h_q * d * sizeof(float)));
     CK(cudaMalloc(&got, (size_t)max_m * h_q * d * sizeof(float)));
     CK(cudaMalloc(&ho16, (size_t)max_m * h_q * d * sizeof(__half)));
@@ -250,18 +266,62 @@ int main(int argc, char** argv) {
         CK(cudaGetLastError());
     }
 
+    {   // [1d] the v3 host contract's REJECTION arms. A declined lever must never masquerade as
+        //      an accepted one, so every out-of-table or illegal selection has to return its code
+        //      BEFORE any launch and leave no sticky CUDA error. bn is pinned explicitly in each
+        //      call so a rejection can never be attributed to the wrong check.
+        struct Rej { const char* what; int64_t want, got; };
+        Rej rj[] = {
+            // cp.async copies raw bytes and cannot convert f32 K/V -> dbuf=1 needs kv32=0
+            {"v3 dbuf=1 + kv32=1", -305,
+             tc_shim_fa_g3_window3_async(hq, hk, hv, got, d_scale, 256, 256, h_q, h_kv, d,
+                                         0, 1024, 64, 1, 0, 1, 2, 1)},
+            // v3's instantiation table stops at BN=64 by design (round 6's sweep put BN=128 last)
+            {"v3 bn=128 off-table", -305,
+             tc_shim_fa_g3_window3_async(hq, hk16, hv16, got, d_scale, 256, 256, h_q, h_kv, d,
+                                         0, 1024, 128, 0, 0, 1, 2, 1)},
+            // rt is 1 or 2; anything else has no instantiation
+            {"v3 rt=3 off-table", -305,
+             tc_shim_fa_g3_window3_async(hq, hk16, hv16, got, d_scale, 256, 256, h_q, h_kv, d,
+                                         0, 1024, 64, 0, 0, 1, 3, 0)},
+            // head_dim other than FA_D=128 is not implemented
+            {"v3 d=64 unsupported", -301,
+             tc_shim_fa_g3_window3_async(hq, hk16, hv16, got, d_scale, 256, 256, h_q, h_kv, 64,
+                                         0, 1024, 64, 0, 0, 1, 2, 1)},
+            // GQA packing puts rt query heads in ONE CTA and they must share one KV head, so rt
+            // has to divide the group size h_q/h_kv exactly. Here h_kv == h_q makes the group 1
+            // head wide and rt=2 cannot divide it; without this check the second tile would read
+            // the wrong K/V and return plausible-looking WRONG numbers.
+            {"v3 gqa=1 rt=2 group=1", -304,
+             tc_shim_fa_g3_window3_async(hq, hk16, hv16, got, d_scale, 256, 256, h_q, h_q, d,
+                                         0, 1024, 64, 0, 0, 1, 2, 1)},
+        };
+        for (auto& x : rj) {
+            printf("[1d] %-24s rejection: status %ld (%s)\n", x.what, (long)x.got,
+                   x.got == x.want ? "REJECTED AS CONTRACTED" : "CONTRACT VIOLATED");
+            if (x.got != x.want) return 1;
+            CK(cudaGetLastError());
+        }
+    }
+
     std::vector<float> sq((size_t)max_m * h_q * d), sk((size_t)max_nk * h_kv * d),
                        sv((size_t)max_nk * h_kv * d), sr((size_t)max_m * h_q * d);
     std::vector<int> rows(n_rows);
 
     int fails = 0;
-    printf("\n[2] fused windowed kernel (v1 WMMA + v2 raw-mma) vs HOST DOUBLE-PRECISION "
-           "reference (%d sampled rows/shape, dim_stride 8 => %d of %d dims)\n",
+    printf("\n[2] fused windowed kernel (v1 WMMA + v2 raw-mma + v3 RT-tiled) vs HOST "
+           "DOUBLE-PRECISION reference (%d sampled rows/shape, dim_stride 8 => %d of %d dims)\n",
            n_rows, d / 8, d);
-    printf("%-24s %-18s %8s %10s %10s %10s %8s %s\n", "shape", "arm", "n", "max_abs",
+    printf("%-24s %-26s %8s %10s %10s %10s %8s %s\n", "shape", "arm", "n", "max_abs",
            "max_rel", "rms", ">2%rel", "verdict");
 
+    // v2's full output, keyed by (kv32, of16, dbuf), captured as each v2 arm runs so the v3 arms
+    // that follow can be held to BIT identity against it (see the gate below). Cleared per shape
+    // so a stale buffer from a previous shape can never satisfy the comparison.
+    std::map<std::tuple<int, int, int>, std::vector<float>> v2bits;
+
     for (auto& s : shapes) {
+        v2bits.clear();
         // fresh operands per shape so a stale buffer can never mask a window bug
         fill_rand(sq.data(), (long)s.m * h_q * d, 0x1234u + s.m, -1.0f, 1.0f);
         fill_rand(sk.data(), (long)s.n_keys * h_kv * d, 0x9e37u + s.n_keys, -1.0f, 1.0f);
@@ -296,21 +356,44 @@ int main(int argc, char** argv) {
             CK(cudaMemcpy(hv16, t.data(), t.size() * sizeof(__half), cudaMemcpyHostToDevice));
         }
 
-        struct Arm { const char* tag; int v2, kv32, of16, dbuf; };
-        Arm arms[] = {
+        struct Arm { std::string tag; int ver, kv32, of16, dbuf, rt, gqa; };
+        std::vector<Arm> arms = {
             // round 5's WMMA kernel (v1) — the four (kv32, of16) combinations it dispatches
-            {"v1 kv32=1 of16=0", 0, 1, 0, 0}, {"v1 kv32=0 of16=0", 0, 0, 0, 0},
-            {"v1 kv32=1 of16=1", 0, 1, 1, 0}, {"v1 kv32=0 of16=1", 0, 0, 1, 0},
+            {"v1 kv32=1 of16=0", 1, 1, 0, 0, 1, 0}, {"v1 kv32=0 of16=0", 1, 0, 0, 0, 1, 0},
+            {"v1 kv32=1 of16=1", 1, 1, 1, 0, 1, 0}, {"v1 kv32=0 of16=1", 1, 0, 1, 0, 1, 0},
             // round 6's raw-mma kernel (v2) at the PRODUCTION mapping dbuf = 1 - kv32:
             // cp.async double buffering is legal only on the f16 route (cp.async copies raw
             // bytes and cannot convert), so kv32=1 runs single-buffered synchronous loads
-            {"v2 kv32=1 of16=0", 1, 1, 0, 0}, {"v2 kv32=0 of16=0", 1, 0, 0, 1},
-            {"v2 kv32=1 of16=1", 1, 1, 1, 0}, {"v2 kv32=0 of16=1", 1, 0, 1, 1},
+            {"v2 kv32=1 of16=0", 2, 1, 0, 0, 1, 0}, {"v2 kv32=0 of16=0", 2, 0, 0, 1, 1, 0},
+            {"v2 kv32=1 of16=1", 2, 1, 1, 0, 1, 0}, {"v2 kv32=0 of16=1", 2, 0, 1, 1, 1, 0},
             // v2 attribution arms — synchronous loads on the f16 route: v2s vs v2-kv32=0
             // isolates cp.async double buffering; v2s vs v1 isolates raw-mma + in-register P
             // + the direct epilogue at the SAME occupancy class
-            {"v2s kv32=0 of16=0", 1, 0, 0, 0}, {"v2s kv32=0 of16=1", 1, 0, 1, 0},
+            {"v2s kv32=0 of16=0", 2, 0, 0, 0, 1, 0}, {"v2s kv32=0 of16=1", 2, 0, 1, 0, 1, 0},
         };
+        // ── round 7's v3: the FULL cross product (rt,gqa) x (kv32,dbuf) x of16, so the numeric
+        //    gate covers every combination the host entry can select. RT1/GQA0 is v2 restated
+        //    and is the attribution control (it isolates "did the v3 rewrite cost anything" from
+        //    "did RT=2 help"); RT2/GQA1 is GQA-packed CTAs; RT2/GQA0 is FA_BM=128. v3's table
+        //    stops at BN=64 by design (round 6's sweep put BN=128 last), so at --bn 128 the v3
+        //    arms are SKIPPED rather than counted as failures — the skip is printed, not silent.
+        //    ──
+        const int v3_rt[3] = {1, 2, 2}, v3_gqa[3] = {0, 0, 1};
+        const char* v3_nm[3] = {"RT1", "BM128", "GQA2"};
+        const int v3_kv[3] = {1, 0, 0}, v3_db[3] = {0, 0, 1};
+        if (bn != 128) {
+            for (int rg = 0; rg < 3; rg++)
+                for (int kd = 0; kd < 3; kd++)
+                    for (int oo = 0; oo < 2; oo++) {
+                        char tb[96];
+                        snprintf(tb, sizeof(tb), "v3 %s kv32=%d of16=%d db=%d", v3_nm[rg],
+                                 v3_kv[kd], oo, v3_db[kd]);
+                        arms.push_back({tb, 3, v3_kv[kd], oo, v3_db[kd], v3_rt[rg], v3_gqa[rg]});
+                    }
+        } else {
+            printf("%-24s %-18s %8s %10s %10s %10s %8s %s\n", s.name, "v3 (all arms)",
+                   "-", "-", "-", "-", "-", "SKIPPED: v3's table stops at BN=64");
+        }
         for (auto& a : arms) {
             CK(cudaMemset(got, 0, (size_t)s.m * h_q * d * sizeof(float)));
             CK(cudaMemset(ho16, 0, (size_t)s.m * h_q * d * sizeof(__half)));
@@ -330,7 +413,11 @@ int main(int argc, char** argv) {
             void* optr = a.of16 ? (void*)ho16 : (void*)got;
             const void* kp = a.kv32 ? (const void*)hk : (const void*)hk16;
             const void* vp = a.kv32 ? (const void*)hv : (const void*)hv16;
-            int64_t st = a.v2
+            int64_t st = (a.ver == 3)
+                ? tc_shim_fa_g3_window3_async(hq, kp, vp, optr, d_scale, s.m, s.n_keys,
+                                              h_q, h_kv, d, s.pos_base, s.window, bn,
+                                              a.kv32, a.of16, a.dbuf, a.rt, a.gqa)
+                : (a.ver == 2)
                 ? tc_shim_fa_g3_window2_async(hq, kp, vp, optr, d_scale, s.m, s.n_keys,
                                               h_q, h_kv, d, s.pos_base, s.window, bn,
                                               a.kv32, a.of16, a.dbuf)
@@ -338,8 +425,8 @@ int main(int argc, char** argv) {
                                              h_q, h_kv, d, s.pos_base, s.window, bn,
                                              a.kv32, a.of16);
             if (st != 0) {
-                printf("%-24s %-18s %8s %10s %10s %10s %8s STATUS %ld\n", s.name, a.tag,
-                       "-", "-", "-", "-", "-", (long)st);
+                printf("%-24s %-18s %8s %10s %10s %10s %8s STATUS %ld\n", s.name,
+                       a.tag.c_str(), "-", "-", "-", "-", "-", (long)st);
                 fails++;
                 continue;
             }
@@ -359,9 +446,47 @@ int main(int argc, char** argv) {
             // quantities -- max_abs and rms over outputs that are O(1e-2..1) -- plus the floored
             // >2% count; max_rel alone is not a verdict, see compare_subset for why.
             bool ok = (c.bad == 0) && c.max_abs < 5e-3 && c.rms < 5e-4;
+            // ── ROUND 7 ADDS A STRICTER GATE FOR v3: BIT IDENTITY AGAINST v2, not tolerance.
+            //    v3 does not change a single rounding point. At RT=1/GQA=0 it IS v2 restated. At
+            //    RT=2/GQA=1 both tiles share v2's row0, so [kb_min, kb_max], the key-block order,
+            //    the NT tiling and the mma k-grouping are v2's exactly per (row, head). At
+            //    RT=2/GQA=0 the range widens to the union over 128 rows, but every extra block is
+            //    fully masked and the online-softmax rescale annihilates it EXACTLY (trailing:
+            //    n0 == m0 so a0 = 1 and p = expf(-1e30 - m0) = 0; leading: the expf(NEG-NEG) = 1
+            //    transient is multiplied away by the next real block's a0 = expf(-1e30 - finite)
+            //    = 0). So a tolerance pass would be a WEAKER claim than the code can make, and a
+            //    single differing bit means the window/mask reasoning above is wrong somewhere.
+            //    Any v3 arm whose v2 twin is missing from this shape is reported, never skipped
+            //    silently. ──
+            const std::tuple<int, int, int> akey(a.kv32, a.of16, a.dbuf);
+            char bitbuf[48];
+            const char* bitstr = "";
+            if (a.ver == 2) {
+                v2bits[akey] = g;
+            } else if (a.ver == 3) {
+                auto it = v2bits.find(akey);
+                if (it == v2bits.end()) {
+                    snprintf(bitbuf, sizeof(bitbuf), " NOv2REF");
+                    bitstr = bitbuf;
+                    ok = false;
+                } else {
+                    long ndiff = 0;
+                    const std::vector<float>& rb = it->second;
+                    for (size_t i = 0; i < g.size() && i < rb.size(); i++)
+                        if (memcmp(&g[i], &rb[i], sizeof(float)) != 0) ndiff++;
+                    if (ndiff == 0) {
+                        snprintf(bitbuf, sizeof(bitbuf), " BITIDENT-v2");
+                    } else {
+                        snprintf(bitbuf, sizeof bitbuf, " BITDIFF=%ld", ndiff);
+                        ok = false;
+                    }
+                    bitstr = bitbuf;
+                }
+            }
             if (!ok) fails++;
-            printf("%-24s %-18s %8ld %10.3e %10.3e %10.3e %8ld %s\n", s.name, a.tag, c.n,
-                   c.max_abs, c.max_rel, c.rms, c.bad, ok ? "PASS" : "FAIL");
+            printf("%-24s %-26s %8ld %10.3e %10.3e %10.3e %8ld %s%s\n", s.name,
+                   a.tag.c_str(), c.n, c.max_abs, c.max_rel, c.rms, c.bad,
+                   ok ? "PASS" : "FAIL", bitstr);
         }
     }
 
@@ -410,6 +535,66 @@ int main(int argc, char** argv) {
             printf("%-24s %11.1f %11.1f %+7.2f%% %11.1f %11.1f %+7.2f%% %11.1f\n", s.name,
                    t[0], t[1], 100.0 * (t[1] - t[0]) / t[0],
                    t[2], t[3], 100.0 * (t[3] - t[2]) / t[2], t[4]);
+        }
+    }
+
+    // ═══ [4] ROUND-7 DECISION TABLE ═══
+    // The one measurement this round exists to take: does feeding TWO m16 row-tiles from each
+    // B-fragment load beat v2, and if so which way of spending RT=2 wins — GQA-packed CTAs
+    // (two query heads of one KV head sharing a tile) or FA_BM=128 (twice the rows of one head)?
+    // Run at the PRODUCTION mapping (kv32=0 staged f16 K/V, of16=1 pre-staged-A output, dbuf=1
+    // cp.async double buffering) so the numbers are comparable to what the session dispatches,
+    // with BN swept INSIDE the process so a single launch yields the whole table.
+    //
+    // v3 RT1/GQA0 is v2 restated and rides along as the ATTRIBUTION CONTROL: it separates "the
+    // v3 rewrite itself cost something" from "RT=2 bought something". If RT1 does not reproduce
+    // v2 within noise, the RT2 columns cannot be interpreted and the round stops here.
+    //
+    // Timing is wall clock + cudaDeviceSynchronize (NOT cudaEventRecord on the legacy stream: the
+    // shim launches on its own non-blocking stream, which legacy-stream events do not order
+    // against — that defect made round 5's timing section measure launch gaps). 3 warmups then
+    // `iters` measured, median reported, matching the campaign's 3+7 cell convention in spirit.
+    if (!no_time) {
+        printf("\n[4] ROUND-7 DECISION TABLE -- production mapping kv32=0 of16=1 dbuf=1, "
+               "median of %d after 3 warmups. RT1 = v3 control (v2 restated),\n"
+               "    GQA2 = two query heads of one KV head per CTA, BM128 = FA_BM=128. "
+               "Deltas are vs v2 at the same BN.\n", iters);
+        printf("%-24s %4s %10s %10s %10s %10s %10s %10s\n", "shape", "BN", "v2 us",
+               "v3RT1 us", "ctrl dev", "v3GQA2 us", "GQA2 dev", "v3BM128 us");
+        const int bns[2] = {32, 64};
+        for (auto& s : shapes) {
+            if (s.m != 1024 && s.m != 256) continue;
+            for (int bi = 0; bi < 2; bi++) {
+                const int cbn = bns[bi];
+                double t[4];
+                // cfg: 0 = v2, 1 = v3 RT1 GQA0, 2 = v3 RT2 GQA1, 3 = v3 RT2 GQA0
+                for (int cfg = 0; cfg < 4; cfg++) {
+                    std::vector<double> ms(iters);
+                    for (int it = -3; it < iters; it++) {
+                        CK(cudaDeviceSynchronize());
+                        auto t0 = std::chrono::steady_clock::now();
+                        if (cfg == 0)
+                            tc_shim_fa_g3_window2_async(hq, hk16, hv16, ho16, d_scale, s.m,
+                                                        s.n_keys, h_q, h_kv, d, s.pos_base,
+                                                        s.window, cbn, 0, 1, 1);
+                        else
+                            tc_shim_fa_g3_window3_async(hq, hk16, hv16, ho16, d_scale, s.m,
+                                                        s.n_keys, h_q, h_kv, d, s.pos_base,
+                                                        s.window, cbn, 0, 1, 1,
+                                                        cfg == 1 ? 1 : 2, cfg == 2 ? 1 : 0);
+                        CK(cudaDeviceSynchronize());
+                        auto t1 = std::chrono::steady_clock::now();
+                        if (it >= 0)
+                            ms[it] = std::chrono::duration<double, std::micro>(t1 - t0).count();
+                    }
+                    std::sort(ms.begin(), ms.end());
+                    t[cfg] = ms[ms.size() / 2];
+                }
+                printf("%-24s %4d %10.1f %10.1f %+9.2f%% %10.1f %+9.2f%% %10.1f %+9.2f%%\n",
+                       s.name, cbn, t[0], t[1], 100.0 * (t[1] - t[0]) / t[0],
+                       t[2], 100.0 * (t[2] - t[0]) / t[0],
+                       t[3], 100.0 * (t[3] - t[0]) / t[0]);
+            }
         }
     }
 

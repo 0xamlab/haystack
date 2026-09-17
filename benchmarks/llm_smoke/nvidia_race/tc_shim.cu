@@ -3796,6 +3796,487 @@ extern "C" int64_t tc_shim_fa_g3_window2_async(const void* q_f32, const void* k,
     return (int64_t)e;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// GEMMA-3 WINDOWED FUSED FLASH ATTENTION, v3 (round 7, 2026-09-17) — RT 16-ROW TILES PER WARP
+// FED BY ONE SHARED B-FRAGMENT STREAM. PROBE-ONLY: no Mojo bridge symbol is published and
+// nothing dispatches here, so the shipped path and the kernel floor are untouched by this block.
+//
+// WHY. Round 6 shipped v2 (raw mma.sync, in-register P, cp.async double buffering) and its own
+// decomposition named the remainder: at rag4096 the fused attention kernel is 33.53 ms measured
+// (+4.77 ms of f16 K/V staging) against flashinfer's 21.01 ms, and the ledger names "the per-CTA
+// shared-load stream" as the binding constraint at FA_BM=64 / 4 warps. That constraint is
+// countable, and — this is the point — it is INVARIANT IN BN:
+//
+//   Per warp per key block v2 issues (FA_D/16)*(BN/16) ldmatrix.x4 for K and the same count for
+//   V, each load feeding exactly TWO mma. Per row per key that is 1/32 of an ldmatrix.x4 at
+//   EVERY BN, because widening BN adds keys to the same B-fragment while the row count stays at
+//   16 per warp. An ldmatrix.x4 is 512 B of shared traffic = 4 cycles of the SM's 128 B/cycle
+//   shared bandwidth; an m16n8k16 mma is 2048 MAC against an SM issuing ~1024 MAC/cycle across
+//   four tensor cores. At 8 resident warps the two pipes come out at very nearly the same cycle
+//   count, i.e. they are CO-BOTTLENECKED. That is why neither widening BN (round 6's sweep put
+//   BN=32 on top) nor cutting global traffic further (KV16 already made a layer's f16 K+V
+//   L2-resident in the H200's 60 MB) moves the needle any more.
+//
+//   The only way to break the tie is to feed MORE ROWS from each B-fragment load. v3 gives each
+//   warp RT m16 row-tiles instead of one, loads each K/V B-fragment ONCE and issues RT mma
+//   against it, so ldmatrix per row per key falls by RT while mma per row per key is unchanged.
+//   At RT=2 the shared stream halves and the tensor pipe becomes the sole bottleneck; the
+//   structural ceiling on this kernel is then ~2x, and the probe's job is to say what fraction
+//   of that is reachable.
+//
+// THE TWO WAYS TO SPEND RT=2 — different levers, the same register cost:
+//   * GQA=1 — GQA-PACKED CTAs. The RT tiles are RT different QUERY HEADS of the same KV head at
+//     the SAME 16 rows, so blockIdx.y indexes the KV head and grid.y falls from h_q to h_q/RT.
+//     Both the K/V global traffic AND the shared-load stream halve, because the two heads of a
+//     GQA group read literally the same K and V. This is the round-7 ranked lever #1: it was
+//     REFUTED on A100 for the 7B lane in round 4 and that refutation does NOT transfer — the
+//     H200 has 60 MB of L2 against the A100's 40 MB, a different SM count, and KV16 has since
+//     changed which side of the memory hierarchy binds. It has never been measured here.
+//   * GQA=0 — FA_BM=128. The RT tiles are the NEXT 16 ROWS of the same head, so rows per CTA go
+//     64 -> 128 and grid.x halves. Global K/V traffic halves (one tile load serves twice the
+//     rows) and the shared-load stream halves, but the CTA's key-block range widens with it.
+//
+// WINDOW / MASK CONSEQUENCES, stated because they are the correctness risk:
+//   GQA=1 keeps every row's causal and window predicate IDENTICAL to v2's (both tiles share
+//   row0), so [kb_min, kb_max] is unchanged and the per-(row, head) summation order is v2's
+//   exactly — the probe therefore expects BIT identity against v2, not mere tolerance.
+//   GQA=0 changes which CTA owns a row, so [kb_min, kb_max] becomes the UNION over 128 rows:
+//   first-half rows see extra TRAILING blocks and second-half rows extra LEADING ones. Both are
+//   fully masked per-element and both are annihilated by the online-softmax rescale — a trailing
+//   all-masked block gives n0 == m0 so a0 = 1 and p = expf(-1e30 - m0) = 0 (exact no-op); a
+//   leading one gives the expf(NEG-NEG) = 1 transient, which the next real block multiplies away
+//   through a0 = expf(-1e30 - finite) = 0. Every prefill row has its own diagonal block inside
+//   the range, so a real block always follows. Bit identity is therefore expected here too, and
+//   the probe asserts it rather than assuming it. (This transient is v1/v2's own behaviour on
+//   their first block, not something v3 introduces.)
+//
+// WHAT IS *NOT* TOUCHED: the key-block-range WINDOW and its kb_min monotonicity argument, the
+// per-element mask predicate, the kv32 in-register `__float2half` convert, the of16 pre-staged-A
+// output, the device-pointer scale folded into the Q conversion, the f32 running max/sum, the
+// f32 O accumulation, and v2's epilogue writing position-major straight to global. Per-tile
+// online-softmax state (m0/m1, l0/l1) is INDEPENDENT — the tiles are different heads (GQA=1) or
+// different rows (GQA=0), never a shared reduction.
+//
+// SHARED MEMORY is UNCHANGED from v2 at equal (BN, DBUF): the RT Q tiles are staged
+// SEQUENTIALLY through the same FA_BM=64-row window (Q is dead once its A-fragments are in
+// registers), so there is no extra window, no extra fence inside the key loop, and v2's
+// FA_BM <= 2*BN dbuf-overlay constraint carries over verbatim. Shared row `sr` = warp*16 + rr
+// maps to global row row0 + warp*WST + OFF_t + rr, with WST = 16 (GQA) or 16*RT (rows).
+//
+// COST is REGISTERS, and that is the whole risk: qa[RT][8][4] + oacc[RT][16][4] + s[RT][NT][4]
+// is ~112 registers per thread at RT=1 and ~224 at RT=2, against a 255 ceiling at
+// __launch_bounds__(128). If nvcc spills, the lever is dead on arrival — which is why the
+// round-7 build script compiles with `-Xptxas -v` and the spill census is read BEFORE any timing
+// is taken. Occupancy at RT=2 is expected to halve (2 CTAs/SM instead of 4); whether the tensor
+// pipe stays fed at 8 warps/SM is exactly what the probe measures.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+static inline int fa_g3v3_bn_idx(int64_t bn) { return bn == 32 ? 0 : 1; }
+
+template <int BN, bool KV32, bool OF16, int DBUF, int RT, int GQA>
+__global__ void __launch_bounds__(FA_NWARP * 32)
+_fa_g3_window3_kernel(const float* __restrict__ qg, const void* __restrict__ kgv,
+                      const void* __restrict__ vgv, void* __restrict__ ogv,
+                      const float* __restrict__ scalep,
+                      int m, int n_keys, int h_q, int h_kv, int d, int pos_base, int window) {
+    // The scale rides a DEVICE POINTER, not a float argument (see `_fa_causal_kernel`).
+    const float scale = *scalep;
+    extern __shared__ __half smem[];
+    const int KVH = BN * FA_LD;                     // halves in one K (or V) tile
+    __half* sQ = DBUF ? (smem + 2 * KVH) : smem;    // DBUF=1: buffer 1, dead after the A loads
+    const int KWIN = (FA_BM > BN) ? FA_BM : BN;     // DBUF=0: rows of the shared K/Q window
+
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5;
+    const int lane = tid & 31;
+    const int qi = blockIdx.x;
+    const int G = h_q / h_kv;                       // q-heads per KV head (host-checked: RT | G)
+    // GQA=1: blockIdx.y indexes the KV head and this CTA owns RT q-heads of that ONE group, so
+    // every tile reads the same K/V. GQA=0: blockIdx.y indexes the q-head, as in v2.
+    const int h_cta = GQA ? (blockIdx.y * RT) : blockIdx.y;
+    const int hk = h_cta / G;
+    // rows of ONE head this CTA covers, and the shared-row -> global-row warp stride
+    const int RPH = GQA ? FA_BM : FA_BM * RT;
+    const int WST = GQA ? 16 : 16 * RT;
+    const int row0 = qi * RPH;
+    const int kvld = h_kv * d;
+    const int qld = h_q * d;
+    // ldmatrix address generators (#994's, hoisted): lane>>3 selects which of the four 8x8
+    // sub-matrices this lane names a row of.
+    const int lr8 = ((lane >> 3) & 1) << 3;         // 0 or 8
+    const int lc8 = ((lane >> 3) & 2) << 2;         // 0 or 8
+    const int l7 = lane & 7;
+    const int rlo = lane >> 2;                      // this lane's row inside the warp's 16
+    const int chi = (lane & 3) << 1;                // this lane's column base in an 8-wide tile
+
+    int rows_here = m - row0;
+    if (rows_here > RPH) rows_here = RPH;
+    int kb_causal = (pos_base + row0 + rows_here - 1) / BN;
+    int kb_keys = (n_keys - 1) / BN;
+    int kb_max = kb_causal < kb_keys ? kb_causal : kb_keys;
+    // ── the window's key-block floor, round 5's verbatim: `lo(qpos) = max(0, qpos+1-window)`
+    //    is monotone in qpos, so the CTA's FIRST row has its smallest lo; a block whose last
+    //    key is below that is outside the window for every row this CTA owns and is never
+    //    loaded. ──
+    int kb_min = 0;
+    if (window > 0) {
+        int lo_cta = pos_base + row0 + 1 - window;
+        if (lo_cta > 0) kb_min = lo_cta / BN;
+    }
+
+    // ── per-tile query geometry. GQA=1: both tiles sit at the SAME rows (warp*16) and differ
+    //    only by head, so qg0/qg1 and both window floors are tile-invariant. GQA=0: tile t owns
+    //    the next 16 rows, so its causal bound rises and its window floor rises with it. ──
+    int qg0[RT], qg1[RT], wl0[RT], wl1[RT];
+#pragma unroll
+    for (int t = 0; t < RT; t++) {
+        const int rb = GQA ? (warp * 16) : (warp * WST + t * 16);
+        qg0[t] = pos_base + row0 + rb + rlo;
+        qg1[t] = qg0[t] + 8;
+        wl0[t] = (window > 0) ? (qg0[t] + 1 - window) : 0;
+        wl1[t] = (window > 0) ? (qg1[t] + 1 - window) : 0;
+    }
+
+    // ── kb_min in flight FIRST (async only touches buffer 0), then stage each tile's Q through
+    //    the SAME 64-row window. Q is dead the moment its A-fragments are in registers, so the
+    //    RT tiles cost RT staging passes and RT pairs of fences ONCE PER CTA — never inside the
+    //    key loop — and no extra shared window. ──
+    if (DBUF) {
+        fa_g3v2_load_kv_async<BN>(smem, smem + KVH, (const __half*)kgv, (const __half*)vgv,
+                                  kb_min, kb_max, n_keys, hk, d, kvld, tid);
+        fa2_cp_commit();
+    }
+    unsigned qa[RT][FA_D / 16][4];
+    {   // Q tile: f32 -> f16 with the attention scale folded in, at `_pf_q_pack_hm_f16`'s
+        // rounding point — round 5's verbatim, into the overlay window instead of its own.
+        const int nvec = FA_BM * (FA_D / 4);
+#pragma unroll
+        for (int t = 0; t < RT; t++) {
+            const int hh = h_cta + (GQA ? t : 0);
+            const int toff = GQA ? 0 : t * 16;
+            for (int p = tid; p < nvec; p += FA_NWARP * 32) {
+                int sr = p / (FA_D / 4);
+                int c4 = p - sr * (FA_D / 4);
+                int gr = row0 + (sr >> 4) * WST + toff + (sr & 15);
+                float4 val = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+                if (gr < m)
+                    val = *reinterpret_cast<const float4*>(qg + (size_t)gr * qld + hh * d + c4 * 4);
+                __half2* dst = reinterpret_cast<__half2*>(sQ + sr * FA_LD + c4 * 4);
+                dst[0] = __floats2half2_rn(val.x * scale, val.y * scale);
+                dst[1] = __floats2half2_rn(val.z * scale, val.w * scale);
+            }
+            __syncthreads();
+#pragma unroll
+            for (int ks = 0; ks < FA_D / 16; ks++)
+                fa2_ldsm4(qa[t][ks][0], qa[t][ks][1], qa[t][ks][2], qa[t][ks][3],
+                          sQ + (warp * 16 + lr8 + l7) * FA_LD + ks * 16 + lc8);
+            __syncthreads();    // window free for tile t+1, and for the K load when DBUF=0
+        }
+    }
+    if (DBUF) {
+        fa_g3v2_load_kv_async<BN>(smem + 2 * KVH, smem + 3 * KVH, (const __half*)kgv,
+                                  (const __half*)vgv, kb_min + 1, kb_max, n_keys, hk, d, kvld,
+                                  tid);
+        fa2_cp_commit();
+    }
+
+    float oacc[RT][FA_D / 8][4];
+#pragma unroll
+    for (int t = 0; t < RT; t++)
+#pragma unroll
+        for (int i = 0; i < FA_D / 8; i++) {
+            oacc[t][i][0] = 0.0f; oacc[t][i][1] = 0.0f;
+            oacc[t][i][2] = 0.0f; oacc[t][i][3] = 0.0f;
+        }
+    constexpr int NT = BN / 8;                      // m16n8 score tiles per key block
+    const float NEG = -1.0e30f;
+    // INDEPENDENT online-softmax state per tile: two row groups (rlo, rlo+8) per tile, exactly
+    // as v2 keeps them per row group. Tiles never share a reduction.
+    float m0[RT], m1[RT], l0[RT], l1[RT];
+#pragma unroll
+    for (int t = 0; t < RT; t++) { m0[t] = NEG; m1[t] = NEG; l0[t] = 0.0f; l1[t] = 0.0f; }
+
+    for (int kb = kb_min; kb <= kb_max; kb++) {
+        __half* bk;
+        __half* bv;
+        if (DBUF) {
+            const int cur = (kb - kb_min) & 1;      // buffer rotation counts from kb_min
+            bk = smem + cur * 2 * KVH;
+            bv = bk + KVH;
+            fa2_cp_wait1();
+            __syncthreads();
+        } else {
+            bk = smem;
+            bv = smem + KWIN * FA_LD;
+            fa_g3v2_load_kv_sync<BN, KV32>(bk, bv, kgv, vgv, kb, n_keys, hk, d, kvld, tid);
+            __syncthreads();
+        }
+        const __half* sK = bk;
+        const __half* sV = bv;
+
+        // ── S[RT][16,BN] = Q[RT][16,d] @ K^T[d,BN], f32 accumulate. THE LEVER: one ldmatrix.x4
+        //    per (ks, np) feeds RT tiles' worth of mma instead of one, so the shared-load stream
+        //    per row falls by RT while the mma count per row is unchanged. ──
+        float s[RT][NT][4];
+#pragma unroll
+        for (int t = 0; t < RT; t++)
+#pragma unroll
+            for (int nt = 0; nt < NT; nt++) {
+                s[t][nt][0] = 0.0f; s[t][nt][1] = 0.0f;
+                s[t][nt][2] = 0.0f; s[t][nt][3] = 0.0f;
+            }
+#pragma unroll
+        for (int ks = 0; ks < FA_D / 16; ks++) {
+#pragma unroll
+            for (int np = 0; np < BN / 16; np++) {
+                unsigned b0, b1, b2, b3;
+                fa2_ldsm4(b0, b1, b2, b3,
+                          sK + (np * 16 + lr8 + l7) * FA_LD + ks * 16 + lc8);
+#pragma unroll
+                for (int t = 0; t < RT; t++) {
+                    fa2_mma(s[t][2 * np], qa[t][ks], b0, b2);         // n-tile np*16
+                    fa2_mma(s[t][2 * np + 1], qa[t][ks], b1, b3);     // n-tile np*16 + 8
+                }
+            }
+        }
+
+        // ── causal + window + cache-tail mask, round 5's predicate verbatim in the raw-mma D
+        //    layout, evaluated PER TILE: s[t][nt][0,1] are row `rlo` of tile t, s[t][nt][2,3]
+        //    row `rlo+8`, at columns nt*8 + chi + {0,1}. ──
+#pragma unroll
+        for (int t = 0; t < RT; t++) {
+            const bool need_mask = (kb * BN + BN - 1 > qg0[t]) || (kb * BN + BN - 1 >= n_keys) ||
+                                   (window > 0 && kb * BN < wl1[t]);
+            if (need_mask) {
+#pragma unroll
+                for (int nt = 0; nt < NT; nt++) {
+                    const int j = kb * BN + nt * 8 + chi;
+                    if (j > qg0[t] || j < wl0[t] || j >= n_keys) s[t][nt][0] = NEG;
+                    if (j + 1 > qg0[t] || j + 1 < wl0[t] || j + 1 >= n_keys) s[t][nt][1] = NEG;
+                    if (j > qg1[t] || j < wl1[t] || j >= n_keys) s[t][nt][2] = NEG;
+                    if (j + 1 > qg1[t] || j + 1 < wl1[t] || j + 1 >= n_keys) s[t][nt][3] = NEG;
+                }
+            }
+        }
+
+        // ── online softmax per tile: row max over this block, alpha rescale of O, exp into P ──
+#pragma unroll
+        for (int t = 0; t < RT; t++) {
+            float t0 = NEG, t1 = NEG;
+#pragma unroll
+            for (int nt = 0; nt < NT; nt++) {
+                t0 = fmaxf(t0, fmaxf(s[t][nt][0], s[t][nt][1]));
+                t1 = fmaxf(t1, fmaxf(s[t][nt][2], s[t][nt][3]));
+            }
+            t0 = fa_wmax(t0);
+            t1 = fa_wmax(t1);
+            const float n0 = fmaxf(m0[t], t0), n1 = fmaxf(m1[t], t1);
+            const float a0 = __expf(m0[t] - n0), a1 = __expf(m1[t] - n1);
+#pragma unroll
+            for (int i = 0; i < FA_D / 8; i++) {
+                oacc[t][i][0] *= a0; oacc[t][i][1] *= a0;
+                oacc[t][i][2] *= a1; oacc[t][i][3] *= a1;
+            }
+            float s0 = 0.0f, s1 = 0.0f;
+#pragma unroll
+            for (int nt = 0; nt < NT; nt++) {
+                const float p0 = __expf(s[t][nt][0] - n0), p1 = __expf(s[t][nt][1] - n0);
+                const float p2 = __expf(s[t][nt][2] - n1), p3 = __expf(s[t][nt][3] - n1);
+                s0 += p0 + p1; s1 += p2 + p3;
+                s[t][nt][0] = p0; s[t][nt][1] = p1; s[t][nt][2] = p2; s[t][nt][3] = p3;
+            }
+            s0 = fa_wsum(s0);
+            s1 = fa_wsum(s1);
+            l0[t] = l0[t] * a0 + s0;
+            l1[t] = l1[t] * a1 + s1;
+            m0[t] = n0; m1[t] = n1;
+        }
+
+        // ── O[RT][16,d] += P[RT][16,BN] @ V[BN,d]. P's A-fragment for k-step `ks` is the four
+        //    f32 of score tiles 2ks / 2ks+1 converted and packed in place (v2's `fa2_pk`, no
+        //    shared memory, no fence); the transposed V B-fragment is loaded ONCE and feeds all
+        //    RT tiles. ──
+#pragma unroll
+        for (int ks = 0; ks < BN / 16; ks++) {
+            unsigned pa[RT][4];
+#pragma unroll
+            for (int t = 0; t < RT; t++) {
+                pa[t][0] = fa2_pk(s[t][2 * ks][0], s[t][2 * ks][1]);
+                pa[t][1] = fa2_pk(s[t][2 * ks][2], s[t][2 * ks][3]);
+                pa[t][2] = fa2_pk(s[t][2 * ks + 1][0], s[t][2 * ks + 1][1]);
+                pa[t][3] = fa2_pk(s[t][2 * ks + 1][2], s[t][2 * ks + 1][3]);
+            }
+#pragma unroll
+            for (int np = 0; np < FA_D / 16; np++) {
+                unsigned b0, b1, b2, b3;
+                fa2_ldsm4t(b0, b1, b2, b3,
+                           sV + (ks * 16 + lr8 + l7) * FA_LD + np * 16 + lc8);
+#pragma unroll
+                for (int t = 0; t < RT; t++) {
+                    fa2_mma(oacc[t][2 * np], pa[t], b0, b1);          // dims np*16 .. +7
+                    fa2_mma(oacc[t][2 * np + 1], pa[t], b2, b3);      // dims np*16+8 .. +15
+                }
+            }
+        }
+        __syncthreads();                            // this iteration's tiles are dead
+        if (DBUF) {
+            fa_g3v2_load_kv_async<BN>(bk, bv, (const __half*)kgv, (const __half*)vgv, kb + 2,
+                                      kb_max, n_keys, hk, d, kvld, tid);
+            fa2_cp_commit();
+        }
+    }
+
+    // ── epilogue per tile: divide by the tile's own row sums and write position-major STRAIGHT
+    //    TO GLOBAL (v2's verbatim), at the tile's own (row, head). ──
+#pragma unroll
+    for (int t = 0; t < RT; t++) {
+        const float inv0 = (l0[t] > 0.0f) ? (1.0f / l0[t]) : 0.0f;
+        const float inv1 = (l1[t] > 0.0f) ? (1.0f / l1[t]) : 0.0f;
+        const int hh = h_cta + (GQA ? t : 0);
+        const int r0g = row0 + (GQA ? (warp * 16) : (warp * WST + t * 16)) + rlo;
+        const int r1g = r0g + 8;
+        const bool w0 = r0g < m, w1 = r1g < m;
+#pragma unroll
+        for (int nt = 0; nt < FA_D / 8; nt++) {
+            const int c = nt * 8 + chi;
+            if (OF16) {
+                __half* o16 = reinterpret_cast<__half*>(ogv);
+                if (w0) *reinterpret_cast<__half2*>(o16 + (size_t)r0g * qld + hh * d + c) =
+                            __floats2half2_rn(oacc[t][nt][0] * inv0, oacc[t][nt][1] * inv0);
+                if (w1) *reinterpret_cast<__half2*>(o16 + (size_t)r1g * qld + hh * d + c) =
+                            __floats2half2_rn(oacc[t][nt][2] * inv1, oacc[t][nt][3] * inv1);
+            } else {
+                float* o32 = reinterpret_cast<float*>(ogv);
+                if (w0) *reinterpret_cast<float2*>(o32 + (size_t)r0g * qld + hh * d + c) =
+                            make_float2(oacc[t][nt][0] * inv0, oacc[t][nt][1] * inv0);
+                if (w1) *reinterpret_cast<float2*>(o32 + (size_t)r1g * qld + hh * d + c) =
+                            make_float2(oacc[t][nt][2] * inv1, oacc[t][nt][3] * inv1);
+            }
+        }
+    }
+}
+
+static int g_fa_g3v3_attr_done = 0;
+// [bn index: 0=32, 1=64][kv32][of16][dbuf][rt-1][gqa] = 1 once the opt-in shared-memory
+// attribute was granted for that exact instantiation. Same per-instantiation rule as v2: a shape
+// that cannot fit declines ONLY ITSELF with -305 instead of taking the whole table down. The
+// window is v2's (`fa_g3v2_smem_bytes`) because v3's RT Q tiles share one FA_BM-row window.
+static int g_fa_g3v3_smem_ok[2][2][2][2][2][2] = {{{{{{0}}}}}};
+
+// BN=128 is deliberately NOT instantiated for v3: round 6's sweep put BN=32 on top at every
+// raced shape and BN=128 last, and each extra BN multiplies an already register-heavy table.
+// (kv32, dbuf) follows v2's rule — dbuf=1 exists only for kv32=false, because cp.async copies
+// raw bytes and cannot convert — plus the dbuf=0 f16 arm that attributes cp.async at equal RT.
+#define FA_G3V3_KV(X, BN, OF16, RT, GQA)                 \
+    X(BN, true,  OF16, 0, RT, GQA)                       \
+    X(BN, false, OF16, 0, RT, GQA)                       \
+    X(BN, false, OF16, 1, RT, GQA)
+#define FA_G3V3_RG(X, BN, OF16)                          \
+    FA_G3V3_KV(X, BN, OF16, 1, 0)                        \
+    FA_G3V3_KV(X, BN, OF16, 2, 0)                        \
+    FA_G3V3_KV(X, BN, OF16, 2, 1)
+#define FA_G3V3_OF(X, BN)                                \
+    FA_G3V3_RG(X, BN, false)                             \
+    FA_G3V3_RG(X, BN, true)
+#define FA_G3V3_INSTANCES(X)                             \
+    FA_G3V3_OF(X, 32)                                    \
+    FA_G3V3_OF(X, 64)
+
+static int64_t fa_g3v3_set_attrs(void) {
+    if (g_fa_g3v3_attr_done) return 0;
+#define FA_G3V3_ATTR(BN, KV32, OF16, DBUF, RT, GQA)                                     \
+    {                                                                                   \
+        int sm_ = fa_g3v2_smem_bytes<BN, DBUF>();                                       \
+        cudaError_t e_ = cudaFuncSetAttribute(                                          \
+            _fa_g3_window3_kernel<BN, KV32, OF16, DBUF, RT, GQA>,                       \
+            cudaFuncAttributeMaxDynamicSharedMemorySize, sm_);                          \
+        g_fa_g3v3_smem_ok[fa_g3v3_bn_idx(BN)][(KV32) ? 1 : 0][(OF16) ? 1 : 0][DBUF]     \
+                         [RT - 1][GQA] = (e_ == cudaSuccess) ? 1 : 0;                   \
+        if (e_ != cudaSuccess)                                                          \
+            fprintf(stderr,                                                           \
+                    "[tc_shim] FA-G3v3 BN=%d KV32=%d OF16=%d DBUF=%d RT=%d GQA=%d "     \
+                    "DECLINED: %d B of dynamic shared memory is not grantable here "    \
+                    "(%s) — that shape keeps the previous kernel.\n",                   \
+                    (BN), (int)(KV32), (int)(OF16), (DBUF), (RT), (GQA), sm_,           \
+                    cudaGetErrorString(e_));                                            \
+    }
+    FA_G3V3_INSTANCES(FA_G3V3_ATTR)
+#undef FA_G3V3_ATTR
+    g_fa_g3v3_attr_done = 1;
+    return 0;
+}
+
+// The round-7 v3 probe entry: v2's operands, layouts and contract, plus `rt` (16-row tiles per
+// warp, 1 or 2) and `gqa` (1 packs RT query heads of one KV head per CTA, 0 packs RT*16 rows of
+// one head). Returns -301 unsupported head_dim, -304 non-integral GQA or an RT that does not
+// divide the GQA group, -305 an out-of-table (bn, kv32, of16, dbuf, rt, gqa) selection or an
+// ungranted shared-memory window, -311 the on-device raw-mma layout probe disagreed, else the
+// cudaError_t. Enqueues on the shim stream, no sync.
+extern "C" int64_t tc_shim_fa_g3_window3_async(const void* q_f32, const void* k, const void* v,
+                                               void* o, const void* scale_f32,
+                                               int64_t m, int64_t n_keys,
+                                               int64_t h_q, int64_t h_kv, int64_t d,
+                                               int64_t pos_base, int64_t window,
+                                               int64_t bn, int64_t kv32, int64_t of16,
+                                               int64_t dbuf, int64_t rt, int64_t gqa) {
+    if (d != FA_D) return -301;
+    if (m <= 0 || n_keys <= 0 || h_kv <= 0 || h_q <= 0) return 0;
+    if ((h_q % h_kv) != 0) return -304;
+    int ibn = (bn == 32) ? 32 : 64;
+    if (bn != 32 && bn != 64) return -305;          // v3's table stops at BN=64 by design
+    bool bkv = (kv32 != 0), bof = (of16 != 0);
+    int idb = (dbuf != 0) ? 1 : 0;
+    int irt = (rt == 2) ? 2 : ((rt == 1) ? 1 : 0);
+    if (irt == 0) return -305;
+    int igq = (gqa != 0) ? 1 : 0;
+    if (idb && bkv) return -305;                    // cp.async cannot convert f32 K/V
+    // the Q tile is staged inside rotating buffer 1 (2*BN*FA_LD halves): legal iff FA_BM <= 2*BN
+    if (idb && FA_BM > 2 * ibn) return -305;
+    // GQA packing puts RT query heads in one CTA and they MUST share one KV head, so RT has to
+    // divide the group size exactly — otherwise the CTA would read the wrong K/V for a tile.
+    if (igq && irt > 1 && ((h_q / h_kv) % irt) != 0) return -304;
+    int64_t r = tc_shim_fa2_layout_probe();
+    if (r != 0) return r;
+    r = fa_g3v3_set_attrs();
+    if (r != 0) return r;
+    if (!g_fa_g3v3_smem_ok[fa_g3v3_bn_idx(ibn)][bkv ? 1 : 0][bof ? 1 : 0][idb]
+                          [irt - 1][igq]) return -305;
+    const int RPH = igq ? FA_BM : FA_BM * irt;      // rows of one head per CTA
+    const int gy = igq ? (int)(h_q / irt) : (int)h_q;
+    dim3 grid((unsigned)((m + RPH - 1) / RPH), (unsigned)gy);
+    dim3 block(FA_NWARP * 32);
+    int im = (int)m, ink = (int)n_keys, ihq = (int)h_q, ihkv = (int)h_kv, id = (int)d;
+    int ipos = (int)pos_base, iwin = (int)window;
+    const float* q = (const float*)q_f32;
+    const float* sp = (const float*)scale_f32;
+    cudaError_t e;
+#define FA_G3V3_LAUNCH(BN, KV32, OF16, DBUF, RT, GQA)                            \
+    if (ibn == BN && bkv == KV32 && bof == OF16 && idb == DBUF &&                \
+        irt == RT && igq == GQA) {                                               \
+        _fa_g3_window3_kernel<BN, KV32, OF16, DBUF, RT, GQA>                     \
+            <<<grid, block, fa_g3v2_smem_bytes<BN, DBUF>(), g_stream>>>(         \
+                q, k, v, o, sp, im, ink, ihq, ihkv, id, ipos, iwin);             \
+    } else
+    FA_G3V3_INSTANCES(FA_G3V3_LAUNCH)
+    {
+        return -305;   // unreachable: every argument is normalized and the table is checked
+    }
+#undef FA_G3V3_LAUNCH
+    e = cudaGetLastError();
+    if (e != cudaSuccess) {
+        fprintf(stderr,
+                "[tc_shim] FA-G3v3 LAUNCH FAILED: %s | bn=%lld kv32=%lld of16=%lld dbuf=%lld "
+                "rt=%lld gqa=%lld smem=%d B grid=%ux%u block=%u m=%lld n_keys=%lld pos=%lld "
+                "window=%lld\n",
+                cudaGetErrorString(e), (long long)bn, (long long)kv32, (long long)of16,
+                (long long)dbuf, (long long)rt, (long long)gqa,
+                fa_g3v2_smem_bytes<64, 0>(), grid.x, grid.y, block.x,
+                (long long)m, (long long)n_keys, (long long)pos_base, (long long)window);
+    }
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
 #else   // TC_SHIM_NO_WMMA
 extern "C" int64_t tc_shim_fa_layout_probe(void) { return -310; }
 extern "C" int64_t tc_shim_fa_causal_async(const void*, const void*, const void*, void*,
@@ -3818,6 +4299,12 @@ extern "C" int64_t tc_shim_fa_g3_window2_async(const void*, const void*, const v
                                                const void*, int64_t, int64_t, int64_t, int64_t,
                                                int64_t, int64_t, int64_t, int64_t, int64_t,
                                                int64_t, int64_t) { return -301; }
+extern "C" int64_t tc_shim_fa_g3_window3_async(const void*, const void*, const void*, void*,
+                                               const void*, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t, int64_t, int64_t) {
+    return -301;
+}
 extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void*, void*, int64_t, int64_t) {
     return -302;
 }

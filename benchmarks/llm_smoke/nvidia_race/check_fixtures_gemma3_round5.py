@@ -14,11 +14,17 @@ against a prompt set that differs from the gated one is a different experiment f
 oracle certified, and the chain must stop rather than publish it.
 """
 import json
+import os
 import sys
 from pathlib import Path
 
-RUNS = Path("/home/angel/lever5/runs")
-MARKER = Path("/home/angel/lever5/FIXTURES_OK")
+# The reference echoes and the marker are overridable so a later round can gate against the MOST
+# RECENT certified gate cells rather than round 5's. Round 7 points FIXREF_RUNS at
+# ~/lever6/runs (round 6's ALL_PASS gate cells, same checkpoint) because those are the newest
+# echoes the oracle certified; the round-5 defaults are unchanged so nothing that already calls
+# this script behaves differently.
+RUNS = Path(os.environ.get("FIXREF_RUNS", "/home/angel/lever5/runs"))
+MARKER = Path(os.environ.get("FIXREF_MARKER", "/home/angel/lever5/FIXTURES_OK"))
 PAIRS = [
     ("gate_pp256_maxnew16",   "/tmp/g3pp256/prompt_0000.txt",  256),
     ("gate_pp1024_maxnew16",  "/tmp/g3pp1024/prompt_0000.txt", 1024),

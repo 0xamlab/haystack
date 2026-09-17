@@ -89,7 +89,9 @@ from residentk.kernels_prefill_gemma3 import (
     _pf_geglu_rows_f16_kernel,
     _pf_rmsnorm_rows_f16_kernel,
     _pf_ropewrt_warps_kernel,
+    _pf_ropewrt_warps_vec_kernel,
     _G3_ROPE_WARPS_PER_BLOCK,
+    _G3_ROPEV_HEADS_PER_BLOCK,
     _G3_ROPE_NTHREADS,
     _pf_fill_scale_kernel,
     _pf_gemm_accum_kernel_v2h,
@@ -275,6 +277,37 @@ its stride-16..1 steps five `shuffle_xor`s over the same operand pairs. See the 
 docstring for the unrolled proof. Fact-driven capability gate: `d_head == 4 * WARP_SIZE` (128),
 which is also what puts both halves of a RoPE pair in one lane; any other head width keeps the
 twin byte-for-byte."""
+
+comptime G3_PF_ROPEVEC: Bool = is_defined["ALGENTA_G3_PF_ROPEVEC"]()
+"""ROUND 7: vectorise the ROPE2 warp-per-head kernel's global accesses — step 3 dispatches
+`_pf_ropewrt_warps_vec_kernel` (one HALF-warp per head, two contiguous `_ld4`/`_st4` quads per
+lane, 16 heads per block) instead of `_pf_ropewrt_warps_kernel` (one warp per head, four STRIDED
+scalar elements per lane, 8 heads per block). Requires `G3_PF_ROPE2` to also be set, since it
+replaces that kernel and not the block-per-head twin.
+
+WHY. ROPE2 removed the shared-memory round trip and the barriers (36.6 ms -> 7.7 ms
+whole-process at rag4096), but it kept scalar 4-byte accesses, because its bit-exactness
+argument DEPENDS on the strided lane mapping {t, t+32, t+64, t+96} that makes the twin's
+stride-64/32 reduction steps intra-lane. That mapping is also what forces four separate
+`ld.global.b32` per array per lane: without `loadvec`'s `alignment=16` annotation a
+`load[width=4]` lowers to four scalar loads, not one `ld.global.v4.b32`. Round 6's decomposition
+shows the residue — the rope bucket is ~6.2 ms measured against a 3.39 ms traffic roof (14.56 GB
+at 4.8 TB/s), i.e. ~49% of roof, while TensorRT-LLM's `applyBiasRopeUpdateKVCacheV2` is 3.47 ms,
+essentially AT that roof. So ~2.7 ms of this bucket is instruction shape, not bandwidth. This is
+the same defect and the same fix FRONT 5 lever 2 applied to the 7B lane, where it measured ~43%
+of roof before; `_pf_biasropewrt_vec_kernel` DECLINES gemma-3 because it cannot do a qk_norm
+reduction without shared staging, and gemma-3 always has QK-norm. The half-warp-per-head layout
+here is what closes that gap: a lane holds both quads of its four pairs, so the rotation needs no
+cross-lane data movement and the norm reduces in four `shuffle_xor` steps inside the half-warp.
+~24 memory instructions per head become ~8, and launches drop again (3 blocks per row, not 6).
+
+NOT BIT-IDENTICAL, by the same argument that made ROPE2 exact: contiguous quads re-associate the
+qk_norm sum-of-squares (eight intra-lane terms then four half-warp shuffles, instead of four
+intra-lane terms then five full-warp shuffles), so `ss` and therefore `inv` round differently.
+The scaling and rotation EXPRESSIONS are ROPE2's verbatim on non-interacting SIMD lanes. So this
+carries its own flag and goes through the fp32-oracle token gates; the control (flag off) is
+byte-preserved. Fact-driven capability gate: `d_head == 128` and `qk_norm`, any other shape stays
+on ROPE2."""
 
 comptime _G3_PF_BN32: Bool = is_defined["ALGENTA_G3_PF_BN32"]()
 comptime _G3_PF_BN128: Bool = is_defined["ALGENTA_G3_PF_BN128"]()
@@ -878,6 +911,11 @@ struct _CudaResidentGemma3F16(Movable):
             print("TCFLAG ALGENTA_G3_PF_ROPE2=1 (warp-per-head q/k-norm + RoPE + KV-write,",
                   "zero barriers, bit-identical to the block-per-head twin)")
         @parameter
+        if G3_PF_ROPEVEC:
+            print("TCFLAG ALGENTA_G3_PF_ROPEVEC=1 (half-warp-per-head RoPE with 16-byte",
+                  "_ld4/_st4 quads, 16 heads per block; re-associates the qk_norm reduction",
+                  "so it is NOT bit-identical to ROPE2 and rides the fp32-oracle gates)")
+        @parameter
         if G3_PF_FA:
             print("TCFLAG ALGENTA_G3_PF_FA=1 (fused windowed tensor-core FlashAttention-2,",
                   "BN =", _G3_PF_FA_BN, ", kv32 =", _G3_PF_FA_KV32, ") — replaces the Q pack",
@@ -1045,7 +1083,32 @@ struct _CudaResidentGemma3F16(Movable):
                         # 128 to match this session's other head-dim capability gates, which
                         # do not import WARP_SIZE.)
                         use_rope2 = self.d_head == 128
-                    if use_rope2:
+                    # ROUND 7 (`-D ALGENTA_G3_PF_ROPEVEC`): the vector twin REPLACES ROPE2's
+                    # kernel rather than the block-per-head one, and it is eligible only where
+                    # ROPE2 itself is — same `d_head == 128` lane contract. Gating it on
+                    # `use_rope2` rather than on its own head-dim test means a shape ROPE2
+                    # declines can never silently fall through to a different re-association of
+                    # the qk_norm reduction; it stays byte-for-byte on the twin ROPE2 declined to.
+                    # Assigned inside a `@parameter if`, so with the flag off `use_ropev` is
+                    # provably False, the vector arm is dead and the emitted code is unchanged.
+                    var use_ropev = False
+                    @parameter
+                    if G3_PF_ROPEVEC:
+                        use_ropev = use_rope2
+                    if use_ropev:
+                        self.ctx.enqueue_function[_pf_ropewrt_warps_vec_kernel](
+                            self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
+                            self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
+                            cos_p, sin_p,
+                            Int64(pos), Int64(self.h_q), Int64(self.h_kv), Int64(self.d_head),
+                            self.eps, Int64(m),
+                            Int64(1),  # gemma3 always has QK-norm
+                            Int64(_ceil_div(self.h_q + self.h_kv, _G3_ROPEV_HEADS_PER_BLOCK)),
+                            grid_dim=m * _ceil_div(self.h_q + self.h_kv,
+                                                  _G3_ROPEV_HEADS_PER_BLOCK),
+                            block_dim=_G3_ROPE_NTHREADS,
+                        )
+                    elif use_rope2:
                         self.ctx.enqueue_function[_pf_ropewrt_warps_kernel](
                             self.pf_q_rot.unsafe_ptr(), lw.ck.unsafe_ptr(), lw.cv.unsafe_ptr(),
                             self.pf_qkv.unsafe_ptr(), lw.qn.unsafe_ptr(), lw.kn.unsafe_ptr(),
