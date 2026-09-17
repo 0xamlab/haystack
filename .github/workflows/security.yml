@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   full:
-    uses: thyn-ai/security-toolchain/.github/workflows/security-full.yml@6045a94a409bca3d9321c9369a31e0d42b15efcd # v0.1.7
+    uses: thyn-ai/security-toolchain/.github/workflows/security-full.yml@5384dbda80abae6e2041d09a0916b740729d75e4 # v0.1.8
     permissions:
       contents: read
       security-events: write
