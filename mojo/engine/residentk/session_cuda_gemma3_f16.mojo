@@ -117,8 +117,11 @@ from residentk.tc_shim_bridge import (
     _tc_bgemm_f16_async,
     _tc_attn_softmax_mask_async,
     _tc_stage_f32_to_f16,
+    _tc_stage_f32_to_f16_v8,
     _tc_fa_layout_probe,
+    _tc_fa2_layout_probe,
     _tc_fa_g3_window_async,
+    _tc_fa_g3_window2_async,
     _tc_gemm_f16_32c_pre_async,
     _tc_gemm_f16_16c_pre_async,
 )
@@ -202,6 +205,29 @@ on-device WMMA accumulator-layout probe). A DECLINED lever prints DECLINED once 
 keeps the five-pass chain: -301/-304/-305/-310 fall back, any other non-zero status is a real
 launch failure and is returned as one. Flag-off builds are byte-unmodified."""
 
+comptime G3_PF_FA2: Bool = G3_PF_FA and is_defined["ALGENTA_G3_PF_FA2"]()
+"""The fused windowed attention KERNEL, v2 (round 6, `-D ALGENTA_G3_PF_FA2`): G3_PF_FA's
+dispatch slot with #994's 7B FA2 techniques transplanted onto the windowed kernel
+(`_tc_fa_g3_window2_async`) — raw `mma.sync m16n8k16` with the P tile's A-fragment packed IN
+REGISTERS (deleting `sP` and one of the three per-key-block fences), the O epilogue written
+position-major STRAIGHT TO GLOBAL from the ISA-specified D layout (deleting `sO`, its 33.8 KB
+window and its fence), and cp.async K/V double buffering on the f16 K/V route — the native-f32
+route (kv32=1, production) keeps round 5's synchronous in-register-convert load, because
+cp.async copies raw bytes and cannot convert.
+
+Round 5 shipped the WMMA kernel and its own decomposition then named the remainder:
+`fused_tc_attention` is the largest non-GEMM bucket at rag4096 (86.379 ms whole-process).
+
+FA2 inherits G3_PF_FA's WHOLE gate rather than restating it — it is a different implementation
+of the same dispatch slot, so a build that asked for FA2 without FA gets round 5's kernel, the
+one it would have dispatched anyway. A DECLINED v2 (-301/-304/-305/-311, the last being the
+shim's raw-mma on-device layout probe) falls back PER CALL to round 5's WMMA kernel, which
+keeps its own decline-to-five-pass-chain fallback; the seal()-time banner states which kernel
+the binary will run. Numerics: every rounding point is round 5's verbatim; only the summation
+ORDER changes (m16n8k16 accumulates 16 keys per instruction where WMMA's m16n16k16 accumulated
+16 as two 8-wide halves), so the lever goes through the same token-identity gates. Flag-off
+builds are byte-unmodified."""
+
 comptime G3_PF_F16NORM: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_G3_PF_F16NORM"]()
 """The pre-staged-A norm lever (round 5, the gemma-3 twin of `-D ALGENTA_7B_PF_F16NORM`): both
 per-layer rmsnorm dispatches write an f16 `pf_xn16` (`_pf_rmsnorm_rows_f16_kernel`) and the
@@ -250,11 +276,21 @@ docstring for the unrolled proof. Fact-driven capability gate: `d_head == 4 * WA
 which is also what puts both halves of a RoPE pair in one lane; any other head width keeps the
 twin byte-for-byte."""
 
-comptime _G3_PF_FA_BN: Int = 64
+comptime _G3_PF_BN32: Bool = is_defined["ALGENTA_G3_PF_BN32"]()
+comptime _G3_PF_BN128: Bool = is_defined["ALGENTA_G3_PF_BN128"]()
+comptime _G3_PF_FA_BN: Int = 32 if _G3_PF_BN32 else (128 if _G3_PF_BN128 else 64)
 """The fused flash attention's key-block width (the shim implements 32/64/128; anything else
 selects 64). 64 is the 7B lane's measured best (`_PF_FA_BN`) and the shared-bandwidth-optimal
 tile for FA_BM=64 / d=128 / 4 warps: 144 KB of shared reads per key block against 2.1 MFLOP
-of HMMA = 0.069 B/FLOP, ~1.1x the sm_90 ratio of 128 B/clk shared to 2048 FLOP/clk tensor."""
+of HMMA = 0.069 B/FLOP, ~1.1x the sm_90 ratio of 128 B/clk shared to 2048 FLOP/clk tensor.
+
+ROUND 6: `-D ALGENTA_G3_PF_BN32` / `-D ALGENTA_G3_PF_BN128` override it for A/B sweeps — the
+width was inherited from the 7B lane's WMMA kernel and is untuned for BOTH gemma-3 and the v2
+raw-mma kernel (#994's 7B FA2 moved to bn=32 when deleting sP/sO lifted occupancy to three
+CTAs/SM; the v2 kernel's footprint moved with it, so the optimum is a measurement, not an
+inheritance). BN changes the online-softmax block boundaries, i.e. the summation order, so an
+override arm goes through the same token-identity gates as any numeric-path change. Default
+(no flag) is 64 and a flag-off build is byte-unmodified."""
 
 comptime _G3_PF_FA_MIN_M: Int = 256
 """The tile-row crossover at which the fused kernel takes over from the SIMT windowed kernel.
@@ -262,13 +298,40 @@ Held at the five-pass TC chain's OWN measured crossover (H100: TC attention wins
 loses at m = 160) so the round-5 A/B moves exactly one thing — the attention implementation —
 and not the dispatch shape gate with it."""
 
-comptime _G3_PF_FA_KV32: Int = 1
+comptime _G3_PF_KV16: Bool = is_defined["ALGENTA_G3_PF_KV16"]()
+comptime _G3_PF_FA_KV32: Int = 0 if _G3_PF_KV16 else 1
 """1 = the fused kernel reads the session's RESIDENT f32 K/V cache and converts to f16
 in-register on the way into shared memory, deleting the `_f32_to_f16_kernel` staging pass (6
 bytes of global traffic per K/V element per layer down to 4, at the identical `__float2half`
 rounding point). 0 = the CONTROL ARM: stage to `pf_tc_k16`/`pf_tc_v16` first and let the
 kernel read f16, which is the same kernel with the staging pass left in — what the A/B
-attributes the staging removal to. Never a model-name branch; the KV cache dtype is the fact."""
+attributes the staging removal to. Never a model-name branch; the KV cache dtype is the fact.
+
+ROUND 6 (`-D ALGENTA_G3_PF_KV16`): the control arm became a ship candidate. Round 5 chose
+kv32=1 from a TRAFFIC MODEL (4 B/element in-register vs 6+2 staged) that its own probe could
+not contradict — the probe's timing section was measuring launch gaps, not kernels (fixed
+this round: wall clock + device sync). With working timings at BN=64, the f16-source kernel
+is faster at EVERY raced shape, by up to 46% at the rag4096 tail (t4 local 140.9 vs 231.1 us,
+t4 global 432.3 vs 800.4 us): a layer's f16 K+V at n_keys=4096 is 33.5 MB and re-read by
+every q-head CTA through the H200's 60 MB L2, while the f32 form is 67 MB and misses. The
+staging pass it costs is ~2-3 ms per rag4096 prefill against a ~24 ms attention saving. The
+operands are BIT-IDENTICAL between the routes (round 5's probe: identical max_abs/rms at all
+twelve shapes; the staging rounds where the in-register convert rounds), so this flag changes
+scheduling and traffic, not numerics — it still carries its own banner and gate because it
+changes which kernels run."""
+
+comptime _G3_PF_FA2_DBUF_MIN_N: Int = 0 if _G3_PF_BN32 else 2048
+"""The key-count crossover at which the v2 kernel's cp.async K/V double buffering engages on
+the f16 route (`dbuf = 1`). A shape fact, measured not inherited, and BN-DEPENDENT — the H200
+probe (median of 30, all twelve shapes, 2026-09-16):
+
+  * BN=64: dbuf=1 SLOWER at n_keys=1024 (pp1024 local 111.7 vs 96.6 us single-buffered — the
+    second rotating buffer costs occupancy and a 16-block loop never amortizes it) and 14-21%
+    FASTER from n_keys=2048 up -> threshold 2048.
+  * BN=32: dbuf=1 faster EVERYWHERE, including pp256 (21.5 vs 25.0 us) and pp1024 (91.0 vs
+    111.0) — the half-width tile restores the occupancy the second buffer costs -> threshold 0.
+
+kv32=1 never double-buffers at any n (cp.async cannot convert f32)."""
 
 comptime G3_ROUND5_FLAGS: Bool = G3_PF_FA or G3_PF_F16NORM or G3_PF_F16MLP or G3_PF_F16ATTN
 """One gate for the round-5 scratch: any of the four levers needs the f16 pre-staged-A
@@ -763,6 +826,29 @@ struct _CudaResidentGemma3F16(Movable):
                   "| tc_ready =", self.tc_ready, "| d_head =", self.d_head, "| h_q/h_kv =",
                   self.h_q, "/", self.h_kv,
                   "| prefill attention keeps the five-pass TC chain")
+        # ROUND 6 (`-D ALGENTA_G3_PF_FA2`): the v2 kernel has its OWN on-device layout probe —
+        # it indexes raw mma.sync m16n8k16 A/B/D fragments and both ldmatrix roles, not the
+        # WMMA accumulator — and the same rule applies: a declined v2 must be a printed
+        # DECLINED that keeps round 5's WMMA kernel, never a silent perf cliff or, worse, a
+        # permuted-row attention matrix presented as a measured FA2 number. The dispatch does
+        # not gate on this verdict (the shim caches it and returns -311 per call, which falls
+        # back), exactly like the 7B lane's `_PF_FA2_SHIP_VARIANT` wiring.
+        @parameter
+        if G3_PF_FA2:
+            var rfa2 = _tc_fa2_layout_probe()
+            if rfa2 == 0 and self.tc_ready == 1 and self.d_head == 128 \
+                    and self.h_q % self.h_kv == 0:
+                print("gemma3-f16: fused windowed TC flash attention v2 ARMED | raw",
+                      "mma.sync m16n8k16 A/B/D + both ldmatrix roles verified on device |",
+                      "BN =", _G3_PF_FA_BN, "| kv32 =", _G3_PF_FA_KV32,
+                      "| cp.async double buffer from n_keys >= (0 = never) =",
+                      _G3_PF_FA2_DBUF_MIN_N if _G3_PF_FA_KV32 == 0 else 0,
+                      "| d_head =", self.d_head, "| GQA g =", self.h_q // self.h_kv,
+                      "| sliding_window =", self.sliding_window, "| f16 O =", G3_PF_F16ATTN)
+            else:
+                print("gemma3-f16: fused windowed TC flash attention v2 DECLINED, status",
+                      rfa2, "| d_head =", self.d_head, "| h_q/h_kv =", self.h_q, "/",
+                      self.h_kv, "| prefill attention keeps round 5's WMMA window kernel")
 
     def _print_round5_flag_audit(self):
         """── THE FLAG AUDIT BANNER ──
@@ -781,8 +867,9 @@ struct _CudaResidentGemma3F16(Movable):
         must be auditable in an arm that measures them WITHOUT the fused attention lever.
         Prints at seal(), outside every timed region, once per session."""
         print("G3 FLAGS: TCATTN =", G3_PF_TCATTN, "| ATTN_FLASH =", G3_PF_ATTN_FLASH,
-              "| FA =", G3_PF_FA, "| F16NORM =", G3_PF_F16NORM, "| F16MLP =",
-              G3_PF_F16MLP, "| F16ATTN =", G3_PF_F16ATTN, "| ROPE2 =", G3_PF_ROPE2,
+              "| FA =", G3_PF_FA, "| FA2 =", G3_PF_FA2, "| F16NORM =", G3_PF_F16NORM,
+              "| F16MLP =", G3_PF_F16MLP, "| F16ATTN =", G3_PF_F16ATTN, "| ROPE2 =",
+              G3_PF_ROPE2,
               "| STREAM =", G3_STREAM,
               "| GEGLU_U4 =", _G3_GEGLU_U4, "| FA_BN =", _G3_PF_FA_BN, "| FA_KV32 =",
               _G3_PF_FA_KV32, "| FA_MIN_M =", _G3_PF_FA_MIN_M, "| max_ctx =", self.max_ctx)
@@ -795,6 +882,21 @@ struct _CudaResidentGemma3F16(Movable):
             print("TCFLAG ALGENTA_G3_PF_FA=1 (fused windowed tensor-core FlashAttention-2,",
                   "BN =", _G3_PF_FA_BN, ", kv32 =", _G3_PF_FA_KV32, ") — replaces the Q pack",
                   "/ QK^T / masked softmax / PV / O unpack / KV staging chain")
+        @parameter
+        if G3_PF_FA2:
+            print("TCFLAG ALGENTA_G3_PF_FA2=1 (window kernel v2: raw mma.sync m16n8k16,",
+                  "P in registers, direct-to-global epilogue, cp.async double buffer from",
+                  "n_keys >=", _G3_PF_FA2_DBUF_MIN_N if _G3_PF_FA_KV32 == 0 else 0, ")")
+        @parameter
+        if _G3_PF_KV16:
+            print("TCFLAG ALGENTA_G3_PF_KV16=1 (fused attention reads the f16 K/V staging",
+                  "twin (v8 staging, bit-exact operands); cp.async double buffer legal)")
+        @parameter
+        if _G3_PF_BN32:
+            print("TCFLAG ALGENTA_G3_PF_BN32=1 (fused-attention key-block width 32)")
+        @parameter
+        if _G3_PF_BN128:
+            print("TCFLAG ALGENTA_G3_PF_BN128=1 (fused-attention key-block width 128)")
         @parameter
         if G3_PF_F16NORM:
             print("TCFLAG ALGENTA_G3_PF_F16NORM=1 (both rmsnorms write the f16 pre-staged A)")
@@ -1023,17 +1125,20 @@ struct _CudaResidentGemma3F16(Movable):
                             var v_ptr = Int(lw.cv.unsafe_ptr())
                             @parameter
                             if _G3_PF_FA_KV32 == 0:
-                                # CONTROL ARM: the staged-f16 K/V route, i.e. the fused kernel
-                                # with the staging pass the native-f32 route deletes. Same
-                                # kernel, same numerics, one extra launch and 6 bytes/element
-                                # of traffic instead of 4 — what the A/B attributes the
-                                # staging removal to.
+                                # f16 K/V route (round 5's control arm; a round-6 ship
+                                # candidate under -D ALGENTA_G3_PF_KV16): stage the cache to
+                                # the f16 twin first. `_v8` is the 8-elements-per-thread twin
+                                # of the staging kernel, BIT-EXACT with it (`__floats2half2_rn`
+                                # is the same RNe conversion of each half), and an operand it
+                                # cannot vectorize falls back to the scalar kernel INSIDE the
+                                # shim entry. h_kv*d_head = 2048 keeps `kvn` a multiple of 8
+                                # at every n_keys, but the entry checks that itself.
                                 var kvn = n_keys_fa * self.h_kv * self.d_head
-                                var rk = _tc_stage_f32_to_f16(
+                                var rk = _tc_stage_f32_to_f16_v8(
                                     Int(lw.ck.unsafe_ptr()),
                                     Int(self.pf_tc_k16.unsafe_ptr()), kvn)
                                 if rk == 0:
-                                    rk = _tc_stage_f32_to_f16(
+                                    rk = _tc_stage_f32_to_f16_v8(
                                         Int(lw.cv.unsafe_ptr()),
                                         Int(self.pf_tc_v16.unsafe_ptr()), kvn)
                                 if rk != 0:
@@ -1047,11 +1152,49 @@ struct _CudaResidentGemma3F16(Movable):
                             if G3_PF_F16ATTN:
                                 o_ptr = Int(self.pf_attn16.unsafe_ptr())
                                 of16 = 1
-                            var rfa = _tc_fa_g3_window_async(
-                                Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr, o_ptr,
-                                Int(self.pf_fa_scale.unsafe_ptr()),
-                                m, n_keys_fa, self.h_q, self.h_kv, self.d_head, pos,
-                                window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32, of16)
+                            # ── ROUND-6 lever (`-D ALGENTA_G3_PF_FA2`): the v2 kernel takes
+                            #    the same operands in the same layouts, so it is a drop-in for
+                            #    round 5's. `dbuf` engages the cp.async double buffer only on
+                            #    the f16 K/V route (cp.async copies raw bytes and cannot
+                            #    convert, and the shim rejects the illegal combination with
+                            #    -305 before any launch) and only from
+                            #    `_G3_PF_FA2_DBUF_MIN_N` keys up, where the probe measures it
+                            #    winning; below the crossover the same v2 kernel runs
+                            #    single-buffered. A DECLINED v2 (-301 wrong head_dim, -304
+                            #    non-integral GQA, -305 out-of-table selection, -311 the
+                            #    on-device raw-mma layout probe disagreed) falls through to
+                            #    round 5's WMMA kernel, which keeps its own
+                            #    decline-to-five-pass-chain fallback. Any OTHER status is a
+                            #    real CUDA failure and is returned as one. ──
+                            var rfa = 0
+                            @parameter
+                            if G3_PF_FA2:
+                                var dbuf_want = 0
+                                @parameter
+                                if _G3_PF_FA_KV32 == 0:
+                                    dbuf_want = (
+                                        1 if n_keys_fa >= _G3_PF_FA2_DBUF_MIN_N else 0
+                                    )
+                                rfa = _tc_fa_g3_window2_async(
+                                    Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr, o_ptr,
+                                    Int(self.pf_fa_scale.unsafe_ptr()),
+                                    m, n_keys_fa, self.h_q, self.h_kv, self.d_head, pos,
+                                    window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32, of16,
+                                    dbuf_want)
+                                if rfa == -301 or rfa == -304 or rfa == -305 \
+                                        or rfa == -311:
+                                    rfa = _tc_fa_g3_window_async(
+                                        Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr,
+                                        o_ptr, Int(self.pf_fa_scale.unsafe_ptr()),
+                                        m, n_keys_fa, self.h_q, self.h_kv, self.d_head,
+                                        pos, window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32,
+                                        of16)
+                            else:
+                                rfa = _tc_fa_g3_window_async(
+                                    Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr, o_ptr,
+                                    Int(self.pf_fa_scale.unsafe_ptr()),
+                                    m, n_keys_fa, self.h_q, self.h_kv, self.d_head, pos,
+                                    window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32, of16)
                             if rfa == 0:
                                 attn_done = True
                                 attn_o_f16 = of16 == 1

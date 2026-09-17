@@ -40,7 +40,12 @@ a hung API call: fewer poll cycles means fewer chances to hit one, even with gh(
 tightened timeouts.
 
 Env: GITHUB_CI_TOKEN (org-admin oauth/PAT: needs org self-hosted-runner registration +
-org repo-list + org webhook scope); GITHUB_WEBHOOK_SECRET (HMAC secret for the org-level
+org repo-list + org webhook scope); GITHUB_APP_ID + GITHUB_APP_PRIVATE_KEY_PATH (OPTIONAL, and
+inert until both are set: switch the ORCHESTRATOR's own GitHub calls onto a per-hour installation
+token with its own rate-limit budget, falling back to GITHUB_CI_TOKEN whenever the App is not
+usable -- see the "GitHub App auth" block. Workers keep GITHUB_CI_TOKEN either way, because the
+gist telemetry sink needs the `gist` OAuth scope that an installation token cannot carry);
+GITHUB_WEBHOOK_SECRET (HMAC secret for the org-level
 `workflow_job` webhook -- independent of the GitHub App's own webhook secret in
 apps/api_server/config.py, deliberately: reusing the App's secret would mean registering
 through the App's single webhook URL, redirecting ALL its installation events, including
@@ -51,6 +56,7 @@ org, auto-refreshed); AZURE_SP_CLIENT_ID/AZURE_SP_CLIENT_SECRET (fallback AZURE_
 AZURE_CLIENT_SECRET), AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
 """
 import base64
+import calendar
 import hashlib
 import hmac
 import http.server
@@ -329,27 +335,327 @@ def arm(method, path, body=None, api="2023-07-01"):
 _usage_cache = {}
 
 
-def gh(path, method="GET", body=None):
+# ── GitHub App auth: the zero-secret path ─────────────────────────────────────────────────────
+# WHY. One static GITHUB_CI_TOKEN carries this orchestrator's ENTIRE GitHub surface -- the org
+# repo list, then actions/runs plus runs/{id}/jobs for each of 25 repos every reconcile cycle,
+# paginated runner listings, runner-registration deletes -- AND every worker's gist create/flush
+# and registration-token fetches. Measured live 2026-09-16T22:50:42Z on a worker, the budget ran
+# out:
+#
+#     HTTPError 403 {"message": "API rate limit exceeded for user ID 79715912. ..."}
+#
+# 5000 core calls/hr is not enough for that surface, and the consequences were not limited to
+# telemetry: a 403 on the registration-token POST yields an empty token, config.sh then fails,
+# and the worker powers off unregistered. Rate-limit exhaustion is a plausible cause of the
+# intermittent post-#997 registration failures, and no amount of retrying fixes a budget that is
+# structurally too small.
+#
+# An App installation token gets its OWN budget, separate from any user's, so moving the
+# orchestrator's calls onto one removes the largest consumer from the shared pool. It is also
+# the zero-secret design the owner's full-automation mandate asks for: a private key on ci-orch's
+# root-only filesystem, tokens minted per hour, nothing long-lived to leak or rotate.
+#
+# PHASE 1 ONLY, and the boundary is deliberate. This moves the ORCHESTRATOR's calls. Workers keep
+# GITHUB_CI_TOKEN -- see worker_github_token() for why they cannot move yet (the gist sink needs
+# the `gist` OAuth scope, which an installation token does not carry). Retiring the static token
+# entirely needs the telemetry sink to move first; that plan is in the PR description.
+#
+# EVERYTHING HERE IS INERT UNTIL CONFIGURED, and must stay that way. The whole surface falls back
+# to GITHUB_CI_TOKEN when GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_PATH are unset, when PyJWT is
+# missing, or when the key cannot be read -- because this file is deployed as a single copy by
+# `install -m 600` and run by the distro's /usr/bin/python3, so an import error or a missing
+# dependency here would crash-loop the service and take ALL provisioning down. A secret-less
+# design that can break the plane is worse than the secret.
+GITHUB_APP_ID = os.environ.get("GITHUB_APP_ID", "")
+GITHUB_APP_KEY_PATH = os.environ.get("GITHUB_APP_PRIVATE_KEY_PATH", "")
+# Refresh 5 minutes before GitHub's ~1h expiry, mirroring _REFRESH_SAFETY_S in
+# apps/api_server/services/github_app_auth.py -- the in-repo implementation this mirrors, so the
+# two do not drift on a number that is really a property of GitHub's token lifetime.
+_APP_REFRESH_SAFETY_S = 300
+# A mint failure that is plausibly transient (network, a GitHub 5xx) must not permanently disable
+# the App path, but must not be retried on every single call either: that would add a failing
+# round-trip to each of the hundreds of calls per cycle. Cool down, then try again.
+_APP_RETRY_COOLDOWN_S = 60
+_app_state = {"token": None, "exp": 0.0, "inst": None, "retry_at": 0.0, "disabled": None}
+_app_lock = threading.Lock()
+_pyjwt = None
+_pyjwt_checked = False
+
+
+def _load_pyjwt():
+    """PyJWT, or None -- imported lazily and defensively, never at module scope.
+
+    A top-level `import jwt` is what would crash-loop the plane: this file is run by the distro
+    interpreter, and PyJWT is not a declared dependency of the deploy (it happens to be present on
+    ci-orch today, which is an accident of that box's history, not a guarantee). Checked once and
+    logged once, so the reason the zero-secret path is inert is in the journal rather than
+    inferred from an absence.
+    """
+    global _pyjwt, _pyjwt_checked
+    if _pyjwt_checked:
+        return _pyjwt
+    _pyjwt_checked = True
+    try:
+        import jwt as _m
+        _pyjwt = _m
+    except ImportError:
+        _pyjwt = None
+        log("github app: PyJWT is NOT importable by this interpreter, so App auth is disabled and "
+            "every call uses GITHUB_CI_TOKEN. Declare the dependency in "
+            "infra/ci/deploy_orchestrator.sh to enable the zero-secret path.")
+    return _pyjwt
+
+
+def app_configured():
+    """True when the operator has supplied both halves of the App identity."""
+    return bool(GITHUB_APP_ID and GITHUB_APP_KEY_PATH)
+
+
+def app_enabled():
+    """True when gh() should be authenticating with a minted installation token.
+
+    False -- silently, by design -- when the App is unconfigured, when PyJWT is missing, or when
+    the key proved unreadable. In all three cases the caller falls back to GITHUB_CI_TOKEN, so
+    "not enabled" is never an error state.
+    """
+    if not app_configured() or _app_state["disabled"]:
+        return False
+    if _load_pyjwt() is None:
+        return False
+    if time.time() < _app_state["retry_at"]:
+        return False  # cooling down after a mint failure; use the static token for now
+    return True
+
+
+def _disable_app(reason):
+    """Permanently fall back to GITHUB_CI_TOKEN, and say so exactly once.
+
+    Reserved for conditions that cannot fix themselves while the process runs -- an unreadable or
+    malformed key file. Transient failures use the cooldown instead, because disabling forever on
+    a network blip would quietly revert the fleet to the token whose budget is the problem.
+    """
+    if not _app_state["disabled"]:
+        _app_state["disabled"] = reason
+        log(f"github app: DISABLED for the lifetime of this process ({reason}); falling back to "
+            f"GITHUB_CI_TOKEN. Fix the key file and restart az-orchestrator to re-enable.")
+
+
+def _gh_raw(path, token, method="GET"):
+    """A GitHub call with an EXPLICIT token, bypassing gh().
+
+    gh() authenticates via github_token(), which calls app_token(), which would call back into
+    gh() to mint -- infinite recursion. Bootstrapping the App credential has to go around it.
+    """
     req = urllib.request.Request(
         f"https://api.github.com/{path}",
         method=method,
-        data=json.dumps(body).encode() if body else None,
         headers={
-            "Authorization": f"Bearer {os.environ['GITHUB_CI_TOKEN']}",
+            "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
         },
     )
-    for attempt in (1, 2, 3):
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.loads(r.read() or b"{}")
+
+
+class _AppKeyError(RuntimeError):
+    """The App private key cannot be read or is not a usable RS256 key.
+
+    Distinguished from every other mint failure because it is the only one that is PERMANENT for
+    the lifetime of the process. Getting this wrong in the other direction is worse than it looks:
+    urllib.error.URLError subclasses OSError, so an `except OSError` around the whole mint treats
+    a connection reset as a bad key file and disables the App path for good -- silently reverting
+    the fleet to the token whose exhausted budget is the reason this code exists, until somebody
+    restarts the service. A test pins exactly that.
+    """
+
+
+def _app_jwt():
+    """The 9-minute RS256 App JWT, mirroring github_app_auth._app_jwt() claim for claim.
+
+    iat is back-dated 60s for clock skew and exp is 540s because GitHub rejects an App JWT whose
+    lifetime exceeds 10 minutes. Same numbers as the api_server's implementation on purpose: two
+    copies of this that disagree on the skew allowance is how one of them starts failing after a
+    host's clock drifts.
+    """
+    mod = _load_pyjwt()
+    if mod is None:
+        raise _AppKeyError("PyJWT is unavailable, so no App JWT can be signed")
+    try:
+        with open(GITHUB_APP_KEY_PATH) as f:
+            pem = f.read()
+    except OSError as e:
+        raise _AppKeyError(f"cannot read {GITHUB_APP_KEY_PATH}: {e}") from e
+    now = int(time.time())
+    try:
+        return mod.encode({"iat": now - 60, "exp": now + 540, "iss": str(GITHUB_APP_ID)},
+                          pem, algorithm="RS256")
+    except Exception as e:  # noqa: BLE001 -- PyJWT raises several types for a bad key
+        raise _AppKeyError(
+            f"{GITHUB_APP_KEY_PATH} is not a usable RS256 private key: {type(e).__name__}: {e}"
+        ) from e
+
+
+def _installation_id():
+    """This org's installation id, resolved once per process.
+
+    Resolved rather than configured: an installation id is not a secret but it IS a number an
+    operator would have to look up and then keep in an env file, and getting it wrong produces a
+    token for some other installation rather than an obvious error. Matched on the account login
+    against ORG, so the same deployment works if the App is ever reinstalled.
+    """
+    if _app_state["inst"] is not None:
+        return _app_state["inst"]
+    found = _gh_raw("app/installations", _app_jwt())
+    for inst in found if isinstance(found, list) else []:
+        login = ((inst.get("account") or {}).get("login") or "")
+        if login.lower() == ORG.lower() and inst.get("id") is not None:
+            _app_state["inst"] = inst["id"]
+            log(f"github app: resolved installation {inst['id']} for org {ORG}")
+            return inst["id"]
+    raise RuntimeError(f"the App is not installed on org {ORG} (no matching installation)")
+
+
+def app_token():
+    """A cached installation access token, refreshed 5 minutes before it expires."""
+    with _app_lock:
+        now = time.time()
+        if _app_state["token"] and now < _app_state["exp"] - _APP_REFRESH_SAFETY_S:
+            return _app_state["token"]
+        inst = _installation_id()
+        d = _gh_raw(f"app/installations/{inst}/access_tokens", _app_jwt(), method="POST")
+        token = d.get("token")
+        if not token:
+            raise RuntimeError(f"installation-token mint returned no token (keys={sorted(d)})")
+        exp = 0.0
         try:
-            # 15s, not 60s -- see arm()'s comment; same live-observed hang applies here.
-            with urllib.request.urlopen(req, timeout=15) as r:
-                return json.loads(r.read() or b"{}")
-        except (TimeoutError, OSError) as e:
-            if attempt < 3:
-                time.sleep(2 * attempt)
-                continue
-            raise
+            exp = float(calendar.timegm(time.strptime(str(d["expires_at"])[:19],
+                                                       "%Y-%m-%dT%H:%M:%S")))
+        except (KeyError, ValueError, TypeError):
+            exp = now + 3600  # GitHub's documented lifetime; the 401 retry is the backstop
+        _app_state["token"] = token
+        _app_state["exp"] = exp
+        log(f"github app: minted an installation token for {ORG} (installation {inst}), "
+            f"valid until {d.get('expires_at', 'unknown')}")
+        return token
+
+
+def invalidate_app_token(reason):
+    """Drop the cached token so the next call mints a fresh one."""
+    with _app_lock:
+        _app_state["token"] = None
+        _app_state["exp"] = 0.0
+    log(f"github app: discarded the cached installation token ({reason})")
+
+
+def github_token():
+    """The credential gh() authenticates with.
+
+    An App installation token when the App is usable; GITHUB_CI_TOKEN otherwise, including on ANY
+    mint failure, because a failed mint must cost one call's latency and never the plane. A
+    transient failure sets a cooldown rather than disabling, so the App path comes back by itself.
+    """
+    if app_enabled():
+        try:
+            return app_token()
+        except _AppKeyError as e:
+            # The key file, not the network: absent, unreadable, or not an RS256 private key.
+            # None of those fix themselves while this process runs, so stop paying for the
+            # attempt -- but say so loudly, because it means the zero-secret path is inert and
+            # the only reason it would be is a misdeploy.
+            _disable_app(str(e))
+        except Exception as e:  # noqa: BLE001 -- never let auth take down provisioning
+            _app_state["retry_at"] = time.time() + _APP_RETRY_COOLDOWN_S
+            log(f"github app: token mint failed ({e}); using GITHUB_CI_TOKEN for the next "
+                f"{_APP_RETRY_COOLDOWN_S}s")
+    return os.environ["GITHUB_CI_TOKEN"]
+
+
+def worker_github_token():
+    """The token embedded in a worker's cloud-init. STILL the static one, and that is deliberate.
+
+    A worker needs two things from GitHub: POST the runner registration-token, and PATCH its
+    boot.log to a private gist. An installation token can do the first (with the App holding org
+    self_hosted_runners:write) and CANNOT do the second -- the gists API is scoped to a user's
+    `gist` OAuth scope, which an installation token does not carry. So handing a worker an
+    installation token today would keep registration working and silently kill the telemetry sink
+    that #997 added and #1002 just made addressable.
+
+    The sink has to move before the worker can, which is why this is a separate function rather
+    than github_token(): the two paths have different constraints and will migrate at different
+    times. The plan (worker telemetry to an orchestrator-minted Azure Blob write-SAS, after which
+    the worker needs no GitHub secret at all) is in this PR's description.
+    """
+    return os.environ["GITHUB_CI_TOKEN"]
+
+
+def gh(path, method="GET", body=None):
+    """One GitHub API call, authenticated with github_token().
+
+    Two nested bounds, because two different things fail here:
+      * the NETWORK can stall -- up to 3 attempts with a short backoff, same reasoning as arm().
+      * the CREDENTIAL can expire -- an installation token lives about an hour and this process
+        is long-lived, so a 401 is routine rather than exceptional. Invalidate the cache and
+        re-auth exactly once; raising instead would turn GitHub's hourly rollover into a failed
+        reconcile cycle every hour.
+    Every other status is a real answer from GitHub and propagates unchanged. That includes 403,
+    which on this token has meant "rate limit exceeded" in production -- it must stay visible and
+    must NOT be retried, or the retry loop deepens the hole it is complaining about.
+    """
+    for auth_attempt in (1, 2):
+        req = urllib.request.Request(
+            f"https://api.github.com/{path}",
+            method=method,
+            data=json.dumps(body).encode() if body else None,
+            headers={
+                "Authorization": f"Bearer {github_token()}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        reauth = False
+        for attempt in (1, 2, 3):
+            try:
+                # 15s, not 60s -- see arm()'s comment; same live-observed hang applies here.
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    return json.loads(r.read() or b"{}")
+            except urllib.error.HTTPError as e:
+                if e.code == 401 and auth_attempt == 1 and app_enabled():
+                    invalidate_app_token("401 from api.github.com")
+                    reauth = True
+                    break
+                raise
+            except (TimeoutError, OSError):
+                if attempt < 3:
+                    time.sleep(2 * attempt)
+                    continue
+                raise
+        if not reauth:
+            break  # the inner loop can only exit silently via the 401 break above
     raise RuntimeError("unreachable")
+
+
+def _repo_page(page):
+    """One page of the repos this deployment serves, from whichever endpoint the credential can
+    actually use.
+
+    THE TWO CREDENTIALS DO NOT SHARE AN ENDPOINT, and getting this wrong is not a degradation --
+    it is a dark plane. `GET /orgs/{org}/repos` is a user/OAuth-token call; an INSTALLATION token
+    is not the org, it is an app installed on the org, and its own listing is
+    `GET /installation/repositories`. Switching the orchestrator to App auth without switching
+    this call would have every repo scan fail, served_repos() would keep returning the stale
+    (then empty) cache, no queued job would ever be found, and nothing would provision -- while
+    the service stayed perfectly "active". Same shape as the two responses, so the difference is
+    handled here once rather than at every call site:
+
+      org form          -> a bare list of repositories
+      installation form -> {"total_count": N, "repositories": [...]}
+    """
+    if app_enabled():
+        d = gh(f"installation/repositories?per_page=100&page={page}")
+        return (d.get("repositories") or []) if isinstance(d, dict) else (d or [])
+    return gh(f"orgs/{ORG}/repos?per_page=100&page={page}&type=all") or []
 
 
 def served_repos():
@@ -361,8 +667,8 @@ def served_repos():
     repos = []
     page = 1
     try:
-        while True:
-            batch = gh(f"orgs/{ORG}/repos?per_page=100&page={page}&type=all")
+        while page <= 20:  # 2000 repos is far past real; a runaway guard, as in all_runners()
+            batch = _repo_page(page)
             if not batch:
                 break
             repos.extend(r["full_name"] for r in batch if not r.get("archived"))
@@ -370,7 +676,8 @@ def served_repos():
                 break
             page += 1
     except Exception as e:
-        log(f"served_repos() org scan failed: {e} (keeping previous list of {len(_repo_cache['value'])})")
+        log(f"served_repos() repo scan failed ({'installation' if app_enabled() else 'org'} "
+            f"endpoint): {e} (keeping previous list of {len(_repo_cache['value'])})")
         return _repo_cache["value"]  # stale-but-known beats an empty served set on a transient error
     _repo_cache["value"] = repos
     _repo_cache["exp"] = now + REPO_CACHE_S
@@ -838,7 +1145,7 @@ def render_userdata(template, name, path):
     """
     doc = (
         template.replace("__SSH_PUB__", SSH_PUB)
-        .replace("__GH_TOKEN__", os.environ["GITHUB_CI_TOKEN"])
+        .replace("__GH_TOKEN__", worker_github_token())
         .replace("__ORG__", ORG)
         .replace("__RUNNERGROUP__", RUNNER_GROUP)
         .replace("__VMNAME__", name)

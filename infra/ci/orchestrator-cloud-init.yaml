@@ -20,6 +20,17 @@ packages:
   - jq
   - docker.io
   - python3
+  # Both are PYTHON dependencies of /opt/ci/az_orchestrator.py, and both were previously
+  # undeclared -- present on ci-orch only as an accident of that box's history. The service runs
+  # the distro /usr/bin/python3 against a single copied file, so a rebuilt box missing either one
+  # crash-loops at import and takes ALL provisioning down with it.
+  #   python3-yaml : `import yaml` at module scope, for render_userdata()'s parse gate.
+  #   python3-jwt  : RS256 App-JWT signing for the GITHUB_APP_* path. Imported defensively (see
+  #                  _load_pyjwt), so its absence degrades to GITHUB_CI_TOKEN rather than
+  #                  crashing -- but declaring it is what makes the zero-secret path actually
+  #                  reachable on a fresh deploy instead of silently inert.
+  - python3-yaml
+  - python3-jwt
 write_files:
   - path: /opt/ci/az_orchestrator.py.b64
     permissions: '0600'

@@ -2832,6 +2832,484 @@ extern "C" int64_t tc_shim_fa_g3_window_async(const void* q_f32, const void* k, 
     return (int64_t)e;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// GEMMA-3 WINDOWED FUSED FLASH ATTENTION, v2 (round 6, 2026-09-16) — `-D ALGENTA_G3_PF_FA2`
+//
+// `_fa_g3_window_kernel` above is round 5's WMMA kernel: it flipped all three raced cells, and
+// its nsys decomposition then named the remainder — `fused_tc_attention` is the largest
+// non-GEMM bucket the round ships (86.379 ms whole-process at rag4096). This is that kernel
+// with #994's 7B FA2 techniques transplanted onto it, and the window logic untouched:
+//
+//   (a) THE f16 P TILE NO LONGER ROUND-TRIPS THROUGH SHARED MEMORY. Round 5 stored the f16 P
+//       fragment to `sP` and `load_matrix_sync`ed it back because the WMMA API cannot
+//       reinterpret an f32 accumulator fragment as an f16 `matrix_a` operand. Raw
+//       `mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32` can: the m16n8k16 A-fragment and
+//       the m16n8 D-fragment put a lane's two f16 of a k-pair at EXACTLY the registers where
+//       its two f32 of the same k-pair already sit, so P's A-fragment is `cvt` + `mov.b32` on
+//       values already in registers (`fa2_pk`). `sP`, its window and one of the three per-key-
+//       block `__syncthreads()` disappear with it.
+//   (b) THE EPILOGUE WRITES STRAIGHT TO GLOBAL. The f32 O accumulator's element -> (row, col)
+//       mapping is now specified by the ISA rather than opaque, so position-major O leaves
+//       from registers as float2 (of16=0) or half2 (of16=1): `sO`, its 33.8 KB staging window
+//       and its fence are gone, and with them the epilogue's whole shared round trip.
+//   (c) cp.async K/V DOUBLE BUFFERING — but ONLY WHERE IT IS LEGAL. `cp.async` copies raw
+//       bytes; it cannot convert. The production gemma-3 route reads the RESIDENT f32 KV cache
+//       (kv32=1) and converts in-register at the `__float2half` rounding point the staging pass
+//       applied, so kv32=1 keeps round 5's synchronous load (into ONE buffer — with (a)+(b) the
+//       sP/sO windows are gone, so the single-buffered kernel is smaller than round 5's and the
+//       exposed latency is the same, while two of the three fences are still deleted). The f16
+//       route (kv32=0, the control arm and the probe's attribution baseline) gets the full 7B
+//       FA2 treatment: two rotating buffers, the tile for kb+1 in flight while kb computes,
+//       `wait_group 1`, and blocks past `kb_max` skipped-with-an-empty-commit so the group
+//       accounting stays correct on the last iterations.
+//
+// WHAT IS *NOT* TOUCHED, because it is what makes the kernel gemma-3's: the key-block-range
+// WINDOW (`kb_min` from the CTA's first query row's `lo`, monotone in `qpos`; the per-element
+// predicate only on blocks that straddle a boundary), the kv32 in-register convert, the of16
+// pre-staged-A output, the device-pointer scale folded into the Q f32->f16 conversion at
+// `_pf_q_pack_hm_f16`'s rounding point, and the mask predicate verbatim
+// (`j > qpos || j < lo || j >= n_keys`).
+//
+// NUMERICS are round 5's verbatim at every rounding point: f32 running max/sum, f32 O
+// accumulation, `__expf`, P rounded to f16 RNe at the same point (`fa2_pk` packs each half
+// independently, bit-identical to the per-element `__float2half`), O divided in f32 and rounded
+// once at the store. Only the summation ORDER changes again (m16n8k16 accumulates 16 keys per
+// instruction where WMMA's m16n16k16 accumulated 16 as two 8-wide halves), so — exactly like
+// round 5's kernel and #994's 7B FA2 — the lever carries its own build flag and goes through
+// the token-identity gates before any speed claim.
+//
+// LAYOUT CONTRACT is the 7B FA2 one and is proved by the SAME on-device probe
+// (`tc_shim_fa2_layout_probe`, -311): one probe pins the A mapping, both B roles (K loaded
+// non-transposed, V transposed) and the D mapping in exact small integers. The session falls
+// back to round 5's WMMA kernel on -301/-304/-305/-311, which itself keeps its own
+// decline-to-five-pass-chain fallback — a declined lever never masquerades.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+// Synchronous K/V tile load (DBUF=0) — round 5's loader verbatim, destination-parameterised.
+// KV32 converts f32->f16 in-register (two float4 loads per 8 elements, `__floats2half2_rn`);
+// the f16 route is one uint4 load per 8 elements. Rows past the cache zero-fill.
+template <int BN, bool KV32>
+__device__ __forceinline__ void fa_g3v2_load_kv_sync(__half* dK, __half* dV,
+                                                     const void* kgv, const void* vgv, int kb,
+                                                     int n_keys, int hk, int d, int kvld,
+                                                     int tid) {
+    const int nvec = BN * (FA_D / 8);
+    const int kbase = kb * BN;
+    for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+        int r = t / (FA_D / 8);
+        int c8 = t - r * (FA_D / 8);
+        int gj = kbase + r;
+        uint4 kv = make_uint4(0u, 0u, 0u, 0u);
+        uint4 vv = make_uint4(0u, 0u, 0u, 0u);
+        if (gj < n_keys) {
+            const size_t off = (size_t)gj * kvld + hk * d + c8 * 8;
+            if (KV32) {
+                const float* kf = reinterpret_cast<const float*>(kgv) + off;
+                const float* vf = reinterpret_cast<const float*>(vgv) + off;
+                float4 k0 = *reinterpret_cast<const float4*>(kf);
+                float4 k1 = *reinterpret_cast<const float4*>(kf + 4);
+                float4 v0 = *reinterpret_cast<const float4*>(vf);
+                float4 v1 = *reinterpret_cast<const float4*>(vf + 4);
+                __half2* kp = reinterpret_cast<__half2*>(&kv);
+                __half2* vp = reinterpret_cast<__half2*>(&vv);
+                kp[0] = __floats2half2_rn(k0.x, k0.y);
+                kp[1] = __floats2half2_rn(k0.z, k0.w);
+                kp[2] = __floats2half2_rn(k1.x, k1.y);
+                kp[3] = __floats2half2_rn(k1.z, k1.w);
+                vp[0] = __floats2half2_rn(v0.x, v0.y);
+                vp[1] = __floats2half2_rn(v0.z, v0.w);
+                vp[2] = __floats2half2_rn(v1.x, v1.y);
+                vp[3] = __floats2half2_rn(v1.z, v1.w);
+            } else {
+                kv = *reinterpret_cast<const uint4*>(
+                    reinterpret_cast<const __half*>(kgv) + off);
+                vv = *reinterpret_cast<const uint4*>(
+                    reinterpret_cast<const __half*>(vgv) + off);
+            }
+        }
+        *reinterpret_cast<uint4*>(dK + r * FA_LD + c8 * 8) = kv;
+        *reinterpret_cast<uint4*>(dV + r * FA_LD + c8 * 8) = vv;
+    }
+}
+
+// cp.async K/V tile load (DBUF=1, f16 sources only) — #994's `fa2_load_kv` verbatim,
+// destination-parameterised. Blocks past `kb_max` are never read and are skipped entirely;
+// the caller still commits an (empty) group, which is what keeps `wait_group 1` counting
+// correctly on the last iterations. An out-of-cache key row is zero-filled BY THE COPY ENGINE
+// (`bytes` = 0), not by a predicated register store.
+template <int BN>
+__device__ __forceinline__ void fa_g3v2_load_kv_async(__half* dK, __half* dV, const __half* kg,
+                                                      const __half* vg, int kb, int kb_max,
+                                                      int n_keys, int hk, int d, int kvld,
+                                                      int tid) {
+    if (kb > kb_max) return;
+    const int kbase = kb * BN;
+#pragma unroll
+    for (int i = 0; i < BN * (FA_D / 8) / (FA_NWARP * 32); i++) {
+        const int t = tid + i * FA_NWARP * 32;
+        const int r = t >> 4;                 // FA_D / 8 == 16 vector columns per row
+        const int c8 = t & 15;
+        const int gj = kbase + r;
+        const int gc = gj < n_keys ? gj : n_keys - 1;   // stay in bounds even when zero-filling
+        const size_t off = (size_t)gc * kvld + hk * d + c8 * 8;
+        const int sz = gj < n_keys ? 16 : 0;
+        fa2_cp16(dK + r * FA_LD + c8 * 8, kg + off, sz);
+        fa2_cp16(dV + r * FA_LD + c8 * 8, vg + off, sz);
+    }
+}
+
+// DBUF=1: TWO rotating K+V buffers = 4 tiles = 8*BN*FA_LD BYTES (34.8 KB at BN=32, 69.6 KB at
+// BN=64, 139.3 KB at BN=128 — the same window #994's fa2_smem_bytes sizes, and the Q tile is
+// staged inside the second buffer, legal iff FA_BM <= 2*BN, host-checked). DBUF=0: ONE K window
+// that doubles as the Q staging window (Q is dead the moment its A-fragments are in registers,
+// and the first K load happens behind a `__syncthreads`) plus one V window. Note the BYTES vs
+// HALVES distinction #994's first cut got wrong — the formula states sizeof explicitly.
+template <int BN, int DBUF>
+static inline int fa_g3v2_smem_bytes(void) {
+    if (DBUF) return 4 * BN * FA_LD * (int)sizeof(__half);
+    int kwin = (FA_BM > BN) ? FA_BM : BN;
+    return (kwin + BN) * FA_LD * (int)sizeof(__half);
+}
+
+template <int BN, bool KV32, bool OF16, int DBUF>
+__global__ void __launch_bounds__(FA_NWARP * 32)
+_fa_g3_window2_kernel(const float* __restrict__ qg, const void* __restrict__ kgv,
+                      const void* __restrict__ vgv, void* __restrict__ ogv,
+                      const float* __restrict__ scalep,
+                      int m, int n_keys, int h_q, int h_kv, int d, int pos_base, int window) {
+    // The scale rides a DEVICE POINTER, not a float argument (see `_fa_causal_kernel`).
+    const float scale = *scalep;
+    extern __shared__ __half smem[];
+    const int KVH = BN * FA_LD;                     // halves in one K (or V) tile
+    // Rotating buffers are addressed by ARITHMETIC on `smem`, never through a local pointer
+    // array: a runtime index into such an array forces it into local memory (#994's note).
+    __half* sQ = DBUF ? (smem + 2 * KVH) : smem;    // DBUF=1: buffer 1, dead after the A loads
+    const int KWIN = (FA_BM > BN) ? FA_BM : BN;     // DBUF=0: rows of the shared K/Q window
+
+    const int tid = threadIdx.x;
+    const int warp = tid >> 5;
+    const int lane = tid & 31;
+    const int qi = blockIdx.x;
+    const int h = blockIdx.y;
+    const int hk = h / (h_q / h_kv);
+    const int row0 = qi * FA_BM;
+    const int kvld = h_kv * d;
+    const int qld = h_q * d;
+    // ldmatrix address generators (#994's, hoisted): lane>>3 selects which of the four 8x8
+    // sub-matrices this lane names a row of.
+    const int lr8 = ((lane >> 3) & 1) << 3;         // 0 or 8
+    const int lc8 = ((lane >> 3) & 2) << 2;         // 0 or 8
+    const int l7 = lane & 7;
+    const int rlo = lane >> 2;                      // this lane's row inside the warp's 16
+    const int chi = (lane & 3) << 1;                // this lane's column base in an 8-wide tile
+
+    int rows_here = m - row0;
+    if (rows_here > FA_BM) rows_here = FA_BM;
+    int kb_causal = (pos_base + row0 + rows_here - 1) / BN;
+    int kb_keys = (n_keys - 1) / BN;
+    int kb_max = kb_causal < kb_keys ? kb_causal : kb_keys;
+    // ── the window's key-block floor, round 5's verbatim: `lo(qpos) = max(0, qpos+1-window)`
+    //    is monotone in qpos, so the CTA's FIRST row has its smallest lo; a block whose last
+    //    key is below that is outside the window for every row this CTA owns and is never
+    //    loaded. ──
+    int kb_min = 0;
+    if (window > 0) {
+        int lo_cta = pos_base + row0 + 1 - window;
+        if (lo_cta > 0) kb_min = lo_cta / BN;
+    }
+    const int qg0 = pos_base + row0 + warp * 16 + rlo;      // global position of row `rlo`
+    const int qg1 = qg0 + 8;
+    const int w_lo0 = (window > 0) ? (qg0 + 1 - window) : 0;
+    const int w_lo1 = (window > 0) ? (qg1 + 1 - window) : 0;
+
+    // ── kb_min in flight FIRST (async only touches buffer 0), then stage Q ──
+    if (DBUF) {
+        fa_g3v2_load_kv_async<BN>(smem, smem + KVH, (const __half*)kgv, (const __half*)vgv,
+                                  kb_min, kb_max, n_keys, hk, d, kvld, tid);
+        fa2_cp_commit();
+    }
+    {   // Q tile: f32 -> f16 with the attention scale folded in, at `_pf_q_pack_hm_f16`'s
+        // rounding point — round 5's verbatim, into the overlay window instead of its own.
+        const int nvec = FA_BM * (FA_D / 4);
+        for (int t = tid; t < nvec; t += FA_NWARP * 32) {
+            int r = t / (FA_D / 4);
+            int c4 = t - r * (FA_D / 4);
+            int gr = row0 + r;
+            float4 val = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+            if (gr < m)
+                val = *reinterpret_cast<const float4*>(qg + (size_t)gr * qld + h * d + c4 * 4);
+            __half2* dst = reinterpret_cast<__half2*>(sQ + r * FA_LD + c4 * 4);
+            dst[0] = __floats2half2_rn(val.x * scale, val.y * scale);
+            dst[1] = __floats2half2_rn(val.z * scale, val.w * scale);
+        }
+    }
+    __syncthreads();
+    // ── Q A-fragments: loaded ONCE per CTA, reused across every key block. One ldmatrix.x4
+    //    per 16-column k-step yields that step's a0..a3 directly. ──
+    unsigned qa[FA_D / 16][4];
+#pragma unroll
+    for (int ks = 0; ks < FA_D / 16; ks++)
+        fa2_ldsm4(qa[ks][0], qa[ks][1], qa[ks][2], qa[ks][3],
+                  sQ + (warp * 16 + lr8 + l7) * FA_LD + ks * 16 + lc8);
+    __syncthreads();                                // sQ is dead: the K window may be written
+    if (DBUF) {
+        fa_g3v2_load_kv_async<BN>(smem + 2 * KVH, smem + 3 * KVH, (const __half*)kgv,
+                                  (const __half*)vgv, kb_min + 1, kb_max, n_keys, hk, d, kvld,
+                                  tid);
+        fa2_cp_commit();
+    }
+
+    float oacc[FA_D / 8][4];
+#pragma unroll
+    for (int i = 0; i < FA_D / 8; i++) {
+        oacc[i][0] = 0.0f; oacc[i][1] = 0.0f; oacc[i][2] = 0.0f; oacc[i][3] = 0.0f;
+    }
+    constexpr int NT = BN / 8;                      // m16n8 score tiles per key block
+    const float NEG = -1.0e30f;
+    float m0 = NEG, m1 = NEG, l0 = 0.0f, l1 = 0.0f;
+
+    for (int kb = kb_min; kb <= kb_max; kb++) {
+        __half* bk;
+        __half* bv;
+        if (DBUF) {
+            const int cur = (kb - kb_min) & 1;      // buffer rotation counts from kb_min
+            bk = smem + cur * 2 * KVH;
+            bv = bk + KVH;
+            fa2_cp_wait1();
+            __syncthreads();
+        } else {
+            bk = smem;
+            bv = smem + KWIN * FA_LD;
+            fa_g3v2_load_kv_sync<BN, KV32>(bk, bv, kgv, vgv, kb, n_keys, hk, d, kvld, tid);
+            __syncthreads();
+        }
+        const __half* sK = bk;
+        const __half* sV = bv;
+
+        // ── S[16,BN] = Q[16,d] @ K^T[d,BN], f32 accumulate. All of one k-step's B fragments
+        //    are loaded before any of its mmas issue, so the loads overlap. ──
+        float s[NT][4];
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            s[nt][0] = 0.0f; s[nt][1] = 0.0f; s[nt][2] = 0.0f; s[nt][3] = 0.0f;
+        }
+#pragma unroll
+        for (int ks = 0; ks < FA_D / 16; ks++) {
+#pragma unroll
+            for (int np = 0; np < BN / 16; np++) {
+                unsigned b0, b1, b2, b3;
+                fa2_ldsm4(b0, b1, b2, b3,
+                          sK + (np * 16 + lr8 + l7) * FA_LD + ks * 16 + lc8);
+                fa2_mma(s[2 * np], qa[ks], b0, b2);         // n-tile np*16
+                fa2_mma(s[2 * np + 1], qa[ks], b1, b3);     // n-tile np*16 + 8
+            }
+        }
+
+        // ── causal + window + cache-tail mask, round 5's predicate verbatim in the raw-mma
+        //    D layout: s[nt][0,1] are row `rlo`, s[nt][2,3] row `rlo+8`, at columns
+        //    nt*8 + chi + {0,1}. The whole block is unmasked when its LAST key is at or below
+        //    this warp's FIRST query row, inside the cache, and at or above this warp's LAST
+        //    row's window floor, so the per-element predicate only runs on boundary blocks. ──
+        const bool need_mask = (kb * BN + BN - 1 > qg0) || (kb * BN + BN - 1 >= n_keys) ||
+                               (window > 0 && kb * BN < w_lo1);
+        if (need_mask) {
+#pragma unroll
+            for (int nt = 0; nt < NT; nt++) {
+                const int j = kb * BN + nt * 8 + chi;
+                if (j > qg0 || j < w_lo0 || j >= n_keys) s[nt][0] = NEG;
+                if (j + 1 > qg0 || j + 1 < w_lo0 || j + 1 >= n_keys) s[nt][1] = NEG;
+                if (j > qg1 || j < w_lo1 || j >= n_keys) s[nt][2] = NEG;
+                if (j + 1 > qg1 || j + 1 < w_lo1 || j + 1 >= n_keys) s[nt][3] = NEG;
+            }
+        }
+
+        // ── online softmax: row max over this block, alpha rescale of O, exp into P ──
+        float t0 = NEG, t1 = NEG;
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            t0 = fmaxf(t0, fmaxf(s[nt][0], s[nt][1]));
+            t1 = fmaxf(t1, fmaxf(s[nt][2], s[nt][3]));
+        }
+        t0 = fa_wmax(t0);
+        t1 = fa_wmax(t1);
+        const float n0 = fmaxf(m0, t0), n1 = fmaxf(m1, t1);
+        const float a0 = __expf(m0 - n0), a1 = __expf(m1 - n1);
+#pragma unroll
+        for (int i = 0; i < FA_D / 8; i++) {
+            oacc[i][0] *= a0; oacc[i][1] *= a0;
+            oacc[i][2] *= a1; oacc[i][3] *= a1;
+        }
+        float s0 = 0.0f, s1 = 0.0f;
+#pragma unroll
+        for (int nt = 0; nt < NT; nt++) {
+            const float p0 = __expf(s[nt][0] - n0), p1 = __expf(s[nt][1] - n0);
+            const float p2 = __expf(s[nt][2] - n1), p3 = __expf(s[nt][3] - n1);
+            s0 += p0 + p1; s1 += p2 + p3;
+            s[nt][0] = p0; s[nt][1] = p1; s[nt][2] = p2; s[nt][3] = p3;
+        }
+        s0 = fa_wsum(s0);
+        s1 = fa_wsum(s1);
+        l0 = l0 * a0 + s0;
+        l1 = l1 * a1 + s1;
+        m0 = n0; m1 = n1;
+
+        // ── O[16,d] += P[16,BN] @ V[BN,d]. P's A-fragment for k-step `ks` is the four f32 of
+        //    score tiles 2ks / 2ks+1 converted and packed in place — no shared memory, no
+        //    fence, and the round-trip round 5 paid per key block is gone. ──
+#pragma unroll
+        for (int ks = 0; ks < BN / 16; ks++) {
+            unsigned pa[4];
+            pa[0] = fa2_pk(s[2 * ks][0], s[2 * ks][1]);
+            pa[1] = fa2_pk(s[2 * ks][2], s[2 * ks][3]);
+            pa[2] = fa2_pk(s[2 * ks + 1][0], s[2 * ks + 1][1]);
+            pa[3] = fa2_pk(s[2 * ks + 1][2], s[2 * ks + 1][3]);
+#pragma unroll
+            for (int np = 0; np < FA_D / 16; np++) {
+                unsigned b0, b1, b2, b3;
+                fa2_ldsm4t(b0, b1, b2, b3,
+                           sV + (ks * 16 + lr8 + l7) * FA_LD + np * 16 + lc8);
+                fa2_mma(oacc[2 * np], pa, b0, b1);          // dims np*16 .. +7
+                fa2_mma(oacc[2 * np + 1], pa, b2, b3);      // dims np*16+8 .. +15
+            }
+        }
+        __syncthreads();                            // this iteration's tiles are dead
+        if (DBUF) {
+            fa_g3v2_load_kv_async<BN>(bk, bv, (const __half*)kgv, (const __half*)vgv, kb + 2,
+                                      kb_max, n_keys, hk, d, kvld, tid);
+            fa2_cp_commit();
+        }
+    }
+
+    // ── epilogue: divide by the row sums and write position-major STRAIGHT TO GLOBAL —
+    //    d0/d1 are (row rlo, cols nt*8+chi and +1) = one aligned float2/half2; d2/d3 are row
+    //    rlo+8 at the same columns. No shared staging, no fence, and the f32->f16 rounding
+    //    (OF16) lands on the identical product round 5's staged epilogue rounded. ──
+    const float inv0 = (l0 > 0.0f) ? (1.0f / l0) : 0.0f;
+    const float inv1 = (l1 > 0.0f) ? (1.0f / l1) : 0.0f;
+    const int r0g = row0 + warp * 16 + rlo;
+    const int r1g = r0g + 8;
+    const bool w0 = r0g < m, w1 = r1g < m;
+#pragma unroll
+    for (int nt = 0; nt < FA_D / 8; nt++) {
+        const int c = nt * 8 + chi;
+        if (OF16) {
+            __half* o16 = reinterpret_cast<__half*>(ogv);
+            if (w0) *reinterpret_cast<__half2*>(o16 + (size_t)r0g * qld + h * d + c) =
+                        __floats2half2_rn(oacc[nt][0] * inv0, oacc[nt][1] * inv0);
+            if (w1) *reinterpret_cast<__half2*>(o16 + (size_t)r1g * qld + h * d + c) =
+                        __floats2half2_rn(oacc[nt][2] * inv1, oacc[nt][3] * inv1);
+        } else {
+            float* o32 = reinterpret_cast<float*>(ogv);
+            if (w0) *reinterpret_cast<float2*>(o32 + (size_t)r0g * qld + h * d + c) =
+                        make_float2(oacc[nt][0] * inv0, oacc[nt][1] * inv0);
+            if (w1) *reinterpret_cast<float2*>(o32 + (size_t)r1g * qld + h * d + c) =
+                        make_float2(oacc[nt][2] * inv1, oacc[nt][3] * inv1);
+        }
+    }
+}
+
+static int g_fa_g3v2_attr_done = 0;
+// [bn index: 0=32, 1=64, 2=128][kv32][of16][dbuf] = 1 once the opt-in shared-memory attribute
+// was granted for that exact instantiation (#994's per-instantiation rule: a shape that cannot
+// fit declines ONLY ITSELF with -305 instead of taking the whole table down).
+static int g_fa_g3v2_smem_ok[3][2][2][2] = {{{{0}}}};
+
+// Every instantiation the host entry can select, listed once so the attribute opt-in and the
+// dispatch switch cannot drift apart. DBUF=1 exists only for KV32=false: cp.async copies raw
+// bytes and cannot convert, so the resident-f32 route has no async form (see (c) above).
+#define FA_G3V2_INSTANCES(X)                                                    \
+    X(32, true, false, 0) X(32, true, true, 0)                                  \
+    X(32, false, false, 0) X(32, false, true, 0)                                \
+    X(32, false, false, 1) X(32, false, true, 1)                                \
+    X(64, true, false, 0) X(64, true, true, 0)                                  \
+    X(64, false, false, 0) X(64, false, true, 0)                                \
+    X(64, false, false, 1) X(64, false, true, 1)                                \
+    X(128, true, false, 0) X(128, true, true, 0)                                \
+    X(128, false, false, 0) X(128, false, true, 0)                              \
+    X(128, false, false, 1) X(128, false, true, 1)
+
+static int64_t fa_g3v2_set_attrs(void) {
+    if (g_fa_g3v2_attr_done) return 0;
+#define FA_G3V2_ATTR(BN, KV32, OF16, DBUF)                                            \
+    {                                                                                 \
+        int sm_ = fa_g3v2_smem_bytes<BN, DBUF>();                                     \
+        cudaError_t e_ = cudaFuncSetAttribute(                                        \
+            _fa_g3_window2_kernel<BN, KV32, OF16, DBUF>,                              \
+            cudaFuncAttributeMaxDynamicSharedMemorySize, sm_);                        \
+        g_fa_g3v2_smem_ok[fa2_bn_idx(BN)][(KV32) ? 1 : 0][(OF16) ? 1 : 0][DBUF] =     \
+            (e_ == cudaSuccess) ? 1 : 0;                                              \
+        if (e_ != cudaSuccess)                                                        \
+            fprintf(stderr,                                                           \
+                    "[tc_shim] FA-G3v2 BN=%d KV32=%d OF16=%d DBUF=%d DECLINED: %d B " \
+                    "of dynamic shared memory is not grantable here (%s) — that "      \
+                    "shape keeps the previous kernel.\n",                             \
+                    (BN), (int)(KV32), (int)(OF16), (DBUF), sm_,                      \
+                    cudaGetErrorString(e_));                                          \
+    }
+    FA_G3V2_INSTANCES(FA_G3V2_ATTR)
+#undef FA_G3V2_ATTR
+    g_fa_g3v2_attr_done = 1;
+    return 0;
+}
+
+// The round-6 v2 twin of tc_shim_fa_g3_window_async: same operands, same layouts, same
+// contract, plus `dbuf` — 1 selects the cp.async double-buffered route and is REJECTED (-305)
+// together with kv32=1, because cp.async cannot convert f32. Returns -301 unsupported head_dim,
+// -304 non-integral GQA, -305 an out-of-table (bn, kv32, of16, dbuf) selection or an ungranted
+// shared-memory window, -311 the on-device raw-mma layout probe disagreed (the caller MUST fall
+// back to round 5's WMMA kernel), else the cudaError_t. Enqueues on the shim stream, no sync.
+extern "C" int64_t tc_shim_fa_g3_window2_async(const void* q_f32, const void* k, const void* v,
+                                               void* o, const void* scale_f32,
+                                               int64_t m, int64_t n_keys,
+                                               int64_t h_q, int64_t h_kv, int64_t d,
+                                               int64_t pos_base, int64_t window,
+                                               int64_t bn, int64_t kv32, int64_t of16,
+                                               int64_t dbuf) {
+    if (d != FA_D) return -301;
+    if (m <= 0 || n_keys <= 0 || h_kv <= 0 || h_q <= 0) return 0;
+    if ((h_q % h_kv) != 0) return -304;
+    int ibn = (bn == 32) ? 32 : ((bn == 128) ? 128 : 64);
+    bool bkv = (kv32 != 0), bof = (of16 != 0);
+    int idb = (dbuf != 0) ? 1 : 0;
+    if (idb && bkv) return -305;                    // cp.async cannot convert f32 K/V
+    // the Q tile is staged inside rotating buffer 1 (2*BN*FA_LD halves): legal iff FA_BM <= 2*BN
+    if (idb && FA_BM > 2 * ibn) return -305;
+    int64_t r = tc_shim_fa2_layout_probe();
+    if (r != 0) return r;
+    r = fa_g3v2_set_attrs();
+    if (r != 0) return r;
+    if (!g_fa_g3v2_smem_ok[fa2_bn_idx(ibn)][bkv ? 1 : 0][bof ? 1 : 0][idb]) return -305;
+    dim3 grid((unsigned)((m + FA_BM - 1) / FA_BM), (unsigned)h_q);
+    dim3 block(FA_NWARP * 32);
+    int im = (int)m, ink = (int)n_keys, ihq = (int)h_q, ihkv = (int)h_kv, id = (int)d;
+    int ipos = (int)pos_base, iwin = (int)window;
+    const float* q = (const float*)q_f32;
+    const float* sp = (const float*)scale_f32;
+    cudaError_t e;
+#define FA_G3V2_LAUNCH(BN, KV32, OF16, DBUF)                                        \
+    if (ibn == BN && bkv == KV32 && bof == OF16 && idb == DBUF) {                   \
+        _fa_g3_window2_kernel<BN, KV32, OF16, DBUF>                                 \
+            <<<grid, block, fa_g3v2_smem_bytes<BN, DBUF>(), g_stream>>>(            \
+                q, k, v, o, sp, im, ink, ihq, ihkv, id, ipos, iwin);                \
+    } else
+    FA_G3V2_INSTANCES(FA_G3V2_LAUNCH)
+    {
+        return -305;   // unreachable: ibn/idb are normalized and the table is checked above
+    }
+#undef FA_G3V2_LAUNCH
+    e = cudaGetLastError();
+    if (e != cudaSuccess) {
+        fprintf(stderr,
+                "[tc_shim] FA-G3v2 LAUNCH FAILED: %s | bn=%lld kv32=%lld of16=%lld dbuf=%lld "
+                "smem=%d B grid=%ux%u block=%u m=%lld n_keys=%lld pos=%lld window=%lld\n",
+                cudaGetErrorString(e), (long long)bn, (long long)kv32, (long long)of16,
+                (long long)dbuf, fa_g3v2_smem_bytes<64, 0>(), grid.x, grid.y, block.x,
+                (long long)m, (long long)n_keys, (long long)pos_base, (long long)window);
+    }
+    record_error((int64_t)e);
+    return (int64_t)e;
+}
+
 #else   // TC_SHIM_NO_WMMA
 extern "C" int64_t tc_shim_fa_layout_probe(void) { return -310; }
 extern "C" int64_t tc_shim_fa_causal_async(const void*, const void*, const void*, void*,
@@ -2850,6 +3328,10 @@ extern "C" int64_t tc_shim_fa_g3_window_async(const void*, const void*, const vo
                                               const void*, int64_t, int64_t, int64_t, int64_t,
                                               int64_t, int64_t, int64_t, int64_t, int64_t,
                                               int64_t) { return -301; }
+extern "C" int64_t tc_shim_fa_g3_window2_async(const void*, const void*, const void*, void*,
+                                               const void*, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t) { return -301; }
 extern "C" int64_t tc_shim_swiglu_f16_fastexp_async(const void*, void*, int64_t, int64_t) {
     return -302;
 }

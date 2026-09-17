@@ -19046,3 +19046,236 @@ manifest OK at 649 declared functions in 122 modules).
 4. **Publication.** pp256 (1.2931x), pp1024 (1.1038x) and rag4096 (1.0135x) are all wins and are
    candidates for `gitbook/benchmarks/nvidia-llm-throughput.md`. Per the publish-wins-only rule and
    this front's brief, nothing was published to gitbook here; that is a top-level decision.
+
+---
+
+## ROUND 6 — gemma-3-27b-it H200 vs TensorRT-LLM 1.2.1: the raw-mma FA2 port + the f16-KV twin (BN32) widen every raced cell (PR #1006, 2026-09-17)
+
+Front: round 6 of the gemma-3-27b-it CUDA prefill seam, branch `feat/gemma-fa2-port` off
+`feat/gemma-fused-tc-attn` (#998), VM `trtllm-gemma-us-west1-c` (8xH200 spot, GPU1, clocks
+pinned 1410 MHz — read before AND after every cell, 1 Hz sampler for the duration of every
+cell, watchdog-wrapped). #998 flipped all three cells (pp256 1.2931x / pp1024 1.1038x /
+rag4096 1.0135x); this round's brief: widen the margins, priority rag4096 whose 1.3% was
+fragile, without regressing any cell and without touching the published-correct numerics.
+**Both achieved: rag4096's margin goes 1.3% → 9.6%, pp1024's 10.4% → 17.8%, and pp256's
+kernel-level evidence is a further win (cell not re-timed this round — evidence class below).**
+Nothing published to gitbook by this front and no merge performed; #998 must merge first and
+this branch rebases onto main when it does.
+
+### FINAL STANDINGS — `R6_kv16_bn32` = #998's five-lever stack + FA2 + KV16 + BN32
+
+TRT-LLM 1.2.1 re-served FRESH in the same session (files mtime 2026-09-17T00:18Z; stored
+config byte-identical: pytorch backend, FLASHINFER, bf16, tp 1, 1410 MHz, 3 warmup + 7
+measured, ignore_eos, 4096 raw prompt ids): pp1024 110.744 ms reproduces the stored 110.782
+within -0.034% and rag4096 426.339 reproduces 426.766 within -0.100% — both SAME-SESSION
+trusted. pp256's re-serve (40.728) missed the stored 41.520 by -1.908% → labelled
+CROSS-SESSION; moot for the table because pp256 was not re-timed this round.
+
+| cell | #998 column | `R6_base` rebuild | **round 6 `R6_kv16_bn32`** | delta | TRT-LLM | #998 ratio | **round-6 ratio** |
+|---|---|---|---|---|---|---|---|
+| pp256 | 32.108 ms | not re-timed | not re-timed (gate ALL_PASS; probe -30% on the attention kernel) | — | 40.728 (CROSS-SESSION) | 1.2931x | 1.2931x stands |
+| pp1024 | 100.361 ms | 100.595 ms | **94.022 ms** | **-6.573 ms (-6.53%)** | 110.744 | 1.1038x | **1.1779x** |
+| rag4096 | 421.085 ms | 420.531 ms | **389.033 ms** | **-31.498 ms (-7.49%)** | 426.339 | 1.0135x | **1.0959x** |
+
+`R6_base` is #998's R5_all2 flag set rebuilt from this branch against the fresh checkpoint;
+it reproduces the #998 measured column to +0.23% (pp1024) and -0.13% (rag4096), so the
+baseline arm IS the published arm and every delta is against the numbers #998 reported.
+
+Sweep protocol: 3 warmup + 7 measured per cell, arms interleaved run-by-run, ARM_A re-run at
+the end of every prompt group (A..B..A). rag4096 carries TWO independent brackets pooled
+(n=14 per arm; bracket medians 389.108 / 388.957 ship, 420.362 / 420.70 base-class); pp1024
+one bracket (n=7) — the 20-run-median target was traded against the 6 h VM-on hard cap in
+favour of the priority cell, and the deviation is stated rather than hidden. Bracket drift
+armor on R6_base: rag4096 -0.054% (0.227 ms), pp1024 -0.312% (0.314 ms) — the lever deltas
+exceed their armor by 139x and 21x; both RESOLVED. rel-IQR: 0.46/0.32% (rag base/ship),
+0.31/0.23% (pp1024) — all <= 1%. Off-pin census: one measured cell
+(`r6_R6_base_rag4096_r2`) logged 1/109 samples at 1380 MHz; per the zero-tolerance rule it
+was RE-TAKEN clean (421.820 ms, offpin=0, inside the base distribution) and the median
+re-pooled; the final results JSON reports **zero off-pin measured cells**. One warmup cell
+showed the same single-sample blip; warmups never enter medians.
+
+### The levers (all build flags, default OFF; flag-off builds byte-unmodified)
+
+1. `-D ALGENTA_G3_PF_FA2` — `_fa_g3_window2_kernel`: #994's 7B FA2 techniques ported onto
+   round 5's windowed WMMA kernel (the round's ranked target #1; round 5's decomposition named
+   `fused_tc_attention` the largest non-GEMM bucket, 86.379 ms whole-process at rag4096).
+   (a) the f16 P tile's A-fragment is packed IN REGISTERS via raw
+   `mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32` — the m16n8k16 A layout and the m16n8
+   D layout put a lane's k-pair at the same registers, so `sP`, its shared round trip and one
+   of the three per-key-block fences disappear; (b) the O epilogue writes position-major
+   STRAIGHT TO GLOBAL (float2/half2) — `sO`, its 33.8 KB window and its fence disappear;
+   (c) cp.async K/V double buffering on the f16 route ONLY: `kv32=1` keeps round 5's
+   synchronous in-register-convert load because cp.async copies raw bytes and cannot convert
+   (the entry rejects `dbuf=1 + kv32=1` with -305 before any launch, and the probe checks the
+   rejection). The WINDOW is untouched: `kb_min` key-block range (lo monotone in qpos), the
+   per-element predicate only on boundary blocks, the mask predicate verbatim, the kv32
+   in-register convert at the identical `__float2half` rounding point, the of16 pre-staged-A
+   output. Numerics: every rounding point is round 5's verbatim; only the summation ORDER
+   changes (m16n8k16 accumulates 16 keys per instruction where WMMA's m16n16k16 accumulated
+   16 as two 8-wide halves) — the same class as round 5's kernel and #994's FA2, hence its own
+   flag and token-identity gate. Layout contract proved by #994's on-device probe (-311); a
+   declined v2 falls back per-call to round 5's WMMA kernel, which keeps its own
+   decline-to-five-pass-chain fallback — a declined lever never masquerades.
+2. `-D ALGENTA_G3_PF_KV16` — the f16 K/V staging twin became a SHIP CANDIDATE. Round 5 chose
+   kv32=1 from a traffic model (4 B/elem in-register vs 6+2 staged) that its own probe could
+   not contradict — the probe's timing section was measuring launch gaps (integrity note 1).
+   With working timings the f16-source kernel wins at EVERY raced shape: a layer's f16 K+V at
+   n_keys=4096 is 33.5 MB, re-read by every q-head CTA through the H200's 60 MB L2, where the
+   f32 form is 67 MB and misses. The staging pass (upgraded to the bit-exact v8 twin) costs
+   4.773 ms measured at rag4096 against a 36.16 ms attention-kernel saving. Operands are
+   BIT-IDENTICAL between the routes (probe: identical max_abs/rms at all twelve shapes —
+   re-earned for v2 this round).
+3. `-D ALGENTA_G3_PF_BN32` / `_BN128` — key-block-width override (round 5's ledger lever 3,
+   "untuned"). Probe sweep (median of 30, 12 shapes, 0 FAIL at every width): BN=32 + kv16 +
+   cp.async wins EVERYWHERE — pp1024 local 91.0 us vs round 5's production path 198.7 (-54%),
+   rag t4 local 125.0 vs 255.1 (-51%), rag t4 global 426.8 vs 886.2 (-52%), pp256 21.5 vs
+   30.8 (-30%). The dbuf crossover is BN-dependent (0 at BN32 — the half-width tile restores
+   the occupancy the second buffer costs; 2048 at BN64, where dbuf loses at n=1024): both are
+   probe measurements wired as shape facts in the dispatch, never model names.
+
+### TARGET #2 ANSWERED BEFORE ATTACKING — the GEMM bucket is AT PARITY AND AT THE ROOF
+
+TRT-LLM's measured rag4096 request (`trtllmfull_rag4096_kernels.json`, 392.93 ms GPU busy,
+1221 instances): nvjet bf16 GEMMs 296.55 ms (162.97 n=62 gate/up-class + 99.92 n=124
+down+o_proj + 32.97 n=62 qkv + 0.68 lm_head), flashinfer attention 21.01, RMSNorm 25.88,
+elementwise 45.84, rope+appendKV 3.47. algenta's measured-request GEMM by exact
+priming-trace subtraction (this round's `mr_extract`/`mr_subtract` over the R6 nsys pairs):
+**292.36 ms (R6_base) / 292.05 ms (ship) — identical between arms, 1.5% FASTER than TRT-LLM's
+296.55**. Exact-FLOP model (209.7 TF per rag4096 prefill over 62 layers + lm_head): both
+engines at ~707-718 TFLOP/s ≈ 100% of the 1410 MHz-pinned dense f16/bf16 ceiling
+(989 x 1410/1980 = 704 estimate). **No GEMM lever exists; the remainder lived in attention
+and rope/kv** — which is what round 6 attacked, per the rank.
+
+### DECOMPOSITION — the lever did exactly what the probe predicted, and nothing else moved
+
+Per-bucket measured-request milliseconds at rag4096 (exact priming-trace subtraction for
+attention/convert/GEMM; instance-share 248/310 for the tile-1024-proportional Mojo kernels,
+attributed by LAUNCH GEOMETRY — 86016x256 = `pf_geglu_rows_f16`, 6144x256 =
+`pf_ropewrt_warps` (ROPE2; Mojo hashes the name so the rope bucket no longer catches it),
+1024x256 = the `_pf_norm_accum_rows` pair):
+
+| bucket (measured request) | R6_base | R6_kv16_bn32 | TRT-LLM 1.2.1 |
+|---|---|---|---|
+| gemm_projection (cuBLAS f16 / nvjet bf16) | 292.36 | 292.05 | 296.55 |
+| fused attention kernel | 69.69 | **33.53** | 21.01 (flashinfer) |
+| f16 K/V staging (v8) | 0.00 | 4.77 | — |
+| geglu (f16 activation) | 39.55→31.6 share | 31.63 | 45.84 (elementwise incl. silu+residuals) |
+| norm-accum pair | ~16.2 | ~16.2 | 25.88 (RMSNorm) |
+| rope (ROPE2 warps) | ~6.2 | ~6.2 | 3.47 (rope+appendKV) |
+
+The attention-side net (-36.16 + 4.77 = **-31.39 ms**) equals the measured wall delta
+(-31.498 ms) to 0.3% — the model-level A/B and the per-kernel decomposition agree without a
+residual. Whole-process instance counts reconcile EXACTLY: `_f32_to_f16` 67 (base, = #998's
+prediction) and 935 = 67 + 868 staging (ship: 372 priming + 496 measured, 2 per layer per
+m>=256 pass); fused attention 434 instances in both arms (186 priming + 248 measured);
+whole-process fused time 86.217 → 41.764 ms. Round 5's ROPE2 win is also visible in these
+traces: the block-per-head rope kernel's 36.6 ms (R5_all trace) vs the warps twin's 7.7 ms
+whole-process here.
+
+### EVIDENCE
+
+* Probe: `fa_g3_probe` extended to 10 arms x 12 shapes = **120/120 PASS** against the host
+  double-precision windowed reference (v1 x the four (kv32,of16) combos + v2 x the four
+  production-mapping combos + 2 v2-sync attribution arms), max_abs <= 1.6e-4, rms <= 7.0e-6,
+  v2's error metrics IDENTICAL to v1's at every shape; raw-mma layout probe VERIFIED ON
+  DEVICE; `dbuf=1+kv32=1` rejection REJECTED AS CONTRACTED (-305); BN sweep 64/32/128 x all
+  arms: 0 FAIL at every width. Kernel-level attribution at BN=64 (probe columns v2s vs v1
+  isolate the raw-mma rewrite at equal occupancy; v2D vs v2s isolate cp.async): at pp1024
+  kv16, v1 103.9 → v2s 96.6 (raw-mma -7.0%) → v2D 111.7 (dbuf loses at n=1024/BN64); at rag
+  t4 local, v1 164.1 → v2s ~147 → v2D 141.5.
+* Fixture identity after the stop/start re-stage: all four regenerated fixtures token-IDENTICAL
+  to the pre-stop gate echoes (`check_fixtures_gemma3_round5.py`, FIXTURE_IDENTITY_OK=True).
+* Oracle gates on the FRESH checkpoint (re-earned, not inherited): **R6_kv16_bn32 ALL_PASS**
+  and **R6_base ALL_PASS** — pp256/pp1024/val550 16/16 + 64/64 with bit-identical repeats,
+  rag4096 22/22 + EOS-stop with the oracle EOS at the same index.
+* Flag audit (strings on the shipped binaries + runtime banners): ship carries G3_PF_FA + FA2
+  + KV16 + BN32 + F16NORM + F16MLP + F16ATTN + ROPE2 + TCATTN + STREAM (sha256_16
+  74d420d2063dd252); base carries the #998 set with FA2/KV16/BN32 ABSENT (197adaa8d6102ef0).
+  Runtime: v1 ARMED + v2 ARMED (BN=32, kv32=0, dbuf from n_keys >= 0) on ship; v1-only ARMED
+  (BN=64, kv32=1) on base.
+* Contract regenerated with the project's generators in dependency order; floor 180 → **181**
+  (exactly one new published symbol, `residentk.tc_shim_bridge.tc_fa_g3_window2_async`); all
+  five `--check` gates pass (contract, floor, kernel-inventory 184, capability manifest,
+  runtime-library reference).
+
+### INTEGRITY NOTES
+
+1. **Round 5's probe timing section was measuring launch gaps, not kernels** — cudaEvents
+   recorded on the legacy stream do not order against the shim's non-blocking stream, so every
+   row read 3.5-3.9 us regardless of shape or arm. No round-5 claim rode those numbers (its
+   kv32=1 choice cites the traffic model and its speed claims rode model-level cells), but the
+   defect is why the f16-KV route looked uninteresting in round 5. Fixed with wall-clock +
+   device-sync and documented in the probe header; the fix is what surfaced the KV16 lever.
+2. `ARM_C=${ARM_C:-default}` in this round's harness resurrected a third arm when the chains
+   passed an explicitly EMPTY ARM_C (`:-` fires on empty) — caught in the smoke labels before
+   any timing cell ran; fixed to `${ARM_C-default}`.
+3. One measured cell logged a single 1380 MHz sample (1/109, under 100% load, 239 W — a
+   transient blip class this box has not shown before); re-taken per the zero-tolerance rule,
+   clean, median re-pooled. Reported here by name rather than dropped: `r6_R6_base_rag4096_r2`.
+4. The priming-subtraction's `mojo_per_layer` and `norms` rows are INVALID as printed
+   (negative): the priming capture's last cluster swallows the model-load dequant kernels
+   (304 ms of Mojo weight staging) because load→priming has no >3 ms idle gap. The subtraction
+   is used ONLY for the buckets load does not touch (gemm/attention/convert — load issues no
+   cuBLAS GEMM and no fused attention), and the geometry-attributed Mojo kernels use
+   instance-share instead. Stated so the next round fixes the extractor (cluster from the
+   first fused-attention launch, not by idle gap) rather than trusting the negative rows.
+5. The VM has NO github egress (clone times out) — the tree is tar+scp'd from the local
+   worktree at a pushed commit (`vm_sync_r6.sh` documents it); the audit's branch/head fields
+   read "unknown" on the VM tree by construction.
+6. pp256 evidence class: not re-timed this round (the 6 h VM-on hard cap bought the rag4096
+   second bracket instead). Its gate is ALL_PASS on the fresh checkpoint and the probe has the
+   ship arm's attention kernel at 21.5 us vs the base's 30.8 (-30%) with bit-identical
+   operands; the #998 pp256 column (32.108 ms, 1.2931x) stands unchanged. This mirrors #998's
+   own footnote-1 treatment of ROPE2 at pp256, with the "strictly removes work" argument
+   replaced by direct probe measurement + gate.
+7. pp1024/pp256 carry n=7/no runs against the protocol's 20-run-median target — a stated
+   budget deviation, not an omission: rag4096 (the priority cell) got the second bracket, and
+   pp1024's delta is 21x its drift armor at rel-IQR 0.23-0.31%.
+
+### RANKED NEXT LEVERS (round 7 material)
+
+1. **Attention remainder vs flashinfer** (33.53 + 4.77 measured vs TRT's 21.01): the per-CTA
+   shared-load stream is the binding constraint at FA_BM=64/4 warps. Untested on H200:
+   GQA-packed CTAs (2 q heads share one K/V tile — REFUTED on A100 7B, never tested here) and
+   FA_BM=128 with 8 warps (halves K/V re-reads per row). Both are kernel redesigns that must
+   re-earn the probe; both are the only structural closers left. A wider `G3_PF_TILE`
+   (2048/4096, the 7B CTX8192 precedent) attacks the same re-read amplification at the chunk
+   level and would also lift GEMM m — but it changes chunked-attention order and memory, so it
+   is its own gated lever.
+2. **`_pf_norm_accum_rows` pair** (~16.2 ms measured, 2 launches per layer over [m, d_model]
+   f32): vectorising is bandwidth-only and safe (round-5 ledger lever 2, still untouched);
+   the TRT side spends 25.88 ms on RMSNorm, so this bucket is a WIN already — protect it,
+   then shrink it.
+3. **rope remainder** (~6.2 ms measured vs TRT's 3.47): the 7B ROPEVEC row-packed form
+   (_ld4/_st4) is the template for the last mile.
+4. `_G3_PF_FA_MIN_M` (256) still untuned; at m=128 priming the fused kernel declines, which
+   is also what keeps the 62 o_proj A-stagings in every trace.
+
+### TOOLING (all reproducible from the repo)
+
+`run_ab_gemma3_round6.sh` (one invocation = shim from the same tree, probe, arms, audit) ·
+`run_gemma3_round6_cells.sh` (CELLTAG so a second bracket never overwrites the first;
+per-arm gate dirs; watchdog; clock pinning; 1 Hz sampler) · `fa_g3_probe.cu` (120 rows +
+rejection contract + wall-clock timing) · `run_nsys_gemma3_round6.sh` + `decomp_gemma3_round6.py`
++ `mr_extract_gemma3_round6.py` + `mr_subtract_gemma3_round6.py` (priming-only captures via a
+32-row fixture — seal() primes regardless of prompt) · `summarize_gemma3_round6.py` (pools
+r6_/r6b_/r6c_, drift armor, resolved verdicts, clock audit, gates + flag audit IN the JSON) ·
+`build_shim_gemma3_round6.sh` (generates tc_rt_ptx.h first — the fresh-box trap) ·
+`chain6a/6b/6d.sh` (the session chains, timestamps and all) · `vm_sync_r6.sh` (tar+scp, no
+github egress) · `retake_r2.sh` (the off-pin re-take). Artifacts: `~/lever6/` on the VM
+(results/gates/audit/decomp/mr JSONs, probe logs at three BN, cell outs + clock CSVs).
+
+VM lifecycle: box started ~20:25Z, re-staged (prep+convert ~10 min) with fixture identity
+proved against the pre-stop gate echoes before anything ran, STOPPED after the retake with
+0 MiB on all 8 GPUs and no watchers verified. VM-on ~5.2 h (budget: interim 4 h, hard 6 h).
+
+PR history: this round opened as PR #1001 based on `feat/gemma-fused-tc-attn` per the front's
+brief; #998 merged at 01:20Z and its branch deletion auto-closed #1001, so the identical work
+was rebased onto main (contract/floor/inventory regenerated on the rebased state, all five
+--check gates pass) and re-filed as **PR #1006** (draft, base main — CI runs on main-based PRs
+only). Rebase equivalence, stated precisely: the raced gemma-3 code path is preserved bit for
+bit — `session_cuda_gemma3_f16.mojo` and `fa_g3_probe.cu` are byte-identical between the
+measured tree and the rebased head, and `tc_shim.cu` / `tc_shim_bridge.mojo` differ ONLY by
+#1000's 7B-lane entries merged in purely additively (818 insertions, 0 deletions across the
+four files), so the measured `_fa_g3_window2_kernel`, its entry and the gemma-3 dispatch are
+unchanged in the rebased head.
