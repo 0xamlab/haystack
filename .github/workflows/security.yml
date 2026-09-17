@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   full:
-    uses: thyn-ai/security-toolchain/.github/workflows/security-full.yml@6a7becf5700210d405879f5e1c35cdfe392c26d4 # v0.1.5
+    uses: thyn-ai/security-toolchain/.github/workflows/security-full.yml@7259ec999b191a56ed052f2bb70b760119eb1cfa # v0.1.6
     permissions:
       contents: read
       security-events: write
@@ -34,3 +34,4 @@ jobs:
       overlay: engine
       mode: advisory
       measure_baseline: ${{ github.event_name == 'workflow_dispatch' && inputs.measure_baseline == true }}
+      toolchain_ref: 7259ec999b191a56ed052f2bb70b760119eb1cfa # kept == the uses: pin above; propagate bumps both
