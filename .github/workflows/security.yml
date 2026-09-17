@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   full:
-    uses: thyn-ai/security-toolchain/.github/workflows/security-full.yml@ed940d6000212d8eedf03466cdc1b9571600ac36 # v0.1.5
+    uses: thyn-ai/security-toolchain/.github/workflows/security-full.yml@e21eb4606016d4e422411127110658f6f3ba6cb8 # v0.1.1 DIAGNOSTIC: testing whether an old, known-good SHA resolves
     permissions:
       contents: read
       security-events: write
