@@ -30,6 +30,18 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
+  # TypeScript SDK: packages/ts-sdk keeps its own npm lockfile (the root is a pnpm project with
+  # no `workspaces` field, so the "/" npm entry above never sees this manifest) and is what
+  # .github/workflows/sync-public-sdk.yml mirrors to the public thyn-ai/algenta-sdk repo.
+  # Security-only, same as the other app entries.
+  - package-ecosystem: "npm"
+    directory: "/packages/ts-sdk"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(ts-sdk)"
+
   - package-ecosystem: "pip"
     directory: "/apps/api-server"
     schedule:
