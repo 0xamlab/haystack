@@ -1,0 +1,13 @@
+# actionlint config: custom `runs-on` labels this repo uses, so the runner-label check can tell
+# a real typo from an org runner. actionlint only knows GitHub's own label set by default.
+self-hosted-runner:
+  labels:
+    # thyn-ai org larger runner (8 cores / 32 GB / 300 GB, billed): Mojo-compile jobs only
+    # (build-runtime, build-runtime-bundle, build-mojo, amd-rocm-gate, sdk-audit
+    # execution-sweep, and the ci.yml `test` job's dispatch-only baseline sweep).
+    - thyn-8c
+    # az-orch: still targeted by az-ci-smoke.yml / deploy-az-orchestrator.yml until the
+    # decommission wave removes both. az-ephemeral: no workflow references it any more; kept
+    # only so a stale branch lints, and dropped in the same wave.
+    - az-ephemeral
+    - az-orch

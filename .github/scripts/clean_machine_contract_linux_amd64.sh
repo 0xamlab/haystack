@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# The clean-machine contract leg of build-runtime.yml, executed inside an amd64 ubuntu:22.04
-# container on the self-hosted macOS fleet (job `clean-machine-contract` mounts $GITHUB_WORKSPACE
-# at /work after downloading the linux runtime wheel into dist-runtime/). Replaces the
-# GitHub-hosted `ubuntu-latest` job, which is billing-blocked. Every check mirrors the hosted job
-# 1:1: trust-anchor pairing -> algenta wheel build -> clean venv install -> runtime doctor ->
-# contract sweep -> CLI execute -> simulate banner.
+# The clean-machine contract leg of build-runtime.yml, executed inside an ubuntu:22.04 container
+# (job `clean-machine-contract` mounts $GITHUB_WORKSPACE at /work after downloading the linux
+# runtime wheel into dist-runtime/). The container is the glibc-2.35 floor the wheel is tagged
+# for. Checks: trust-anchor pairing -> algenta wheel build -> clean venv install -> runtime
+# doctor -> contract sweep -> CLI execute -> simulate banner.
 set -euo pipefail
 cd /work
 
@@ -151,9 +150,9 @@ request = {
     'a': [1.0, 2.0, 3.0] + [0.0] * 61,
     'b': [3.0, 2.0, 2.0] + [0.0] * 61,
 }
-# The warm-latency tripwire budget. 15 ms is the contract for NATIVE linux x86_64; this job now
-# runs under amd64 emulation on the self-hosted macOS fleet, which is slower per call, so the
-# workflow passes an enlarged budget explicitly rather than silently weakening the default.
+# The warm-latency tripwire budget. 15 ms is the contract for NATIVE linux x86_64; the workflow
+# may pass an enlarged budget explicitly (ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET) rather than
+# silently weakening this default -- see build-runtime.yml's clean-machine-contract job.
 budget_ms = float(os.environ.get('ALGENTA_CLEAN_MACHINE_WARM_MS_BUDGET', '15.0'))
 latencies = []
 for index in range(11):
@@ -182,8 +181,8 @@ grep -q "Engine:             bundled native runtime" /tmp/algenta-simulate.txt
 grep -q "Python fallback:    disabled" /tmp/algenta-simulate.txt
 
 # The container ran as root on the mounted runner workspace; hand the produced/modified trees
-# back to the workspace owner so the runner-side artifact upload and the next job's checkout are
-# not locked out by root-owned files.
+# back to the workspace owner so the runner-side artifact upload (a non-root user) is not locked
+# out by root-owned files.
 OWNER="$(stat -c '%u:%g' /work/.git)"
 chown -R "$OWNER" /work/dist-algenta /work/packages/algenta/algenta/_keys 2>/dev/null || true
 echo "clean-machine contract leg OK"

@@ -4,16 +4,13 @@
 # This workflow itself is CODEOWNED (see CODEOWNERS) — changes to the sync
 # mechanism require the same review rigor as changes to what it exports.
 #
-# TODO(owner): this workflow assumes a dedicated GitHub App
-# ("algenta-sdk-sync") has been registered, installed on exactly
-# thyn-ai/algenta and thyn-ai/algenta-sdk, and scoped to only the
-# `contents` and `pull_requests` permissions on those two repos. Until that
-# App exists and its App ID / private key are stored as
-# ALGENTA_SDK_SYNC_APP_ID / ALGENTA_SDK_SYNC_APP_PRIVATE_KEY secrets, this
-# workflow cannot actually run — it is safe to merge in draft form, but
-# `workflow_dispatch` will fail at the token-minting step until then. Do not
-# substitute a long-lived personal access token here even as a stopgap —
-# that's exactly the pattern this design avoids.
+# Credentials: a dedicated GitHub App ("algenta-sdk-sync") installed on exactly
+# thyn-ai/algenta and thyn-ai/algenta-sdk, scoped to only the `contents` and
+# `pull_requests` permissions on those two repos. Its App ID / private key live in
+# the ALGENTA_SDK_SYNC_APP_ID / ALGENTA_SDK_SYNC_APP_PRIVATE_KEY secrets (in place
+# since 2026-08-16; the workflow runs green on every main push that touches the
+# SDK packages). Do not substitute a long-lived personal access token here even
+# as a stopgap — that's exactly the pattern this design avoids.
 
 name: sync-public-sdk
 
@@ -39,24 +36,27 @@ concurrency:
 
 jobs:
   sync:
-    # Fleet runner: hosted runners are billing-blocked. Everything below is
-    # platform-independent once python + gitleaks are provisioned runner-agnostically.
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    # Everything below is platform-independent: one pip dependency, rsync, gitleaks, git, gh
+    # (all on the ubuntu-latest image or installed under RUNNER_TEMP). ~30 s per run; the
+    # timeout exists because cancel-in-progress is false above, so a hung run would otherwise
+    # block every later sync for the 360-minute default.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - name: Set up Python 3.14 (venv)
-        run: |
-          set -euo pipefail
-          python3.14 -m venv "$RUNNER_TEMP/sync-venv"
-          echo "$RUNNER_TEMP/sync-venv/bin" >> "$GITHUB_PATH"
-          # apps.platform_contract (imported by the generator below) needs only this one
-          # dependency -- confirmed by reading its actual import list, not guessed. Every run
-          # so far has died here with ModuleNotFoundError: no step ever installed it.
-          "$RUNNER_TEMP/sync-venv/bin/pip" install --quiet --disable-pip-version-check pydantic
+      # 3.14 explicitly (the hosted image's system python is 3.12; 3.14 is in its tool cache).
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install the contract generator's one dependency
+        # apps.platform_contract (imported by the generator below) needs only pydantic --
+        # confirmed by reading its actual import list, not guessed. Before #724 no step
+        # installed it and every run died here with ModuleNotFoundError.
+        run: python -m pip install --quiet --disable-pip-version-check pydantic
 
       - name: Regenerate contract snapshots (internal generator never leaves this job)
         run: |
@@ -64,11 +64,6 @@ jobs:
 
       - name: Mint a short-lived installation token for the sync App
         id: app-token
-        # The fleet's macOS runners have a proxy env var set; this action's newer Node runtime
-        # refuses to make any request until proxy support is explicitly opted into (its own
-        # error names this exact fix), unrelated to whether a proxy is actually needed here.
-        env:
-          NODE_USE_ENV_PROXY: "1"
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.ALGENTA_SDK_SYNC_APP_ID }}
@@ -115,8 +110,8 @@ jobs:
           rsync -a --exclude '__pycache__' --exclude '*.pyc' examples/ algenta-sdk-public/examples/
 
       - name: Install gitleaks
-        # Runner-agnostic: pick this runner's OS/arch asset (fleet is macOS arm64; hosted was
-        # linux x64) and install under RUNNER_TEMP -- no sudo.
+        # Runner-agnostic: pick this runner's OS/arch asset (linux x64 on ubuntu-latest) and
+        # install under RUNNER_TEMP -- no sudo.
         run: |
           set -euo pipefail
           OS="$(uname -s | tr '[:upper:]' '[:lower:]')"

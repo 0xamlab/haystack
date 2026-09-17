@@ -5,14 +5,13 @@
 # PyInstaller daemon, a baked runtime-library inventory (the lean bundle ships no .mojo
 # source) and a trimmed CPython home for the workers' embedded interpreter.
 #
-# Fleet conventions: EVERY job runs on the org's own self-hosted Azure fleet. There is no
-# GitHub-hosted leg -- the whole point of that fleet is not to depend on GitHub's runners,
-# and the darwin leg that still pinned `runs-on: macos-15` was the last holdout. It is gone;
-# see the removal commit for what shipping macOS artifacts again would require. The linux-x64
-# leg runs inside an amd64 ubuntu:22.04 container on the fleet (same pattern as
-# build-runtime.yml's build-linux job). Linux OS baseline: the daemon is PyInstaller-built
-# ON ubuntu:22.04, so its floor is ubuntu:22.04's glibc (2.35); the acceptance gate below
-# re-runs the built bundle inside a CLEAN ubuntu:22.04 container.
+# Runners: build-linux compiles the full 27-shard Mojo runtime and runs on `thyn-8c` (org
+# larger runner, 8 cores / 32 GB / 300 GB, billed); release only talks to the GitHub API and
+# runs on `ubuntu-latest`. There is no darwin leg (see the removal commit for what shipping
+# macOS artifacts again would require). The linux-x64 leg runs inside an explicit ubuntu:22.04
+# container (same pattern as build-runtime.yml's build-linux job). Linux OS baseline: the
+# daemon is PyInstaller-built ON ubuntu:22.04, so its floor is ubuntu:22.04's glibc (2.35);
+# the acceptance gate below re-runs the built bundle inside a CLEAN ubuntu:22.04 container.
 #
 # Signing: secrets.ALGENTA_BUNDLE_SIGNING_PRIVATE_KEY (RSA-4096; the matching public key
 # is embedded in the SQAI SDK's trust root — runtime/trust.ts, key_id
@@ -42,10 +41,8 @@ permissions:
 # Never let two overlapping cuts of the same ref race on the release tag; queue instead
 # of cancelling a cut mid-flight.
 concurrency:
-  # PRs share ONE fleet-wide group: runs queue FIFO and each PR's bundle finishes
-  # instead of every PR's emulation build interleaving on the fleet and wedging.
-  # Shared serial slot (see ci.yml): whole fleet finishes one PR run at a time.
-  group: ${{ github.event_name == 'pull_request' && 'fleet-pr-serial' || format('runtime-bundle-{0}', github.ref) }}
+  # Per-ref group (this workflow has no pull_request trigger).
+  group: runtime-bundle-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -60,13 +57,12 @@ env:
 jobs:
   build-linux:
     name: bundle (linux-x64)
-    # The linux leg runs on the self-hosted macOS fleet inside an amd64 ubuntu:22.04
-    # container (GitHub-hosted runners are billing-blocked, and job-level `container:`
-    # requires a Linux runner) — the same pattern build-runtime.yml's build-linux uses.
-    # Everything inside the container mirrors the hosted pipeline — see
+    # `thyn-8c`: full 27-shard Mojo compile (~40-50 min native). The build runs inside an
+    # explicit ubuntu:22.04 container (`docker run`, not job-level `container:`: the script
+    # hardcodes root + the /work mount, and the container IS the daemon's glibc-2.35 build
+    # floor) — the same pattern build-runtime.yml's build-linux uses. See
     # .github/scripts/build_runtime_bundle_linux_amd64.sh.
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: thyn-8c
     timeout-minutes: 420
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -86,9 +82,8 @@ jobs:
           BUNDLE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           docker pull --platform linux/amd64 ubuntu:22.04
-          # Emulation is slower than native x86_64, so the per-shard timeout is enlarged
-          # (same budget as build-runtime's build-linux); the RSS ceiling is generous
-          # (fleet RAM >> the compiler's peak).
+          # Same per-shard budget as build-runtime's build-linux; the RSS ceiling is generous
+          # next to the measured 1.2-1.8 GiB per-shard peaks on Mojo 1.0.0.
           docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
@@ -144,7 +139,7 @@ jobs:
     name: GitHub release (runtime-bundle-v* tags)
     needs: [build-linux]
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'runtime-bundle-v')
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -155,8 +150,8 @@ jobs:
           path: artifacts
 
       - name: Create release with bundles + metadata + public key
-        # The fleet runners are bare Macs with no guaranteed `gh`; the release is created
-        # through the REST API with curl so the job has zero toolchain dependencies.
+        # The release is created through the REST API with curl so the job has zero toolchain
+        # dependencies beyond curl + python3.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -2,10 +2,9 @@
 # Shared bootstrap for the linux/amd64 container legs of build-runtime.yml: a real CPython 3.14
 # (python-build-standalone via uv -- ubuntu:22.04's distro python is 3.10) plus the apt toolchain
 # the runtime build links against. Sourced by the per-leg scripts; assumes cwd = /work (the
-# mounted GITHUB_WORKSPACE). These containers run on the self-hosted macOS fleet under amd64
-# emulation (Docker/Rosetta) -- the build-runtime linux pipeline moved here when GitHub-hosted
-# runners became billing-blocked; the container OS is still ubuntu:22.04 (glibc 2.35), so the
-# manylinux_2_35_x86_64 contract the wheel ships under is unchanged.
+# mounted GITHUB_WORKSPACE). The container OS is deliberately ubuntu:22.04 (glibc 2.35): it is
+# the link host the manylinux_2_35_x86_64 contract the wheel ships under is audited against,
+# regardless of which runner drives the container.
 set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive

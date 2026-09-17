@@ -6,9 +6,9 @@ release-build detail that keeps each Mojo compiler invocation bounded while the
 Python package presents one runtime contract and one process-local API.
 
 Every shard is instrumented. `mojo build` is a memory-hungry process -- a single
-24-module shard has been measured at 11 GiB of peak footprint -- and the release
-runners are small, so the failure that matters here is the builder running the
-machine out of memory. When that happens the CI runner VM is torn down and the
+24-module shard peaks at 1.2-1.8 GiB on Mojo 1.0.0 (runs 35144848549 and
+35162359012; an older toolchain measured 11 GiB) -- and the failure that matters
+here is the builder running the machine out of memory. When that happens the
 step reports a bare `exit code 143` with nothing else, which says nothing about
 which shard was in flight. So the builder announces each shard *before* it
 starts, samples the compiler's footprint while it runs, reports it afterwards,

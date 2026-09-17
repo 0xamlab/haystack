@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# The ENTIRE linux-x86_64 leg of build-runtime.yml, executed inside an amd64 ubuntu:22.04
-# container on the self-hosted macOS fleet (job `build-linux` mounts $GITHUB_WORKSPACE at /work).
-# Replaces the GitHub-hosted `ubuntu-22.04` leg, which is billing-blocked; every step mirrors the
-# hosted pipeline 1:1 so the shipped wheel is byte-for-byte the same contract:
+# The ENTIRE linux-x86_64 leg of build-runtime.yml, executed inside an ubuntu:22.04 container
+# (job `build-linux` mounts $GITHUB_WORKSPACE at /work). The pipeline is the same contract the
+# wheel has always shipped under:
 #   contract check -> pixi/mojo env -> shard compile (mcpu x86-64-v3, no Metal) -> stage ->
 #   strip -> signed manifest -> wheel -> manylinux_2_35 audit + retag.
-# The hosted leg's swap-provisioning step is deliberately NOT reproduced: it existed because the
-# hosted VM has 7.8 GiB RAM; this fleet's machines carry far more, so the shard compiler gets a
-# generous fixed RSS ceiling instead (SHARD_MAX_RSS_MB).
+# No swap-provisioning step: the runner (thyn-8c, 32 GB) carries far more RAM than the measured
+# 1.2-1.8 GiB per-shard peaks, so the shard compiler gets a generous fixed RSS ceiling instead
+# (SHARD_MAX_RSS_MB).
 #
 # BUILD_VARIANT selects the accelerator tier of the compiled shards:
 #   cpu  (default) — portable build, no GPU defines, exactly the historical behaviour.
@@ -43,15 +42,12 @@ export PIXI_HOME=/work/.pixi
 export RATTLER_CACHE_DIR=/work/.cache/rattler/cache
 curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$PIXI_HOME" PIXI_BIN_DIR="$PIXI_HOME/bin" PIXI_NO_PATH_UPDATE=1 bash
 export PATH="$PIXI_HOME/bin:$PATH"
-# A leftover .pixi SYMLINK (fleet env-sharing hack) mounted from the runner workspace
-# makes pixi fail with EEXIST; real cached env dirs are kept.
-find mojo_env -maxdepth 1 -name .pixi -type l -delete
 pixi install --manifest-path mojo_env/pixi.toml
 
 # ── Compile bounded runtime worker shards ────────────────────────────────────────────────────
-# Emulation runs slower than native x86_64, so the caller passes an enlarged per-shard timeout;
-# the RSS ceiling stays generous (fleet RAM >> the compiler's ~11.3 GiB peak). mcpu/metal mirror
-# the hosted matrix values for the linux leg exactly (x86-64-v3 binaries, no Metal).
+# The caller passes the per-shard timeout and RSS ceiling (SHARD_TIMEOUT / SHARD_MAX_RSS_MB);
+# the ceiling stays generous next to the measured 1.2-1.8 GiB per-shard peaks. mcpu/metal are
+# the linux leg's fixed values (x86-64-v3 binaries, no Metal).
 export MOJO_BUILD_MCPU=x86-64-v3
 export MOJO_BUILD_METAL_GPU=0
 if [[ "${BUILD_VARIANT}" == "cuda" ]]; then
@@ -150,9 +146,9 @@ python3 -m wheel tags --platform-tag manylinux_2_35_x86_64 "$original"
 rm "$original"
 ls -la /work/dist-runtime/
 
-# The container ran as root on the mounted runner workspace; hand the produced trees back to the
-# workspace owner so later runner-side steps (artifact upload, the NEXT job's checkout/cleanup)
-# are not locked out by root-owned files.
+# The container ran as root on the mounted runner workspace, and `umask 077` above makes the
+# wheel root-owned 0600 inside a 0700 dist-runtime/; hand the produced trees back to the
+# workspace owner so the runner-side artifact upload (a non-root user) can read them.
 OWNER="$(stat -c '%u:%g' /work/.git)"
 chown -R "$OWNER" /work/mojo_build /work/dist-runtime /work/.pixi /work/.cache 2>/dev/null || true
 echo "linux-x86_64 runtime build OK (${BUILD_VARIANT} variant)"

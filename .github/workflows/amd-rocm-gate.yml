@@ -6,7 +6,7 @@ name: amd-rocm-gate
 # for AMD CDNA targets with NO ROCm toolkit and NO AMD GPU (the AMDGPU LLVM backend ships
 # inside the pinned mojo toolchain — `mojo build --print-supported-accelerators` lists the
 # ROCm/HIP table: gfx90a/gfx942/mi300x/gfx950/mi355x/...), but LAUNCHING the result needs
-# real MI300X/MI355X hardware with ROCm >= 6.3.3 (MI355X: ROCm 7). The fleet has none.
+# real MI300X/MI355X hardware with ROCm >= 6.3.3 (MI355X: ROCm 7). No CI runner has any.
 #
 # The gate was compile-verified on the macOS build host with the pinned Mojo 1.0.0 /
 # MAX 26.5.0 toolchain (gfx942 + gfx950, embedded HSACO + `global_load_dwordx4` vector-load
@@ -22,20 +22,20 @@ permissions:
 jobs:
   amd-rocm-compile-gate:
     name: AMD ROCm compile gate (portable GPU kernels, gfx942 + gfx950 + gfx90a)
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    # `thyn-8c` (billed) because this is a real `mojo build` x3; the linux peak RSS has never
+    # been measured (workflow_dispatch-only, ~$0.30/run). Downgrade to ubuntu-latest after one
+    # measured run if the peak stays well under 8 GB.
+    runs-on: thyn-8c
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Compile the portable kernel layer for AMD CDNA targets (amd64 container)
         run: |
-          bash .github/scripts/docker_retry.sh \
-            docker pull --platform linux/amd64 ubuntu:22.04
+          docker pull --platform linux/amd64 ubuntu:22.04
           # Same container pattern as build-linux / build-linux-cuda. The gate compiles ONE
           # driver (every portable kernel family), not the shard set, so the budget is far
           # below the runtime builds'.
-          bash .github/scripts/docker_retry.sh \
-            docker run --rm --platform linux/amd64 \
+          docker run --rm --platform linux/amd64 \
             --user root \
             -v "$GITHUB_WORKSPACE:/work" -w /work \
             ubuntu:22.04 bash .github/scripts/amd_rocm_compile_gate.sh

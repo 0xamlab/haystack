@@ -22,26 +22,19 @@ on:
 permissions:
   contents: read
 
-# Two overlapping runs of this workflow on the same ref would otherwise collide on
-# execution-sweep's fixed postgres-ci-sdkaudit container name/port (see ci.yml for the same
-# reasoning — this bit us in practice with ci.yml's postgres-ci).
+# Per-ref group, matching ci.yml's grouping: a newer push to the same PR supersedes its stale
+# run; main pushes queue. Every job runs on its own GitHub-hosted VM with its own Docker
+# daemon, so execution-sweep's fixed postgres port cannot collide across jobs by construction
+# and nothing needs to serialize org-wide.
 concurrency:
-  # Was `fleet-sdkaudit` -- serialized across the WHOLE fleet because the old shared-Mac
-  # runners all published execution-sweep's postgres on fixed host port 15433 against ONE
-  # shared Colima daemon, so two concurrent sdk-audit jobs genuinely collided.
-  #
-  # That premise is gone: every job now gets its own ephemeral Azure VM with its own Docker
-  # daemon, so a fixed host port cannot collide across jobs by construction. Keeping the
-  # fleet-wide group would needlessly serialize every sdk-audit run org-wide. Per-ref,
-  # matching ci.yml's proven grouping.
   group: sdkaudit-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   gap-checks:
     name: SDK gap checks (static)
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -62,18 +55,18 @@ jobs:
   execution-sweep:
     name: Full execution sweep (compiled workers)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, az-ephemeral]
+    # `thyn-8c` (org larger runner, 8 cores / 32 GB, billed): this job compiles 27 filtered
+    # Mojo shard workers in-job (28.5 min measured on 8 vCPU; 53 min with 5.8-7.2 GiB peaks on
+    # 2-vCPU hosted with an older pin). main-push only.
+    runs-on: thyn-8c
 
     # tests/conftest.py's autouse ensure_test_database_schema fixture runs the Alembic
     # migrations for EVERY pytest session under tests/ — including the ratchet suite —
     # so this job needs the same postgres the Test job gets (ci.yml). Without it the
     # ratchet step errors 4/4 with "connection refused" before the sweep can start.
-    # `services:` (GitHub Actions' auto-managed containers) is Linux-runner-only, so this
-    # is a plain `docker run`, same as ci.yml's Postgres/Dragonfly/MinIO.
-    # Distinct container name AND host port from ci.yml's postgres-ci (5432): this job and
-    # ci.yml's `test` job both trigger on push to main, sharing one Docker daemon on one host
-    # — same name or port would let one job's `docker rm -f`/bind collide with the other's
-    # still-running container.
+    # A plain `docker run` (same shape as ci.yml's Postgres/Dragonfly/MinIO) on a fixed
+    # host port: this job has its own VM and its own Docker daemon, so nothing else can
+    # bind 15433 here.
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:15433/test_db
       DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:15433/test_db
@@ -85,24 +78,19 @@ jobs:
 
       - name: Start Postgres, wait for it
         run: |
-          # Managed runners (Blacksmith) may not have the docker daemon started;
-          # self-hosted/Azure images already run it. Bring it up if absent.
+          # GitHub-hosted images start dockerd at boot; this is a defensive fallback only.
           if ! docker info >/dev/null 2>&1; then
             (sudo -n systemctl enable --now docker || sudo -n service docker start) >/dev/null 2>&1 || true
-            for i in 1 2 3 4 5 6; do docker info >/dev/null 2>&1 && break; sleep 5; done
+            for _ in 1 2 3 4 5 6; do docker info >/dev/null 2>&1 && break; sleep 5; done
           fi
-          # Persistent self-hosted runner, not an ephemeral cloud VM — a crashed/cancelled
-          # prior run can leave this container behind, and a fixed --name collides on
-          # `docker run` otherwise.
           docker rm -fv postgres-ci-sdkaudit >/dev/null 2>&1 || true
           # `docker run` on an uncached image implicitly pulls, which talks to Docker Hub's
-          # auth endpoint before any layer transfer — a transient failure there (seen live:
-          # "dial tcp: lookup auth.docker.io ...: server misbehaving", the self-hosted
-          # runner's local resolver stub, not this image or this job) aborts the whole
-          # container start with nothing to retry on the daemon side. A failed `docker run`
-          # here leaves no container (rm -fv above/below is therefore always safe, not just
-          # cosmetic), so retrying the exact same command is safe and sufficient — no
-          # separate `docker pull` step needed.
+          # auth endpoint before any layer transfer — a transient failure there (seen live as
+          # a DNS blip: "dial tcp: lookup auth.docker.io ...: server misbehaving") aborts the
+          # whole container start with nothing to retry on the daemon side. A failed
+          # `docker run` here leaves no container (rm -fv above/below is therefore always
+          # safe, not just cosmetic), so retrying the exact same command is safe and
+          # sufficient — no separate `docker pull` step needed.
           pull_ok=0
           for attempt in 1 2 3 4 5; do
             if docker run -d --name postgres-ci-sdkaudit -p 15433:5432 \
@@ -120,16 +108,15 @@ jobs:
           # pixi/asyncpg yet (run_repo_python's python3 fallback lacks the module),
           # which made ci_wait_for_services.py report "not ready" on Blacksmith.
           ok=0
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             docker exec postgres-ci-sdkaudit pg_isready -U postgres >/dev/null 2>&1 && { ok=1; break; }
             sleep 2
           done
           [ "$ok" = "1" ] || { echo "postgres not ready after 60s" >&2; exit 1; }
 
-      # The previous swap/toolchain-reclaim dance existed only to survive GitHub-hosted
-      # runners' ~7.8 GiB RAM ceiling. The self-hosted macOS runner has ample RAM; the
-      # ceiling below just needs headroom over the heaviest shard (measured 8890 MiB at
-      # 643 modules -- the runtime library keeps growing, so the default carries slack).
+      # No swap-provisioning step: thyn-8c carries 32 GB, and the per-shard ceiling below only
+      # needs headroom over the heaviest shard (1.2-1.8 GiB measured on Mojo 1.0.0; the runtime
+      # library keeps growing, so the default carries slack).
 
       - name: Install Pixi
         run: |
@@ -138,13 +125,10 @@ jobs:
 
       - name: Install Mojo/Pixi environment
         run: |
-          # A leftover .pixi SYMLINK (fleet env-sharing hack) makes pixi fail with
-          # EEXIST; real cached env dirs are kept.
-          find mojo_env -maxdepth 1 -name .pixi -type l -delete
           PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
 
-      # Mojo shard builds link with the system clang; Azure workers bake it,
-      # Blacksmith/GH ubuntu-2404 images don't ship it.
+      # Mojo shard builds link with the system clang. GitHub-hosted ubuntu images ship clang;
+      # the probe installs whatever half of the pair is missing (passwordless sudo is present).
       - name: Ensure build toolchain (clang/lld)
         run: |
           command -v clang >/dev/null 2>&1 && command -v lld >/dev/null 2>&1 && exit 0
@@ -190,38 +174,25 @@ jobs:
             build/audit/library_sweep_results.md
           if-no-files-found: error
 
-      # End-of-run teardown — `if: always()` so FAILED runs (like the 2026-08-16 postgres ENOSPC)
-      # release their volumes immediately instead of pinning them until the next run's pre-clean.
-      - name: Stop Postgres (release volumes)
-        if: always()
-        run: docker rm -fv postgres-ci-sdkaudit >/dev/null 2>&1 || true
-
   published-artifact-proof:
     name: Published artifact install + execute proof
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      # macOS fleet has Homebrew 3.14; Azure workers bake it; Blacksmith/GH images don't.
-      - name: Ensure python3.14 present
-        run: |
-          command -v python3.14 >/dev/null 2>&1 && exit 0
-          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then SUDO=sudo; else SUDO=; fi
-          $SUDO add-apt-repository -y ppa:deadsnakes/ppa
-          $SUDO apt-get update -qq
-          $SUDO apt-get install -y -qq python3.14 python3.14-venv libpython3.14
-          python3.14 -m ensurepip --upgrade >/dev/null 2>&1 || true
+      # The published wheels require >=3.14; the hosted image's system python is 3.12 and 3.14
+      # is only put on PATH by setup-python (tool-cache hit, seconds -- no PPA, no apt).
+      - name: Set up Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
 
       - name: Install published SDK from PyPI
         run: |
-          # --clear: this runs directly on the self-hosted fleet, where /tmp persists between
-          # jobs. A stale /tmp/algenta-audit-venv created by an earlier run keeps its OLD base
-          # interpreter (venv without --clear reuses an existing dir's pyvenv.cfg), and pip then
-          # rejects the >=3.14 wheels with "requires a different Python" — the same poisoned-venv
-          # pattern that broke build-runtime's wheel validation (fixed there in #762).
-          python3.14 -m venv --clear /tmp/algenta-audit-venv
+          python -m venv /tmp/algenta-audit-venv
           /tmp/algenta-audit-venv/bin/pip install --upgrade pip
           /tmp/algenta-audit-venv/bin/pip install algenta
 
@@ -262,12 +233,9 @@ jobs:
           print("published artifact proof: all shards executed")
           PY
 
-      # REQUIRED before any npm/node use on this fleet. Ephemeral Azure workers do have a
-      # system Node (baked into the golden image), but the GitHub runner prepends its own
-      # externals dir to PATH, and that ships an `npm` stub whose ../lib/cli.js does not
-      # exist -- so a bare `npm install` dies with "Cannot find module '../lib/cli.js'".
-      # setup-node puts a real tool-cache Node+npm ahead of that stub. This job runs only on
-      # push-to-main, which is exactly why the gap survived: it never executes on a PR.
+      # setup-node: a deterministic Node major with a real npm on PATH, independent of what the
+      # runner image happens to ship. This job runs only on push-to-main, so a Node/npm gap
+      # would never be caught on a PR.
       - name: Set up Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:

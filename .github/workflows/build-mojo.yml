@@ -1,9 +1,10 @@
 name: build-mojo
 
 # Manual: build + push the linux/amd64 Mojo engine image (mojo_build/simulate + runtime libs).
-# Heavy + RAM-intensive (compiles ~961 .mojo files), so it's not on every push — run it when the
-# Mojo source (mojo/**) or toolchain (mojo_env/pixi.lock) changes. The api/worker/engine images
-# COPY the binary from ghcr.io/<repo>/mojo:<tag>.
+# The Dockerfile's RUN compiles Mojo inside BuildKit on the runner's own daemon (the filtered
+# build, MOJO_RUNTIME_MODULE_FILTER=ab_testing -- see infra/docker/Dockerfile.mojo), so it is
+# not on every push — run it when the Mojo source (mojo/**) or toolchain (mojo_env/pixi.lock)
+# changes. The api/worker/engine images COPY the binary from ghcr.io/<repo>/mojo:<tag>.
 on:
   workflow_dispatch: {}
 
@@ -18,11 +19,11 @@ env:
 jobs:
   build:
     name: Build & push Mojo image
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    # `thyn-8c` (org larger runner, 8 cores / 32 GB / 300 GB, billed): the Mojo compile runs on
+    # the runner's RAM, and the image is only sized "<16 GB" (Dockerfile.mojo). Manual-only, so
+    # roughly one billed run per toolchain/source bump. 300 GB of disk means no reclaim step.
+    runs-on: thyn-8c
     steps:
-      # Hosted-VM disk-reclaim hack removed: the self-hosted fleet's VM disk is dedicated.
-
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -33,11 +34,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The fleet is arm64; the engine image targets Fly's linux/amd64 -- register qemu binfmt
-      # so buildx can cross-build (Rosetta serves RUNNING containers, buildx RUN steps need binfmt).
-      - name: Register qemu binfmt for linux/amd64
-        run: docker run --privileged --rm tonistiigi/binfmt --install amd64
-
+      # The runner is native linux/amd64, the same platform the image targets, so buildx builds
+      # it natively -- no qemu/binfmt registration.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
