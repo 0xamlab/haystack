@@ -1,6 +1,6 @@
 ---
 icon: gauge-high
-description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100 and L4 — Qwen3-0.6B and Qwen2.5-7B prefill and decode against llama.cpp, vLLM, SGLang and TensorRT-LLM, with methodology.
+description: Measured LLM inference throughput of the CUDA-native session on NVIDIA A100, H100, H200 and L4 — Qwen3-0.6B, Qwen2.5-7B and Gemma-3-27B prefill and decode against llama.cpp, vLLM, SGLang and TensorRT-LLM, with methodology.
 ---
 
 # NVIDIA LLM throughput
@@ -144,13 +144,14 @@ sides (no HTTP layer); clocks pinned at 1410 MHz; greedy decoding; token counts 
 server-side; median of 20 runs (Algenta) / 7 runs (TensorRT-LLM); rel-IQR <= 4.7% on all
 cells; greedy continuations match the fp32 oracle on both engines.
 
-| Engine | Prefill 256 tok/s | Prefill 1024 tok/s | Decode tok/s (gen=256) |
-| --- | --- | --- | --- |
-| Algenta (packed3, cuBLAS tensor-core prefill + fused causal flash attention, f16 MLP/norm epilogues) | 12,746 | 15,265 | 82.7 |
-| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,860 | 14,180 | 79.0 |
+| Engine | Prefill 256 tok/s | Prefill 1024 tok/s | Prefill RAG-4096 tok/s | Decode tok/s (gen=256) |
+| --- | --- | --- | --- | --- |
+| Algenta (packed3, cuBLAS tensor-core prefill + fused causal flash attention, single-pass 4096-row prefill, stage-tuned cublasLt, f16 MLP/norm epilogues) | 12,881 | 15,465 | 15,325 | 82.6 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 7,121 | 14,193 | 14,993 | 79.0 |
 
-Prefill speedup at 256 tokens: 1.86x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
-1.08x vs TensorRT-LLM. Decode speedup (gen=256): 1.05x vs TensorRT-LLM.
+Prefill speedup at 256 tokens: 1.81x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
+1.09x vs TensorRT-LLM. Prefill speedup on 4096-token retrieval context: 1.02x vs
+TensorRT-LLM. Decode speedup (gen=256): 1.05x vs TensorRT-LLM.
 
 ### Gemma 3 27B — prefill vs TensorRT-LLM (H200)
 
@@ -158,22 +159,26 @@ Same-session re-measurement against TensorRT-LLM 1.2.1 (NVCR release container, 
 backend, bfloat16 weights, Hugging Face checkpoint loaded directly, KV-cache and prefix
 block reuse disabled, CUDA graphs at engine defaults). Engine-internal timings on both
 sides (no HTTP layer); clocks pinned at 1410 MHz; greedy decoding; token counts verified
-server-side; median of 7 runs per engine; rel-IQR <= 0.45% on all cells; greedy
+server-side; median of 7 runs per engine; rel-IQR <= 0.69% on all cells; greedy
 continuations match the fp32 oracle on both engines (16/16 and 64/64 gates, bit-identical
 repeats). One-time engine initialisation (weight staging and CUDA module priming across
 the dispatch bands) is paid at serve startup on both engines, not per request.
 
-| Engine | Prefill 256 tok/s |
-| --- | --- |
-| Algenta (CUDA tensor-core gemma seam, f16 weights, warm-init staging) | 6,819 |
-| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,199 |
+| Engine | Prefill 256 tok/s | Prefill 1024 tok/s | Prefill RAG-4096 tok/s |
+| --- | --- | --- | --- |
+| Algenta (CUDA tensor-core gemma seam, fused windowed flash attention (raw-mma FA2), f16-KV twin, pre-staged f16 chain, warm-init staging) | 7,973 | 10,891 | 10,529 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,166 | 9,247 | 9,607 |
 
-Prefill speedup at 256 tokens: 1.10x vs TensorRT-LLM.
+Prefill speedup at 256 tokens: 1.29x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
+1.18x vs TensorRT-LLM. Prefill speedup on 4096-token retrieval context: 1.10x vs
+TensorRT-LLM.
 
 ## Scope
 
-* Results are for Qwen3-0.6B-Base and Qwen2.5-7B-Instruct on the pinned toolchain; the
-  session derives buffer and grid shapes from the checkpoint's own dimensions.
+* Results are for Qwen3-0.6B-Base, Qwen2.5-7B-Instruct and Gemma-3-27B-it on the pinned
+  toolchain; the session derives buffer and grid shapes from the checkpoint's own
+  dimensions. TensorRT-LLM comparisons were measured on A100-SXM4-40GB (Qwen2.5-7B) and
+  H200 (Gemma-3-27B).
 * The CUDA session is benchmark-verified on the hardware above. The shipped SDK serving path
   is Metal; the CI CUDA lane is compile-gated (no GPU on the builder). See
   [GPU support](../engine/gpu-support.md).
