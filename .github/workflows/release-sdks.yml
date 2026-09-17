@@ -300,7 +300,7 @@ jobs:
           rsync -a --exclude '__pycache__' --exclude '*.pyc' ../examples/ examples/
 
       - name: Set up thyn-sec
-        uses: thyn-ai/security-toolchain@ed940d6000212d8eedf03466cdc1b9571600ac36 # v0.1.5
+        uses: thyn-ai/security-toolchain@6a7becf5700210d405879f5e1c35cdfe392c26d4 # v0.1.5
         with:
           prefetch: "false"
 
