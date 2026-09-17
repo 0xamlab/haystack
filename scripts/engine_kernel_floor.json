@@ -1,5 +1,5 @@
 {
- "kernel_count": 197,
+ "kernel_count": 198,
  "kernels": [
   {
    "backend": "metal",
@@ -1328,6 +1328,14 @@
    ],
    "module": "residentk.tc_shim_bridge",
    "name": "tc_fa_g3_window2_async"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.tc_shim_bridge",
+   "name": "tc_fa_g3_window3_async"
   },
   {
    "backend": "cuda",

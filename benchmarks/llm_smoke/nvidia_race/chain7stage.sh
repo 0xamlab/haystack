@@ -19,7 +19,9 @@
 set -uo pipefail
 L7=${L7:-$HOME/lever7}
 GPU=${GPU:-1}
-TR=${TR:-$HOME/trtllm}
+TR=${TR:-$HOME}   # the staging scripts live at $HOME/*.sh, NOT $HOME/trtllm/*.sh — that wrong
+                  # assumption made the round-9 harness backup report them MISSING and skip the
+                  # two most load-bearing files in the lane (see vm_backup_harness.sh)
 CKPT=${CKPT:-/mnt/ramblob/g3conv27b}
 LOG=${LOG:-$L7/chain7stage.log}
 mkdir -p "$L7/logs" "$L7/runs" "$L7/clocks"
@@ -60,17 +62,24 @@ fi
 for f in /tmp/g3pp256/prompt_0000.txt /tmp/g3pp1024/prompt_0000.txt \
          /tmp/g3race500/prompt_0000.txt /tmp/g3rag/rag4096.txt; do
   if [[ -f "$f" ]]; then
-    echo "FIXTURE  $f  ($(wc -w < "$f") ids)"
+    # The fixtures are COMMA-separated token ids on ONE line, so `wc -w` reports 1 for a
+    # perfectly good 4096-id fixture. That cosmetic mis-count made a correct re-stage look
+    # broken on 2026-09-17 and cost a diagnostic round trip with the box running. Count ids.
+    echo "FIXTURE  $f  ($(tr ',' '\n' < "$f" | grep -c .) ids)"
   else
     echo "FIXTURE MISSING $f — ABORT"; exit 1
   fi
 done
 
 setphase "fixture_identity"
-# Round 6's gate cells are the reference. If lever6 is absent the checker says so and fails rather
-# than silently passing — measuring against a prompt set the oracle never certified is a different
-# experiment from the one it certified.
-FIXREF_RUNS="$HOME/lever6/runs" FIXREF_MARKER="$L7/FIXTURES_OK" \
+# Round 6's gate cells are the reference, and they live in a PER-ARM gate dir, NOT in runs/:
+# run_gemma3_round6_cells.sh writes STAGE=gate output to $MEAS/gate_<arm>/ precisely so that
+# gating a second arm cannot overwrite the first arm's cells. Pointing FIXREF_RUNS at runs/
+# therefore finds nothing and fails with "NO PRE-STOP REFERENCE" — which is exactly what the
+# first round-9 attempt did. The ship arm's gate dir is the correct reference. Overridable so a
+# later round can point at its own newest certified echoes.
+FIXREF_RUNS="${FIXREF_RUNS:-$HOME/lever6/gate_R6_kv16_bn32}" \
+FIXREF_MARKER="${FIXREF_MARKER:-$L7/FIXTURES_OK}" \
   /usr/bin/python3 "$HOME/g3r7/benchmarks/llm_smoke/nvidia_race/check_fixtures_gemma3_round5.py"
 rc=$?
 if (( rc != 0 )) || [[ ! -f "$L7/FIXTURES_OK" ]]; then

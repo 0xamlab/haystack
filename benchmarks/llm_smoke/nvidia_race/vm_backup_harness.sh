@@ -43,13 +43,23 @@ DEST=${DEST:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/vm_harness}
 DRY=0
 [[ "${1:-}" == "--dry-run" ]] && DRY=1
 
-# VM-side absolute paths. These are the harness's own references, not guesses: cell_watchdog.sh,
-# gate_any.py and lv3_trtllm.sh are read from $HOME/lever3 by run_gemma3_round6_cells.sh;
-# driver_ctx8192.mojo from $HOME/adj/build by run_ab_gemma3_round*.sh; the two trtllm scripts from
-# $HOME/trtllm by chain7stage.sh.
+# VM-side paths RELATIVE TO $HOME. cell_watchdog.sh, gate_any.py and lv3_trtllm.sh are read from
+# $HOME/lever3 by run_gemma3_round6_cells.sh, and driver_ctx8192.mojo from $HOME/adj/build by
+# run_ab_gemma3_round*.sh — both verified present on the box.
+#
+# THE STAGING SCRIPTS LIVE AT $HOME/*.sh, **NOT** $HOME/trtllm/*.sh. This file originally assumed
+# the trtllm/ subdirectory, so the first backup run reported the two most load-bearing files in the
+# lane as MISSING and silently skipped them — a backup that quietly omits the thing it exists to
+# protect is worse than no backup, because it reads as done. The paths below were confirmed by
+# `find $HOME -maxdepth 3 -name 'trtllm*'` on the box, which also turned up convert_27b.sh and
+# trtllm_fixcuda.sh as part of the same staging recipe; all four are taken. A missing path is still
+# reported loudly rather than skipped silently.
 FILES=(
-  "trtllm/trtllm_prep.sh"
-  "trtllm/trtllm_convert.sh"
+  "trtllm_prep.sh"
+  "trtllm_convert.sh"
+  "convert_27b.sh"
+  "trtllm_fixcuda.sh"
+  "trtllm_verify.sh"
   "lever3/cell_watchdog.sh"
   "lever3/gate_any.py"
   "lever3/lv3_trtllm.sh"

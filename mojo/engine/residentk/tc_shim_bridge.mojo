@@ -925,6 +925,66 @@ def _tc_fa_g3_window2_async(q32: Int, k: Int, v: Int, o: Int, scale32: Int, m: I
         return -1
 
 
+def _tc_fa_g3_window3_async(q32: Int, k: Int, v: Int, o: Int, scale32: Int, m: Int,
+                            n_keys: Int, h_q: Int, h_kv: Int, d: Int, pos_base: Int,
+                            window: Int, bn: Int, kv32: Int, of16: Int, dbuf: Int,
+                            rt: Int, gqa: Int) -> Int:
+    """FUSED WINDOWED FLASH ATTENTION v3 for the Gemma 3 lane (round 7 kernel, round 9 dispatch):
+    v2 with `rt` m16 row-tiles per warp fed by ONE shared B-fragment stream, so each K/V
+    `ldmatrix.x4` issues `rt` mma instead of one and the shared-load stream per row falls by `rt`.
+
+    `gqa=1` spends those tiles on GQA-PACKED CTAs: the `rt` tiles are `rt` different QUERY HEADS
+    of ONE KV head at the SAME 16 rows, so `grid.y` falls from `h_q` to `h_q/rt` and the K/V tile
+    is fetched once per (row-block, kv-head) instead of once per query head. `gqa=0` spends them
+    on ROWS instead (FA_BM 64 -> 128).
+
+    BIT-IDENTICAL TO v2, and that was PROVEN rather than assumed: `fa_g3_probe` holds every v3
+    arm to a full-element bit comparison against the v2 arm of the same (kv32, of16, dbuf), and on
+    2026-09-17 that was **216/216 BITIDENT-v2 with 0 BITDIFF at both BN=32 and BN=64**, across all
+    twelve raced shapes including the odd tail. v3 moves no rounding point. For `gqa=1` both tiles
+    share v2's `row0`, so the key-block range, block order and mma k-grouping are v2's exactly per
+    (row, head). For `gqa=0` the range widens to the union over 128 rows, but every extra block is
+    fully masked and the online-softmax rescale annihilates it exactly.
+
+    SHAPE-CONDITIONAL BY NECESSITY, AND THE CONDITION IS MEASURED NOT MODELLED. `gqa=1` halves
+    the CTA count, and the probe's decision table (median of 30, production mapping, BN=32) puts
+    the crossover at `n_keys`:
+
+        rag t1  n_keys=1024   v2  90.3 us -> GQA2 101.6 us   +11.9%  LOSES
+        rag t2  n_keys=2048   v2 126.7 us -> GQA2 110.5 us   -12.8%  WINS
+        rag t3  n_keys=3072   v2 126.1 us -> GQA2 110.9 us   -12.1%  WINS
+        rag t4  n_keys=4096   v2 141.5 us -> GQA2 111.5 us   -21.2%  WINS
+        pp256   n_keys= 256   v2  22.5 us -> GQA2  30.9 us   +37.6%  LOSES BADLY
+
+    Per-CTA work scales with the key-block count, so at small `n_keys` the doubled Q staging and
+    the RT=2 register pressure (255 registers, and 24 of 36 instantiations spill 424-488 B) are
+    not amortized; at large `n_keys` the halved K/V fetch dominates. The dispatch therefore gates
+    on `n_keys` as a shape fact, which is also why this is a WIN for rag4096 and a NO-OP for
+    pp256/pp1024 — those cells keep v2 bit for bit and cannot regress.
+
+    Decline contract: -301 head_dim != 128, -304 non-integral GQA or an `rt` that does not divide
+    the group size `h_q/h_kv` (the check that stops a packed CTA silently reading the wrong K/V),
+    -305 an off-table (bn, kv32, of16, dbuf, rt, gqa) selection — v3's table is BN 32/64 only, and
+    `dbuf=1` with `kv32=1` is rejected because cp.async cannot convert — or an ungranted shared
+    window; -311 the on-device raw-mma layout probe disagreed. The caller's fallback on
+    -301/-304/-305/-311 is v2, which keeps its own fallback to v1 and then to the five-pass chain:
+    a declined lever never masquerades as an armed one. 0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_fa_g3_window3_async", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64,
+            ](Int64(q32), Int64(k), Int64(v), Int64(o), Int64(scale32), Int64(m),
+              Int64(n_keys), Int64(h_q), Int64(h_kv), Int64(d), Int64(pos_base),
+              Int64(window), Int64(bn), Int64(kv32), Int64(of16), Int64(dbuf),
+              Int64(rt), Int64(gqa))
+        )
+    else:
+        return -1
+
+
 def _tc_swiglu_f16_fastexp(gu16: Int, act16: Int, m_rows: Int, n_ff: Int) -> Int:
     """Fast-exp SwiGLU epilogue (FRONT 3 lever 2, `-D ALGENTA_7B_PF_FASTEXP`): the shim twin
     of `_pf_swiglu_rows_f16_kernel` — the same `(g / (1 + exp(-g))) * u` over the same f16

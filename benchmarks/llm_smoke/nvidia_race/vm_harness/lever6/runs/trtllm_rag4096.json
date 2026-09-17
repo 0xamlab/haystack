@@ -1,0 +1,258 @@
+{
+ "label": "trtllm_rag4096",
+ "config": {
+  "base_url": "http://127.0.0.1:8000",
+  "model": "gemma-3-27b-it",
+  "max_tokens": 256,
+  "temperature": 0.0,
+  "ignore_eos": true,
+  "stream": true,
+  "warmup": 3,
+  "measured": 7,
+  "prompt_text_file": "/tmp/g3rag/rag4096.text",
+  "prompt_text_chars": 15712,
+  "prompt_raw_id_count": 4096,
+  "prompt_tokens_server": 4105,
+  "ttft_definition": "client-observed wall to first SSE content chunk (a2a server-engine convention)"
+ },
+ "n_ok_measured": 7,
+ "n_errors": 0,
+ "error_sample": [],
+ "ttft_ms": {
+  "n": 7,
+  "median": 426.339,
+  "q1": 426.019,
+  "q3": 426.44,
+  "iqr": 0.422,
+  "mean": 426.695,
+  "min": 424.944,
+  "max": 430.347,
+  "cv_pct": 0.398,
+  "spread_pct": 1.267,
+  "variance_gate_5pct_pass": true,
+  "runs": [
+   430.347,
+   427.595,
+   426.019,
+   425.18,
+   426.44,
+   426.339,
+   424.944
+  ]
+ },
+ "e2e_ms": {
+  "n": 7,
+  "median": 5168.771,
+  "q1": 5168.752,
+  "q3": 5171.858,
+  "iqr": 3.107,
+  "mean": 5170.294,
+  "min": 5166.242,
+  "max": 5174.822,
+  "cv_pct": 0.059,
+  "spread_pct": 0.166,
+  "variance_gate_5pct_pass": true,
+  "runs": [
+   5171.858,
+   5167.614,
+   5166.242,
+   5174.822,
+   5168.752,
+   5168.771,
+   5174.001
+  ]
+ },
+ "prefill_tok_s_engine_prompt_tokens": {
+  "n": 7,
+  "median": 9628.478,
+  "q1": 9626.203,
+  "q3": 9635.728,
+  "iqr": 9.524,
+  "mean": 9620.61,
+  "min": 9538.818,
+  "max": 9660.095,
+  "cv_pct": 0.396,
+  "spread_pct": 1.26,
+  "variance_gate_5pct_pass": true,
+  "runs": [
+   9538.818,
+   9600.212,
+   9635.728,
+   9654.738,
+   9626.203,
+   9628.478,
+   9660.095
+  ]
+ },
+ "prefill_tok_s_raw_id_count": {
+  "n": 7,
+  "median": 9607.368,
+  "q1": 9605.098,
+  "q3": 9614.602,
+  "iqr": 9.504,
+  "mean": 9599.518,
+  "min": 9517.905,
+  "max": 9638.916,
+  "cv_pct": 0.396,
+  "spread_pct": 1.26,
+  "variance_gate_5pct_pass": true,
+  "runs": [
+   9517.905,
+   9579.164,
+   9614.602,
+   9633.57,
+   9605.098,
+   9607.368,
+   9638.916
+  ]
+ },
+ "decode_tok_s": {
+  "n": 7,
+  "median": 53.771,
+  "q1": 53.77,
+  "q3": 53.78,
+  "iqr": 0.01,
+  "mean": 53.757,
+  "min": 53.688,
+  "max": 53.797,
+  "cv_pct": 0.079,
+  "spread_pct": 0.203,
+  "variance_gate_5pct_pass": true,
+  "runs": [
+   53.78,
+   53.797,
+   53.795,
+   53.688,
+   53.771,
+   53.77,
+   53.695
+  ]
+ },
+ "out_tokens_seen": [
+  256
+ ],
+ "first_text_sample": "There",
+ "probe": {
+  "ok": true,
+  "err": null,
+  "ttft_ms": 441.95876300000236,
+  "e2e_ms": 5187.128782999935,
+  "out_tokens": 256,
+  "prompt_tokens": 4105,
+  "first_text": "There"
+ },
+ "warmup": [
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 427.97377499846334,
+   "e2e_ms": 5169.012416999976,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "warmup",
+   "i": 1
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 426.2326750013017,
+   "e2e_ms": 5164.307754999754,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "warmup",
+   "i": 2
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 427.7950920004514,
+   "e2e_ms": 5169.317783998849,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "warmup",
+   "i": 3
+  }
+ ],
+ "measured": [
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 430.3468209982384,
+   "e2e_ms": 5171.85824399894,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "measured",
+   "i": 1
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 427.59473400110437,
+   "e2e_ms": 5167.61360000055,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "measured",
+   "i": 2
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 426.01867399935145,
+   "e2e_ms": 5166.242360999604,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "measured",
+   "i": 3
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 425.17985199992836,
+   "e2e_ms": 5174.822275999759,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "measured",
+   "i": 4
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 426.4401889995497,
+   "e2e_ms": 5168.75155499838,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "measured",
+   "i": 5
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 426.3394450008491,
+   "e2e_ms": 5168.7711869999475,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "measured",
+   "i": 6
+  },
+  {
+   "ok": true,
+   "err": null,
+   "ttft_ms": 424.9440459989273,
+   "e2e_ms": 5174.000648999936,
+   "out_tokens": 256,
+   "prompt_tokens": 4105,
+   "first_text": "There",
+   "kind": "measured",
+   "i": 7
+  }
+ ]
+}

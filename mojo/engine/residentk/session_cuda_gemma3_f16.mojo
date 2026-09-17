@@ -124,6 +124,7 @@ from residentk.tc_shim_bridge import (
     _tc_fa2_layout_probe,
     _tc_fa_g3_window_async,
     _tc_fa_g3_window2_async,
+    _tc_fa_g3_window3_async,
     _tc_gemm_f16_32c_pre_async,
     _tc_gemm_f16_16c_pre_async,
 )
@@ -352,6 +353,67 @@ operands are BIT-IDENTICAL between the routes (round 5's probe: identical max_ab
 twelve shapes; the staging rounds where the in-register convert rounds), so this flag changes
 scheduling and traffic, not numerics — it still carries its own banner and gate because it
 changes which kernels run."""
+
+comptime G3_PF_GQA2: Bool = G3_PF_FA2 and is_defined["ALGENTA_G3_PF_GQA2"]()
+"""ROUND 9 (`-D ALGENTA_G3_PF_GQA2`, requires G3_PF_FA2): dispatch the fused windowed attention
+through v3's GQA-PACKED CTAs — `rt=2` m16 row-tiles per warp spent on TWO QUERY HEADS OF ONE KV
+HEAD at the same 16 rows, so `grid.y` falls from `h_q` to `h_q/2` and the K/V tile is fetched
+once per (row-block, kv-head) instead of once per query head. Each `ldmatrix.x4` of K or V then
+feeds two mma instead of one, halving the per-row shared-load stream that round 6 named as the
+binding constraint on this kernel.
+
+BIT-IDENTICAL TO v2 AND PROVEN SO, not asserted: `fa_g3_probe` holds every v3 arm to a
+full-element bit comparison against the v2 arm of the same (kv32, of16, dbuf), and on 2026-09-17
+that was **216/216 BITIDENT-v2, 0 BITDIFF, 0 FAIL at both BN=32 and BN=64** across all twelve
+raced shapes including the odd tail. Both tiles share v2's `row0`, so the key-block range, the
+block order and the mma k-grouping are v2's exactly per (row, head). A declined v3 falls through
+to v2, which keeps its own fallback to v1 and then to the five-pass chain.
+
+SHAPE-CONDITIONAL, AND THE CONDITION IS A MEASURED SHAPE FACT — see `_G3_PF_GQA2_MIN_NKEYS`.
+Below the crossover this flag is a NO-OP: those cells keep v2 bit for bit and cannot regress."""
+
+comptime _G3_PF_GQA2_RT: Int = 2
+"""Row-tiles per warp the GQA-packed dispatch asks for. 2 is gemma-3-27b's whole GQA group
+(`h_q/h_kv` = 32/16), so one CTA owns exactly the two query heads that share a KV head. The shim
+rejects an `rt` that does not divide the group with -304, which is the check that stops a packed
+CTA from silently reading the wrong K/V for its second tile."""
+
+comptime _G3_PF_GQA2_MIN_NKEYS: Int = 2048
+"""The key-count crossover at which GQA packing engages. A SHAPE FACT, MEASURED NOT MODELLED —
+`fa_g3_probe`'s round-7 decision table (median of 30 after 3 warmups, production mapping
+kv32=0/of16=1/dbuf=1, BN=32, H200 at 1410 MHz, reproduced at BN=64):
+
+    shape              n_keys    v2 us   GQA2 us    delta
+    pp256    local        256     22.5      30.9   +37.6%   LOSES BADLY
+    pp1024   local       1024     90.8     101.6   +11.9%   LOSES
+    rag t1   local       1024     90.3     101.8   +12.8%   LOSES
+    rag t2   local       2048    126.7     110.5   -12.8%   WINS
+    rag t2   global      2048    217.9     184.4   -15.4%   WINS
+    rag t3   local       3072    126.1     110.9   -12.1%   WINS
+    rag t4   local       4096    141.5     111.5   -21.2%   WINS
+    rag t4   global      4096    431.2     350.2   -18.8%   WINS
+
+The crossover sits between n_keys=1024 and n_keys=2048, so the threshold is 2048. WHY it sits
+there: per-CTA work scales with the key-block count, while GQA packing's costs are per-CTA and
+fixed — the Q tile is staged twice (once per head-tile) and the RT=2 register pressure is real
+(255 registers, with 24 of 36 v3 instantiations spilling 424-488 B where v2 needs 158-172 and
+spills nothing). At n_keys<=1024 a CTA walks <=32 key blocks, so those fixed costs dominate; at
+n_keys>=2048 the halved K/V fetch is walked over 64-128 blocks and wins by 12-21%.
+
+This is also WHY ROUND 7's BLANKET REFUTATION WAS WRONG. Round 7 read the register census (255 +
+spill) and stopped before taking a single timing, concluding the lever was dead on arrival. The
+census measured spill SIZE; what decides a spill is its FREQUENCY IN THE HOT LOOP relative to the
+work amortized over it, and at large n_keys the answer is that the spill costs less than the K/V
+traffic it saves. The probe had in fact already run to completion on the box and its logs said so
+— they were simply not retrieved before the instance went to STOCKOUT. Recovering them reversed
+the verdict for three of rag4096's four tiles.
+
+CONSEQUENCE FOR THE RACED CELLS, which is the point of gating on shape at all: a rag4096 prefill
+walks n_keys = 1024/2048/3072/4096, so tiles 2-4 take GQA2 and tile 1 keeps v2 — a modelled
+-12.7% on the fused attention bucket (sum of the four per-tile probe rows, 484.6 -> 423.2 us),
+which against round 6's measured 33.53 ms is about -4.25 ms. pp256 (n_keys=256) and pp1024
+(n_keys=1024) fall entirely below the threshold and are UNTOUCHED, bit for bit, so neither can
+regress."""
 
 comptime _G3_PF_FA2_DBUF_MIN_N: Int = 0 if _G3_PF_BN32 else 2048
 """The key-count crossover at which the v2 kernel's cp.async K/V double buffering engages on
@@ -926,6 +988,15 @@ struct _CudaResidentGemma3F16(Movable):
                   "P in registers, direct-to-global epilogue, cp.async double buffer from",
                   "n_keys >=", _G3_PF_FA2_DBUF_MIN_N if _G3_PF_FA_KV32 == 0 else 0, ")")
         @parameter
+        if G3_PF_GQA2:
+            print("TCFLAG ALGENTA_G3_PF_GQA2=1 (window kernel v3 GQA-PACKED: rt =",
+                  _G3_PF_GQA2_RT, "row-tiles per warp spent on", _G3_PF_GQA2_RT,
+                  "query heads of ONE kv head, so grid.y is h_q/", _G3_PF_GQA2_RT,
+                  "and each K/V ldmatrix feeds", _G3_PF_GQA2_RT, "mma; engaged only from",
+                  "n_keys >=", _G3_PF_GQA2_MIN_NKEYS, "where the probe measures -12..-21%,",
+                  "and BIT-IDENTICAL to v2 — 216/216 BITIDENT-v2, 0 BITDIFF, 0 FAIL at",
+                  "BN=32 and BN=64; below the threshold the dispatch is v2 unchanged)")
+        @parameter
         if _G3_PF_KV16:
             print("TCFLAG ALGENTA_G3_PF_KV16=1 (fused attention reads the f16 K/V staging",
                   "twin (v8 staging, bit-exact operands); cp.async double buffer legal)")
@@ -1238,20 +1309,57 @@ struct _CudaResidentGemma3F16(Movable):
                                     dbuf_want = (
                                         1 if n_keys_fa >= _G3_PF_FA2_DBUF_MIN_N else 0
                                     )
-                                rfa = _tc_fa_g3_window2_async(
-                                    Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr, o_ptr,
-                                    Int(self.pf_fa_scale.unsafe_ptr()),
-                                    m, n_keys_fa, self.h_q, self.h_kv, self.d_head, pos,
-                                    window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32, of16,
-                                    dbuf_want)
-                                if rfa == -301 or rfa == -304 or rfa == -305 \
-                                        or rfa == -311:
-                                    rfa = _tc_fa_g3_window_async(
-                                        Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr,
-                                        o_ptr, Int(self.pf_fa_scale.unsafe_ptr()),
-                                        m, n_keys_fa, self.h_q, self.h_kv, self.d_head,
-                                        pos, window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32,
-                                        of16)
+                                # ── ROUND 9 (`-D ALGENTA_G3_PF_GQA2`): GQA-packed v3, but ONLY
+                                #    where the probe measures it winning. `n_keys >=
+                                #    _G3_PF_GQA2_MIN_NKEYS` is a measured shape fact, not a
+                                #    model (see that constant for the decision table); below it
+                                #    packing LOSES (+37.6% at pp256, +11.9% at pp1024) because
+                                #    the per-CTA fixed costs — a twice-staged Q tile and RT=2's
+                                #    255-register pressure with 24 of 36 instantiations spilling
+                                #    — are not amortized over so few key blocks. The group-size
+                                #    test is belt-and-braces: the shim also rejects an rt that
+                                #    does not divide h_q/h_kv with -304, and that rejection is
+                                #    what stops a packed CTA from reading the WRONG K/V for its
+                                #    second tile and returning plausible-looking wrong numbers.
+                                var gqa2_ok = False
+                                var use_gqa2 = False
+                                @parameter
+                                if G3_PF_GQA2:
+                                    use_gqa2 = True
+                                if use_gqa2:
+                                    if n_keys_fa >= _G3_PF_GQA2_MIN_NKEYS and (
+                                            self.h_q % (self.h_kv * _G3_PF_GQA2_RT)) == 0:
+                                        rfa = _tc_fa_g3_window3_async(
+                                            Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr,
+                                            o_ptr, Int(self.pf_fa_scale.unsafe_ptr()),
+                                            m, n_keys_fa, self.h_q, self.h_kv, self.d_head,
+                                            pos, window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32,
+                                            of16, dbuf_want, _G3_PF_GQA2_RT, 1)
+                                        gqa2_ok = rfa == 0
+                                        if not gqa2_ok and (
+                                                rfa == -301 or rfa == -304 or rfa == -305
+                                                or rfa == -311):
+                                            # DECLINED, not failed: take v2's path exactly as if
+                                            # GQA2 were off. A declined lever never masquerades.
+                                            rfa = 0
+                                        # Any OTHER non-zero status is a real launch failure and
+                                        # is deliberately NOT retried on v2: masking it would
+                                        # turn a CUDA error into a silently different kernel.
+                                if not gqa2_ok and rfa == 0:
+                                    rfa = _tc_fa_g3_window2_async(
+                                        Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr, o_ptr,
+                                        Int(self.pf_fa_scale.unsafe_ptr()),
+                                        m, n_keys_fa, self.h_q, self.h_kv, self.d_head, pos,
+                                        window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32, of16,
+                                        dbuf_want)
+                                    if rfa == -301 or rfa == -304 or rfa == -305 \
+                                            or rfa == -311:
+                                        rfa = _tc_fa_g3_window_async(
+                                            Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr,
+                                            o_ptr, Int(self.pf_fa_scale.unsafe_ptr()),
+                                            m, n_keys_fa, self.h_q, self.h_kv, self.d_head,
+                                            pos, window_fa, _G3_PF_FA_BN, _G3_PF_FA_KV32,
+                                            of16)
                             else:
                                 rfa = _tc_fa_g3_window_async(
                                     Int(self.pf_q_rot.unsafe_ptr()), k_ptr, v_ptr, o_ptr,
