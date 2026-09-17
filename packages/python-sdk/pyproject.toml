@@ -42,3 +42,27 @@ Changelog = "https://docs.algenta.ai/changelog"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["decision_engine*"]
+
+# This package is mirrored, unmodified, into the public thyn-ai/algenta-sdk repo (see
+# ../../.github/workflows/sync-public-sdk.yml and release-sdks.yml) -- that repo's own CI has
+# no access to this monorepo's root pyproject.toml, so without a [tool.ruff] table here its
+# `ruff check packages/python-sdk` step falls back to ruff's bare defaults and has run with a
+# permanent `|| true` since the day it was first turned on. This config gives that check a real,
+# self-contained ruleset instead. It does not, by itself, remove the `|| true` in algenta-sdk's
+# ci.yml -- that requires a `security/baseline/ruff.txt`-style baseline measured on THAT repo's
+# own CI first (never from a laptop), which needs thyn-ai/algenta-sdk#29 merged before it can run.
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+]
