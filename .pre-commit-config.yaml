@@ -1,10 +1,28 @@
+# pre-commit configuration -- install once per clone:
+#   pip install pre-commit        (or: uv tool install pre-commit)   -- pre-commit >= 3.2.0
+#   pre-commit install            # installs BOTH the pre-commit and pre-push hooks below
+#
+# Pin contract (tests/test_precommit_pins.py enforces it):
+#   * ruff-pre-commit `rev` == the ruff pin in mojo_env/pixi.toml, so the hook lints and
+#     formats with the exact ruff that `make lint` / `make format` run;
+#   * the mypy hook covers exactly the four packages Makefile `lint`/`typecheck` pass to mypy,
+#     and its additional_dependencies carry the exact pydantic / types-redis pins from
+#     mojo_env/pixi.toml.
+# There is deliberately no black hook: ruff is the only Python formatter (Makefile `format`).
+default_install_hook_types: [pre-commit, pre-push]
+default_language_version:
+  python: python3.14
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        # Helm templates are Go templates until rendered ({{ .Values }} directives), so they
+        # do not parse as YAML.
+        exclude: ^infra/helm/
       - id: check-json
       - id: check-toml
       - id: check-merge-conflict
@@ -13,23 +31,46 @@ repos:
       - id: no-commit-to-branch
         args: ["--branch", "main"]
 
+  # ruff is the only Python linter AND formatter (Makefile `lint` / `format`).
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.0
+    rev: v0.12.0 # == ruff pin in mojo_env/pixi.toml
     hooks:
       - id: ruff
         args: ["--fix"]
       - id: ruff-format
 
-  - repo: https://github.com/psf/black
-    rev: 24.3.0
-    hooks:
-      - id: black
-        language_version: python3.12
-
+  # Type-check exactly what `make typecheck` covers. pyproject's [tool.mypy] `exclude` does
+  # not apply to files passed explicitly on the command line (which is how pre-commit invokes
+  # mypy), so the alembic exclusion is repeated here.
+  # mypy is pinned nowhere else in the repo (not in pixi.toml); this is mirrors-mypy's newest tag.
+  # `make typecheck` is red today (2026-09-16: 3409 errors in 538 files with mypy 2.3.1 over
+  # this scope), so the hook is MANUAL until it is green -- run it with
+  #   pre-commit run mypy --all-files --hook-stage manual
+  # and flip `stages` to [pre-push] once that passes (default_install_hook_types already
+  # installs the pre-push stage).
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
+    rev: v2.3.1
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic, types-redis]
-        args: ["--ignore-missing-imports"]
-        files: ^apps/
+        stages: [manual]
+        files: ^apps/(api_server|mcp_server|runtime|worker)/
+        exclude: ^apps/api_server/alembic/
+        additional_dependencies:
+          - pydantic==2.12.0 # == mojo_env/pixi.toml
+          - types-redis==4.6.0.20240425 # == mojo_env/pixi.toml
+  # thyn-security-toolchain:begin -- managed by thyn-ai/security-toolchain (propagate). Edit args, not rev.
+  - repo: https://github.com/thyn-ai/security-toolchain
+    rev: v0.1.5
+    hooks:
+      - id: gitleaks-staged
+      - id: opengrep-changed
+        args: ["--overlay=engine"]
+      - id: actionlint
+      - id: verify-toolchain
+      - id: gitleaks-push
+      - id: opengrep-full
+        args: ["--overlay=engine"]
+      - id: osv-scan
+      - id: trivy-config
+      - id: security-fix-deps
+  # thyn-security-toolchain:end
