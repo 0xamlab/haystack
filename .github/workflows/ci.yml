@@ -1405,6 +1405,18 @@ jobs:
   # Runner sizing: none of these jobs compiles Mojo (the Dockerfiles COPY the prebuilt worker
   # from ghcr.io/<repo>/mojo), so ubuntu-latest's 14 GB disk is the constraint to watch (buildkit
   # state + the SBOM scan's by-digest pulls); escalate a job to `thyn-8c` only on a measured ENOSPC.
+  #
+  # UPDATE, and it corrects the paragraph above. One WAS measured: on main at be51fd2ba all three
+  # of these jobs failed inside ./.github/actions/image-sbom-scan with grype's
+  # "unable to migrate: database or disk is full". The reasoning "one job per image on a fresh
+  # runner means nothing accumulates" holds ACROSS jobs but not WITHIN one -- a single
+  # build+push+scan is by itself enough to exceed 14 GB, because the scan was resolving the image
+  # through the docker daemon (pull + `docker save` to a tarball) on top of the buildkit state and
+  # then hydrating grype's vulnerability DB, which needs ~2x its size transiently. So a prune step
+  # does exist again, in the composite action, plus a `registry:` source that stops the scan from
+  # touching the daemon at all. Escalation to `thyn-8c` remains the next lever if that is still not
+  # enough -- the composite now prints `df -h` before and after reclaiming, so the decision will be
+  # made against a number rather than a guess.
   build-api:
     name: Build & Push Docker (API image)
     runs-on: ubuntu-latest
