@@ -1401,22 +1401,48 @@ jobs:
   # step." Applying that same principle to the image builds themselves -- one job per image, each
   # on its own fresh GitHub-hosted runner -- means no image's build+push+scan ever shares a disk
   # with another's, so there is nothing to accumulate and nothing left to prune. No
-  # `docker builder/image prune` step appears anywhere below, and none should ever need to again.
-  # Runner sizing: none of these jobs compiles Mojo (the Dockerfiles COPY the prebuilt worker
-  # from ghcr.io/<repo>/mojo), so ubuntu-latest's 14 GB disk is the constraint to watch (buildkit
-  # state + the SBOM scan's by-digest pulls); escalate a job to `thyn-8c` only on a measured ENOSPC.
+  # `docker builder/image prune` step appears anywhere below -- but see THE INCIDENT further down:
+  # one does exist again, in the composite scan action, because this paragraph's conclusion was
+  # wrong about a single job's own footprint even though it is right about jobs not sharing a disk.
+  # Runner sizing, MEASURED rather than remembered -- the previous text here claimed
+  # "ubuntu-latest's 14 GB disk", which the `df -h` that ./.github/actions/image-sbom-scan now
+  # prints disproves on both counts:
   #
-  # UPDATE, and it corrects the paragraph above. One WAS measured: on main at be51fd2ba all three
-  # of these jobs failed inside ./.github/actions/image-sbom-scan with grype's
-  # "unable to migrate: database or disk is full". The reasoning "one job per image on a fresh
-  # runner means nothing accumulates" holds ACROSS jobs but not WITHIN one -- a single
-  # build+push+scan is by itself enough to exceed 14 GB, because the scan was resolving the image
-  # through the docker daemon (pull + `docker save` to a tarball) on top of the buildkit state and
-  # then hydrating grype's vulnerability DB, which needs ~2x its size transiently. So a prune step
-  # does exist again, in the composite action, plus a `registry:` source that stops the scan from
-  # touching the daemon at all. Escalation to `thyn-8c` remains the next lever if that is still not
-  # enough -- the composite now prints `df -h` before and after reclaiming, so the decision will be
-  # made against a number rather than a guess.
+  #   /dev/root   72G   61G   12G  85% /     <- at scan time, before reclaim
+  #   /dev/root   72G   59G   14G  82% /     <- after reclaim (~2G freed)
+  #
+  # The disk is 72G, and ~14G is the space FREE at that point in the job, not the disk's size --
+  # 61G is already consumed by the runner image's preinstalled toolchains before this workflow
+  # runs a thing. Reading free space as capacity is how the wrong number got written down, and it
+  # matters because the sizing rule below is calibrated against it.
+  #
+  # ESCALATION RULE, in the units the `df` output actually reports. None of these jobs compiles
+  # Mojo (the Dockerfiles COPY the prebuilt worker from ghcr.io/<repo>/mojo), so free disk at scan
+  # time is the only constraint. Two data points bracket it:
+  #   * 12G free  -> FAILED, grype "database or disk is full" while hydrating its vulnerability DB
+  #                  (it downloads to a temp dir then migrates in place, needing ~2x the DB size
+  #                  transiently) on top of the scan's docker-daemon image copy.
+  #   * 14G free  -> PASSED, but only after the daemon copy was removed via the `registry:` source.
+  # So escalate a job to `thyn-8c` (300 GB) when free disk at scan time is BELOW 20 GB. 14G is a
+  # proven-pass with no margin and 12G is a proven-fail; 20G sits clear of both. Read the number
+  # off the composite's "disk before reclaim" line rather than estimating -- that step exists so
+  # this decision is made against a measurement.
+  #
+  # THE INCIDENT the rule above was recalibrated from. On main at be51fd2ba all three of these
+  # jobs failed inside ./.github/actions/image-sbom-scan with grype's "unable to migrate: database
+  # or disk is full" -- after the image build and push had already SUCCEEDED, so the failure was
+  # purely in the advisory scan step. The reasoning in the first paragraph, "one job per image on a
+  # fresh runner means nothing accumulates", holds ACROSS jobs but is false WITHIN one: a single
+  # build+push+scan is by itself enough to exhaust the free space, because the scan was resolving
+  # the image through the docker daemon (pull + `docker save` to an on-disk tarball) on top of the
+  # buildkit state, and then hydrating grype's DB. Hence the two fixes now living in the composite
+  # action -- a `registry:` source so the scan never touches the daemon, and a prune step ahead of
+  # it -- and hence the `df -h` pair that makes the next such decision measurable.
+  #
+  # Note also that `fail-build: false` on the grype step did NOT protect these jobs. It suppresses
+  # failing on discovered CVE severities, not on grype being unable to run at all; a DB that cannot
+  # hydrate exits non-zero and fails the step with no vulnerability finding involved. An advisory
+  # step that can still red the build is worth knowing about before you rely on it being advisory.
   build-api:
     name: Build & Push Docker (API image)
     runs-on: ubuntu-latest
