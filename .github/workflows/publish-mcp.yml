@@ -22,14 +22,13 @@ permissions:
 jobs:
   publish-mcp:
     name: publish to the Official MCP Registry
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install mcp-publisher
-        # Runner-agnostic: pick the release asset for THIS runner's OS/arch (the fleet is
-        # macOS arm64; hosted was linux amd64) and install under RUNNER_TEMP -- no sudo.
+        # Runner-agnostic: pick the release asset for THIS runner's OS/arch (linux amd64 on
+        # ubuntu-latest) and install under RUNNER_TEMP -- no sudo.
         run: |
           set -euo pipefail
           OS="$(uname -s | tr '[:upper:]' '[:lower:]')"

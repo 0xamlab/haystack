@@ -50,16 +50,14 @@ permissions:
 # Note: the job-level deploy concurrency groups below stay as they are — they serialize
 # migrations per Fly app, and a superseded deploy is likewise covered by the next one.
 concurrency:
-  # Scheduling v2: ci.yml uses DYNAMIC postgres ports (docker -p 0:5432 + port
-  # lookup), so its jobs are collision-free across runners on the shared Colima
-  # daemon — run free per-ref for full fleet utilization. Only fixed-port
-  # workflows serialize fleet-wide (see sdk-audit.yml). The v1 serial slot
-  # starved idle runners on single-job legs; zombies (reaper) and grind
-  # (adaptive CodeQL) were the real wedge causes and are fixed at root.
+  # Per-ref groups, no cross-ref serialization: the `test` job uses DYNAMIC service ports
+  # (docker -p 0:5432 + port lookup) and run-unique container names, so runs for different
+  # refs cannot collide even when they share a Docker daemon -- and on GitHub-hosted runners
+  # every job gets its own VM anyway.
   # A workflow_dispatch run gets its OWN group, keyed by run_id. Sharing the per-ref group with
   # main pushes made the baseline measurement impossible to run: GitHub allows only ONE PENDING
   # run per group, so a dispatch that has not started yet is EVICTED by the next push. Measured
-  # 2026-08-27 -- run 33036715923 sat pending 19 minutes behind a saturated fleet and was
+  # 2026-08-27 -- run 33036715923 sat pending 19 minutes behind a saturated runner pool and was
   # cancelled the instant a push landed, even though cancel-in-progress is false for pushes.
   # `cancel-in-progress: false` does not protect a run that never got a runner; the pending slot
   # is the scarce resource, not the running one. A dispatch neither evicts nor is evicted now.
@@ -76,18 +74,26 @@ jobs:
   # ── Test ──────────────────────────────────────────────────────────────────
   test:
     name: Test (Python ${{ matrix.python-version }})
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    # CANARY on `ubuntu-latest` (2 vCPU / 8 GB / 14 GB SSD, Ubuntu 24.04). This job compiles
+    # Mojo twice in-job (the FILTERED build_mojo_binary.sh run + `make verify-accel-aot`) and
+    # runs three service containers; measured 8.8-15.4 min on the previous 8-vCPU runners, so
+    # expect 20-45 min here. Observe the first PR + push runs before deciding the fallback:
+    #   - if PYTEST_TIMEOUT / wall-clock is the limiter -> `ubuntu-latest-4-cores`;
+    #   - only if RAM or disk is the limiter -> `thyn-8c` (billed, 8 cores / 32 GB / 300 GB).
+    # The dispatch-only blast-radius baseline sweep (793 sequential pytest starts, see the
+    # "Measure blast-radius known-red baseline" step) is the one shape that cannot fit the
+    # canary's budget, so a measure_baseline dispatch routes to `thyn-8c` directly.
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.measure_baseline && 'thyn-8c' || 'ubuntu-latest' }}
     strategy:
       matrix:
         python-version: ["3.14"]
 
     env:
-      # DATABASE_URL / DATABASE_URL_SYNC / REDIS_URL / S3_ENDPOINT_URL are NOT constants here
-      # anymore: the service containers below get Docker-assigned host ports (unique per run,
-      # so overlapping runs for different refs can't collide on this one shared Docker daemon),
-      # and the start step exports the port-derived URLs via $GITHUB_ENV once the ports are
-      # known. Everything that consumes them runs AFTER that step.
+      # DATABASE_URL / DATABASE_URL_SYNC / REDIS_URL / S3_ENDPOINT_URL are NOT constants here:
+      # the service containers below get Docker-assigned host ports (unique per run, so
+      # overlapping runs for different refs can never collide on a shared Docker daemon), and
+      # the start step exports the port-derived URLs via $GITHUB_ENV once the ports are known.
+      # Everything that consumes them runs AFTER that step.
       JWT_SECRET: test-secret-not-for-production
       STRIPE_SECRET_KEY: sk_test_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_placeholder
@@ -108,70 +114,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      # `services:` (GitHub Actions' auto-managed containers, which start before ANY step
-      # runs) is Linux-runner-only -- self-hosted macOS/Windows get "Container operations
-      # are only supported on Linux runners" the instant the job starts. This has to run
-      # this early for the same reason: "Verify filtered compiled Mojo worker" below needs
-      # Postgres up, and a manual step only has the ordering GitHub Actions gives it, not
-      # services:'s automatic before-every-step guarantee.
+      # Only for the service-readiness venv below (asyncpg/redis for ci_wait_for_services.py):
+      # every OTHER Python invocation in this job goes through scripts/run_repo_python.sh, i.e.
+      # Pixi's own isolated interpreter. The hosted image ships system Python 3.12; 3.14 lives
+      # in the tool cache and is only put on PATH by setup-python (a cache hit, seconds).
+      - name: Set up Python ${{ env.PYTHON_VERSION }} (service-readiness venv only)
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # Started by hand rather than via `services:` so the Docker-assigned ports can be read
+      # back and exported as URLs through $GITHUB_ENV (services: fixes ports up front). This
+      # has to run this early: "Verify filtered compiled Mojo worker" below needs Postgres up,
+      # and a manual step only has the ordering GitHub Actions gives it.
       - name: Start Postgres + Dragonfly + MinIO, wait for integration services
         env:
           # Run/attempt/matrix-leg unique: with per-ref concurrency, runs for DIFFERENT refs
-          # may overlap on this one Docker daemon, and a re-run keeps the same run_id but
-          # bumps the attempt — the suffix must distinguish both.
+          # may overlap, and a re-run keeps the same run_id but bumps the attempt — the suffix
+          # must distinguish both.
           CI_SERVICE_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.python-version }}
         run: |
-          # ── Reclaim leaked service containers ─────────────────────────────────────────
-          # Persistent self-hosted runner, not an ephemeral cloud VM: a cancelled or crashed
-          # run leaves its containers behind (a cancelled run stops at the step it dies in —
-          # the teardown below never gets to run). Every service container this workflow
-          # starts is labelled algenta-ci=test-services and carries its start epoch; anything
-          # older than the longest plausible test job (4h) is by definition a leak and is
-          # removed here. A CONCURRENT run's live containers are always younger than that and
-          # are never touched — that guarantee is what allows the per-ref concurrency above.
-          now=$(date +%s)
-          for cid in $(docker ps -aq --filter label=algenta-ci=test-services); do
-            created=$(docker inspect -f '{{ index .Config.Labels "algenta-ci-created" }}' "$cid" 2>/dev/null || true)
-            case "$created" in ''|*[!0-9]*) continue ;; esac
-            if [ $((now - created)) -gt 14400 ]; then
-              docker rm -fv "$cid" >/dev/null 2>&1 || true
-            fi
-          done
-          # Transitional sweep of the pre-redesign FIXED names (postgres-ci/dragonfly-ci/minio),
-          # under the same age guard so an in-flight old-style run's young containers survive.
-          # (.Created is UTC — parse it as UTC; this Mac's shell is not.)
-          for name in postgres-ci dragonfly-ci minio; do
-            cid=$(docker inspect -f '{{.Id}}' "$name" 2>/dev/null || true)
-            [ -n "$cid" ] || continue
-            raw=$(docker inspect -f '{{.Created}}' "$cid" 2>/dev/null | tr -d 'Z')
-            ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%S' "${raw%%.*}" +%s 2>/dev/null || echo 0)
-            case "$ts" in ''|*[!0-9]*) ts=0 ;; esac
-            if [ "$ts" -gt 0 ] && [ $((now - ts)) -gt 14400 ]; then
-              docker rm -fv "$cid" >/dev/null 2>&1 || true
-            fi
-          done
-
           # ── Start THIS run's services: run-unique names + Docker-assigned host ports ──
           # `-p 0:<container-port>` lets the daemon pick a free host port, so overlapping runs
-          # can never fight over a fixed port (and this also sidesteps this Mac's well-known
-          # port traps: a native Homebrew Postgres permanently shadows 5432 and 9000 had a
-          # stale colima forward — see git history for the fixed-port era). Verified on the
-          # fleet daemon: colima forwards the assigned port to the host and `localhost:<port>`
-          # is reachable from the runner.
+          # can never fight over a fixed port (see git history for the fixed-port era and the
+          # collisions it caused).
           pg_name="postgres-ci-${CI_SERVICE_SUFFIX}"
           redis_name="dragonfly-ci-${CI_SERVICE_SUFFIX}"
           minio_name="minio-ci-${CI_SERVICE_SUFFIX}"
 
           # `docker run` on an uncached image implicitly pulls first, which talks to that
           # image's registry (Docker Hub, docker.dragonflydb.io, ...) before any container
-          # exists. A transient failure there -- seen live, twice, on two different
-          # registries: "dial tcp: lookup auth.docker.io ...: server misbehaving" and
-          # "lookup docker.dragonflydb.io ...: connection refused" -- is the self-hosted
-          # runner's local resolver stub (127.0.0.53) having a bad moment, not this image, not
-          # this job. A failed `docker run` leaves no container behind, so retrying the exact
-          # same command is safe; `docker rm -fv` before each attempt is belt-and-suspenders
-          # for a partial start, not load-bearing for the common case. Still fails loudly (this
-          # step has no `set +e`, so a real, non-transient failure aborts the job here, with the
+          # exists. A transient failure there (seen live on the previous runner pool as DNS
+          # blips: "lookup auth.docker.io ...: server misbehaving", "lookup
+          # docker.dragonflydb.io ...: connection refused") is not this image, not this job.
+          # A failed `docker run` leaves no container behind, so retrying the exact same
+          # command is safe; `docker rm -fv` before each attempt is belt-and-suspenders for a
+          # partial start, not load-bearing for the common case. Still fails loudly (this step
+          # has no `set +e`, so a real, non-transient failure aborts the job here, with the
           # actual docker error already printed) if the failure isn't transient.
           docker_run_retry() {
             local name="$1"; shift
@@ -228,55 +207,35 @@ jobs:
           export CI_WAIT_MINIO_URL="http://localhost:${minio_port}/minio/health/ready"
 
           # ci_wait_for_services.py's postgres/dragonfly checks need the asyncpg/redis PyPI
-          # packages. On a fresh ephemeral runner (Azure/Blacksmith) this step runs BEFORE
-          # "Install Pixi" below, so run_repo_python.sh's python3 fallback has neither yet,
-          # and the checks always failed here with "No module named 'asyncpg'" (confirmed
-          # live on main, run 32891162493). docker-exec readiness checks aren't a safe
-          # substitute: Dragonfly's own image ships no redis-cli (see this script's own
-          # module docstring), so a redis-cli-based check would just fail a different way.
-          # A throwaway venv (not --user / --break-system-packages) sidesteps both PEP 668
-          # externally-managed-environment locks AND permissions questions on whatever
-          # system python3 this runner has -- these two small, pure-Python packages install
-          # in seconds and need no compiler, far cheaper than pulling in pixi this early.
-          # python3.14 specifically (not bare python3): the runner's stock system python
-          # (3.10 on Ubuntu 22.04) ships without ensurepip/venv -- Debian/Ubuntu split those
-          # into python3.10-venv, which isn't installed -- while python3.14-venv IS always
-          # present from cloud-init boot on every az-ephemeral worker (confirmed live, run
-          # 32896542552: "ensurepip is not available ... apt install python3.10-venv").
-          python3.14 -m venv /tmp/ci-wait-venv
+          # packages. This step runs BEFORE "Install Pixi" below, so run_repo_python.sh's
+          # python3 fallback has neither yet (confirmed live, run 32891162493: "No module
+          # named 'asyncpg'"). docker-exec readiness checks aren't a safe substitute:
+          # Dragonfly's own image ships no redis-cli (see this script's own module docstring).
+          # A throwaway venv on the setup-python 3.14 interpreter: two small, pure-Python
+          # packages that install in seconds, far cheaper than pulling in pixi this early.
+          python -m venv /tmp/ci-wait-venv
           /tmp/ci-wait-venv/bin/python3 -m pip install --quiet --disable-pip-version-check asyncpg redis
           /tmp/ci-wait-venv/bin/python3 scripts/ci_wait_for_services.py
 
-      # No actions/setup-python here: every Python invocation in this job goes through
-      # scripts/run_repo_python.sh, which routes through Pixi's own isolated interpreter.
-      # setup-python's macOS .pkg installer needs passwordless sudo (only pre-configured
-      # on GitHub-hosted runners), so it's dropped rather than fought.
-
-      # setup-node MUST precede pnpm/action-setup -- see the ts-sdk-artifact-install job's
-      # fuller comment: pnpm's self-installer shells out to `npm`, and the runner's own
-      # self-updated externals dir shadows /usr/bin with an npm stub that has no
-      # ../lib/cli.js behind it ("Cannot find module '../lib/cli.js'", deterministic, not a
-      # flake). setup-node prepends a real tool-cache Node+npm ahead of that stub.
+      # setup-node MUST precede pnpm/action-setup: pnpm's self-installer shells out to `npm`,
+      # and setup-node is what guarantees a deterministic Node major with a real npm on PATH
+      # regardless of what the runner image ships.
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
-          # setup-node's cache:pnpm assumes a GitHub-hosted Linux cache path; pnpm's store lives
-          # elsewhere on macOS, so the post-job cache-save step errors ("Path Validation Error:
-          # Path(s) specified in the action for caching do(es) not exist") on this self-hosted
-          # runner. Persistent self-hosted disk stays warm between runs anyway, so there is
-          # nothing this would buy here -- same reasoning ts-sdk-artifact-install's
-          # package-manager-cache:false already applies below.
+          # No pnpm store cache yet: `pnpm install --frozen-lockfile` is seconds next to the
+          # Mojo build in this job, and the cache path validation has failed before on
+          # runners whose store lived elsewhere. Turn it on deliberately, once the canary's
+          # timings are known -- same call ts-sdk-artifact-install makes below.
           package-manager-cache: false
 
       - name: Set up pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 10.15.0
-          # Default dest (~/setup-pnpm) is a fixed path shared by every runner process on this
-          # user account. With multiple self-hosted runners on one Mac, concurrent jobs race on
-          # it (ENOTEMPTY: directory not empty, rmdir '.../setup-pnpm/...'). runner.temp is
-          # unique per runner's own _work dir, so this isolates each runner's install.
+          # runner.temp is this job's own scratch dir; keeping the install there (rather than
+          # the default ~/setup-pnpm) means nothing outside the job is ever written.
           dest: ${{ runner.temp }}/setup-pnpm
 
       - name: Enable Corepack
@@ -289,9 +248,6 @@ jobs:
 
       - name: Install Mojo/Pixi environment
         run: |
-          # A leftover .pixi SYMLINK (fleet env-sharing hack) makes pixi fail with
-          # EEXIST; real cached env dirs are kept.
-          find mojo_env -maxdepth 1 -name .pixi -type l -delete
           PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
 
       # Telys' memengine powers scripts/test_impact.py's lexical enrichment lane (the same library
@@ -563,6 +519,10 @@ jobs:
           # Count with grep -c, not `wc -l`: $( ) strips the trailing newline, so `wc -l` reports
           # 0 for a single-file change (this PR's own first run printed "0 file(s)" for 1 file).
           echo "::notice::blast-radius: $(printf '%s\n' "$CHANGED" | grep -c . || true) changed file(s) -> running the selector"
+          # Unquoted on purpose: $CHANGED is one path per line and the CLI takes them as separate
+          # arguments (paths never contain whitespace here). Converting to an array is a tracked
+          # follow-up together with paginating the PR-files call above.
+          # shellcheck disable=SC2086
           OUT=$(./scripts/run_repo_python.sh scripts/test_impact.py --json --changed $CHANGED 2>/dev/null || true)
           MODE=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('mode','all'))" "$OUT" 2>/dev/null || echo all)
           # SUBSET IS NOW ACTED ON. It used to be force-downgraded to `all` here ("v1: only
@@ -881,18 +841,6 @@ jobs:
           [ "$rc" -ne 0 ] && echo "::notice::test-impact exited $rc (observed-only, not gating)"
           exit 0
 
-      # End-of-run teardown — `if: always()` so FAILED runs release disk too. Postgres and
-      # MinIO declare Dockerfile VOLUMEs, and a container left behind keeps its volumes
-      # referenced (undeletable by any prune). Without this step every run leaks them until the
-      # NEXT run's startup reclaim — that is what refilled the runner disk after #733. If the
-      # run itself is CANCELLED the runner stops at the dying step and this never executes;
-      # the age-guarded label sweep in the start step reclaims those leftovers.
-      - name: Stop integration services (release volumes)
-        if: always()
-        env:
-          CI_SERVICE_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.python-version }}
-        run: docker rm -fv "postgres-ci-${CI_SERVICE_SUFFIX}" "dragonfly-ci-${CI_SERVICE_SUFFIX}" "minio-ci-${CI_SERVICE_SUFFIX}" >/dev/null 2>&1 || true
-
   # ── OpenResponses protocol conformance (Track C1) ──────────────────────────────────────────
   # Runs the REAL, official openresponses/openresponses compliance CLI (vendored NOWHERE in this
   # repo — checked out fresh at a pinned commit SHA below, under .openresponses-conformance/,
@@ -953,7 +901,7 @@ jobs:
   # already uses above for an analogous "known red, not yet closable inline" situation.
   openresponses-conformance:
     name: OpenResponses protocol conformance (Track C1)
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: test
     env:
       JWT_SECRET: test-secret-not-for-production
@@ -977,57 +925,7 @@ jobs:
           path: .openresponses-conformance
           persist-credentials: false
 
-      # az-ephemeral workers don't bake unzip -- confirmed live (run 33328358984, "Set up bun"):
-      # setup-bun downloads bun-linux-x64.zip then shells out to `unzip` to extract it, and a
-      # bare az-ephemeral VM has no unzip on PATH ("Unable to locate executable file: unzip"),
-      # which fails the step in 13s before bun is ever on PATH. Same
-      # command-v-then-apt-get-install shape as docs-audit.yml's "Ensure python3.14 present".
-      #
-      # The apt-get fallback above ALSO fails here (confirmed live, run 33329930120 on main and
-      # 33335077011 on a PR, byte-identical: "E: Could not open lock file
-      # /var/lib/apt/lists/lock - open (13: Permission denied)") -- this runner pool has no
-      # passwordless sudo configured (the same constraint this file's setup-python comment
-      # already documents for macOS runners), so `sudo -n true` fails, SUDO falls back to
-      # empty, and apt-get then runs as a non-root user that cannot touch the apt lock file.
-      # Fixing that needs a runner-image change (owner action, out of this repo). Until then,
-      # write a real `unzip` onto PATH with no root and no new dependency: actions/toolkit's
-      # own extractZip() (what setup-bun uses) only ever runs `unzip -o [-q] <file>` with cwd
-      # already set to the destination directory (verified against actions/toolkit's real
-      # source, packages/tool-cache/src/tool-cache.ts's extractZipNix) -- a shim backed by
-      # Python's stdlib zipfile module, extracting into the cwd, is a complete, not partial,
-      # implementation of that exact call shape, not a guess at unzip's full CLI.
-      - name: Ensure unzip present (setup-bun needs it to extract the release archive)
-        run: |
-          command -v unzip >/dev/null 2>&1 && exit 0
-          if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then SUDO=sudo; else SUDO=; fi
-          if $SUDO apt-get update -qq && $SUDO apt-get install -y -qq unzip; then
-            exit 0
-          fi
-          echo "::notice::apt-get unzip install unavailable on this runner (no passwordless sudo) -- installing a stdlib-zipfile-backed unzip shim onto PATH instead"
-          mkdir -p "${RUNNER_TEMP}/unzip-shim"
-          cat > "${RUNNER_TEMP}/unzip-shim/unzip" <<'SHIM'
-          #!/usr/bin/env bash
-          # Minimal unzip shim: this runner has no working apt/sudo, so there is no real unzip
-          # binary. Implements exactly the call shape actions/toolkit's extractZip() uses
-          # (`unzip -o [-q] <file>`, cwd already set to the destination) via Python's stdlib
-          # zipfile module -- see this repo's ci.yml for the full explanation.
-          set -euo pipefail
-          archive=""
-          for arg in "$@"; do
-            case "$arg" in
-              -*) : ;;
-              *) archive="$arg" ;;
-            esac
-          done
-          if [ -z "$archive" ]; then
-            echo "unzip-shim: no archive argument given" >&2
-            exit 1
-          fi
-          exec python3 -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(".")' "$archive"
-          SHIM
-          chmod +x "${RUNNER_TEMP}/unzip-shim/unzip"
-          echo "${RUNNER_TEMP}/unzip-shim" >> "${GITHUB_PATH}"
-
+      # setup-bun extracts bun-linux-x64.zip with `unzip`, which the ubuntu-latest image ships.
       - name: Set up bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -1039,23 +937,11 @@ jobs:
 
       # Same dynamic-port, run-unique, labeled pattern as the `test` job above (see its own
       # "Start Postgres + Dragonfly + MinIO" step for the full rationale) -- this job runs on
-      # its own fresh ephemeral VM and cannot reuse that job's containers.
+      # its own runner and cannot reuse that job's containers.
       - name: Start Postgres + Redis
         env:
           CI_SERVICE_SUFFIX: openresponses-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          # Same leaked-container reclaim as the `test` job's own start step (see its comment):
-          # the underlying Docker daemon on this fleet outlives any one ephemeral job VM, so a
-          # cancelled/crashed run's containers survive past this job and must be aged out here
-          # rather than assumed gone.
-          now=$(date +%s)
-          for cid in $(docker ps -aq --filter label=algenta-ci=openresponses-conformance); do
-            created=$(docker inspect -f '{{ index .Config.Labels "algenta-ci-created" }}' "$cid" 2>/dev/null || true)
-            case "$created" in ''|*[!0-9]*) continue ;; esac
-            if [ $((now - created)) -gt 14400 ]; then
-              docker rm -fv "$cid" >/dev/null 2>&1 || true
-            fi
-          done
           pg_name="postgres-oresp-${CI_SERVICE_SUFFIX}"
           redis_name="redis-oresp-${CI_SERVICE_SUFFIX}"
           docker run -d --name "$pg_name" -p 0:5432 \
@@ -1086,7 +972,6 @@ jobs:
 
       - name: Install Mojo/Pixi environment
         run: |
-          find mojo_env -maxdepth 1 -name .pixi -type l -delete
           PIXI_HOME="$GITHUB_WORKSPACE/.pixi" RATTLER_CACHE_DIR="$GITHUB_WORKSPACE/.cache/rattler/cache" pixi install --manifest-path mojo_env/pixi.toml
 
       - name: Run migrations
@@ -1201,35 +1086,29 @@ jobs:
             echo "- compact-response, compact-missing-model — no /v1/responses/compact endpoint exists."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Teardown
-        if: always()
-        env:
-          CI_SERVICE_SUFFIX: openresponses-${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          kill "$(cat /tmp/openresponses-api.pid 2>/dev/null)" 2>/dev/null || true
-          kill "$(cat /tmp/openresponses-stub-provider.pid 2>/dev/null)" 2>/dev/null || true
-          docker rm -fv "postgres-oresp-${CI_SERVICE_SUFFIX}" "redis-oresp-${CI_SERVICE_SUFFIX}" >/dev/null 2>&1 || true
-
   # ── SDK artifact install ──────────────────────────────────────────────────
   # Proves the public Python SDKs install + import from the BUILT wheel in a fresh venv (not just
   # from source) — the "a user can actually `pip install` it" gate. Lean: no DB/Redis/pixi needed.
   sdk-artifact-install:
     name: SDK artifact install (Python ${{ matrix.python-version }})
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.14"]
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      # No actions/setup-python (needs passwordless sudo on macOS, not configured here) —
-      # python3.14 is a Homebrew-installed binary already on this runner's PATH.
+      # 3.14 explicitly: verify_sdk_artifact_install.py SKIPS the algenta CLI gate on <3.14
+      # (packages/algenta requires >=3.14), so running it on the image's system 3.12 would
+      # turn this check into a green no-op.
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Build + fresh-venv install + import smoke
         run: |
-          # Homebrew's python3.14 is PEP 668 externally-managed; --user keeps this out of
-          # its Cellar-managed site-packages, --break-system-packages permits it anyway.
-          python3.14 -m pip install --user --break-system-packages --upgrade build
-          python3.14 scripts/verify_sdk_artifact_install.py
+          python -m pip install --upgrade build
+          python scripts/verify_sdk_artifact_install.py
 
   # Proves the public TypeScript SDK installs + imports from the PACKED npm tarball (the artifact
   # `npm publish` uploads) in a fresh project — CJS require + ESM named import + @grpc/proto load +
@@ -1237,7 +1116,7 @@ jobs:
   # differences. Lean: npm-only, no DB/Redis/pixi.
   ts-sdk-artifact-install:
     name: TS SDK artifact install (Node ${{ matrix.node-version }})
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: ["18", "20", "22"]
@@ -1268,7 +1147,7 @@ jobs:
   # The push-to-main deploy repeats the same smoke against the pushed GHCR image before Fly rollout.
   api-image-mojo-smoke:
     name: API image Mojo runtime smoke
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'pull_request'
     permissions:
@@ -1292,24 +1171,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build API image locally
-        # Fly.io production is x86_64 (the bundled Mojo binary is compiled for it), and this
-        # runner is native arm64. The legacy builder only partially honors --platform on a
-        # multi-stage Dockerfile: it correctly pulls linux/amd64 for the mojo stage (which has
-        # no native arm64 manifest to fall back to), but silently resolves the OTHER stages
-        # (FROM python:3.14-slim, which DOES have an arm64 manifest) to the host's native arm64
-        # instead -- producing a mixed-architecture image that would fail on real amd64 hardware.
-        # DOCKER_BUILDKIT=1 propagates --platform to every stage uniformly. The per-run tag
-        # keeps overlapping PR runs from clobbering each other's image (see the job env).
+        # `--platform linux/amd64` + DOCKER_BUILDKIT=1 pin the TARGET platform explicitly: Fly.io
+        # production is x86_64 (the bundled Mojo binary is compiled for it), and the legacy
+        # builder only partially honors --platform on a multi-stage Dockerfile (it resolves
+        # stages that have a manifest for the host's arch to the host's arch), which on any
+        # non-amd64 host produced a mixed-architecture image. BuildKit propagates --platform to
+        # every stage uniformly, so the image is the same contract on every runner arch. The
+        # per-run tag keeps overlapping PR runs from clobbering each other's image (see the
+        # job env).
         run: DOCKER_BUILDKIT=1 docker build --pull --platform linux/amd64 -f infra/docker/Dockerfile.api.prod -t "$SMOKE_IMAGE_TAG" .
 
       - name: Verify bundled Mojo server mode
         run: bash scripts/verify_api_image_mojo_server_mode.sh "$SMOKE_IMAGE_TAG"
-
-      # The unique-per-run tag means every run leaves an otherwise-orphan image on the shared
-      # daemon; drop it again so the fleet disk doesn't grow one API image per PR run.
-      - name: Remove smoke image (release disk)
-        if: always()
-        run: docker rmi "$SMOKE_IMAGE_TAG" >/dev/null 2>&1 || true
 
   # ── Helm chart: lint + template + kubeconform (no cluster, no registry creds) ──────────────
   # Mirrors api-image-mojo-smoke's shape: PR-triggered, validation-only, no push. Two values
@@ -1318,7 +1191,7 @@ jobs:
   # templates/_helpers.tpl's algenta.validateValues render at least once.
   helm-lint:
     name: Helm chart lint
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'pull_request'
     steps:
@@ -1401,7 +1274,7 @@ jobs:
   # untested.
   helm-kind-smoke:
     name: Helm chart kind install smoke
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'pull_request'
     permissions:
@@ -1422,7 +1295,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Identical build to api-image-mojo-smoke's own step — see that job's comment for why
-      # --platform linux/amd64 + DOCKER_BUILDKIT=1 is required on this arm64 runner fleet.
+      # --platform linux/amd64 + DOCKER_BUILDKIT=1 pin the target platform explicitly.
       - name: Build API image locally
         run: DOCKER_BUILDKIT=1 docker build --pull --platform linux/amd64 -f infra/docker/Dockerfile.api.prod -t "$SMOKE_IMAGE_TAG" .
 
@@ -1516,13 +1389,6 @@ jobs:
       - name: helm test
         run: helm test algenta-smoke --logs
 
-      - name: Tear down (release disk on this shared fleet)
-        if: always()
-        run: |
-          helm uninstall algenta-smoke 2>/dev/null || true
-          kind delete cluster --name "$KIND_CLUSTER" 2>/dev/null || true
-          docker rmi "$SMOKE_IMAGE_TAG" >/dev/null 2>&1 || true
-
   # ── Build Docker images ───────────────────────────────────────────────────
   # THREE SEPARATE JOBS, not three sequential builds crammed into one job on one runner's disk.
   # That original shape needed `docker builder/image prune` between images (#950), then again
@@ -1533,12 +1399,15 @@ jobs:
   # states the correct fix for this whole failure class in its own pre-existing comment: "a fresh
   # runner for this job sidesteps that failure class entirely rather than needing a fourth reclaim
   # step." Applying that same principle to the image builds themselves -- one job per image, each
-  # on its own `[self-hosted, az-ephemeral]` VM -- means no image's build+push+scan ever shares a
-  # disk with another's, so there is nothing to accumulate and nothing left to prune. No
+  # on its own fresh GitHub-hosted runner -- means no image's build+push+scan ever shares a disk
+  # with another's, so there is nothing to accumulate and nothing left to prune. No
   # `docker builder/image prune` step appears anywhere below, and none should ever need to again.
+  # Runner sizing: none of these jobs compiles Mojo (the Dockerfiles COPY the prebuilt worker
+  # from ghcr.io/<repo>/mojo), so ubuntu-latest's 14 GB disk is the constraint to watch (buildkit
+  # state + the SBOM scan's by-digest pulls); escalate a job to `thyn-8c` only on a measured ENOSPC.
   build-api:
     name: Build & Push Docker (API image)
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -1612,7 +1481,7 @@ jobs:
 
   build-worker:
     name: Build & Push Docker (Worker image)
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -1674,7 +1543,7 @@ jobs:
 
   build-engine:
     name: Build & Push Docker (Engine image)
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -1772,7 +1641,7 @@ jobs:
   # build jobs).
   helm-oci-push:
     name: Package + push Helm chart (OCI)
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: [build-api, build-worker, build-engine]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -1813,10 +1682,6 @@ jobs:
       - name: Push chart as an OCI artifact
         run: helm push "/tmp/helm-package/algenta-${{ steps.package.outputs.full_version }}.tgz" "oci://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/charts"
 
-      - name: Reclaim disk (packaged chart + local OCI layer cache)
-        if: always()
-        run: rm -rf /tmp/helm-package ~/.cache/helm 2>/dev/null || true
-
   # ── Deploy to Fly (AUTOMATIC on merge to main) ────────────────────────────
   # Self-contained (not a reusable-workflow call): mirror the freshly-built `latest` API image into
   # the Fly registry and `flyctl deploy` codna-api, whose release_command applies alembic migrations.
@@ -1827,7 +1692,7 @@ jobs:
   # ENGINE (codna-engine) and tag-pinned/one-off deploys still go through the manual deploy.yml.
   deploy:
     name: Deploy to Fly (codna-api)
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: [build-api, build-worker, build-engine]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -1849,10 +1714,8 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install flyctl
-        # $HOME/.fly is one path shared by every self-hosted runner process on this
-        # user account -- concurrent Deploy jobs racing the installer here is the same
-        # class of bug as the pnpm shared-store race (see Set up pnpm above).
-        # FLYCTL_INSTALL (respected by fly.io/install.sh) isolates each runner's own copy.
+        # FLYCTL_INSTALL (respected by fly.io/install.sh) keeps the install inside this job's
+        # own scratch dir.
         run: |
           export FLYCTL_INSTALL="$RUNNER_TEMP/fly"
           curl -fsSL https://fly.io/install.sh | sh
@@ -1873,8 +1736,7 @@ jobs:
           set -euo pipefail
           # Architecture-agnostic deploy: the build publishes linux/amd64 (the Fly target
           # platform) regardless of runner arch, so pin the PULL to the image's platform
-          # instead of inheriting the runner's (an arm64 runner asking for its own arch gets
-          # "no matching manifest" against the amd64-only manifest list).
+          # instead of inheriting the runner's.
           docker pull --platform linux/amd64 "$SRC/api:$TAG"
           bash scripts/verify_api_image_mojo_server_mode.sh "$SRC/api:$TAG"
           docker tag  "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
@@ -1904,7 +1766,7 @@ jobs:
   # expand/contract pattern, not by leaving this app un-deployed.
   deploy-control-plane:
     name: Deploy to Fly (algenta-control-plane)
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     needs: [build-api, build-worker, build-engine]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -1923,10 +1785,8 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Install flyctl
-        # $HOME/.fly is one path shared by every self-hosted runner process on this
-        # user account -- concurrent Deploy jobs racing the installer here is the same
-        # class of bug as the pnpm shared-store race (see Set up pnpm above).
-        # FLYCTL_INSTALL (respected by fly.io/install.sh) isolates each runner's own copy.
+        # FLYCTL_INSTALL (respected by fly.io/install.sh) keeps the install inside this job's
+        # own scratch dir.
         run: |
           export FLYCTL_INSTALL="$RUNNER_TEMP/fly"
           curl -fsSL https://fly.io/install.sh | sh

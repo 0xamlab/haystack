@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # TpmKeyStore round-trip against a real TPM 2.0 software stack (swtpm + libtss2 + tpm2-pytss),
-# executed inside an amd64 ubuntu container on the self-hosted macOS fleet (tpm.yml mounts the
-# checkout at /work). The TPM stack is Linux-only; swtpm and the ESAPI calls are userspace, so
-# Rosetta emulation is transparent. Same container pattern as clean_machine_contract_linux_amd64.sh.
+# executed inside an ubuntu:22.04 container (tpm.yml mounts the checkout at /work). The TPM
+# stack is Linux-only and installed as root with apt, so the container keeps it off the runner.
+# Same container pattern as clean_machine_contract_linux_amd64.sh.
 set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
@@ -23,13 +23,14 @@ PY="$(uv python find 3.14)"
 . /tmp/tpm-venv/bin/activate
 python -m pip install --quiet --disable-pip-version-check "tpm2-pytss" cryptography structlog
 
-# Start swtpm (TCP). Three emulation/container realities, each found the hard way:
-#  1. swtpm_setup DEADLOCKS under Rosetta (0% CPU hang, with or without --create-ek-cert) --
-#     skipped entirely: --flags not-need-init,startup-clear lets swtpm socket create fresh
+# Start swtpm (TCP). Three container realities, each found the hard way; the flags are kept
+# as-is because they are harmless natively and each one closed a real hang:
+#  1. swtpm_setup is skipped entirely (it deadlocked with 0% CPU, with or without
+#     --create-ek-cert): --flags not-need-init,startup-clear lets swtpm socket create fresh
 #     TPM state on its own (verified).
-#  2. swtpm's seccomp filter install fails in this environment (errno 125) and kills the
+#  2. swtpm's seccomp filter install can fail inside a container (errno 125) and kill the
 #     process -- --seccomp action=none disables it (safe: disposable CI container).
-#  3. --daemon's double-fork is unreliable under emulation -- plain background instead.
+#  3. --daemon's double-fork was unreliable -- plain background instead.
 STATE=/tmp/swtpm
 mkdir -p "$STATE"
 swtpm socket --tpm2 --tpmstate dir="$STATE" \

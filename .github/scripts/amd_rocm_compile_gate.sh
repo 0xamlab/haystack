@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # The AMD ROCm COMPILE gate for the portable GPU kernel layer — the mirror of the CUDA
 # compile gate (build-runtime.yml's build-linux-cuda job), executed inside the same
-# amd64 ubuntu:22.04 container on the self-hosted macOS fleet (workspace mounted at /work).
+# ubuntu:22.04 container (amd-rocm-gate.yml mounts the workspace at /work).
 #
 # COMPILE-GATED lane — compile-verified, launch-UNVERIFIED: cross-compiling the portable
 # kernels for AMD CDNA targets (`-D ALGENTA_GPU -D ALGENTA_ROCM --target-accelerator gfx*`)
 # needs NO ROCm toolkit and NO AMD GPU — the AMDGPU LLVM backend ships inside the pinned
 # mojo toolchain (`mojo build --print-supported-accelerators` lists the ROCm/HIP table),
 # the same way NVPTX ships for the CUDA gate. Launching the result needs real MI300X /
-# MI355X hardware with ROCm >= 6.3.3 (MI355X: ROCm 7), which the fleet does not have.
+# MI355X hardware with ROCm >= 6.3.3 (MI355X: ROCm 7), which no CI runner has.
 # The macOS build-host verdict this script mirrors is recorded in
 # benchmarks/llm_smoke/REALRACE_RESULTS.md ("THE AMD ROCM COMPILE GATE").
 set -euo pipefail
@@ -22,9 +22,6 @@ export PIXI_HOME=/work/.pixi
 export RATTLER_CACHE_DIR=/work/.cache/rattler/cache
 curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$PIXI_HOME" PIXI_BIN_DIR="$PIXI_HOME/bin" PIXI_NO_PATH_UPDATE=1 bash
 export PATH="$PIXI_HOME/bin:$PATH"
-# A leftover .pixi SYMLINK (fleet env-sharing hack) mounted from the runner workspace
-# makes pixi fail with EEXIST; real cached env dirs are kept.
-find mojo_env -maxdepth 1 -name .pixi -type l -delete
 pixi install --manifest-path mojo_env/pixi.toml
 
 GATE=benchmarks/llm_smoke/amd_rocm_compile_gate.mojo
@@ -39,14 +36,19 @@ for target in gfx942 gfx950 gfx90a; do
     pixi run --manifest-path mojo_env/pixi.toml \
         mojo build -D ALGENTA_GPU -D ALGENTA_ROCM --target-accelerator "$target" \
         -I mojo/engine "$GATE" -o "$OUT/amd_rocm_compile_gate_$target"
-    # Evidence: the embedded device image must carry the requested amdgcn target.
-    strings "$OUT/amd_rocm_compile_gate_$target" | grep -q "amdgcn-amd-amdhsa-unknown-$target"
+    # Evidence: the embedded device image must carry the requested amdgcn target. grep the
+    # binary directly (-a): a `strings | grep -q` pipeline under pipefail fails with SIGPIPE
+    # (141) whenever grep exits on an early match while strings still has output to write,
+    # i.e. it reported a MISSING target string that was present (reproduced 300/300).
+    grep -aq "amdgcn-amd-amdhsa-unknown-$target" "$OUT/amd_rocm_compile_gate_$target"
     echo "OK: $target binary embeds amdgcn-amd-amdhsa-unknown-$target"
 done
 
 # The gate binary is NOT executed here: PART 0's host checks were verified on the macOS
 # build host, and the device section needs the HIP runtime (Linux + ROCm) — the compile
 # verdict is what this job produces. The binaries are upload-only artifacts.
+# The container ran as root on the mounted runner workspace; hand the produced trees back to
+# the workspace owner so the runner-side artifact upload can read them.
 OWNER="$(stat -c '%u:%g' /work/.git)"
-chown -R "$OWNER" "$OUT" /work/.pixi /work/.cache 2>/dev/null || true
+chown -R "$OWNER" "$OUT" /work/.pixi /work/.cache /work/mojo_env/.pixi 2>/dev/null || true
 echo "AMD ROCm compile gate OK (gfx942 + gfx950 + gfx90a)"

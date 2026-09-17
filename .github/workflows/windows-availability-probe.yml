@@ -11,9 +11,8 @@
 # delivering it unblocks the same work. When nothing has changed the probe exits 0 with a
 # "still no native Windows" notice — green is the steady state.
 #
-# Deliberately dependency-free (curl + the fleet tool cache's python3, same shape as the other
-# fleet workflows): no actions/setup-python (needs passwordless sudo on this fleet), no pip
-# installs, nothing that can rot between daily runs.
+# Deliberately dependency-free (curl + the runner image's system python3, stdlib only): no
+# actions/setup-python, no pip installs, nothing that can rot between daily runs.
 name: windows-availability-probe
 
 on:
@@ -29,8 +28,7 @@ permissions:
 jobs:
   probe:
     name: probe for native Windows Mojo support
-    # Compute: algenta Azure CI plane -- one ephemeral self-hosted VM per job (provisioned by infra/ci); was ubuntu-latest.
-    runs-on: [self-hosted, az-ephemeral]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check the conda channel and PyPI for win-64 Mojo
