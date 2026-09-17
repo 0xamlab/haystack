@@ -299,31 +299,23 @@ jobs:
           mkdir -p examples
           rsync -a --exclude '__pycache__' --exclude '*.pyc' ../examples/ examples/
 
-      - name: Install gitleaks
-        # Runner-agnostic install under RUNNER_TEMP -- no sudo (same as sync-public-sdk.yml).
-        run: |
-          set -euo pipefail
-          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-          ARCH="$(uname -m)"
-          case "$ARCH" in
-            x86_64|amd64) ARCH=x64 ;;
-            aarch64|arm64) ARCH=arm64 ;;
-            *) echo "::error::unsupported arch $ARCH"; exit 1 ;;
-          esac
-          BIN_DIR="$RUNNER_TEMP/gitleaks-bin"
-          mkdir -p "$BIN_DIR"
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_${OS}_${ARCH}.tar.gz" \
-            | tar -xz -C "$BIN_DIR" gitleaks
-          echo "$BIN_DIR" >> "$GITHUB_PATH"
-          "$BIN_DIR/gitleaks" version
+      - name: Set up thyn-sec
+        uses: thyn-ai/security-toolchain@6045a94a409bca3d9321c9369a31e0d42b15efcd # v0.1.7
+        with:
+          prefetch: "false"
 
       - name: Outbound secret + forbidden-path scan (blocks the push, not just warns)
+        env:
+          THYN_SEC_QUIET: "1"
         run: |
           set -euo pipefail
-          # --no-git: scans the working tree as plain files, including the just-mirrored changes.
-          # Zero unresolved findings required -- a real false positive needs an explicit
-          # .gitleaksignore entry, never a silently-loosened scan step.
-          gitleaks detect --source algenta-sdk-checkout --no-git --no-banner -v
+          # thyn-sec fetches and sha256-verifies gitleaks itself (security/toolchain.lock is the
+          # one version source for laptop + CI + this release gate, same as sync-public-sdk.yml)
+          # and scans the working tree as plain files, including the just-mirrored changes. This
+          # is a real checkout of algenta-sdk, so a `.gitleaksignore`/`.gitleaks.toml` committed
+          # there is honored automatically. Zero unresolved findings required -- a real false
+          # positive needs an explicit .gitleaksignore entry, never a silently-loosened scan step.
+          thyn-sec gitleaks-dir --root algenta-sdk-checkout
           # Reject submodules regardless of what the scanner finds.
           find algenta-sdk-checkout/packages -name ".gitmodules" -print -quit | grep -q . && {
             echo "::error::Refusing to sync -- a submodule was found in the export" >&2

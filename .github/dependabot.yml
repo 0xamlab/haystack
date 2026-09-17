@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # GitHub Actions: weekly, grouped into a single PR -- the same action is pinned by SHA at
+  # many call sites across these workflows, and a one-PR bump is reviewable where a dozen
+  # single-action PRs would not be. thyn-ai/security-toolchain is excluded: its own
+  # propagate.yml is the one bumper for that pin (it carries required caller `permissions:`
+  # forward when a release adds one; a routine Dependabot digest bump would not).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "thyn-ai/security-toolchain*"
+    commit-message:
+      prefix: "chore(ci)"
+
+  # App dependencies: security-only. open-pull-requests-limit: 0 disables routine version-bump
+  # PRs (dependency bumps here are reviewed and made deliberately); Dependabot security
+  # updates are a separate mechanism keyed off GitHub Security Advisories and still open
+  # regardless of this limit.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "pip"
+    directory: "/apps/api-server"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(api-server)"

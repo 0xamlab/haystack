@@ -1,5 +1,10 @@
 # CI Architecture v3 — Ephemeral, Intelligence-Driven Build Fleet
 
+**Superseded by [`ci-architecture-v4.md`](ci-architecture-v4.md).** Neither this document's
+GCP/Tart design nor its own end-of-document "ALL-AZURE" addendum reflects what runs today: every
+job is on GitHub-hosted `ubuntu-latest`/`thyn-8c`, with no self-hosted fleet of any kind. Kept
+for history; do not use this document to justify new Azure or GCP CI infrastructure.
+
 Status: design proposal (no workflow changes in this document's accompanying commit).
 Scope: `thyn-ai/algenta` CI/CD, org runner fleet, GCP project `eplanev2`.
 
