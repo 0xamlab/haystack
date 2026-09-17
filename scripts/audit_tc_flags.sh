@@ -81,12 +81,20 @@ FLAGS_7B=(
     "ALGENTA_7B_PF_LTALGO=1|ALGENTA_7B_PF_LTALGO"
 )
 # The gemma-3 family (residentk.session_cuda_gemma3_f16). ALGENTA_G3_PF_FA is the round-5
-# fused windowed tensor-core flash attention; F16NORM/F16MLP/F16ATTN are its pre-staged-A
-# companions; TCATTN is the five-pass chain FA replaces (kept in the table because an arm that
-# carries BOTH is the fallback-correct arm and the banner says which one ran); STREAM is the
-# legacy-stream seam whose silent absence voided the first H200 column.
+# fused windowed tensor-core flash attention; FA2 is its round-6 raw-mma v2 kernel (a separate
+# literal with its own `=1` suffix, so the substring test cannot confuse `ALGENTA_G3_PF_FA=1`
+# with `ALGENTA_G3_PF_FA2=1`; FA2 REQUIRES FA, so a binary carrying FA2 necessarily also
+# carries the FA literal). BN32/BN128 override the fused kernel's key-block width (a summation
+# order, i.e. numeric-path, change). F16NORM/F16MLP/F16ATTN are the pre-staged-A companions;
+# TCATTN is the five-pass chain FA replaces (kept in the table because an arm that carries BOTH
+# is the fallback-correct arm and the banner says which one ran); STREAM is the legacy-stream
+# seam whose silent absence voided the first H200 column.
 FLAGS_G3=(
     "ALGENTA_G3_PF_FA=1|ALGENTA_G3_PF_FA"
+    "ALGENTA_G3_PF_FA2=1|ALGENTA_G3_PF_FA2"
+    "ALGENTA_G3_PF_KV16=1|ALGENTA_G3_PF_KV16"
+    "ALGENTA_G3_PF_BN32=1|ALGENTA_G3_PF_BN32"
+    "ALGENTA_G3_PF_BN128=1|ALGENTA_G3_PF_BN128"
     "ALGENTA_G3_PF_F16NORM=1|ALGENTA_G3_PF_F16NORM"
     "ALGENTA_G3_PF_F16MLP=1|ALGENTA_G3_PF_F16MLP"
     "ALGENTA_G3_PF_F16ATTN=1|ALGENTA_G3_PF_F16ATTN"
@@ -174,9 +182,11 @@ for bin in "$BIN_DIR"/$pat; do
             # carries FA2 must show the v2 line too, or the v2 kernel declined at runtime and
             # the cell measured FRONT 3's kernel. Capturing only the first match would hide
             # exactly that. `armed` is the family-generic pattern so it also catches gemma-3's
-            # "fused windowed TC flash attention ARMED/DECLINED"; `armed2` stays FA2-specific.
+            # "fused windowed TC flash attention ARMED/DECLINED"; `armed2` is the v2 pattern,
+            # family-generic the same way since round 6 (it matches the 7B lane's "fused causal
+            # flash attention v2" and gemma-3's "fused windowed TC flash attention v2").
             armed=$(grep -m1 -E "flash attention (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
-            armed2=$(grep -m1 -E "TC: fused causal flash attention v2 (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
+            armed2=$(grep -m1 -E "flash attention v2 (ARMED|DECLINED)" "$lg" 2>/dev/null | head -1)
             # the tuned-shape count rides the LTALGO TCFLAG line, NOT the `TC FLAGS:` banner:
             # the banner is printed unconditionally and calling _tc_lt_count() from it would make
             # every flag-off build reference a cublasLt symbol and fail to link against the stock

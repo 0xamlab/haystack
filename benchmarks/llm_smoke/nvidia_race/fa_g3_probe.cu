@@ -1,5 +1,6 @@
 // fa_g3_probe.cu — the standalone correctness + timing harness for the GEMMA-3 WINDOWED fused
-// tensor-core flash attention (`tc_shim_fa_g3_window_async`, `-D ALGENTA_G3_PF_FA`).
+// tensor-core flash attention (`tc_shim_fa_g3_window_async`, `-D ALGENTA_G3_PF_FA`) and its
+// round-6 raw-mma v2 (`tc_shim_fa_g3_window2_async`, `-D ALGENTA_G3_PF_FA2`).
 //
 // WHY THIS EXISTS. The lever's end-to-end arbiter is the token-identity oracle gate, but that
 // gate takes a ~2-minute model load per cell and reports one bit of information (same tokens or
@@ -8,20 +9,28 @@
 // the element mask. An off-by-one there is exactly the kind of defect that can move a handful of
 // logits and still argmax to the same 64 tokens — so it is checked here against an independent
 // HOST DOUBLE-PRECISION reference at every shape the session dispatches, element by element,
-// before any speed claim is made.
+// before any speed claim is made. Round 6 re-earns the same check for the v2 kernel: the window
+// logic is ported verbatim, but the score/O fragments move from the opaque WMMA accumulator to
+// the raw-mma D layout, and a mis-anchored row there is the exact defect class the 7B PMMA=0
+// attribution arm shipped once (max_abs 28.7, 3.2 M of 3.67 M elements wrong).
 //
 // WHAT IS CHECKED
-//   1. the shim's on-device WMMA accumulator-layout probe (the kernel indexes the opaque
-//      accumulator by row; a mismatch must disable the lever, not permute rows).
-//   2. the fused kernel vs `host_ref_window_attn` — double precision, no GPU code, no layout
+//   1. the shim's on-device WMMA accumulator-layout probe AND the raw-mma layout probe (the v2
+//      kernel indexes m16n8k16 A/B/D fragments and both ldmatrix roles; a mismatch must disable
+//      the lever, not permute rows). Plus the v2 host contract: `dbuf=1` together with `kv32=1`
+//      must be REJECTED with -305 before any launch (cp.async cannot convert f32).
+//   2. BOTH kernels vs `host_ref_window_attn` — double precision, no GPU code, no layout
 //      guesswork — over the SAME operands the kernel sees: Q pre-scaled and rounded to f16
 //      exactly where the kernel rounds it, K/V rounded to f16 exactly where the kernel rounds
 //      them (in-register for kv32=1, by the staging pass for kv32=0 — the same
 //      `__float2half`, so the reference is identical for both arms), P rounded to f16 where
 //      both round it. Reported per shape: max abs, max rel, RMS, and the count of elements
 //      exceeding a 2% relative error.
-//   3. BOTH K/V routes (kv32=1 native f32 cache, kv32=0 staged f16) and BOTH output dtypes
-//      (of16=0 f32, of16=1 f16) — the four combinations the session can dispatch.
+//   3. v1: BOTH K/V routes (kv32=1 native f32 cache, kv32=0 staged f16) x BOTH output dtypes
+//      (of16=0 f32, of16=1 f16) — the four combinations the session can dispatch. v2: the same
+//      four at the PRODUCTION mapping dbuf = 1 - kv32, PLUS two synchronous-load f16 arms
+//      (dbuf=0) that attribute the delta between cp.async double buffering and the raw-mma
+//      rewrites at the same occupancy class.
 //   4. cudaEvent timings (median of N) at the raced shapes, so the us/layer the A/B predicts
 //      is measured here first and the model-level delta has an independent floor to agree with.
 //
@@ -45,15 +54,22 @@
 #include <string.h>
 #include <math.h>
 #include <algorithm>
+#include <chrono>
 #include <vector>
 
 extern "C" int64_t tc_shim_init(void);
 extern "C" int64_t tc_shim_last_error(void);
+extern "C" int64_t tc_shim_noseam(int64_t);
 extern "C" int64_t tc_shim_fa_layout_probe(void);
+extern "C" int64_t tc_shim_fa2_layout_probe(void);
 extern "C" int64_t tc_shim_fa_g3_window_async(const void*, const void*, const void*, void*,
                                               const void*, int64_t, int64_t, int64_t, int64_t,
                                               int64_t, int64_t, int64_t, int64_t, int64_t,
                                               int64_t);
+extern "C" int64_t tc_shim_fa_g3_window2_async(const void*, const void*, const void*, void*,
+                                               const void*, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t, int64_t, int64_t, int64_t,
+                                               int64_t, int64_t);
 
 #define CK(x) do { cudaError_t e_ = (x); if (e_ != cudaSuccess) { \
     printf("CUDA ERROR %s:%d %s\n", __FILE__, __LINE__, cudaGetErrorString(e_)); exit(1);} } while (0)
@@ -183,6 +199,10 @@ int main(int argc, char** argv) {
     printf("[1] WMMA accumulator-layout probe: %s (status %ld)\n",
            r == 0 ? "VERIFIED ON DEVICE" : "MISMATCH -- the lever must decline", (long)r);
     if (r != 0) return 1;
+    r = tc_shim_fa2_layout_probe();
+    printf("[1b] raw-mma (m16n8k16 A/B/D + both ldmatrix roles) layout probe: %s (status %ld)\n",
+           r == 0 ? "VERIFIED ON DEVICE" : "MISMATCH -- the v2 lever must decline", (long)r);
+    if (r != 0) return 1;
 
     // the raced shapes: pp256, pp1024, the four RAG-4096 tiles, local AND global, plus an
     // odd tail that is not a multiple of FA_BM / BN in any of m, n_keys or pos_base.
@@ -218,14 +238,27 @@ int main(int argc, char** argv) {
     CK(cudaMalloc(&d_scale, sizeof(float)));
     CK(cudaMemcpy(d_scale, &scale, sizeof(float), cudaMemcpyHostToDevice));
 
+    {   // [1c] the v2 host contract's REJECTION arm: dbuf=1 together with kv32=1 must return
+        // -305 before any launch (cp.async copies raw bytes and cannot convert f32). The
+        // pointers are never dereferenced on the decline path; a launch that happened anyway
+        // would show up as a status != -305 or a sticky CUDA error at the next CK.
+        int64_t st = tc_shim_fa_g3_window2_async(hq, hk, hv, got, d_scale, 256, 256,
+                                                 h_q, h_kv, d, 0, 1024, bn, 1, 0, 1);
+        printf("[1c] v2 dbuf=1 + kv32=1 rejection: status %ld (%s)\n", (long)st,
+               st == -305 ? "REJECTED AS CONTRACTED" : "CONTRACT VIOLATED");
+        if (st != -305) return 1;
+        CK(cudaGetLastError());
+    }
+
     std::vector<float> sq((size_t)max_m * h_q * d), sk((size_t)max_nk * h_kv * d),
                        sv((size_t)max_nk * h_kv * d), sr((size_t)max_m * h_q * d);
     std::vector<int> rows(n_rows);
 
     int fails = 0;
-    printf("\n[2] fused windowed kernel vs HOST DOUBLE-PRECISION reference "
-           "(%d sampled rows/shape, dim_stride 8 => %d of %d dims)\n", n_rows, d / 8, d);
-    printf("%-24s %-14s %8s %10s %10s %10s %8s %s\n", "shape", "arm", "n", "max_abs",
+    printf("\n[2] fused windowed kernel (v1 WMMA + v2 raw-mma) vs HOST DOUBLE-PRECISION "
+           "reference (%d sampled rows/shape, dim_stride 8 => %d of %d dims)\n",
+           n_rows, d / 8, d);
+    printf("%-24s %-18s %8s %10s %10s %10s %8s %s\n", "shape", "arm", "n", "max_abs",
            "max_rel", "rms", ">2%rel", "verdict");
 
     for (auto& s : shapes) {
@@ -263,9 +296,21 @@ int main(int argc, char** argv) {
             CK(cudaMemcpy(hv16, t.data(), t.size() * sizeof(__half), cudaMemcpyHostToDevice));
         }
 
-        struct Arm { const char* tag; int kv32, of16; };
-        Arm arms[] = {{"kv32=1 of16=0", 1, 0}, {"kv32=0 of16=0", 0, 0},
-                      {"kv32=1 of16=1", 1, 1}, {"kv32=0 of16=1", 0, 1}};
+        struct Arm { const char* tag; int v2, kv32, of16, dbuf; };
+        Arm arms[] = {
+            // round 5's WMMA kernel (v1) — the four (kv32, of16) combinations it dispatches
+            {"v1 kv32=1 of16=0", 0, 1, 0, 0}, {"v1 kv32=0 of16=0", 0, 0, 0, 0},
+            {"v1 kv32=1 of16=1", 0, 1, 1, 0}, {"v1 kv32=0 of16=1", 0, 0, 1, 0},
+            // round 6's raw-mma kernel (v2) at the PRODUCTION mapping dbuf = 1 - kv32:
+            // cp.async double buffering is legal only on the f16 route (cp.async copies raw
+            // bytes and cannot convert), so kv32=1 runs single-buffered synchronous loads
+            {"v2 kv32=1 of16=0", 1, 1, 0, 0}, {"v2 kv32=0 of16=0", 1, 0, 0, 1},
+            {"v2 kv32=1 of16=1", 1, 1, 1, 0}, {"v2 kv32=0 of16=1", 1, 0, 1, 1},
+            // v2 attribution arms — synchronous loads on the f16 route: v2s vs v2-kv32=0
+            // isolates cp.async double buffering; v2s vs v1 isolates raw-mma + in-register P
+            // + the direct epilogue at the SAME occupancy class
+            {"v2s kv32=0 of16=0", 1, 0, 0, 0}, {"v2s kv32=0 of16=1", 1, 0, 1, 0},
+        };
         for (auto& a : arms) {
             CK(cudaMemset(got, 0, (size_t)s.m * h_q * d * sizeof(float)));
             CK(cudaMemset(ho16, 0, (size_t)s.m * h_q * d * sizeof(__half)));
@@ -285,11 +330,15 @@ int main(int argc, char** argv) {
             void* optr = a.of16 ? (void*)ho16 : (void*)got;
             const void* kp = a.kv32 ? (const void*)hk : (const void*)hk16;
             const void* vp = a.kv32 ? (const void*)hv : (const void*)hv16;
-            int64_t st = tc_shim_fa_g3_window_async(hq, kp, vp, optr, d_scale, s.m, s.n_keys,
-                                                    h_q, h_kv, d, s.pos_base, s.window, bn,
-                                                    a.kv32, a.of16);
+            int64_t st = a.v2
+                ? tc_shim_fa_g3_window2_async(hq, kp, vp, optr, d_scale, s.m, s.n_keys,
+                                              h_q, h_kv, d, s.pos_base, s.window, bn,
+                                              a.kv32, a.of16, a.dbuf)
+                : tc_shim_fa_g3_window_async(hq, kp, vp, optr, d_scale, s.m, s.n_keys,
+                                             h_q, h_kv, d, s.pos_base, s.window, bn,
+                                             a.kv32, a.of16);
             if (st != 0) {
-                printf("%-24s %-14s %8s %10s %10s %10s %8s STATUS %ld\n", s.name, a.tag,
+                printf("%-24s %-18s %8s %10s %10s %10s %8s STATUS %ld\n", s.name, a.tag,
                        "-", "-", "-", "-", "-", (long)st);
                 fails++;
                 continue;
@@ -311,37 +360,56 @@ int main(int argc, char** argv) {
             // >2% count; max_rel alone is not a verdict, see compare_subset for why.
             bool ok = (c.bad == 0) && c.max_abs < 5e-3 && c.rms < 5e-4;
             if (!ok) fails++;
-            printf("%-24s %-14s %8ld %10.3e %10.3e %10.3e %8ld %s\n", s.name, a.tag, c.n,
+            printf("%-24s %-18s %8ld %10.3e %10.3e %10.3e %8ld %s\n", s.name, a.tag, c.n,
                    c.max_abs, c.max_rel, c.rms, c.bad, ok ? "PASS" : "FAIL");
         }
     }
 
     if (!no_time) {
-        printf("\n[3] cudaEvent timing, median of %d (BN=%d) -- the fused kernel alone\n",
-               iters, bn);
-        printf("%-24s %10s %10s %12s\n", "shape", "kv32=1 us", "kv32=0 us", "staging us");
+        printf("\n[3] timing, median of %d (BN=%d) -- the fused kernel alone; "
+               "v2 = raw-mma, dbuf = 1-kv32 (the production mapping)\n", iters, bn);
+        // WALL CLOCK + cudaDeviceSynchronize, NOT cudaEventRecord on the legacy stream: the
+        // shim launches on its OWN non-blocking stream, which the legacy stream's events do
+        // not order against, so event brackets around these entries measured the launch gap
+        // (~4 us regardless of shape) instead of the kernel. Round 5's probe carried the same
+        // defect in this section; its correctness section is unaffected (it synchronizes the
+        // device around every launch), and no round-5 claim was made from these numbers.
+        printf("%-24s %11s %11s %8s %11s %11s %8s %11s\n", "shape",
+               "v1 kv32 us", "v2 kv32 us", "delta", "v1 kv16 us", "v2D kv16 us", "delta",
+               "v2s kv16 us");
         for (auto& s : shapes) {
             if (s.m != 1024 && s.m != 256) continue;
-            double t[2];
-            for (int kv = 1; kv >= 0; kv--) {
+            double t[5];
+            // order: 0 = v1 kv32=1, 1 = v2 kv32=1 dbuf=0, 2 = v1 kv32=0, 3 = v2 kv32=0 dbuf=1,
+            //        4 = v2 kv32=0 dbuf=0 (attributes cp.async against the raw-mma rewrite)
+            for (int cfg = 0; cfg < 5; cfg++) {
+                int kv = (cfg < 2) ? 1 : 0;
+                int v2 = (cfg == 1 || cfg == 3 || cfg == 4) ? 1 : 0;
+                int db = (cfg == 3) ? 1 : 0;
                 const void* kp = kv ? (const void*)hk : (const void*)hk16;
                 const void* vp = kv ? (const void*)hv : (const void*)hv16;
-                cudaEvent_t e0, e1;
-                CK(cudaEventCreate(&e0)); CK(cudaEventCreate(&e1));
-                std::vector<float> ms(iters);
+                std::vector<double> ms(iters);
                 for (int it = 0; it < iters; it++) {
-                    CK(cudaEventRecord(e0));
-                    tc_shim_fa_g3_window_async(hq, kp, vp, got, d_scale, s.m, s.n_keys,
-                                               h_q, h_kv, d, s.pos_base, s.window, bn, kv, 0);
-                    CK(cudaEventRecord(e1));
-                    CK(cudaEventSynchronize(e1));
-                    CK(cudaEventElapsedTime(&ms[it], e0, e1));
+                    CK(cudaDeviceSynchronize());
+                    auto t0 = std::chrono::steady_clock::now();
+                    if (v2)
+                        tc_shim_fa_g3_window2_async(hq, kp, vp, got, d_scale, s.m, s.n_keys,
+                                                    h_q, h_kv, d, s.pos_base, s.window, bn,
+                                                    kv, 0, db);
+                    else
+                        tc_shim_fa_g3_window_async(hq, kp, vp, got, d_scale, s.m, s.n_keys,
+                                                   h_q, h_kv, d, s.pos_base, s.window, bn,
+                                                   kv, 0);
+                    CK(cudaDeviceSynchronize());
+                    auto t1 = std::chrono::steady_clock::now();
+                    ms[it] = std::chrono::duration<double, std::micro>(t1 - t0).count();
                 }
                 std::sort(ms.begin(), ms.end());
-                t[kv] = ms[ms.size() / 2] * 1000.0;
-                CK(cudaEventDestroy(e0)); CK(cudaEventDestroy(e1));
+                t[cfg] = ms[ms.size() / 2];
             }
-            printf("%-24s %10.1f %10.1f %12.1f\n", s.name, t[1], t[0], t[0] - t[1]);
+            printf("%-24s %11.1f %11.1f %+7.2f%% %11.1f %11.1f %+7.2f%% %11.1f\n", s.name,
+                   t[0], t[1], 100.0 * (t[1] - t[0]) / t[0],
+                   t[2], t[3], 100.0 * (t[3] - t[2]) / t[2], t[4]);
         }
     }
 

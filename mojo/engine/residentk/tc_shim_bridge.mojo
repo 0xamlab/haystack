@@ -759,6 +759,44 @@ def _tc_fa_g3_window_async(q32: Int, k: Int, v: Int, o: Int, scale32: Int, m: In
         return -1
 
 
+def _tc_fa_g3_window2_async(q32: Int, k: Int, v: Int, o: Int, scale32: Int, m: Int,
+                            n_keys: Int, h_q: Int, h_kv: Int, d: Int, pos_base: Int,
+                            window: Int, bn: Int, kv32: Int, of16: Int, dbuf: Int) -> Int:
+    """FUSED WINDOWED FLASH ATTENTION v2 for the Gemma 3 lane (round 6,
+    `-D ALGENTA_G3_PF_FA2`): `_tc_fa_g3_window_async`'s kernel with #994's 7B FA2 techniques
+    transplanted onto it — raw `mma.sync m16n8k16` with the P tile's A-fragment built IN
+    REGISTERS (the f32->f16 pack lands on the exact registers the score accumulator already
+    occupies, so `sP` and its per-key-block fence disappear), the O epilogue written
+    position-major STRAIGHT TO GLOBAL from the ISA-specified D layout (`sO` and its 33.8 KB
+    staging window disappear), and — on the f16 K/V route only — cp.async K/V double buffering
+    with the next key block's tile in flight while the current one computes.
+
+    The WINDOW is untouched: `kb_min` still derives from the CTA's first query row's lower
+    bound (monotone in `qpos`), the per-element predicate is still
+    `_attn_softmax_mask_kernel`'s verbatim, and the kv32 in-register f32->f16 convert still
+    rounds where the staging pass rounded. `dbuf=1` is REJECTED together with `kv32=1`
+    (cp.async copies raw bytes and cannot convert), so the production native-f32 route runs
+    single-buffered synchronous loads with two fences per key block instead of three.
+
+    Same operands, same layouts, same decline contract as v1, with two changes: the layout
+    probe is the 7B FA2 raw-mma one (`-311`, not `-310`), and the caller's fallback on
+    -301/-304/-305/-311 is v1's WMMA kernel (which keeps its own decline-to-five-pass-chain
+    fallback). Any OTHER non-zero status is a real launch failure and must be returned as one.
+    0 = success."""
+    @parameter
+    if TC_SHIM_BUILD:
+        return Int(
+            external_call[
+                "tc_shim_fa_g3_window2_async", Int64, Int64, Int64, Int64, Int64, Int64,
+                Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+            ](Int64(q32), Int64(k), Int64(v), Int64(o), Int64(scale32), Int64(m),
+              Int64(n_keys), Int64(h_q), Int64(h_kv), Int64(d), Int64(pos_base),
+              Int64(window), Int64(bn), Int64(kv32), Int64(of16), Int64(dbuf))
+        )
+    else:
+        return -1
+
+
 def _tc_swiglu_f16_fastexp(gu16: Int, act16: Int, m_rows: Int, n_ff: Int) -> Int:
     """Fast-exp SwiGLU epilogue (FRONT 3 lever 2, `-D ALGENTA_7B_PF_FASTEXP`): the shim twin
     of `_pf_swiglu_rows_f16_kernel` — the same `(g / (1 + exp(-g))) * u` over the same f16
