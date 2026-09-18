@@ -20419,3 +20419,129 @@ for this lane. The backup script that was supposed to protect them had itself lo
 place (`$HOME/trtllm/` rather than `$HOME/`), reported the two most load-bearing files MISSING and
 skipped them — a backup that silently omits its own target is worse than no backup, because it
 reads as done. Fixed, and the recovery of those two files is what made this window possible at all.
+
+---
+
+## ROUND 11 — gemma-3-27b-it H200: the GQA-packed lever is RESOLVED at -3.397 ms and rag4096 widens to **1.1035x** on a SAME-SESSION basis (branch `feat/gemma-w12`, 2026-09-18)
+
+One window, **42m27s of a 1 h cap** (VM RUNNING 23:55:42Z, stopped 00:38:09Z with
+`--discard-local-ssd=false`, `status=RUNNING` verified empty project-wide). Scope was deliberately
+narrow: re-stage -> bracket close -> same-session TRT re-serve -> pooled summary. ROPEVEC and wgmma
+were OUT by decision and are not touched here. **This entry upgrades round 9/10's NOT RESOLVED
+verdict to RESOLVED and supersedes its delta figure; it does not alter any other published cell.**
+
+### THE CAPACITY PATTERN, because it shaped the plan
+
+us-west1-c went to STOCKOUT on three consecutive attempts (23:23:59Z, 23:31:16Z, 23:46:25Z) and then
+granted capacity on the fourth (23:55:42Z). Spot here is flapping on a ~10-30 min timescale, so a
+start refusal is not a reason to abandon a window — but the retry discipline (stop at two, report)
+is still correct, because an unbounded retry loop burns attention and can catch a grant at a moment
+nobody is ready to use. What made this window fit in 42 min is that **nothing had to be rebuilt or
+re-gated**: the arms live on the persistent boot disk, and their sha256_16 was RE-VERIFIED against
+the banked audit rather than assumed (`R9_base` cd4047affbb40b76, `R9_gqa2` 3db7f0dfaf04a7c1,
+`R9_both` ca66b41a2ee34cde — all three matched), which is what lets the gates certified in the
+previous window apply to the binaries timed in this one. A rebuild would have silently invalidated
+them.
+
+### SAME-SESSION TRT-LLM 1.2.1 RE-SERVE — all three cells reproduce, including pp256 at last
+
+Served fresh in this session (files mtime 2026-09-18T00:25:38Z, server stopped afterwards with the
+GPU verified at 0 MiB), against the stored column:
+
+| cell | re-served | stored | delta | within 1% |
+|---|---|---|---|---|
+| pp256 | **41.329 ms** | 41.520 | **-0.460%** | YES |
+| pp1024 | **110.800 ms** | 110.782 | **+0.016%** | YES |
+| rag4096 | **427.312 ms** | 426.766 | **+0.128%** | YES |
+
+**This is the first same-session pp256 column since round 5.** Round 6's pp256 re-serve missed the
+stored value by -1.908% and had to be labelled CROSS-SESSION, which is why round 6's pp256 ratio
+was published with that caveat. It reproduces cleanly now at -0.460%.
+
+### THE MEASUREMENT — two independent brackets pooled, drift armor MEASURED, verdict RESOLVED
+
+The bracket ran with `CELLTAG=b`, so its cells are labelled `r6b_*` and **pool** with the `r6_*`
+cells banked in the previous window instead of overwriting them. Shape was non-default and is
+declared as such (1 warmup + 2 measured + 2 closing per arm, 8 cells, all `rc=0 offpin=0`,
+CELLGROUP complete 00:22:22Z); the cells runner logs a NOTE whenever the shape is non-default so a
+pooled n is never reported without it.
+
+| rag4096 | n | median ms | rel-IQR% | tok/s | vs TRT (same-session) | verdict | delta vs A | resolved |
+|---|---|---|---|---|---|---|---|---|
+| `R9_base` (#1006 ship flags) | **7** | 390.637 | 0.169 | 10485.4 | 1.0939 | WIN | 0.000 | — |
+| `R9_gqa2` (+ `ALGENTA_G3_PF_GQA2`) | **6** | **387.240** | 0.129 | 10577.4 | **1.1035** | WIN | **-3.397 ms** | **YES** |
+
+**Bracket drift armor on `R9_base`: -0.135% (0.527 ms), open 390.637 -> close 390.111.** The lever
+delta of 3.397 ms exceeds that armor by **6.4x**, which is what turns round 9/10's
+`NO-DRIFT-MEASURED` / `NOT RESOLVED` into `YES`. Clocks: *every measured cell 1410 MHz on every
+1 Hz sample, zero drift* — nothing to re-take under the zero-off-pin rule. Both rel-IQRs are far
+inside the 1% requirement, and n is pooled across two independent brackets, which is the same
+evidence class round 6 used for rag4096 (there n=14 from two brackets; here n=7/6).
+
+**PUBLISHABLE, on the stated criteria.** The delta -3.397 ms sits inside the pre-registered
+[-1.2, -4.6] ms acceptance band, the armor is measured and exceeded 6.4x, and the comparator is
+same-session and reproduces within 1%. **rag4096 = 1.1035x against the published 1.0959x.** Two
+honest framings of the same result, because the TRT denominator differs slightly between sessions
+(427.312 now, 426.339 in round 6, +0.23%):
+* cross-round: published rag4096 row goes **1.0959x -> 1.1035x**.
+* within-session, common basis: `R9_base` 1.0939x vs `R9_gqa2` 1.1035x, so the lever's own
+  contribution is **+0.0096x** and the baseline arm independently reproduces round 6's published
+  389.033 ms to **+0.41%**.
+
+Gates, re-verified in this window's summary from the banked JSON: both arms `ALL_PASS=True` on the
+full matrix (pp256 16/16 + 64/64, pp1024 16/16 + 64/64, val550 16/16 + 64/64, rag4096 22/22 +
+EOS-stop). Kernel-level bit identity stands from the probe: 216/216 `BITIDENT-v2`, 0 `BITDIFF`.
+
+### FORECAST vs MEASURED — the transfer ratio, refined by a second data point
+
+| lever | forecast | measured | measured / forecast |
+|---|---|---|---|
+| GQA2 on rag4096 (round 9/10, n=5/4, no armor) | -4.25 ms | -2.943 ms | **69.2%** |
+| GQA2 on rag4096 (round 11, n=6/7, RESOLVED) | -4.25 ms | **-3.397 ms** | **79.9%** |
+
+The forecast was the same in both rows — the probe's four per-tile rag4096 rows summed (484.6 ->
+423.2 us = -12.7%) applied to round 6's measured 33.53 ms attention bucket. What changed is n and
+the armor. So round 9/10's "~70%" transfer ratio was **depressed by small-n noise, not a stable
+property**: with two pooled brackets the transfer is **~80%**. The corrected statement of the
+calibration datum is therefore:
+
+> An isolated per-kernel probe delta transfers to roughly **80%** of itself in wall-clock at the
+> model level on this lane (two data points: 69% at n=5/4 without armor, 80% at n=6/7 with it).
+> The mechanism is overlap — the build carries `G3_PF_STREAM`, so attention is not the whole
+> critical path. **A probe measures a kernel; a cell measures a schedule.** Until more data points
+> exist, treat ~80% as the central estimate and the 69-80% spread as its uncertainty, and prefer
+> the larger n when the two disagree.
+
+This still discounts every probe-derived forecast here, including round 8's wgmma projection, but
+less severely than the single round-9 point implied. It is also a caution against calibrating a
+transfer ratio on one under-powered measurement — the first estimate was 11 points low.
+
+### WHAT WAS NOT MEASURED, stated so the published row is not over-read
+
+* **pp256 and pp1024 were not re-timed this window** (every label `NO-JSON`). Their published
+  ratios stand unchanged, and their no-regression under `ALGENTA_G3_PF_GQA2` rests on **bit identity
+  plus the shape gate**, not on a measurement: both cells sit below `n_keys = 2048`, so they
+  dispatch v2 unchanged and cannot differ. That is a strong argument but a weaker evidence class
+  than a timed no-regression, and it is labelled as such. The same-session TRT column for both is
+  now available (41.329 / 110.800), so a future window can time them cheaply against a comparator
+  that is already proven to reproduce.
+* **`R9_both` (GQA2 + ROPEVEC) remains UNGATED.** It was built and its hash audited, but the gate
+  was out of scope, so it must not be timed, quoted or shipped. ROPEVEC's modelled -2.2..-2.7 ms is
+  still a model and is now additionally subject to the ~80% transfer ratio.
+* **No nsys decomposition**, so norm-accum is still unpriced and `--from-first-attn` is still unrun
+  on a real trace. The full windowed **wgmma** kernel is still unwritten; round 8's census
+  (106-126 registers, zero spill, calibrated 6/6 against this box) remains its go signal.
+
+### EVIDENCE AND TOOLING
+
+`chain10.sh` ran the whole window into ONE log (`~/lever7/window11.log`) with a liveness line every
+120 s that died with the script, elapsed/remaining printed at every phase boundary, and per-phase
+remaining-cap guards that SKIP rather than start too late — the discipline round 9's misread made
+mandatory, and it worked: an outside reader of that single file can reconstruct the window without
+guessing which chain was live. `run_gemma3_round6_cells.sh` gained `WARM_RUNS` / `MEAS_RUNS` /
+`CLOSE_RUNS` (defaulting to the protocol's 3/7/2 so no existing caller changes) because the
+hardcoded 24-cell bracket could not fit a 1 h cap alongside the re-stage and the re-serve; the
+pooling-by-label behaviour is what makes a short bracket additive rather than a replacement. The TRT
+re-serve was guarded at a LOWER threshold than the bracket on purpose: a short bracket can be
+re-run later and pooled, whereas a cross-session ratio cannot be published at all. Artifacts
+retrieved to the local machine before the stop: `window11.log`, `lever6_results.json`.

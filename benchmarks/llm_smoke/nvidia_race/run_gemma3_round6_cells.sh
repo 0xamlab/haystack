@@ -185,21 +185,32 @@ if [[ "$STAGE" == "timing" ]]; then
   banner_audit "$ARM_B" || exit 3
   [[ -n "$ARM_C" ]] && { banner_audit "$ARM_C" || exit 3; }
   quiesce || exit 1
+  # Run counts are overridable so a SHORT bracket can complete inside a tight VM cap, which matters
+  # because cells POOL across brackets by label (CELLTAG): a window that can only afford 5 cells per
+  # arm still advances n and still closes the A..B..A group, rather than being forced to choose
+  # between a full 12-cell bracket it cannot finish and no bracket at all. Defaults are the
+  # protocol's 3 warmup + 7 measured + 2 closing, so nothing changes for a caller that does not ask.
+  WARM_RUNS=${WARM_RUNS:-3}
+  MEAS_RUNS=${MEAS_RUNS:-7}
+  CLOSE_RUNS=${CLOSE_RUNS:-2}
+  log "bracket shape: $WARM_RUNS warmup + $MEAS_RUNS measured + $CLOSE_RUNS closing per arm"
+  (( WARM_RUNS != 3 || MEAS_RUNS != 7 )) && \
+    log "NOTE: non-default bracket shape -- the pooled n and the drift armor must be reported with it"
   for spec in $DRIVER_PROMPTS; do
     n=$(echo "$spec" | cut -d: -f1); f=$(echo "$spec" | cut -d: -f2); mn=$(echo "$spec" | cut -d: -f3)
-    for i in 1 2 3; do
+    for i in $(seq 1 "$WARM_RUNS"); do
       cw_cell "r6${CELLTAG}_${ARM_A}_${n}_warm$i" "$BIN_DIR/$ARM_A" "$CKPT" --tokens-file "$f" --max-new "$mn" --f16 --prefill
       cw_cell "r6${CELLTAG}_${ARM_B}_${n}_warm$i" "$BIN_DIR/$ARM_B" "$CKPT" --tokens-file "$f" --max-new "$mn" --f16 --prefill
       [[ -n "$ARM_C" ]] && cw_cell "r6${CELLTAG}_${ARM_C}_${n}_warm$i" "$BIN_DIR/$ARM_C" "$CKPT" --tokens-file "$f" --max-new "$mn" --f16 --prefill
     done
-    for i in 1 2 3 4 5 6 7; do
+    for i in $(seq 1 "$MEAS_RUNS"); do
       cw_cell "r6${CELLTAG}_${ARM_A}_${n}_r$i" "$BIN_DIR/$ARM_A" "$CKPT" --tokens-file "$f" --max-new "$mn" --f16 --prefill
       cw_cell "r6${CELLTAG}_${ARM_B}_${n}_r$i" "$BIN_DIR/$ARM_B" "$CKPT" --tokens-file "$f" --max-new "$mn" --f16 --prefill
       [[ -n "$ARM_C" ]] && cw_cell "r6${CELLTAG}_${ARM_C}_${n}_r$i" "$BIN_DIR/$ARM_C" "$CKPT" --tokens-file "$f" --max-new "$mn" --f16 --prefill
     done
     # the closing bracket: A again, so the group is A..B..A and the drift over the group is a
     # measurement rather than an assumption
-    for i in 1 2; do
+    for i in $(seq 1 "$CLOSE_RUNS"); do
       cw_cell "r6${CELLTAG}_${ARM_A}_${n}_close$i" "$BIN_DIR/$ARM_A" "$CKPT" --tokens-file "$f" --max-new "$mn" --f16 --prefill
     done
     log "CELLGROUP $n complete (A=$ARM_A B=$ARM_B C=$ARM_C)"

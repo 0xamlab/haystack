@@ -29,7 +29,22 @@
 set -uo pipefail
 L7=${L7:-$HOME/lever7}
 GPU=${GPU:-1}
-CAP_MIN=${CAP_MIN:-170}          # hard cap in minutes; leave margin inside the owner's 3 h
+CAP_MIN=${CAP_MIN:-58}           # hard cap in minutes from THIS SCRIPT's start. The VM boot and the
+                                 # tree sync happen before it, so the owner's window cap is this
+                                 # plus ~6 min. Sized for the 1 h scope: re-stage ~10, bracket ~20,
+                                 # TRT re-serve ~20, summarise ~2.
+# Bracket shape, deliberately SHORT (1 warmup + 2 measured + 2 closing per arm = 5 cells per arm,
+# ~20 min for the pair). Cells POOL by label across brackets, so this ADDS to the r6_* cells already
+# banked (5 and 4 measured per arm) instead of replacing them, taking pooled n to 7 per arm while
+# still closing the A..B..A group that produces the drift armor. The protocol's full 3+7+2 is 24
+# cells / ~48 min and cannot fit a 1 h cap alongside the re-stage and the TRT re-serve. The cells
+# runner logs a NOTE whenever the shape is non-default, so a pooled n is never reported without it.
+export WARM_RUNS=${WARM_RUNS:-1}
+export MEAS_RUNS=${MEAS_RUNS:-2}
+export CLOSE_RUNS=${CLOSE_RUNS:-2}
+# ROPEVEC is OUT OF SCOPE for the 1 h window and rides a future substantive one. Gated by an env var
+# rather than deleted, so the phase is still here and still states honestly why it did not run.
+ROPEVEC_GATE=${ROPEVEC_GATE:-0}
 W=$L7/window11.log
 mkdir -p "$L7/logs" "$L7/runs" "$L7/clocks"
 T0=$(date +%s)
@@ -84,8 +99,8 @@ echo "expected from the banked audit: R9_base cd4047affbb40b76 | R9_gqa2 3db7f0d
 
 # ═══ 2 bracket close ═══
 phase "2_bracket_close"
-if (( $(remaining) < 55 )); then
-  echo "SKIP bracket close: only $(remaining)min of cap remain and the bracket needs ~40"
+if (( $(remaining) < 25 )); then
+  echo "SKIP bracket close: only $(remaining)min of cap remain and the short bracket needs ~20"
 else
   # CELLTAG=b -> labels r6b_*, which summarize_gemma3_round6.py POOLS with the r6_* cells already
   # banked. This is round 6's own second-bracket mechanism, and it is what turns n=5/4 into n>=7
@@ -96,10 +111,15 @@ else
 fi
 
 # ═══ 3 same-session TRT-LLM re-serve ═══
+# PRIORITY NOTE: without this there is no same-session comparator and therefore NO publishable
+# ratio, so it is guarded at a lower threshold than the bracket — if the cap forces a choice, the
+# bracket can be re-run in a later window and pooled, whereas a cross-session ratio cannot be
+# published at all.
 phase "3_trtllm_reserve"
-if (( $(remaining) < 35 )); then
-  echo "SKIP TRT re-serve: only $(remaining)min remain and it needs ~25"
-  echo "CONSEQUENCE: no same-session comparator, so no ratio is publishable this window"
+if (( $(remaining) < 22 )); then
+  echo "SKIP TRT re-serve: only $(remaining)min remain and it needs ~20"
+  echo "CONSEQUENCE: no same-session comparator, so NO ratio is publishable this window and the"
+  echo "bracket delta stays an ours-vs-ours number only."
 else
   bash "$HOME/lever3/lv3_trtllm.sh" || echo RESERVE_WARN
   cp -f "$HOME"/lever3/runs/trtllm_pp256.json "$HOME"/lever3/runs/trtllm_pp1024.json \
@@ -115,15 +135,20 @@ fi
 phase "4_summarise"
 MEAS="$L7" /usr/bin/python3 summarize_gemma3_round6.py R9_base R9_gqa2 2>&1 | tail -60
 
-# ═══ 5 ROPEVEC gate, only if the cap allows ═══
+# ═══ 5 ROPEVEC gate ═══
 phase "5_ropevec_gate"
-if (( $(remaining) >= 30 )); then
+if (( ROPEVEC_GATE == 1 )) && (( $(remaining) >= 30 )); then
   echo "remaining=$(remaining)min >= 30, gating R9_both (ROPEVEC is ungated code in main)"
   BUILD_ARMS=0 STAGE=gate ARM=R9_both ARM_A=R9_base \
     bash run_ab_gemma3_round9.sh || echo GATE_BOTH_FAIL
+elif (( ROPEVEC_GATE != 1 )); then
+  echo "ROPEVEC GATE IS OUT OF SCOPE for this window (ROPEVEC_GATE=$ROPEVEC_GATE) and rides a"
+  echo "future substantive one. R9_both therefore REMAINS UNGATED: it must not be timed, quoted,"
+  echo "or shipped, and its modelled -2.2..-2.7 ms stays a model, now additionally subject to the"
+  echo "~70% probe-to-wall-clock transfer ratio round 9 measured."
 else
   echo "SKIP ROPEVEC gate: only $(remaining)min of cap remain and the gate needs ~25-50."
-  echo "R9_both therefore REMAINS UNGATED and must not be timed, quoted or shipped."
+  echo "R9_both REMAINS UNGATED and must not be timed, quoted or shipped."
 fi
 
 # ═══ off-pin census ═══
