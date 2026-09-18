@@ -71,6 +71,54 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Does this push change anything that ends up in an image, the chart, or a deploy? A docs- or
+  # benchmark-only commit used to rebuild and push three images, grype-scan each, push the Helm
+  # chart and redeploy both Fly apps (observed 2026-09-17: the docs(bench) push 5d6c11db, ~5 min of
+  # build+push per image plus two production deploys, for two files under benchmarks/). The three
+  # build-* jobs gate on this output; helm-oci-push / deploy / deploy-control-plane depend on those
+  # builds and skip with them. Fails OPEN (deploy_needed=true) whenever the diff cannot be listed.
+  changes:
+    name: Classify changed paths
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      deploy_needed: ${{ steps.classify.outputs.deploy_needed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Classify
+        id: classify
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          # Non-shipping paths. Anything not matching one of these means a build is needed.
+          docs_only='^(docs/|gitbook/|benchmarks/|plans/|\.github/CODEOWNERS$|\.github/dependabot\.yml$|LICENSE|CHANGELOG|.*\.md$)'
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "::notice::changes: no usable before-sha ($BEFORE) -- assuming a build is needed"
+            echo "deploy_needed=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed=$(git diff --name-only "$BEFORE" "$AFTER") || { echo "::notice::changes: diff failed -- assuming a build is needed"; echo "deploy_needed=true" >> "$GITHUB_OUTPUT"; exit 0; }
+          if [ -z "$changed" ]; then
+            echo "::notice::changes: empty diff -- assuming a build is needed"; echo "deploy_needed=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          shipping=$(printf '%s\n' "$changed" | grep -Ev "$docs_only" || true)
+          total=$(printf '%s\n' "$changed" | grep -c . || true)
+          if [ -n "$shipping" ]; then
+            echo "::notice::changes: $(printf '%s\n' "$shipping" | grep -c .) of $total changed file(s) can affect images/chart/deploy -> building"
+            printf '%s\n' "$shipping" | head -20
+            echo "deploy_needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::changes: all $total changed file(s) are docs/benchmarks-only -> skipping image builds, scans, chart push and deploys"
+            printf '%s\n' "$changed" | head -20
+            echo "deploy_needed=false" >> "$GITHUB_OUTPUT"
+          fi
   # ── Test ──────────────────────────────────────────────────────────────────
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -1446,8 +1494,8 @@ jobs:
   build-api:
     name: Build & Push Docker (API image)
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test, changes]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.deploy_needed == 'true'
     permissions:
       contents: read
       packages: write
@@ -1520,8 +1568,8 @@ jobs:
   build-worker:
     name: Build & Push Docker (Worker image)
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test, changes]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.deploy_needed == 'true'
     permissions:
       contents: read
       packages: write
@@ -1582,8 +1630,8 @@ jobs:
   build-engine:
     name: Build & Push Docker (Engine image)
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test, changes]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.deploy_needed == 'true'
     permissions:
       contents: read
       packages: write
