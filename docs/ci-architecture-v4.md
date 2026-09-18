@@ -45,7 +45,11 @@ of it.
 |---|---|---|
 | `ubuntu-latest` (GitHub-hosted, 2 vCPU/8 GB private-repo standard) | Every job except Mojo compiles: lint/typecheck, unit + integration tests, CodeQL, `cla.yml`, docs-audit, SDK artifact installs, Helm lint/kind-smoke, TPM round-trip, Docker image builds, publish/release/deploy jobs, `security.yml` | Free within the org's 50,000 included Actions minutes/month |
 | `thyn-8c` (GitHub larger runner, 8-core/32 GB, `public_ip_enabled: true`, `maximum_runners: 2`, runner group `mojo-heavy` restricted to this repo + `telys` and to named Mojo workflow files) | `build-runtime.yml`, `build-runtime-bundle.yml`, `build-mojo.yml`, `amd-rocm-gate.yml`, `sdk-audit.yml` execution-sweep shard compiles, `ci.yml`'s `test` job only when `workflow_dispatch measure_baseline=true` (otherwise the same job runs on `ubuntu-latest`) | $0.022/min — never free; capped by `maximum_runners: 2` and workflow-file restriction |
-| `[self-hosted, az-orch]` | `az-ci-smoke.yml`, `deploy-az-orchestrator.yml` only — these two workflows manage the Azure orchestrator box itself and must run on it by definition. They are the only jobs left touching Azure, and only until §9 completes. | Azure VM already provisioned (`ci-orch`), not additional spend |
+
+There is no third row. `[self-hosted, az-orch]` was listed here until the decommission wave
+removed `az-ci-smoke.yml` and `deploy-az-orchestrator.yml` along with the orchestrator VM they
+targeted — see §9. **Two runner classes is the complete set**, so any `runs-on:` naming a third
+label is a typo, and `.github/actionlint.yaml` no longer allowlists anything that would hide it.
 
 Compare against §12 of v3's cost model (GCP $525–785/mo projected, Azure addendum unpriced but
 measured in practice at $400+/mo): the GitHub-hosted-only model's expected steady state is
@@ -65,7 +69,9 @@ not an exhaustive per-line listing (see the workflow files themselves for that).
 | `build-runtime`, `build-runtime-bundle`, `build-mojo`, `amd-rocm-gate` | `thyn-8c` | Native Mojo/MAX compile; the 2 vCPU/8 GB standard runner is undersized for a 24-module shard (measured up to ~11 GiB peak footprint per shard in the v3-era telemetry, still the right order of magnitude here) |
 | `sdk-audit` execution-sweep (compiled-worker shards) | `thyn-8c` | Same compile cost as above |
 | Docker image builds, Fly deploys, Helm chart OCI push, published-artifact install/execute proof | `ubuntu-latest` | Only run on `main`/tags/release, never on fork PRs; no compile step of their own (consume prebuilt artifacts) |
-| `az-ci-smoke`, `deploy-az-orchestrator` | `[self-hosted, az-orch]` | Manage the orchestrator box itself — see §9 |
+
+The `az-ci-smoke` / `deploy-az-orchestrator` row this table used to carry is gone with the
+workflows themselves; §9 records what they were and when they went.
 
 ## 4. Security gate
 
@@ -146,21 +152,50 @@ tracked as outstanding in the toolchain rollout, not something this repo's CI de
 
 ## 9. Azure decommission
 
-This repo's own workflows are already at zero Azure dependency except the two orchestrator-
-management jobs in §3. Org-wide decommission (deleting `RG thyn-ci`, its 6 ephemeral VMs, the
-idle `ci-arc-pilot` AKS cluster, the DevCenter project, 34 orphaned NSGs, 8 VNets, and finally
-the resource group itself) is **not yet started** and should not start until:
+### 9.1 Code level — DONE
 
-1. `gh api orgs/thyn-ai/actions/runners` shows no `az-ephemeral` registrations for 7 consecutive
-   days, and
-2. Every fleet consumer listed in the org-wide rollout tracking has actually merged its
-   hosted-runner migration (as of this document: this repo's #1007/#1008/this-PR, plus a small
-   number of other repos still pending owner review) — the fleet remains in active use by those
-   repos until then, so deleting the Azure plane out from under them would break their CI.
+This repository is at **zero** Azure CI dependency, and that is now a property of the tree rather
+than of a comment. The decommission wave deleted:
 
-Every step in that decommission is destructive (VM/disk/cluster/resource-group deletion) and is
+- `.github/workflows/az-ci-smoke.yml` and `.github/workflows/deploy-az-orchestrator.yml` — the last
+  two jobs with `runs-on: [self-hosted, az-orch]`. Both were already unrunnable: they target a
+  runner registration that no longer exists, so a trigger would have queued forever rather than
+  failed.
+- `infra/ci/**` — `az_orchestrator.py`, `deploy_orchestrator.sh`, `orchestrator-cloud-init.yaml`,
+  `az_quota_raise.py`, and `image/{build_image.py,manifest.toml}`.
+- `infra/fleet/**` — the retired persistent-fleet daemons (`fleet_reaper.sh`, `fleet_watchdog.sh`,
+  `algenta_dns_proxy.py`, both launchd plists, `install_fleet_daemons.sh`, README).
+- Their 18 test modules (`tests/test_az_orchestrator_*.py`, `tests/test_ci_image_{build,contract}.py`).
+- The `az-ephemeral` / `az-orch` entries in `.github/actionlint.yaml`.
+
+Measured at the time of the wave, so this is a state and not an intention:
+`gh api orgs/thyn-ai/actions/runners` returned `total_count: 0` — no `az-ephemeral` and no `az-orch`
+registration anywhere in the org — and `az vm list -g thyn-ci` returned **0 VMs**: the `ci-orch`
+orchestrator box was deleted during the same hour. There is therefore no running consumer of
+anything removed here, and no runner able to execute the two deleted workflows.
+
+### 9.2 Azure resources — NOT done by this wave, still owner-gated
+
+The resource group `thyn-ci` **still exists** and still holds residue, inventoried at the same
+moment: 1 orphaned NIC, 1 public IP, 1 NSG, 1 VNet, 1 disk, the Compute Gallery with the
+`ci-worker` image and version, the idle `ci-arc-pilot` AKS managed cluster (plus its `MC_*`
+managed RG), the DevCenter project and devcenter, and a `GitHub.Network/networkSettings`.
+
+Deleting any of it is **out of scope for the code wave by design** and remains a separate,
+explicitly owner-confirmed step, gated on 7 consecutive days of hosted-only CI green. Two of the
+original preconditions have changed since this section was first written and are recorded rather
+than silently dropped:
+
+1. *"no `az-ephemeral` registrations for 7 consecutive days"* — the count is now 0, but the clock
+   starts from the wave, not from this document; the 7 days still have to elapse.
+2. *"every fleet consumer has merged its hosted-runner migration"* — this repo has. **Other repos
+   in the org are not verified here**, and the gallery image, VNet and NSGs may still be referenced
+   by them. Confirm org-wide before touching the resource group; this repo's tree cannot answer
+   that question.
+
+Every step in that teardown is destructive (disk/cluster/gallery/resource-group deletion) and is
 confirmed with the owner individually at execution time; this document records the precondition,
-not a standing authorization to proceed once it's met.
+not a standing authorization to proceed once it is met.
 
 ## 10. Verification
 
@@ -169,7 +204,9 @@ not a standing authorization to proceed once it's met.
   implicitly, and locally via the pre-commit `verify-toolchain` hook.
 - `thyn-sec actionlint .github/workflows/*.yml` — workflow lint, run standalone in this repo's
   own `.github/actionlint.yaml`-configured step and as part of every toolchain pre-commit/CI run.
-- `grep -rlE "RUNNER_LABELS|az-ephemeral" .github` — expect zero hits outside the two named
-  orchestrator-management workflows.
+- `grep -rlE "RUNNER_LABELS|az-ephemeral|az-orch" .github` — expect **zero hits**, with no
+  exceptions. Before the decommission wave this allowed two named orchestrator-management
+  workflows; there are none now, so any hit is a regression.
+- `test -e infra/ci -o -e infra/fleet` — expect non-zero. Neither directory should exist.
 - `gh api organizations/thyn-ai/settings/billing/usage` — `Actions Linux` minutes should stay
   under the included quota; larger-runner line items should show only `thyn-8c` job names.

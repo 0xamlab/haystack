@@ -393,8 +393,15 @@ def test_fallback_package_alias_resolution_is_ancestor_derived_not_hardcoded(tmp
 
 def test_path_literal_lane_catches_a_test_that_loads_by_path(tmp_path, monkeypatch):
     """Tests using importlib.spec_from_file_location have NO import edge, so the AST graph
-    cannot see them. This is the shape of every tests/test_az_orchestrator_*.py file, and a
-    change to infra/ci/az_orchestrator.py broke 4 of them while CI stayed green."""
+    cannot see them.
+
+    The `infra/ci/az_orchestrator.py` path used as fixture data below is historical: that module
+    and its 16 test files were the origin of this lane (a change to the module broke 4 of them
+    while CI stayed green, 2026-08-26) and were deleted in the 2026-09-18 CI decommission wave.
+    The string survives here only as an arbitrary three-component path to match against -- this
+    test writes it into a tmp file and never touches the repo, so nothing dangles. 35 files in
+    tests/ still use the shape the lane exists for.
+    """
     import scripts.test_impact as ti  # noqa: PLC0415
 
     test_src = tmp_path / "test_loads_by_path.py"

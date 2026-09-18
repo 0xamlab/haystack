@@ -327,24 +327,28 @@ def _path_literal_dependents(changed, test_files):
     """Tests that load a changed file BY PATH, which the AST import graph cannot see.
 
     Many tests here do:
-        _TOOL = REPO_ROOT / "infra" / "ci" / "az_orchestrator.py"
-        spec = importlib.util.spec_from_file_location("under_test", _TOOL)
+        module_path = root / "benchmarks" / "algenta_connector_preview_benchmark.py"
+        spec = importlib.util.spec_from_file_location("under_test", module_path)
     There is no import statement, so the module never appears in the dependency graph and the
-    test is invisible to selection. 20+ files in tests/ use this shape (also subprocess and
+    test is invisible to selection. 35 files in tests/ use this shape (also subprocess and
     open() against repo paths).
 
-    This is not theoretical: on 2026-08-26 a change to infra/ci/az_orchestrator.py broke all 4
-    tests in tests/test_az_orchestrator_inflight_release.py, and the PR merged GREEN because
-    subset selection never picked that file. The telys/memengine lexical lane targets the same
+    This is not theoretical: on 2026-08-26 a change to the Azure CI orchestrator's own module
+    broke all 4 tests in its inflight-release test file, and the PR merged GREEN because subset
+    selection never picked that file. (Both files were deleted in the 2026-09-18 CI decommission
+    wave, which is why the example above is a different one -- the incident is kept because it is
+    the reason this lane exists, and the lane outlived the code that motivated it.) The
+    telys/memengine lexical lane targets the same
     class of blind spot, but this lane deliberately keeps NO external dependency so it holds even
     where memengine is absent. (The lexical lane is no longer inert in CI: it installs offline
     from the committed vendor/wheels/ wheel and ci.yml sets the ranking flag on the selection
     step. Both lanes now run, independently.)
 
     Match rule: every path COMPONENT of a changed file must appear as a string literal in the
-    test. `infra/ci/az_orchestrator.py` -> {"infra", "ci", "az_orchestrator.py"}, all three of
-    which appear in those tests. Component-wise (not substring) matching keeps it tight, and
-    like every other lane here it only ever WIDENS the set.
+    test. `benchmarks/algenta_connector_preview_benchmark.py` -> {"benchmarks",
+    "algenta_connector_preview_benchmark.py"}, both of which appear in that test. Component-wise
+    (not substring) matching keeps it tight, and like every other lane here it only ever WIDENS
+    the set.
     """
     changed_components = {}
     for c in changed:
