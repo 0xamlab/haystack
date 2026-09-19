@@ -168,21 +168,28 @@ jobs:
             --title "sync: mirror from thyn-ai/algenta@${{ github.sha }}" \
             --body "Automated mirror of packages/python-sdk, packages/ts-sdk, packages/mcp and examples/ from thyn-ai/algenta at ${{ github.sha }}. It merges itself through the merge queue once the required \`codna review\` check and CI pass (auto-merge, no bypass); if a later sync lands first, this PR is closed as superseded -- every sync PR is a full snapshot of the exported surface.")
           echo "opened $PR_URL"
+          NEW_NUMBER=$(gh pr view "$PR_URL" --repo thyn-ai/algenta-sdk --json number --jq .number)
+          # Self-merge FIRST, then housekeeping: GitHub adds the PR to the mirror's merge queue only
+          # once the required `codna review` check passes (auto-merge; the App holds no bypass here).
+          # A red review leaves the PR open and visible -- that is the gate working. Ordered before
+          # the cleanup below so a cleanup hiccup can never leave the new PR without auto-merge.
+          gh pr merge "$PR_URL" --repo thyn-ai/algenta-sdk --auto --merge
           # Every sync PR is a full snapshot, so the newest one carries everything the older open
           # ones do -- and once any of them merges, the rest conflict and sit red forever (four
-          # accumulated on 2026-09-19, two of them DIRTY). Close the older ones as superseded.
-          NEW_NUMBER="${PR_URL##*/}"
+          # accumulated on 2026-09-19, two of them DIRTY). Close the older ones as superseded. The
+          # new PR's number is compared in the shell, never interpolated into a jq filter; a
+          # failure on one old PR is reported and does not fail the sync.
           gh pr list --repo thyn-ai/algenta-sdk --state open --author 'app/algenta-sdk-sync' \
               --json number,headRefName \
-              --jq ".[] | select(.headRefName | startswith(\"sync/\")) | select(.number != $NEW_NUMBER) | .number" \
+              --jq '.[] | select(.headRefName | startswith("sync/")) | .number' \
             | while read -r old; do
                 [ -n "$old" ] || continue
-                gh pr comment "$old" --repo thyn-ai/algenta-sdk \
-                  --body "Superseded by #$NEW_NUMBER (a later thyn-ai/algenta commit). Every sync PR is a full snapshot of the exported packages, so this one carries nothing #$NEW_NUMBER does not. Closing." >/dev/null
-                gh pr close "$old" --repo thyn-ai/algenta-sdk --delete-branch
-                echo "closed superseded sync PR #$old"
+                [ "$old" = "$NEW_NUMBER" ] && continue
+                if gh pr comment "$old" --repo thyn-ai/algenta-sdk \
+                     --body "Superseded by #$NEW_NUMBER (a later thyn-ai/algenta commit). Every sync PR is a full snapshot of the exported packages, so this one carries nothing #$NEW_NUMBER does not. Closing." >/dev/null \
+                   && gh pr close "$old" --repo thyn-ai/algenta-sdk --delete-branch; then
+                  echo "closed superseded sync PR #$old"
+                else
+                  echo "::warning::could not close superseded sync PR #$old (left open; the next sync will retry)"
+                fi
               done
-          # Self-merge through the merge queue, gated exactly like a human PR: GitHub adds it to the
-          # queue only when the required \`codna review\` check passes (auto-merge; the App holds no
-          # bypass here). A red review leaves the PR open and visible -- that is the gate working.
-          gh pr merge "$PR_URL" --repo thyn-ai/algenta-sdk --auto --merge
