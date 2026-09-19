@@ -110,7 +110,7 @@ jobs:
           rsync -a --exclude '__pycache__' --exclude '*.pyc' examples/ algenta-sdk-public/examples/
 
       - name: Set up thyn-sec
-        uses: thyn-ai/security-toolchain@6045a94a409bca3d9321c9369a31e0d42b15efcd # v0.1.7
+        uses: thyn-ai/security-toolchain@74ba1858aec0c29ed34a0d7a299d857eda96eb37 # v0.1.9
         with:
           prefetch: "false"
 
