@@ -279,12 +279,36 @@ docstring for the unrolled proof. Fact-driven capability gate: `d_head == 4 * WA
 which is also what puts both halves of a RoPE pair in one lane; any other head width keeps the
 twin byte-for-byte."""
 
-comptime G3_PF_ROPEVEC: Bool = is_defined["ALGENTA_G3_PF_ROPEVEC"]()
-"""ROUND 7: vectorise the ROPE2 warp-per-head kernel's global accesses — step 3 dispatches
+comptime G3_PF_ROPEVEC: Bool = G3_PF_ROPE2 and not is_defined["ALGENTA_G3_PF_NO_ROPEVEC"]()
+"""ROUND 13: **DEFAULT ON**. Opt OUT with `-D ALGENTA_G3_PF_NO_ROPEVEC`, which restores the scalar
+ROPE2 kernel byte-for-byte as the A/B control. It is gated on `G3_PF_ROPE2` because it replaces
+that kernel and not the block-per-head twin, so with ROPE2 off this is inert by construction and no
+build can get the vector kernel without also having the kernel it vectorises.
+
+WHY IT IS NOW DEFAULT ON, with the evidence rather than the argument. CERTIFIED in round 12 against
+the cache-free fp32 transformers oracle on a fresh checkpoint at 1410 MHz with offpin=0 on every
+cell: pp256 16/16 and 64/64 with the 64-token determinism repeat **2/2 bit-identical**, pp1024
+16/16 and 64/64 with det 2/2, val550 16/16 and 64/64 with det 2/2, rag4096 22/22 + EOS-stop —
+`GATE ALL_PASS = True` on arm `R9_both` (sha256_16 `ca66b41a2ee34cde`). MEASURED in round 13 on the
+same binary, hash re-verified before timing so the certification provably attaches to it: rag4096
+interleaved A..B..A against `R9_gqa2`, **delta -1.687 ms (-0.436%)**, bracket drift armor
+**+0.116 ms (+0.030%)** so the delta exceeds its armor by **14.5x** and the summariser reports
+`resolved = YES`; every cell 1410 MHz on every 1 Hz sample; and a same-session TRT-LLM re-serve
+reproducing the stored column within 1% at all three cells, giving rag4096 **1.1140x**. The
+same-bracket-only comparison (r6c_ cells alone, n=3 per arm) gives the identical -1.687 ms, so the
+pooled median was not leaning on other sessions.
+
+FLIPPED TOGETHER WITH `G3_PF_GQA2`, deliberately. The measured arm is `R9_both` = ship + GQA2 +
+ROPEVEC, so flipping this flag alone would have shipped ship+ROPEVEC-without-GQA2 — a configuration
+nobody ever timed. Both defaults ON makes **the shipped default exactly the measured arm**. To
+isolate either lever in a future A/B, opt out of the one you are testing: `NO_ROPEVEC` alone gives
+the GQA2-only arm, `NO_GQA2` alone gives the ROPEVEC-only arm, both together give the pre-round-9
+ship. See `run_ab_gemma3_round9.sh` for the wired control arms.
+
+ROUND 7 (authoring): vectorise the ROPE2 warp-per-head kernel's global accesses — step 3 dispatches
 `_pf_ropewrt_warps_vec_kernel` (one HALF-warp per head, two contiguous `_ld4`/`_st4` quads per
 lane, 16 heads per block) instead of `_pf_ropewrt_warps_kernel` (one warp per head, four STRIDED
-scalar elements per lane, 8 heads per block). Requires `G3_PF_ROPE2` to also be set, since it
-replaces that kernel and not the block-per-head twin.
+scalar elements per lane, 8 heads per block).
 
 WHY. ROPE2 removed the shared-memory round trip and the barriers (36.6 ms -> 7.7 ms
 whole-process at rag4096), but it kept scalar 4-byte accesses, because its bit-exactness
@@ -354,10 +378,26 @@ twelve shapes; the staging rounds where the in-register convert rounds), so this
 scheduling and traffic, not numerics — it still carries its own banner and gate because it
 changes which kernels run."""
 
-comptime G3_PF_GQA2: Bool = G3_PF_FA2 and is_defined["ALGENTA_G3_PF_GQA2"]()
-"""ROUND 9 (`-D ALGENTA_G3_PF_GQA2`, requires G3_PF_FA2): dispatch the fused windowed attention
-through v3's GQA-PACKED CTAs — `rt=2` m16 row-tiles per warp spent on TWO QUERY HEADS OF ONE KV
-HEAD at the same 16 rows, so `grid.y` falls from `h_q` to `h_q/2` and the K/V tile is fetched
+comptime G3_PF_GQA2: Bool = G3_PF_FA2 and not is_defined["ALGENTA_G3_PF_NO_GQA2"]()
+"""ROUND 13: **DEFAULT ON**, together with `G3_PF_ROPEVEC`. Opt OUT with
+`-D ALGENTA_G3_PF_NO_GQA2`, which restores the v2 one-query-head-per-CTA dispatch byte-for-byte as
+the A/B control. Gated on `G3_PF_FA2` because v3 is a variant of the v2 kernel, so with FA2 off this
+is inert by construction.
+
+WHY DEFAULT ON, and why BOTH levers flipped in the same change rather than one: the arm that was
+**measured** in round 13 is `R9_both` = ship + GQA2 + ROPEVEC. Flipping ROPEVEC alone would have made
+the shipped default a *different* configuration — ship + ROPEVEC without GQA2 — whose wall-clock was
+never timed, and shipping a never-measured configuration to avoid a second flag flip is exactly
+backwards. With both defaults ON, **the shipped default IS the measured arm**, hash-for-hash in flag
+terms: rag4096 **385.458 ms**, **1.1140x** vs a same-session TRT-LLM 1.2.1 re-serve, a -1.687 ms
+ROPEVEC delta exceeding its bracket drift armor by **14.5x** on top of round 11's RESOLVED -3.397 ms
+GQA2 delta (6.4x its armor). GQA2 is the better-evidenced of the two — it is **bit-identical to v2**
+(216/216 BITIDENT below) and shape-gated, so its risk is dispatch-only, while ROPEVEC re-associates
+the `qk_norm` reduction and rides the fp32 oracle.
+
+ROUND 9 (authoring, `-D ALGENTA_G3_PF_GQA2`, requires G3_PF_FA2): dispatch the fused windowed
+attention through v3's GQA-PACKED CTAs — `rt=2` m16 row-tiles per warp spent on TWO QUERY HEADS OF
+ONE KV HEAD at the same 16 rows, so `grid.y` falls from `h_q` to `h_q/2` and the K/V tile is fetched
 once per (row-block, kv-head) instead of once per query head. Each `ldmatrix.x4` of K or V then
 feeds two mma instead of one, halving the per-row shared-load stream that round 6 named as the
 binding constraint on this kernel.
@@ -974,9 +1014,12 @@ struct _CudaResidentGemma3F16(Movable):
                   "zero barriers, bit-identical to the block-per-head twin)")
         @parameter
         if G3_PF_ROPEVEC:
-            print("TCFLAG ALGENTA_G3_PF_ROPEVEC=1 (half-warp-per-head RoPE with 16-byte",
+            print("TCFLAG ALGENTA_G3_PF_ROPEVEC=1 (DEFAULT ON since round 13; opt out with",
+                  "ALGENTA_G3_PF_NO_ROPEVEC) half-warp-per-head RoPE with 16-byte",
                   "_ld4/_st4 quads, 16 heads per block; re-associates the qk_norm reduction",
-                  "so it is NOT bit-identical to ROPE2 and rides the fp32-oracle gates)")
+                  "so it is NOT bit-identical to ROPE2 — certified by the fp32 oracle in",
+                  "round 12 and measured at -1.687 ms on rag4096 (14.5x its drift armor) in",
+                  "round 13")
         @parameter
         if G3_PF_FA:
             print("TCFLAG ALGENTA_G3_PF_FA=1 (fused windowed tensor-core FlashAttention-2,",
@@ -989,13 +1032,16 @@ struct _CudaResidentGemma3F16(Movable):
                   "n_keys >=", _G3_PF_FA2_DBUF_MIN_N if _G3_PF_FA_KV32 == 0 else 0, ")")
         @parameter
         if G3_PF_GQA2:
-            print("TCFLAG ALGENTA_G3_PF_GQA2=1 (window kernel v3 GQA-PACKED: rt =",
+            print("TCFLAG ALGENTA_G3_PF_GQA2=1 (DEFAULT ON since round 13; opt out with",
+                  "ALGENTA_G3_PF_NO_GQA2) window kernel v3 GQA-PACKED: rt =",
                   _G3_PF_GQA2_RT, "row-tiles per warp spent on", _G3_PF_GQA2_RT,
                   "query heads of ONE kv head, so grid.y is h_q/", _G3_PF_GQA2_RT,
                   "and each K/V ldmatrix feeds", _G3_PF_GQA2_RT, "mma; engaged only from",
                   "n_keys >=", _G3_PF_GQA2_MIN_NKEYS, "where the probe measures -12..-21%,",
                   "and BIT-IDENTICAL to v2 — 216/216 BITIDENT-v2, 0 BITDIFF, 0 FAIL at",
-                  "BN=32 and BN=64; below the threshold the dispatch is v2 unchanged)")
+                  "BN=32 and BN=64; below the threshold the dispatch is v2 unchanged.",
+                  "Measured RESOLVED at -3.397 ms on rag4096 (6.4x its drift armor) in",
+                  "round 11; with ROPEVEC it is the round-13 default arm at 1.1140x")
         @parameter
         if _G3_PF_KV16:
             print("TCFLAG ALGENTA_G3_PF_KV16=1 (fused attention reads the f16 K/V staging",
@@ -1154,7 +1200,8 @@ struct _CudaResidentGemma3F16(Movable):
                         # 128 to match this session's other head-dim capability gates, which
                         # do not import WARP_SIZE.)
                         use_rope2 = self.d_head == 128
-                    # ROUND 7 (`-D ALGENTA_G3_PF_ROPEVEC`): the vector twin REPLACES ROPE2's
+                    # ROUND 7, and DEFAULT ON SINCE ROUND 13 (opt out with
+                    # `-D ALGENTA_G3_PF_NO_ROPEVEC`): the vector twin REPLACES ROPE2's
                     # kernel rather than the block-per-head one, and it is eligible only where
                     # ROPE2 itself is — same `d_head == 128` lane contract. Gating it on
                     # `use_rope2` rather than on its own head-dim test means a shape ROPE2
@@ -1309,7 +1356,8 @@ struct _CudaResidentGemma3F16(Movable):
                                     dbuf_want = (
                                         1 if n_keys_fa >= _G3_PF_FA2_DBUF_MIN_N else 0
                                     )
-                                # ── ROUND 9 (`-D ALGENTA_G3_PF_GQA2`): GQA-packed v3, but ONLY
+                                # ── ROUND 9, and DEFAULT ON SINCE ROUND 13 (opt out with
+                                #    `-D ALGENTA_G3_PF_NO_GQA2`): GQA-packed v3, but ONLY
                                 #    where the probe measures it winning. `n_keys >=
                                 #    _G3_PF_GQA2_MIN_NKEYS` is a measured shape fact, not a
                                 #    model (see that constant for the decision table); below it

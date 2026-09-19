@@ -14,12 +14,36 @@
 #   R9_base    #1006's ship set: TC_SHIM + G3_STREAM + G3_GEGLU_U4 + G3_ATTN_FLASH + G3_PF_TCATTN
 #              + FA + F16ATTN + F16NORM + F16MLP + ROPE2 + FA2 + KV16 + BN32  (= R6_kv16_bn32,
 #              the binary that produced 389.033 / 94.022 ms)
-#   R9_gqa2   R9_base + ALGENTA_G3_PF_ROPEVEC — the half-warp-per-head RoPE with 16-byte
-#              `_ld4`/`_st4` quads replacing ROPE2's four strided scalar accesses per lane per
-#              array (~24 memory instructions per head -> ~8), and 16 heads per block instead of
-#              8 so gemma-3's 48 units take 3 blocks per row rather than 6. NOT bit-identical:
+#   R9_gqa2    R9_base + the GQA-PACKED v3 attention dispatch (rt=2 row-tiles per warp over the two
+#              query heads of one kv head, so grid.y halves and each K/V ldmatrix feeds two mma).
+#              BIT-IDENTICAL to v2 — 216/216 BITIDENT-v2, 0 BITDIFF, 0 FAIL at BN=32 and BN=64 —
+#              and shape-gated to n_keys >= 2048, so pp256/pp1024 keep v2 bit for bit.
+#   R9_both    R9_gqa2 + ROPEVEC, the half-warp-per-head RoPE with 16-byte `_ld4`/`_st4` quads
+#              replacing ROPE2's four strided scalar accesses per lane per array (~24 memory
+#              instructions per head -> ~8), 16 heads per block instead of 8. NOT bit-identical:
 #              contiguous quads re-associate the qk_norm sum-of-squares, so this arm rides the
 #              fp32-oracle token gates rather than a bit-identity argument.
+#
+# ⚠️ BOTH LEVERS ARE DEFAULT-ON AS OF ROUND 13, WHICH INVERTS HOW THESE ARMS ARE BUILT. The
+#    shipped default is now exactly `R9_both`, the arm round 13 measured (rag4096 385.458 ms,
+#    1.1140x same-session). So an arm is defined by what it OPTS OUT OF, not by what it opts into,
+#    and passing the old `-D ALGENTA_G3_PF_ROPEVEC` / `-D ALGENTA_G3_PF_GQA2` is a NO-OP that
+#    silently does nothing. The four reachable configurations:
+#
+#      config                       flags to pass                          isolates
+#      ---------------------------  -------------------------------------  ----------------------
+#      R9_both   GQA2 + ROPEVEC     (none — this is the default)           the shipped default
+#      R9_gqa2   GQA2 only          -D ALGENTA_G3_PF_NO_ROPEVEC            ROPEVEC (vs R9_both)
+#      R9_ropev  ROPEVEC only       -D ALGENTA_G3_PF_NO_GQA2               GQA2 (vs R9_both)
+#      R9_base   neither            both opt-outs                          the pre-round-9 ship
+#
+#    R9_base/R9_gqa2/R9_both are always built. R9_ropev is built only when BUILD_ROPEV_ARM=1, so
+#    the default build stays at three arms and costs no extra VM minutes; set it when a bracket
+#    needs to attribute GQA2's delta against a ROPEVEC-only arm rather than against the ship.
+#    NOTE for the next window: a post-flip rebuild gives NEW sha256 hashes for every arm, because
+#    the comptime defaults changed. chain13.sh's pinned hashes (R9_gqa2 3db7f0dfaf04a7c1, R9_both
+#    ca66b41a2ee34cde) describe the ROUND-9 BUILT binaries and remain correct for reproducing
+#    round 13 — they must be re-pinned, not inherited, before any fresh build is timed.
 #
 # PROTOCOL (the owner's, unchanged): oracle gate BEFORE any speed claim on every changed arm
 # (G0 16/16 + G1 64/64 greedy vs the cache-free fp32 transformers oracle, the 64-token run
@@ -65,6 +89,9 @@ ARM_B=${ARM_B:-R9_gqa2}
 ARM_C=${ARM_C-}                  # third interleaved arm; an explicitly EMPTY env stays empty
                                  # (:- would resurrect a default on the chains' ARM_C=)
 BUILD_ARMS=${BUILD_ARMS:-1}
+# 1 also builds R9_ropev (ROPEVEC only, GQA2 opted out) — see the header table for when a bracket
+# needs it. Default 0 so the ordinary build stays at three arms and costs no extra VM minutes.
+BUILD_ROPEV_ARM=${BUILD_ROPEV_ARM:-0}
 PY=/usr/bin/python3
 
 BASE="-D ALGENTA_GPU -D ALGENTA_CUDA -D ALGENTA_STAGE_6144 -D ALGENTA_G3_GEGLU_U4 \
@@ -123,17 +150,31 @@ build_arm() { # $1 = name ; rest = extra flags
 
 if (( BUILD_ARMS == 1 )) && [[ "$STAGE" == "all" || "$STAGE" == "build" ]]; then
   build_shim || exit 1
+  # BOTH LEVERS ARE DEFAULT-ON AS OF ROUND 13, so every arm here is defined by what it OPTS OUT OF
+  # and the old opt-IN flags (-D ALGENTA_G3_PF_ROPEVEC / -D ALGENTA_G3_PF_GQA2) are now NO-OPS. See
+  # the header table for all four reachable configurations. Without the opt-outs a rebuild would
+  # hand every arm both levers: the bracket's A arm would silently carry the levers it exists to
+  # isolate, the delta would collapse toward zero, and no arm would reproduce the hashes chain13.sh
+  # treats as FATAL to mismatch (R9_gqa2 3db7f0dfaf04a7c1). A null bracket that looks like a real
+  # one is the failure mode this prevents.
   # R9_base is #1006's ship candidate rebuilt from THIS branch, so the bracket measures against
   # the exact flag set that produced 389.033 / 94.022 / 32.108 ms rather than against a rebuild
   # of some other configuration.
-  build_arm R9_base $R6_STACK || exit 1
-  # R9_gqa2 adds ONLY the GQA-packed attention dispatch: bit-identical to v2, and shape-gated to
-  # n_keys >= 2048 so pp256/pp1024 keep v2 bit for bit and cannot regress.
-  build_arm R9_gqa2 $R6_STACK -D ALGENTA_G3_PF_GQA2 || exit 1
-  # R9_both stacks ROPEVEC on top. ROPEVEC is NOT bit-identical (contiguous quads re-associate the
-  # qk_norm sum-of-squares), so this arm is the one that genuinely needs the fp32 oracle, and
-  # keeping it separate from R9_gqa2 is what attributes each lever's own delta.
-  build_arm R9_both $R6_STACK -D ALGENTA_G3_PF_GQA2 -D ALGENTA_G3_PF_ROPEVEC || exit 1
+  build_arm R9_base $R6_STACK -D ALGENTA_G3_PF_NO_ROPEVEC -D ALGENTA_G3_PF_NO_GQA2 || exit 1
+  # R9_gqa2 = GQA2 only. GQA2 is default-ON and bit-identical to v2, shape-gated to n_keys >= 2048
+  # so pp256/pp1024 keep v2 bit for bit and cannot regress; the vector rope is opted OUT so that
+  # R9_gqa2 -> R9_both isolates ROPEVEC's own delta, which is what round 13 measured at -1.687 ms.
+  build_arm R9_gqa2 $R6_STACK -D ALGENTA_G3_PF_NO_ROPEVEC || exit 1
+  # R9_both = the SHIPPED DEFAULT, so it passes no lever flag at all. The absence of both opt-outs
+  # IS the configuration; the runtime TCFLAG banners plus the flag audit are what prove it engaged.
+  build_arm R9_both $R6_STACK || exit 1
+  # R9_ropev (opt-in via BUILD_ROPEV_ARM=1) = ROPEVEC only, GQA2 opted out. Lets a bracket
+  # attribute GQA2's delta against a ROPEVEC-only arm rather than against the pre-round-9 ship.
+  if (( BUILD_ROPEV_ARM == 1 )); then
+    build_arm R9_ropev $R6_STACK -D ALGENTA_G3_PF_NO_GQA2 || exit 1
+  else
+    log "BUILD_ROPEV_ARM=0 — skipping R9_ropev (ROPEVEC-only arm); set BUILD_ROPEV_ARM=1 to build it"
+  fi
   log "=== flag audit over the built arms (scripts/audit_tc_flags.sh) ==="
   bash "$SRC_TREE/scripts/audit_tc_flags.sh" --bin-dir "$L7" --glob 'R9_*' \
        --logs "$L7/runs" --out "$L7/flag_audit.json" 2>&1 | tee -a "$CW_LOGFILE"

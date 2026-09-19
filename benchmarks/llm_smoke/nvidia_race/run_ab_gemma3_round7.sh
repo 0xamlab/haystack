@@ -126,8 +126,14 @@ if (( BUILD_ARMS == 1 )) && [[ "$STAGE" == "all" || "$STAGE" == "build" ]]; then
   # R7_base is #1006's ship candidate rebuilt from THIS branch, so the bracket measures ROPEVEC
   # against the exact flag set that produced 389.033 / 94.022 ms rather than against a rebuild
   # of some other configuration.
-  build_arm R7_base  $R6_STACK || exit 1
-  build_arm R7_ropev $R6_STACK -D ALGENTA_G3_PF_ROPEVEC || exit 1
+  # BOTH LEVERS ARE DEFAULT-ON AS OF ROUND 13, so these arms are defined by their OPT-OUTS and the
+  # old opt-in flags are no-ops. R7_base is #1006's ship, i.e. neither lever, so it needs both
+  # opt-outs or this bracket becomes a null comparison. R7_ropev is ship + ROPEVEC and no GQA2 —
+  # round 7's lever was rope only, and GQA2's dispatch did not exist as a shipped arm then — so it
+  # opts OUT of GQA2 and passes no rope flag, because the absence of the opt-out is now what
+  # engages ROPEVEC.
+  build_arm R7_base  $R6_STACK -D ALGENTA_G3_PF_NO_ROPEVEC -D ALGENTA_G3_PF_NO_GQA2 || exit 1
+  build_arm R7_ropev $R6_STACK -D ALGENTA_G3_PF_NO_GQA2 || exit 1
   log "=== flag audit over the built arms (scripts/audit_tc_flags.sh) ==="
   bash "$SRC_TREE/scripts/audit_tc_flags.sh" --bin-dir "$L7" --glob 'R7_*' \
        --logs "$L7/runs" --out "$L7/flag_audit.json" 2>&1 | tee -a "$CW_LOGFILE"

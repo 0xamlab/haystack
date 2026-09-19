@@ -103,6 +103,49 @@ FLAGS_7B=(
 # TCATTN is the five-pass chain FA replaces (kept in the table because an arm that carries BOTH
 # is the fallback-correct arm and the banner says which one ran); STREAM is the legacy-stream
 # seam whose silent absence voided the first H200 column.
+#
+# ROPEVEC and GQA2 were ADDED IN ROUND 13 and their absence from this table was a recorded gap, not
+# an oversight to leave in place: the method below is "the literal exists only in a binary built
+# with the flag, so an absent literal is proof of OFF", and that proof was unavailable for the two
+# newest gemma-3 levers. It matters far more now than when the gap was opened, because **BOTH are
+# default-ON as of round 13** — so for these two rows the interesting audit is INVERTED: an ABSENT
+# `ALGENTA_G3_PF_ROPEVEC=1` / `ALGENTA_G3_PF_GQA2=1` literal is positive proof that the arm was
+# built with the `-D ALGENTA_G3_PF_NO_ROPEVEC` / `-D ALGENTA_G3_PF_NO_GQA2` opt-out, i.e. that a
+# control arm really does lack the lever it is the control for. Without the rows, a null bracket
+# (every arm carrying both levers) would have been indistinguishable from a real one.
+#
+# VALIDATION ACTUALLY PERFORMED ON THESE TWO ROWS — they are EXERCISED, on real compiled artifacts.
+# Both literals occur **exactly once in the whole mojo tree**, in
+# `residentk/session_cuda_gemma3_f16.mojo`, each inside its own `@parameter if <flag>:` block, so a
+# literal reaches a binary if and only if the comptime flag is true. `has_lit` below is a pure bash
+# fixed-string substring test, not a regex, and neither opt-out name contains its flag name as a
+# substring (`..._PF_NO_ROPEVEC` does not contain `..._PF_ROPEVEC`, likewise `_NO_GQA2`/`_GQA2`),
+# nor does `ALGENTA_G3_PF_ROPE2=1` collide with `ALGENTA_G3_PF_ROPEVEC=1` — so neither a false
+# PRESENT nor a false ABSENT is reachable.
+#
+# Then demonstrated end-to-end with THIS SCRIPT, over all four post-flip configurations compiled
+# locally for sm_90 via the repo's own pixi-managed mojo (`--emit object`, so no link and no CUDA
+# deps are needed — see `scripts/build_mojo_binary.sh`, which defaults MOJO_BUILD_CUDA_TARGET to
+# sm_90 on this host). The 2x2 came out exactly right:
+#
+#   arm        built with                        ROPEVEC row   GQA2 row
+#   ---------  --------------------------------  -----------   --------
+#   R9_both    (nothing — the shipped default)   PRESENT       PRESENT
+#   R9_gqa2    -D ALGENTA_G3_PF_NO_ROPEVEC       absent        PRESENT
+#   R9_ropev   -D ALGENTA_G3_PF_NO_GQA2          PRESENT       absent
+#   R9_base    both opt-outs                     absent        absent
+#
+# Object sizes also shrink monotonically as levers are dropped (962792 -> 959056 -> 955280 ->
+# 951384 bytes), independently confirming the opt-outs change compiled code rather than being
+# silently ignored; and passing the LEGACY opt-in flags alongside the defaults produced a
+# byte-identical object to the default build (962792), confirming they are now exact no-ops.
+#
+# LIMIT, stated so nobody over-reads this: the artifacts are `--emit object` files compiled on
+# macOS from the recovered VM driver source
+# (`benchmarks/llm_smoke/nvidia_race/vm_harness/adj/build/driver_ctx8192.mojo`), NOT the linked arm
+# executables this script audits inside a VM window. The literal-presence mechanism is identical, so
+# the validation transfers, but the first VM window should still confirm the rows against a real
+# linked arm as a matter of course.
 FLAGS_G3=(
     "ALGENTA_G3_PF_FA=1|ALGENTA_G3_PF_FA"
     "ALGENTA_G3_PF_FA2=1|ALGENTA_G3_PF_FA2"
@@ -113,6 +156,8 @@ FLAGS_G3=(
     "ALGENTA_G3_PF_F16MLP=1|ALGENTA_G3_PF_F16MLP"
     "ALGENTA_G3_PF_F16ATTN=1|ALGENTA_G3_PF_F16ATTN"
     "ALGENTA_G3_PF_ROPE2=1|ALGENTA_G3_PF_ROPE2"
+    "ALGENTA_G3_PF_ROPEVEC=1|ALGENTA_G3_PF_ROPEVEC"
+    "ALGENTA_G3_PF_GQA2=1|ALGENTA_G3_PF_GQA2"
     "ALGENTA_G3_PF_TCATTN=1|ALGENTA_G3_PF_TCATTN"
     "ALGENTA_G3_STREAM=1|ALGENTA_G3_STREAM"
 )

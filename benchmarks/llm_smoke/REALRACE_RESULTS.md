@@ -20545,3 +20545,364 @@ pooling-by-label behaviour is what makes a short bracket additive rather than a 
 re-serve was guarded at a LOWER threshold than the bracket on purpose: a short bracket can be
 re-run later and pooled, whereas a cross-session ratio cannot be published at all. Artifacts
 retrieved to the local machine before the stop: `window11.log`, `lever6_results.json`.
+
+---
+
+## ROUND 13 — gemma-3-27b-it H200: ROPEVEC MEASURED at -1.687 ms on rag4096 (14.5x its drift armor, RESOLVED) and flipped to DEFAULT ON; rag4096 reaches **1.1140x** same-session; pp256 turns out to have been published from a stale arm (branch `feat/gemma-ropevec-cells`, 2026-09-19)
+
+One self-serve window, **51m55s of a 1 h cap** (RUNNING 03:29:52Z, stopped 04:21:47Z with
+`--discard-local-ssd=false`, `status=RUNNING` verified empty project-wide). ROPEVEC went straight to
+cells — no gate-first — because round 12 had already certified it, and its arm hash
+(`ca66b41a2ee34cde`) was **re-verified before timing** so the certification provably attaches to the
+binary measured.
+
+### ROUND 12 WAS NEVER APPENDED TO THIS LEDGER — RECORDING ITS GATE HERE, WITH ITS ORIGINAL TIMESTAMPS
+
+**Gap found while writing this entry, and it is mine.** Round 9/10's section says "ROPEVEC remains
+UNGATED AND UNMEASURED" and round 11's says `R9_both` "must not be timed, quoted or shipped". Both
+were true when written. Round 12 then ran the gate that retires them — and round 12 has **no section
+in this ledger at all**, so a reader following the append-only trail reaches round 13 with the flag
+still marked unshippable. Appending the round-12 result now, from `window12.log`, rather than
+editing the earlier sections (append-only).
+
+Round 12, `=== oracle gate on R9_both (the changed arm) ===`, 2026-09-19T02:37:05Z ->
+03:01:10Z, on the fresh checkpoint, with fixture identity re-proved first (256/1024/550/4096 ids
+regenerated vs the pre-stop echoes, all IDENTICAL) and the flag audit showing `R9_both HAS TCFLAG
+ALGENTA_G3_PF_ROPEVEC=1` AND `ALGENTA_G3_PF_GQA2=1`, `sha256_16=ca66b41a2ee34cde`,
+`bytes=6165984`:
+
+    prompt     max_new verdict                        note
+    pp256           16 16/16 PASS                     n_gen=16 det=n/a (single run)
+    pp256           64 64/64 PASS                     n_gen=64 det=2/2 bit-identical
+    pp1024          16 16/16 PASS                     n_gen=16 det=n/a (single run)
+    pp1024          64 64/64 PASS                     n_gen=64 det=2/2 bit-identical
+    val550          16 16/16 PASS                     n_gen=16 det=n/a (single run)
+    val550          64 64/64 PASS                     n_gen=64 det=2/2 bit-identical
+    rag4096         64 22/22 + EOS-stop PASS          n_gen=22 det=n/a (single run)
+
+    GATE ALL_PASS = True
+    WROTE /home/angel/lever7/oracle_gate_R9_both.json
+    [2026-09-19T03:01:10Z] GATE PASSED for R9_both
+
+Every gate cell `END rc=0`, `clocks_after=1410MHz`, `offpin=0`. That is the **full protocol matrix
+against the cache-free fp32 transformers oracle**, with the 64-token run repeated for determinism at
+2/2 bit-identical on all three of pp256/pp1024/val550, and rag4096 stopping on EOS at 22/22 — i.e.
+ROPEVEC is certified exactly as required before a speed claim, and the certification is attached to
+the hash round 13 re-verified before timing.
+
+Round 12 then began a redundant `R9_base` re-gate and abandoned it at 03:04:39Z with a
+`KILLED_BY_OPERATOR` line naming the reason ("R9_both gate complete; pivoting to the corrected wgmma
+layout probe before the 1h cap; the redundant R9_base re-gate is deliberately abandoned — already
+ALL_PASS twice, rounds 9 and 11"). Round 12's other product was the corrected wgmma layout probe and
+its clean refutation of hand-staged descriptors, which is what `WGMMA_TMA_SCOPE.md` prices.
+
+**Where each arm's `ALL_PASS` was earned, stated precisely because it is not the same window:**
+`R9_gqa2` in round 11 (20:50:21 -> 21:15:02Z), `R9_both` in round 12 (02:37:05 -> 03:01:10Z).
+Round 13 re-ran **no** gates — `chain13.sh` has no gate phase by design, its phase 1 re-verifies the
+arm hashes instead so a rebuild could not silently detach those certifications from the timed
+binaries. Both hashes matched, so both certifications attach.
+
+### SCOPE REDUCED, AND DECLARED BEFORE THE BOX WAS STARTED
+
+Three prompts x the smallest bracket that still yields drift armor is ~70 min against a 1 h cap, so
+this window ran **rag4096 + pp256** and deferred pp1024. Rationale stated up front rather than
+discovered mid-window (the round-9 lesson): rag4096 carries the pre-registered acceptance band,
+pp256 is cheap and retires a CROSS-SESSION gap, and pp1024 is the one that can be added later
+WITHOUT redoing anything because cells pool by label — a future window runs `CELLTAG=d` and the
+summariser folds it in.
+
+Then pp256 was **cut mid-bracket anyway**, with a `KILLED_BY_OPERATOR` line in the single window log
+naming the target and the reason: at 04:08:56Z, 14 of 20 cells were done and the remaining 6 pp256
+cells would have pushed the same-session TRT re-serve to ~04:26 against a hard cap of 04:29:52Z.
+The re-serve is what makes a ratio publishable at all, and rag4096's CELLGROUP had already completed
+with its armor, so the secondary cell was the right thing to sacrifice. The 4 pp256 cells that had
+ENDed are banked as `r6c_*` and pool later.
+
+### THE MEASUREMENT — rag4096, RESOLVED
+
+Interleaved A..B..A, `CELLTAG=c`, 1 warmup + 3 measured + 1 closing per arm. Both arms carry
+`ALL_PASS=True` on the full oracle matrix, earned in rounds 11 and 12 respectively (see above) —
+**not** re-earned in this window, which re-verified the hashes instead. Every cell 1410 MHz on every
+1 Hz sample, `offpin=0`, zero drift.
+
+| rag4096 | n (pooled) | median ms | rel-IQR% | tok/s | vs TRT same-session | delta | resolved |
+|---|---|---|---|---|---|---|---|
+| `R9_gqa2` (A, = round 11's published ship) | 9 | 387.145 | 0.129 | 10580.0 | 1.1091 | — | — |
+| `R9_both` (B, + `ALGENTA_G3_PF_ROPEVEC`) | 3 | **385.458** | 0.255 | 10626.3 | **1.1140** | **-1.687 ms** | **YES** |
+
+**Bracket drift armor on `R9_gqa2`: +0.030% (+0.116 ms), open 387.145 -> close 387.263.** The delta
+exceeds it by **14.5x**. Round 6's comparable deltas exceeded theirs by 139x and 21x, round 11's by
+6.4x; this is the smallest multiple yet and still comfortably resolved.
+
+**THE POOLED AND SAME-BRACKET-ONLY NUMBERS AGREE EXACTLY, which is the check that mattered.**
+`R9_gqa2`'s pooled median draws on three sessions (`r6_` round 9/10, `r6b_` round 11, `r6c_` now)
+while `R9_both` has only this bracket, so the pooled comparison is asymmetric by construction and
+could have been a basis mismatch. Recomputing over `r6c_` cells alone (n=3 per arm) gives
+**A 387.145 / B 385.458 / delta -1.687 ms — identical to the pooled figure**, because `R9_gqa2`'s
+this-bracket median equals its cross-session pooled median. Raw values, so the agreement is
+auditable rather than asserted: A `[386.379, 387.145, 394.210]` close `387.263`; B
+`[385.251, 385.458, 386.232]`. Note A carries one high outlier at 394.210 (+1.8%); the median is
+robust to it and it is recorded rather than dropped. Cross-session reproducibility of this arm is
+itself a result: 387.101 (round 11) -> 387.145 (round 13), **0.011% apart on different days**.
+
+### SAME-SESSION TRT-LLM 1.2.1 RE-SERVE — all three reproduce within 1%
+
+Files mtime 2026-09-19T04:13:23Z, same session as the cells, server stopped afterwards:
+
+| cell | re-served | stored | delta | within 1% |
+|---|---|---|---|---|
+| pp256 | **41.292 ms** | 41.520 | **-0.549%** | YES |
+| pp1024 | **110.713 ms** | 110.782 | **-0.062%** | YES |
+| rag4096 | **429.400 ms** | 426.766 | **+0.617%** | YES |
+
+So the ratios above are **same-session, not CROSS-SESSION**. Against round 6's own re-serve
+(40.728 / 110.744 / 426.339) this one is +1.4% / -0.03% / +0.7% — the pp256 comparator moves most
+between sessions, which is exactly why the protocol insists on a same-session column rather than a
+stored one.
+
+### pp256 — MEASURED BUT NOT RESOLVED, AND IT EXPOSES A STALE PUBLISHED NUMBER
+
+pp256 got 4 cells (2 measured per arm) before the cut, so it has **no closing A cell and therefore
+no drift armor**: the summariser reports `NO-DRIFT-MEASURED` and it is NOT a publishable delta.
+
+| pp256 | n | median ms | rel-IQR% | vs TRT | delta | resolved |
+|---|---|---|---|---|---|---|
+| `R9_gqa2` | 2 | 30.571 | 0.165 | 1.3507 | — | — |
+| `R9_both` | 2 | 30.380 | 0.542 | 1.3592 | -0.191 ms | **NO-DRIFT-MEASURED** |
+
+The ROPEVEC delta there (-0.191 ms, -0.624%) is consistent in sign and magnitude with rag4096's
+-0.436% scaled by row count, but with n=2 and no armor it is **indicative only**.
+
+**The more important pp256 finding is not about ROPEVEC.** `R9_gqa2` measures **30.571 ms** at
+pp256, while the published pp256 row of 1.2931x was computed from **32.108 ms** — and round 6's own
+ledger says pp256 was "**not re-timed**" that round, its 32.108 ms carried forward from #998's arm
+with only a gate and a probe as evidence. So 30.571 ms is the **first measurement of the round-6
+ship configuration at pp256**, and it is 4.8% faster than the number the published ratio rests on.
+That is plausible and was predicted by round 6's own probe (the attention kernel at pp256 went
+30.8 -> 21.5 us, -30%), but it means the published pp256 ratio **understates the shipped arm**, and
+the understatement is attributable to the FA2/KV16/BN32 levers rather than to anything in this
+round. Correcting it needs a proper pp256 bracket with armor; this window's 2 cells cannot do it,
+and the number is recorded here as a finding to chase rather than published as a ratio.
+
+### FORECAST vs MEASURED
+
+| lever | forecast | measured | ratio |
+|---|---|---|---|
+| ROPEVEC on rag4096 | -2.2..-2.7 ms modelled; ~80% transfer => **-1.8..-2.2 ms** expected | **-1.687 ms** | **63-77%** of the raw model, slightly BELOW the discounted range |
+| ROPEVEC on pp256 | not separately modelled | -0.191 ms (n=2, no armor) | indicative only |
+
+The measured delta landed just under even the transfer-discounted forecast, so the ~80% ratio is now
+bracketed from both sides by two different levers (GQA2 at 79.9%, ROPEVEC at 63-77%). **The honest
+consolidated statement is that isolated per-kernel probe deltas transfer at ~65-80% to wall-clock on
+this lane**, and a forecast that uses the top of that range will be optimistic about half the time.
+Six over-forecasts in six attempts is the underlying pattern; the transfer ratio is the correction
+that makes the forecasts usable, and it is now calibrated on two levers rather than one.
+
+### THE FLAG IS FLIPPED TO DEFAULT ON, WITH ONE INTERACTION FLAGGED FOR THE PUBLISH DECISION
+
+`G3_PF_ROPEVEC` is now `G3_PF_ROPE2 and not is_defined["ALGENTA_G3_PF_NO_ROPEVEC"]()` — **default
+ON**, opt-out restores the scalar ROPE2 kernel byte-for-byte as the A/B control. Gating it on
+`G3_PF_ROPE2` means it is inert by construction when ROPE2 is off, so no build can get the vector
+kernel without also having the kernel it vectorises. All three configurations typecheck clean under
+`mojo build --target-accelerator sm_90`: default-ON, opt-out, and ROPE2-off.
+
+**INTERACTION THAT NEEDS A DECISION, stated rather than buried:** the measured -1.687 ms is ROPEVEC
+**on top of GQA2** (`R9_both` = ship + `GQA2` + `ROPEVEC`), because GQA2 was already the best
+certified configuration and A/B-ing against it is what isolates ROPEVEC's own contribution. But
+`ALGENTA_G3_PF_GQA2` remains an explicit opt-IN flag, so flipping ROPEVEC alone makes the new
+default a configuration — ship + ROPEVEC, **without** GQA2 — whose wall-clock was **not measured in
+this round**. Its kernels are independently certified and the two levers touch disjoint kernels
+(rope vs attention), so the composition is sound in principle; it is simply not the arm that was
+timed. Either flip GQA2 too (making the default exactly the measured `R9_both`, rag4096 1.1140x) or
+time ship+ROPEVEC-alone before publishing a pp256/pp1024 row for it. **Publish decision is the
+owner's; this is flagged so the choice is made knowingly.**
+
+### TWO CONSEQUENCES OF THE FLIP THAT HAD TO BE FIXED IN THE SAME CHANGE, NOT LEFT FOR LATER
+
+Flipping a comptime default is not a one-line change; it inverts what "no flag" means for every
+consumer of that default. Both consequences were found by grepping for the flag rather than by
+waiting for a future window to trip over them.
+
+**1. The A/B control arms would have stopped being controls.** `run_ab_gemma3_round9.sh` built
+`R9_base` and `R9_gqa2` with NO rope flag and `R9_both` with `-D ALGENTA_G3_PF_ROPEVEC`. Post-flip
+that produces *three* vectorised arms: the bracket's A arm silently gains the lever it exists to
+isolate, the delta collapses toward zero, and — because `chain13.sh` treats an arm-hash mismatch as
+FATAL — a rebuild would also fail the hash pin (`R9_gqa2 3db7f0dfaf04a7c1`) rather than quietly
+measuring nothing. Both round-9 and round-7 harnesses now pass `-D ALGENTA_G3_PF_NO_ROPEVEC` on
+their control arms, and their ROPEVEC arms pass no rope flag at all, so **the absence of the opt-out
+is the lever**. Recorded explicitly because a post-flip rebuild produces NEW hashes for all three
+arms by construction (the comptime default changed), so the next window must re-pin chain13's
+expected hashes rather than inherit them — the pin is still correct for reproducing round 13's
+measurement, it just no longer describes a fresh build.
+
+**2. The flag audit could not prove this lever OFF, which is the one thing a default-ON flag needs.**
+`scripts/audit_tc_flags.sh` decides a flag's state by whether the binary carries that flag's banner
+literal — "the literal exists only in a binary built with the flag, so an absent literal is proof of
+OFF". Its gemma-3 table had **no row for ROPEVEC and none for GQA2** (round 12's recorded gap), so
+that proof was unavailable for exactly the two newest levers. Rows added for both, each verified
+against the banner literal it greps for (`TCFLAG ALGENTA_G3_PF_ROPEVEC=1` at
+`session_cuda_gemma3_f16.mojo:994`, `TCFLAG ALGENTA_G3_PF_GQA2=1` at `:1012`), and no substring
+collision with the existing `ALGENTA_G3_PF_ROPE2=1` row. For ROPEVEC the audit is now *inverted* and
+that is the point: an absent literal is positive evidence that an arm was built with the opt-out,
+i.e. that a control arm really is scalar-rope.
+
+**Honest caveat on that fix: the two new rows are UNEXERCISED.** No gemma-3 arm binary exists on this
+machine, so they have been checked against the source literals they match, not against `strings -a`
+output from a real build. Their first real exercise is the next window's build stage; until then
+treat the ROPEVEC/GQA2 audit rows as authored-and-syntactically-validated but not yet
+demonstrated on a binary, which is a weaker status than the eleven rows that have been.
+
+### TMA-STAGED WGMMA — PRICED ON CPU, NO VM TIME SPENT
+
+`benchmarks/llm_smoke/WGMMA_TMA_SCOPE.md`. Headlines: the refuted thing is **hand-staging**, not
+wgmma; the descriptor fields are a *function* of how the tile reached shared memory (TMA +
+`cuTensorMapEncodeTiled` + swizzle mode), not free parameters to search; **Q and P never need a
+descriptor at all** (Q must be hand-staged anyway because TMA cannot convert f32->f16 or fold the
+scale, and `ldmatrix` on a hand-staged Q is exactly what v2 already does correctly; P uses
+register-A at +4 registers), so only **K and V** need TMA — reducing the problem from three operands
+to two; the round-12 probe **conflated operand layout with accumulator layout** and must be split
+using an identity B (`B[n][k]=(n==k)`, `A[r][k]=r*16+k` => `D[r][n]=r*16+n`) so the D mapping is
+pinned independently; and the estimate is **2 VM windows (~1.5-2 h of cap) plus 2 CPU authoring
+passes**, with the census free on CPU via the calibrated local ptxas harness. It also states the
+prize honestly: bounded by flashinfer's 21.01 ms, so ~12.5 ms of headroom, ~10 ms after the transfer
+discount, i.e. rag4096 ~1.133x — **the route to the largest remaining single-lever win, not the
+route to the 1.15x bar** — and recommends landing ROPEVEC and pricing norm-accum first because they
+are hours rather than windows.
+
+### EVIDENCE, AND ONE CORRECTION TO WHERE IT ACTUALLY LIVES
+
+* **`window13.log` is NOT on the local machine.** An earlier draft of this entry said it had been
+  retrieved before the stop; checking `/private/tmp/gemma_artifacts/` shows `window10/`,
+  `window11.log`, `window12.log` and **no `window13.log`**. The numbers above were read live over
+  SSH during the window, which is how they are accurate, but the log itself sits on the VM's
+  **persistent boot disk** at `~/lever7/window13.log` — preserved precisely because the stop used
+  `--discard-local-ssd=false` — so it is retrievable in the next window and is *not* lost. Corrected
+  here rather than left as a claim that would not survive an audit. Retrieve it before quoting this
+  round externally.
+* **`window12.log` IS local** (`/private/tmp/gemma_artifacts/window12.log`) and is the source of the
+  round-12 gate table quoted above, verbatim, including its timestamps.
+* Fixture identity was re-proved against round 6's certified echoes (256/1024/550/4096 ids, all
+  IDENTICAL) before anything was measured.
+* `chain13.sh`: arm-hash mismatch is FATAL, not a warning; the same-bracket-only comparison is
+  computed inline so the acceptance band is evaluated by code rather than by a human eyeballing two
+  tables; the re-stage is nested inside the gate branch so a probe-only window would not pay for a
+  checkpoint conversion.
+* `benchmarks/llm_smoke/WGMMA_TMA_SCOPE.md` — the CPU-priced wgmma route.
+
+No gitbook page touched. Ledger append-only.
+
+---
+
+## ROUND 13 AMENDMENT — BOTH levers default-ON, so the shipped default IS the measured arm; the flag audit's two new rows are now EXERCISED end-to-end, and arm configurations turn out to be compilable locally with no GPU (branch `feat/gemma-ropevec-cells`, PR #1042, 2026-09-19)
+
+Owner decision on the interaction flagged in the round-13 section above: **flip both flags**, so the
+shipped default is exactly `R9_both` — the configuration that was actually measured — rather than a
+never-timed one. This amendment **supersedes two statements in the section immediately above**: that
+`ALGENTA_G3_PF_GQA2` "remains an explicit opt-IN flag", and that the two new `audit_tc_flags.sh` rows
+are "UNEXERCISED". Both were true when written and both are now false.
+
+### THE CHANGE
+
+`comptime G3_PF_GQA2: Bool = G3_PF_FA2 and not is_defined["ALGENTA_G3_PF_NO_GQA2"]()` — default ON,
+opt out with `-D ALGENTA_G3_PF_NO_GQA2`, gated on `G3_PF_FA2` so it is inert when FA2 is off. Same
+shape as the ROPEVEC flip, so both levers now read the same way and both are disabled either by their
+own opt-out or by their gating parent. **The old opt-IN flags are now exact no-ops** — demonstrated,
+not asserted: passing `-D ALGENTA_G3_PF_ROPEVEC -D ALGENTA_G3_PF_GQA2` on top of the defaults
+produced a **byte-identical object** to the default build (962792 bytes both).
+
+An arm is therefore now defined by **what it opts out of**, and the four reachable configurations are:
+
+| config | flags | isolates |
+|---|---|---|
+| `R9_both` | *(none — the shipped default)* | the measured/shipped arm |
+| `R9_gqa2` | `-D ALGENTA_G3_PF_NO_ROPEVEC` | ROPEVEC (vs `R9_both`) |
+| `R9_ropev` | `-D ALGENTA_G3_PF_NO_GQA2` | GQA2 (vs `R9_both`) |
+| `R9_base` | both opt-outs | the pre-round-9 ship |
+
+Wired into `run_ab_gemma3_round9.sh` (three arms always built; `R9_ropev` behind
+`BUILD_ROPEV_ARM=1` so the ordinary build stays at three arms and costs no extra VM minutes) and into
+`run_ab_gemma3_round7.sh` (`R7_base` needs both opt-outs, `R7_ropev` opts out of GQA2 only, which is
+what round 7's rope-only lever meant). `chain9.sh`/`chain13.sh` delegate all building to the round-9
+runner, so they are covered by that one fix.
+
+**A pre-existing header defect was found and fixed while wiring this.** `run_ab_gemma3_round9.sh`'s
+own header documented only TWO arms and **mislabelled `R9_gqa2` as `R9_base + ALGENTA_G3_PF_ROPEVEC`**
+— that is `R9_both`'s definition, not `R9_gqa2`'s — and never documented `R9_both` at all. Anyone
+rebuilding from the header rather than the code would have built the wrong arms. Corrected, with the
+four-configuration table above in the header where the next reader will see it.
+
+### THE AUDIT ROWS ARE EXERCISED, WITH THE FULL 2x2
+
+`scripts/audit_tc_flags.sh` decides flag state by whether the binary carries the flag's banner
+literal, so for a default-ON flag the interesting reading is **inverted**: an ABSENT literal is
+positive proof the arm was built with the opt-out, i.e. that a control arm really does lack the lever
+it is the control for. Both rows were run through the real script over all four configurations:
+
+| arm | built with | ROPEVEC | GQA2 |
+|---|---|---|---|
+| `R9_both` | *(nothing — default)* | **PRESENT** | **PRESENT** |
+| `R9_gqa2` | `-D ALGENTA_G3_PF_NO_ROPEVEC` | absent | **PRESENT** |
+| `R9_ropev` | `-D ALGENTA_G3_PF_NO_GQA2` | **PRESENT** | absent |
+| `R9_base` | both opt-outs | absent | absent |
+
+Exactly the intended discrimination, and it closes round 12's recorded gap. Structural checks behind
+it: each literal occurs **exactly once in the whole mojo tree**, each inside its own
+`@parameter if <flag>:` block, so a literal reaches a binary iff the flag is true; `has_lit` is a pure
+bash fixed-string substring test, and neither opt-out name contains its flag name as a substring
+(`..._PF_NO_ROPEVEC` does not contain `..._PF_ROPEVEC`), nor does `ALGENTA_G3_PF_ROPE2=1` collide
+with `ALGENTA_G3_PF_ROPEVEC=1` — so neither a false PRESENT nor a false ABSENT is reachable.
+
+Object sizes also shrink monotonically as levers are dropped (**962792 -> 959056 -> 955280 ->
+951384** bytes for both/gqa2-only/ropev-only/neither), which independently confirms the opt-outs
+change compiled code rather than being silently ignored.
+
+**Limit, stated so nobody over-reads it:** these are `--emit object` artifacts compiled on macOS for
+sm_90 from the recovered VM driver source, NOT the linked arm executables the script audits inside a
+VM window. The literal-presence mechanism is identical so the validation transfers, but the first VM
+window should confirm the rows against a real linked arm as a matter of course.
+
+### A NEW CAMPAIGN CAPABILITY FOUND WHILE DOING THIS: ARM CONFIGURATIONS COMPILE LOCALLY, NO GPU, ~10 s
+
+This is worth more than the amendment itself. The driver source is **already in-repo** — it was
+recovered into `benchmarks/llm_smoke/nvidia_race/vm_harness/adj/build/driver_ctx8192.mojo` by the
+harness-recovery work — and the repo's own `scripts/build_mojo_binary.sh` defaults
+`MOJO_BUILD_CUDA_TARGET` to **sm_90 on this host**, compiling through the pixi-managed mojo at
+`mojo_env/.pixi/envs/default/bin/mojo` with `--emit object`. So a full sm_90 compile of the real
+driver under any flag combination takes **~10 seconds and needs no GPU, no CUDA toolkit and no VM**.
+
+Two invocation facts, because the obvious attempts fail: `mojo` must be run **through pixi from
+inside `mojo_env/`** (invoking the binary directly fails with "unable to locate module 'std'" in <1 s,
+which looks like a code error and is not), and `scripts/shadow_max_pkg_name_collisions.sh` should run
+first. `mojo package`/`precompile` does **not** accept `--target-accelerator`, and `--emit` takes
+`llvm`, not `llvm-ir`.
+
+All **seven** reachable configurations compile clean: ship default, `NO_ROPEVEC`, `NO_GQA2`, both
+opt-outs, ROPE2-off (ROPEVEC inert by gating), FA2-off (GQA2 inert by gating), and the legacy
+opt-ins-as-no-ops. This means a future round can validate an arm's flag set and its audit rows on CPU
+in seconds **before** spending a VM minute on it — the same ordering that made the local ptxas census
+the campaign's cheapest refutation gate. It does not replace a VM build: the link step against the
+CUDA shim object and cublas/cudart is still VM-only, so a clean local compile proves the flag logic
+and the type correctness, not that the arm links or runs.
+
+### pp256 STAYS AS PUBLISHED
+
+Per the owner's decision, the published pp256 row is **left as-is** — it is a conservative
+understatement of the shipped arm (32.108 ms published vs 30.571 ms measured for the round-6 ship
+config) and stays that way until a bracketed pp256 measurement with drift armor exists. Round 13's
+two pp256 cells (30.571 `R9_gqa2` / 30.380 `R9_both`, delta -0.191 ms) remain **indicative-only: n=2
+with no closing cell and therefore no armor**. Nothing in this amendment changes any published ratio.
+
+### UNCHANGED BY THIS AMENDMENT
+
+`benchmarks/llm_smoke/WGMMA_TMA_SCOPE.md` and the round-12 ledger append recorded in the section
+above both stand as written. No gitbook page touched. Ledger append-only. Five generated-artifact
+gates re-run green after the change: runtime contract OK, **engine kernel floor unchanged at 198**
+(two comptime defaults add no symbol), capability manifest OK, capability manifest gate reports no
+new undeclared kernels, mojo inventory audit threshold met. `bash -n` clean on all touched scripts.
+
+### STANDING INSTRUCTION FOR THE NEXT VM WINDOW
+
+**FIRST action, before any other work: pull `~/lever7/window13.log` from the VM to the local
+artifacts dir** (`/private/tmp/gemma_artifacts/`). It is the audit trail for round 13 and currently
+exists only on the persistent boot disk — the round-13 numbers were read live over SSH and the log was
+never retrieved. This applies whether the next window is TMA work or the pp256/pp1024 bracket.
