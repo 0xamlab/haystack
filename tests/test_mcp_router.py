@@ -154,7 +154,8 @@ def test_streamable_http_negotiates_latest_protocol_and_lists_tools(monkeypatch)
         assert response.headers["content-type"].startswith("application/json")
         payload = response.json()
         assert payload["result"]["protocolVersion"] == "2025-11-25"
-        assert payload["result"]["serverInfo"]["version"] == config.VERSION
+        from algenta_mcp import config as _algenta_mcp_config
+        assert payload["result"]["serverInfo"]["version"] == _algenta_mcp_config.VERSION
 
         tools_response = client.post(
             "/mcp",
@@ -449,7 +450,6 @@ def test_published_mcp_package_uses_same_streamable_http_contract(monkeypatch) -
     from algenta_mcp import client as package_client
     from algenta_mcp import registry as package_registry
     from algenta_mcp.transports.http_sse import _build_http_app
-from algenta_mcp import config
 
     async def _capture_downstream_base_url(
         _name: str,
@@ -495,7 +495,8 @@ from algenta_mcp import config
     assert response.status_code == 200
     payload = response.json()["result"]
     assert payload["protocolVersion"] == "2025-11-25"
-    assert payload["serverInfo"]["version"] == config.VERSION
+    from algenta_mcp import config as _algenta_mcp_config
+    assert payload["serverInfo"]["version"] == _algenta_mcp_config.VERSION
     # Discovery (initialize) is open; execution is not. The standalone app used to mount the session
     # manager bare, so a keyless tools/call ran the tool with the server's own ambient credential.
     assert anonymous_tool_response.status_code == 401
