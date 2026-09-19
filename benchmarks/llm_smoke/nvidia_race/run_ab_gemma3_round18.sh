@@ -21,7 +21,9 @@
 # `-D ALGENTA_G3_GEGLU_U4` is already in the shipped flag stack but vectorises the DECODE GEMV
 # (`_g3_norm_gemv2_geglu_kernel_f16_u4`); the prefill f16 GeGLU had no vectorised twin at all.
 #
-# THE LEVER. `_pf_geglu_rows_f16_vec_kernel` (`-D ALGENTA_G3_PF_GEGLU_V2`, DEFAULT OFF) gives one
+# THE LEVER. `_pf_geglu_rows_f16_vec_kernel` (authored in round 18 behind an opt-IN
+# `-D ALGENTA_G3_PF_GEGLU_V2`, and **DEFAULT ON since round 19** with the opt-out
+# `-D ALGENTA_G3_PF_NO_GEGLUV2`) gives one
 # thread EIGHT CONTIGUOUS f16 = 16 bytes per operand, through new `_ld8h`/`_st8h` helpers that
 # carry the `alignment=16` annotation `residentk.loadvec` exists to supply. Local PTX of the lever
 # arm shows `2 x ld.global.v4.b32 + 1 x st.global.v4.b32` — **3 memory instructions per 8 elements
@@ -30,11 +32,20 @@
 # smaller and 4.4x closer to its roof.
 #
 # ── THE TWO ARMS, AND WHY THEY DIFFER IN EXACTLY ONE RESPECT ──────────────────────────────────
-#   R18_ctl    the SHIPPED DEFAULT (R6_STACK, no opt-outs = the R9_both configuration default-ON
-#              since #1042). No lever flag. **This lever needs NO shim change** — it is pure Mojo —
-#              so both arms link the SAME stock shim object, which removes round 17's two-shim
-#              complexity entirely and makes the arms differ by one `-D` and nothing else.
-#   R18_gegluv the shipped default + `-D ALGENTA_G3_PF_GEGLU_V2`.
+# ROUND 19 UPDATED THIS SECTION, because round 19 flips GEGLU_V2 DEFAULT-ON and an arm is now
+# defined by what it OPTS OUT OF. The flag stacks are the `ARM_A_EXTRA` / `ARM_B_EXTRA` knobs below;
+# the names round 18 used are kept as the defaults' meaning, not as the defaults' spelling.
+#   ARM_A (round 18: R18_ctl)   R6_STACK + `-D ALGENTA_G3_PF_NO_GEGLUV2` = the PRE-round-19 shipped
+#              default, i.e. the R9_both configuration default-ON since #1042 with the SCALAR f16
+#              GeGLU twin. **This lever needs NO shim change** — it is pure Mojo — so both arms link
+#              the SAME stock shim object, which removes round 17's two-shim complexity entirely and
+#              makes the arms differ by one comptime boolean and nothing else.
+#   ARM_B (round 18: R18_gegluv) R6_STACK with NO opt-out = the POST-round-19 shipped default, which
+#              now carries the vector twin by default. Round 18 spelled this `+ -D
+#              ALGENTA_G3_PF_GEGLU_V2`; post-flip that opt-in is an exact NO-OP, proven by
+#              BYTE-IDENTITY of the compiled object on CPU rather than by inspection (see
+#              `flip_validate.sh`'s record in the round-19 ledger: `default == legacy_optin`,
+#              981024 bytes, sha256_16 570515ac338b5cdf).
 #
 # ── BIT-IDENTITY IS THE CLAIM, AND IT IS CHECKED THREE WAYS ──────────────────────────────────
 # GeGLU is purely ELEMENTWISE: no reduction, no accumulation, no cross-element movement, so there
@@ -126,6 +137,21 @@ PY=${PY:-/usr/bin/python3}
 # — and if the VM's toolchain disagrees the verify stage says INCONCLUSIVE rather than pretending.
 HASH_SCALAR_F16_GEGLU=${HASH_SCALAR_F16_GEGLU:-8f4c4e1d2ba54545}   # _pf_geglu_rows_f16_kernel
 HASH_VEC_GEGLU=${HASH_VEC_GEGLU:-b0496694ffefbc3c}                 # _pf_geglu_rows_f16_vec_kernel
+
+# ── THE ARM FLAG STACKS ARE KNOBS, AND ROUND 19'S FLIP IS WHY ─────────────────────────────────
+# Round 18 built ARM_A with NO lever flag (it was the shipped default) and ARM_B with
+# `-D ALGENTA_G3_PF_GEGLU_V2`. Round 19 flips that flag DEFAULT-ON with the opt-out
+# `-D ALGENTA_G3_PF_NO_GEGLUV2`, so those two build lines would have produced TWO IDENTICAL ARMS:
+# ARM_A would silently carry the lever it exists to be the control for, ARM_B's opt-in would be an
+# exact no-op, and `verify_arms` would have FATAL'd on a 0-added/0-removed kernel differential —
+# after a build, a stage and a clock pin had already been paid for. This is #1042's consequence #1
+# arriving for the third time (it fixed the round-9 and round-7 runners the same way), and the fix
+# is the same shape: **an arm is now defined by what it OPTS OUT OF, and the absence of the opt-out
+# IS the lever.** Both stacks are env-overridable so a later round can re-target this runner
+# instead of copying it, with the defaults set to the post-flip mapping that reproduces round 18's
+# bracket exactly.
+ARM_A_EXTRA=${ARM_A_EXTRA:--D ALGENTA_G3_PF_NO_GEGLUV2}   # control = the PRE-round-19 shipped default
+ARM_B_EXTRA=${ARM_B_EXTRA:-}                              # lever   = the POST-round-19 shipped default
 
 # The STOCK driver, outside the synced tree, exactly as rounds 7/9/17 used it — the driver is the
 # harness, not the thing under test, and building from an unmodified driver is what keeps the arms'
@@ -328,11 +354,14 @@ verify_arms() {
 if [[ "$STAGE" == "all" || "$STAGE" == "build" ]]; then
   build_shim stock "$TC_STOCK" "" || exit 1
   if (( BUILD_ARMS == 1 )); then
-    # R18_ctl IS the shipped default: R6_STACK with no opt-outs, because ROPEVEC and GQA2 have been
-    # default-ON since #1042, so the ABSENCE of flags IS the configuration.
-    build_arm "$ARM_A" $R6_STACK || exit 1
-    # R18_gegluv adds exactly one macro. Same shim object, same libraries.
-    build_arm "$ARM_B" $R6_STACK -D ALGENTA_G3_PF_GEGLU_V2 || exit 1
+    # POST-FLIP (round 19), and the reasoning inverted with it. R6_STACK with NO opt-outs is now the
+    # LEVER arm, because ROPEVEC and GQA2 have been default-ON since #1042 and GEGLU_V2 since round
+    # 19 — so for all three, the ABSENCE of a flag IS the configuration. The control is the arm that
+    # names what it gives up: `$ARM_A_EXTRA` defaults to `-D ALGENTA_G3_PF_NO_GEGLUV2`, which
+    # restores the pre-round-19 shipped default byte-for-byte. Same shim object, same libraries, so
+    # the two arms differ by exactly one comptime boolean and nothing else.
+    build_arm "$ARM_A" $R6_STACK $ARM_A_EXTRA || exit 1
+    build_arm "$ARM_B" $R6_STACK $ARM_B_EXTRA || exit 1
   fi
   verify_arms || exit 1
   log "STAGE=build complete"

@@ -145,7 +145,60 @@ FLAGS_7B=(
 # (`benchmarks/llm_smoke/nvidia_race/vm_harness/adj/build/driver_ctx8192.mojo`), NOT the linked arm
 # executables this script audits inside a VM window. The literal-presence mechanism is identical, so
 # the validation transfers, but the first VM window should still confirm the rows against a real
-# linked arm as a matter of course.
+# linked arm as a matter of course. (Round 14 did exactly that for these two rows over real linked
+# arms, including the inverted case — so this limit is now historical for ROPEVEC/GQA2.)
+#
+# ── ROUND 19: GEGLU_V2 JOINS THEM, AND ITS ROW'S READING INVERTS THE SAME WAY ──────────────────
+# `ALGENTA_G3_PF_GEGLU_V2` was added to this table in round 18 as an OPT-IN row, where an absent
+# literal means "the flag was not passed". Round 19 flips it **DEFAULT ON** with the opt-out
+# `-D ALGENTA_G3_PF_NO_GEGLUV2`, so the row's meaning inverts exactly as ROPEVEC's and GQA2's did in
+# #1042: an ABSENT `ALGENTA_G3_PF_GEGLU_V2=1` literal is now **positive proof that the arm was built
+# with the opt-out**, i.e. that a control arm really does lack the lever it is the control for. That
+# is not a cosmetic change of emphasis — post-flip, a harness that built its control arm with no
+# flags at all would produce TWO IDENTICAL ARMS and a bracket whose delta collapsed toward zero while
+# still looking like a real one. `run_ab_gemma3_round18.sh`'s arm stacks are knobs for this reason,
+# and its control default is now the opt-out.
+#
+# THE OPT-OUT'S SPELLING IS A SAFETY PROPERTY, NOT A STYLE CHOICE. It is `NO_GEGLUV2`, not
+# `NO_GEGLU_V2`. `has_lit` is a fixed-string substring test, and `..._PF_NO_GEGLU_V2` CONTAINS
+# `..._PF_GEGLU_V2` — so had the opt-out been spelled with the underscore, every control arm built
+# with it would have read **PRESENT**, and the one audit a default-ON flag most needs (proof the
+# lever is OFF) would have been a false all-clear on every arm forever. `NO_GEGLUV2` contains
+# neither audited literal, so neither a false PRESENT nor a false ABSENT is reachable.
+#
+# VALIDATION ACTUALLY PERFORMED — six configurations of the REAL race driver, compiled locally for
+# sm_90 through the repo's own pixi-managed mojo (`--emit object`, so no link and no CUDA deps), and
+# then put through THIS SCRIPT. Results as measured, not as intended:
+#
+#   configuration              built with                          GEGLU_V2 row   bytes     sha256_16
+#   -------------------------  ----------------------------------  ------------   -------   ----------------
+#   default                    (nothing — the NEW shipped default) **PRESENT**    981024    570515ac338b5cdf
+#   legacy_optin               -D ALGENTA_G3_PF_GEGLU_V2           PRESENT        981024    570515ac338b5cdf
+#   nogegluv2                  -D ALGENTA_G3_PF_NO_GEGLUV2         **absent**     963384    a50754d09b352d0e
+#   both_opts                  the opt-in AND the opt-out          absent         963384    a50754d09b352d0e
+#   nomlp_default              F16MLP off, no GEGLU flag           absent         962920    87078d03158a60ec
+#   nomlp_and_optout           F16MLP off + the opt-out            absent         962920    87078d03158a60ec
+#
+# The equal sha256_16 pairs are the load-bearing part, because they prove three claims by
+# BYTE-IDENTITY rather than by reading the source and hoping:
+#   * `default == legacy_optin` (981024 B) — the legacy opt-in is now an exact **NO-OP**, so no
+#     existing harness that still passes it silently measures something new;
+#   * `nogegluv2 == both_opts` (963384 B) — the **opt-out WINS** over the opt-in, so there is no
+#     flag-ordering trap and no way to get the twin back once opted out;
+#   * `nomlp_default == nomlp_and_optout` (962920 B) — with the gating parent `G3_PF_F16MLP` off the
+#     flag is **inert by construction**, as its comptime definition claims;
+#   * and `default != nogegluv2` (981024 vs 963384, -17640 B) — the opt-out removes real compiled
+#     code rather than being ignored, which is the same monotonic-shrink evidence #1042 used.
+# The kernel-symbol differential over the same two objects is **38 -> 39, exactly 1 added / 0
+# removed**, the added symbol being `b0496694ffefbc3c` (`_pf_geglu_rows_f16_vec_kernel`) with the
+# scalar twin `8f4c4e1d2ba54545` still present in BOTH — reproducing round 18's CPU differential
+# exactly, in the opposite direction, on the flipped source.
+#
+# SAME LIMIT AS ABOVE, and it is discharged the same way: these are `--emit object` artifacts, not
+# linked arm executables. Round 19's window re-runs this row over the real linked `R19_ctl` /
+# `R19_def` pair (`run_ab_gemma3_round18.sh`'s `verify_arms` FATALs if the control carries the
+# literal or if the differential is not 1/0), so the row is confirmed on a linked arm before any
+# cell is timed.
 FLAGS_G3=(
     "ALGENTA_G3_PF_FA=1|ALGENTA_G3_PF_FA"
     "ALGENTA_G3_PF_FA2=1|ALGENTA_G3_PF_FA2"
@@ -165,6 +218,11 @@ FLAGS_G3=(
     # declines to the scalar twin whenever `d_ff % _G3_GEGLUV_VEC != 0`. Same hazard class as
     # LTALGO's `lt_shapes_tuned`, and checked for the same reason: a cell measured on a declined
     # arm is a CONTROL cell wearing the lever's name.
+    # ROUND 19 — this row's reading is now INVERTED, because the flag is DEFAULT ON and an arm is
+    # defined by what it OPTS OUT OF (`-D ALGENTA_G3_PF_NO_GEGLUV2`). ABSENT is the interesting
+    # result and it is positive evidence, not a gap. See the block above FLAGS_G3 for the six-
+    # configuration validation, including the byte-identity proofs that the legacy opt-in is a no-op
+    # and that the opt-out wins over it.
     "ALGENTA_G3_PF_GEGLU_V2=1|ALGENTA_G3_PF_GEGLU_V2"
 )
 # ALGENTA_7B_CTX8192 has no banner of its own (it only widens MAX_CTX); it is audited through

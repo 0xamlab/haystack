@@ -259,17 +259,49 @@ GEMM epilogue instead of after it), so it carries its own flag and its own token
 the down_proj A itself IS bit-identical, since `_pf_geglu_rows_f16_kernel` rounds its f32
 result once at the store exactly where the shim's convert pass would have."""
 
-comptime G3_PF_GEGLU_V2: Bool = G3_PF_F16MLP and is_defined["ALGENTA_G3_PF_GEGLU_V2"]()
-"""ROUND 18 (`-D ALGENTA_G3_PF_GEGLU_V2`, **DEFAULT OFF**): dispatch the VECTORISED f16 prefill
-GeGLU twin `_pf_geglu_rows_f16_vec_kernel` — 8 f16 per thread through one 16-byte
-`ld.global.v4.b32` per operand and one per store — instead of F16MLP's scalar one-thread-per-
-element `_pf_geglu_rows_f16_kernel` with its three 2-byte accesses per element.
+comptime G3_PF_GEGLU_V2: Bool = G3_PF_F16MLP and not is_defined["ALGENTA_G3_PF_NO_GEGLUV2"]()
+"""ROUND 19: **DEFAULT ON**. Opt OUT with `-D ALGENTA_G3_PF_NO_GEGLUV2`, which restores F16MLP's
+scalar one-thread-per-element `_pf_geglu_rows_f16_kernel` byte-for-byte as the A/B control. The
+legacy opt-in `-D ALGENTA_G3_PF_GEGLU_V2` is now an exact NO-OP, and the opt-out name is spelled
+`NO_GEGLUV2` rather than `NO_GEGLU_V2` **deliberately**: `scripts/audit_tc_flags.sh` infers flag
+state by fixed-string substring test, and `..._PF_NO_GEGLU_V2` would CONTAIN `..._PF_GEGLU_V2`,
+so a control arm built with the opt-out would have read as PRESENT. `..._PF_NO_GEGLUV2` contains
+neither audited literal, so neither a false PRESENT nor a false ABSENT is reachable — the same
+property `NO_ROPEVEC`/`ROPEVEC` and `NO_GQA2`/`GQA2` were checked for in #1042.
 
 Gated on `G3_PF_F16MLP` because it replaces THAT kernel and not the f32 `_pf_geglu_rows_kernel`,
 so with F16MLP off this is inert by construction and no build can reach the vector twin without
 also carrying the f16 chain it vectorises. This is ROPEVEC's gating pattern exactly
-(`G3_PF_ROPEVEC = G3_PF_ROPE2 and not NO_ROPEVEC`), and it is the reason an A/B of this flag
-isolates ONE lever: the control arm is the shipped default byte-for-byte.
+(`G3_PF_ROPEVEC = G3_PF_ROPE2 and not NO_ROPEVEC`), and after the flip it is ROPEVEC's opt-out
+pattern exactly too: each lever is disabled either by its own opt-out or by its gating parent.
+
+WHY IT IS NOW DEFAULT ON, with the evidence rather than the argument. Round 18 IMPLEMENTED the twin
+and MEASURED it on rag4096, the cell the 45.687 ms census was taken over and the cell the campaign's
+12.07 ms bar is defined on: interleaved A..B..A against the shipped default, n=5 per arm, median
+**385.612 ms -> 366.216 ms = -19.396 ms (-5.030%)**, with **COMPLETE rank separation** (all 5 lever
+runs below all 5 control runs, Mann-Whitney **U = 0, exact p = 0.0079**) and a bracket drift armor of
+**+0.791 ms (+0.205%)** measured from the closing cells, so the delta exceeds its most conservative
+armor basis by **24.5x** — better than ROPEVEC's 14.5x and GQA2's 6.4x, and two orders of magnitude
+above the 1.0x "resolved" floor. Every one of the 18 cells `rc=0` at 1410 MHz with `offpin=0`.
+It is also the only gemma-3 prefill lever that is **BIT-IDENTICAL** to its control rather than merely
+oracle-equivalent: 8/8 compared cells BITIDENT, 0 BITDIFF, and the PTX per-element arithmetic
+verbatim at 8x the instruction count (the single difference being 8 x `cvt.rn.f16.f32` becoming
+4 x `cvt.rn.f16x2.f32`, same round-to-nearest-even mode, with the lane order proved against
+`cuda_fp16.hpp:__internal_device_float2_to_half2_rn` rather than against a documentation summary).
+Cost: **28 registers and ZERO spills** (+2 registers for 8x the work per thread), both twins
+register-limited to the same 8 blocks/SM so occupancy is unchanged, and **3 memory instructions per
+8 elements where the scalar twin spends 24**.
+
+ROUND 19'S OWN PRECONDITION, stated here so this default is never read as certified on round 18's
+reduced scope. Round 18's gate ran `GATE ALL_PASS = True` but at **`GATE SCOPE = ['pp1024']`** —
+pp256 and val550 were not certified either way, and rag4096 was certified by arm-vs-arm bit-identity
+rather than by a fresh oracle gate. Shipping a default whose gate covered one of the four published
+shapes is exactly the gap round 19 exists to close, so this flip is gated on a **FULL-SCOPE** re-gate
+of the lever arm (pp256 / pp1024 / val550 at 16 and 64 greedy against the cache-free fp32
+transformers oracle, each with its `rep2` bit-identical determinism repeat, plus rag4096 22/22 and
+the EOS-stop rule) on the same fixtures round 6 certified, at 1410 MHz with offpin=0. **This PR is
+authored CPU-first with the VM TERMINATED and is not to be merged until the round-19 ledger records
+that gate at full scope**; if any cell fails, the flip does not happen and no timing is taken.
 
 WHY THIS IS LEVER #1 AND NOT A MICRO-OPTIMISATION. Round 15's exactly-attributed census put this
 kernel at **45.687 ms = 8.22% of `--from-first-attn` region busy, 434 instances** — a larger pool
@@ -1318,11 +1350,14 @@ struct _CudaResidentGemma3F16(Movable):
             # a cell measured on such a binary must be read as a control cell. It cannot happen
             # on gemma-3-27b (`d_ff = 21504 = 8 x 2688`), which is why the value is printed
             # rather than assumed.
-            print("TCFLAG ALGENTA_G3_PF_GEGLU_V2=1 (the f16 prefill GeGLU combine dispatches the",
+            print("TCFLAG ALGENTA_G3_PF_GEGLU_V2=1 (DEFAULT ON since round 19; opt out with",
+                  "ALGENTA_G3_PF_NO_GEGLUV2) the f16 prefill GeGLU combine dispatches the",
                   "VECTORISED twin:", _G3_GEGLUV_VEC, "f16 = 16 bytes per thread per operand,",
                   "one ld.global.v4.b32 for the gate, one for the up, one st.global.v4.b32 out,",
                   "grid ceil(m*d_ff/", _TG * _G3_GEGLUV_VEC, "); BIT-IDENTICAL to the scalar",
-                  "twin — elementwise only, no reduction, expression transposed verbatim) |",
+                  "twin — elementwise only, no reduction, expression transposed verbatim —",
+                  "measured -19.396 ms (-5.030%) on rag4096 at 24.5x its drift armor with",
+                  "complete rank separation (U=0, exact p=0.0079) in round 18 |",
                   "gegluv_armed =", self.d_ff % _G3_GEGLUV_VEC == 0, "| d_ff =", self.d_ff)
         @parameter
         if G3_PF_F16ATTN:
@@ -1899,7 +1934,8 @@ struct _CudaResidentGemma3F16(Movable):
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                         if gu_f16:
-                            # ROUND 18 (`-D ALGENTA_G3_PF_GEGLU_V2`): the vector twin takes the
+                            # ROUND 18, and DEFAULT ON SINCE ROUND 19 (opt out with
+                            # `-D ALGENTA_G3_PF_NO_GEGLUV2`): the vector twin takes the
                             # SAME two arguments — total elements and n_ff — and derives its own
                             # 8-element groups internally, so the ONLY difference at this site is
                             # the grid (`_TG * _G3_GEGLUV_VEC` elements per block instead of
@@ -1915,11 +1951,15 @@ struct _CudaResidentGemma3F16(Movable):
                             # produce a ragged tail on ANY model. gemma-3-27b's
                             # `d_ff = 21504 = 8 x 2688` meets it at every m.
                             #
-                            # With the flag off this whole `@parameter if` is elided, so the
+                            # With the opt-out this whole `@parameter if` is elided, so the
                             # control binary never instantiates the twin at all — which is what
                             # makes a flag-differential over the kernel symbols a valid identity
-                            # proof for this lever (the twin's symbol APPEARS with the define and
-                            # the scalar f16 one's launch site is unchanged).
+                            # proof for this lever (the twin's symbol APPEARS in the default and
+                            # the scalar f16 one's launch site is unchanged). Post-flip the
+                            # differential is run the other way round: the DEFAULT carries the
+                            # twin and `NO_GEGLUV2` removes it, so `run_ab_gemma3_round19.sh`
+                            # asserts 1 added / 0 removed from control -> default rather than
+                            # from default -> lever.
                             @parameter
                             if G3_PF_GEGLU_V2:
                                 if self.d_ff % _G3_GEGLUV_VEC == 0:

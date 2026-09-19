@@ -38,7 +38,29 @@ DEADLINE=0
 POLL_S=60
 IDLE_GRACE_S=300      # chain dead + GPU idle for this long => stop early, do not wait for DEADLINE
 MAX_MIN=150           # absolute self-limit, so a mis-set deadline cannot run this forever
-L18=${L18:-/home/angel/lever18}
+# LEVER_DIR is the round's artifact dir on the VM's PERSISTENT boot disk, i.e. where CHAIN_EXIT
+# lives. It was named L18 historically; the alias keeps every existing caller byte-compatible
+# while letting a later round say what it means. Round 19 passes /home/angel/lever19.
+LEVER_DIR=${LEVER_DIR:-${L18:-/home/angel/lever18}}
+L18="$LEVER_DIR"
+# CHAIN_PAT is the "is anything still working?" liveness pattern, and its DEFAULT COVERS EVERY
+# ROUND rather than naming one. A backstop whose pattern does not match the chain actually running
+# reads a BUSY window as a dead one and stops it early — the exact failure this script exists to
+# prevent, arriving from the opposite direction.
+#
+# EVERY ALTERNATIVE IS BRACKET-MASKED SO THE PATTERN CANNOT MATCH ITSELF, and round 19 measured what
+# happens when one is not. `pgrep -f` matches against the whole command line, and the command line
+# that CARRIES this pattern is the probe's own `ssh ... --command "... pgrep -c -f '<pattern>' ..."`.
+# A literal `driver_ctx8192` in the pattern therefore matches the probe itself, so the count can never
+# reach 0. Observed on the box: `chain_procs=1` on every single probe from 22:37:45Z to 23:00:21Z and
+# beyond, ~30 minutes after the chain had exited at 22:29:38Z, with the GPU idle at 0% the whole time.
+# Both arms of the early-stop test were then permanently disabled at once — `alive == 0` could never
+# be true, and `util == 0 && alive == 0` with it — so an idle spot 8xH200 billed to the DEADLINE. The
+# chain's existing rounds already bracket-mask their own names (`chain18[.]sh`) for precisely this
+# reason, which `run_gemma3_round6_cells.sh`'s `quiesce` documents as "pgrep matching its own caller";
+# `driver_ctx8192` was the one alternative nobody masked. So: `driver_ctx819[2]`. The mask costs
+# nothing — the ERE still matches the real process — and it makes a zero count reachable again.
+CHAIN_PAT=${CHAIN_PAT:-'chain[0-9]*[.]sh|run_ab_gemma3_round[0-9]*[.]sh|driver_ctx819[2]'}
 LOG=${LOG:-/private/tmp/gemma_r18/backstop18.log}
 GCLOUD=${GCLOUD:-gcloud}     # overridable so the dry-run can substitute a stub
 
@@ -103,7 +125,7 @@ idle_and_chain_dead() {
   local out util alive
   out=$($GCLOUD compute ssh "$VM" --project="$PROJECT" --zone="$ZONE" --command \
     "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits -i $GPU 2>/dev/null | head -1; \
-     echo SEP; pgrep -c -f 'chain18[.]sh|run_ab_gemma3_round18[.]sh|driver_ctx8192' 2>/dev/null || echo 0; \
+     echo SEP; pgrep -c -f '$CHAIN_PAT' 2>/dev/null || echo 0; \
      echo SEP; cat $L18/CHAIN_EXIT 2>/dev/null | tr '\n' ' '" 2>/dev/null) || return 1
   [[ -z "$out" ]] && return 1
   util=$(echo "$out" | sed -n '1p' | tr -dc '0-9')
@@ -123,6 +145,10 @@ idle_and_chain_dead() {
 
 log "ARMED vm=$VM zone=$ZONE project=$PROJECT deadline=$DEADLINE ($(date -u -r "$DEADLINE" +%FT%TZ 2>/dev/null || echo '?'))" \
     "poll=${POLL_S}s idle_grace=${IDLE_GRACE_S}s max_min=$MAX_MIN"
+# Both of these are recorded because both silently decide whether the backstop acts: a wrong
+# LEVER_DIR means CHAIN_EXIT is never read (only the deadline can then stop the box), and a wrong
+# CHAIN_PAT means a busy window can look idle. Neither is inferable from the log after the fact.
+log "      lever_dir=$L18 chain_pat=[$CHAIN_PAT]"
 START=$(date +%s)
 idle_since=0
 while true; do

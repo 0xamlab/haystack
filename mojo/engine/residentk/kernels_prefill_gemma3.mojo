@@ -101,7 +101,9 @@ comptime _NEG_HUGE: Float32 = -3.0e38
 
 comptime _G3_GEGLUV_VEC: Int = 8
 """ROUND 18: f16 elements ONE THREAD owns in `_pf_geglu_rows_f16_vec_kernel`
-(`-D ALGENTA_G3_PF_GEGLU_V2`). 8 x Float16 = 16 bytes = `ld.global.v4.b32` /
+(**DEFAULT ON since round 19** — opt out with `-D ALGENTA_G3_PF_NO_GEGLUV2`; round 18 spelled the
+same lever as an opt-IN `-D ALGENTA_G3_PF_GEGLU_V2`, which is now an exact no-op).
+8 x Float16 = 16 bytes = `ld.global.v4.b32` /
 `st.global.v4.b32`, the widest single global access the ISA has, so one instruction per operand
 replaces the scalar twin's eight 2-byte accesses. This is the f16 analogue of `_VEC`/`_VEC_H` in
 `residentk.kernels`; `_VEC_H = 4` there is a METAL finding (half4 is a real MSL type) and does not
@@ -368,7 +370,9 @@ def _pf_geglu_rows_f16_kernel(act16: _HP, gu16: _HP, total_i64: Int64, n_ff_i64:
 
 def _pf_geglu_rows_f16_vec_kernel(act16: _HP, gu16: _HP, total_i64: Int64, n_ff_i64: Int64):
     """`_pf_geglu_rows_f16_kernel` with the scalar 2-byte accesses replaced by 16-byte
-    `_ld8h`/`_st8h` — `-D ALGENTA_G3_PF_GEGLU_V2`, ROUND 18's lever #1.
+    `_ld8h`/`_st8h` — ROUND 18's lever #1, and **the shipped default since ROUND 19** (`G3_PF_GEGLU_V2`;
+    opt out with `-D ALGENTA_G3_PF_NO_GEGLUV2`, which restores the scalar twin byte-for-byte).
+    Round 18 authored it behind an opt-IN `-D ALGENTA_G3_PF_GEGLU_V2`, now an exact no-op.
 
     WHY THIS KERNEL AND NOT ANOTHER. Round 15's exactly-attributed bucket census put this kernel
     at **45.687 ms / 434 instances / 8.22% of `--from-first-attn` region busy** — larger than the

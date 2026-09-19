@@ -16,14 +16,22 @@
 #     `sleep`, not for want of session isolation. The environment is now exported to python3 and
 #     inherited through execv, which needs no quoting at all.
 set -uo pipefail
-SB=/private/tmp/gemma_r18/sandbox
+# SB is overridable so a later round can dry-run the SAME backstop against its own worktree without
+# writing into round 18's artifact dir. The stub gcloud reads it from the environment rather than
+# from a baked-in path, which is what makes the override actually take effect inside the stub.
+SB=${SB:-/private/tmp/gemma_r18/sandbox}
+export SB
+CHAIN_TAG=${CHAIN_TAG:-chain18}
+export CHAIN_TAG
 rm -rf "$SB"; mkdir -p "$SB/bin"
 NR=${NR:-/Users/angel/Developer/decision-engine/.qwen/worktrees/gemma-r18/benchmarks/llm_smoke/nvidia_race}
 
 cat > "$SB/bin/gcloud" <<'STUB'
 #!/bin/bash
-LOG=/private/tmp/gemma_r18/sandbox/gcloud_calls.log
-STATE=/private/tmp/gemma_r18/sandbox/state
+SB=${SB:-/private/tmp/gemma_r18/sandbox}
+CHAIN_TAG=${CHAIN_TAG:-chain18}
+LOG=$SB/gcloud_calls.log
+STATE=$SB/state
 echo "$(date -u +%FT%TZ) gcloud $*" >> "$LOG"
 case "$1 $2 $3" in
   "compute instances describe")
@@ -33,7 +41,7 @@ case "$1 $2 $3" in
     if [[ "$(cat "$STATE" 2>/dev/null)" == "TERMINATED" ]]; then echo ""; else echo "vm us-west1-c RUNNING"; fi ;;
   "compute instances start")  echo RUNNING > "$STATE" ;;
   "compute ssh "*)
-    printf '0\nSEP\n0\nSEP\nchain18_exit_utc=2026-09-19T19:36:21Z rc=1 phase=gate timing_complete=no\n' ;;
+    printf '0\nSEP\n0\nSEP\n%s_exit_utc=2026-09-19T19:36:21Z rc=1 phase=gate timing_complete=no\n' "$CHAIN_TAG" ;;
 esac
 exit 0
 STUB
