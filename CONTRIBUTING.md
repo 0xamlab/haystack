@@ -98,7 +98,7 @@ refactor(sdk): simplify retry logic
 ## Contributor License Agreement
 
 By submitting a PR, you agree that your contribution is licensed under the
-[Algenta Community License](./LICENSE) and you grant Algenta, Inc. a perpetual,
+[Algenta Community License](./LICENSE) and you grant Algenta a perpetual,
 worldwide, irrevocable license to use your contribution in both open-source
 and commercial versions of this software.
 
