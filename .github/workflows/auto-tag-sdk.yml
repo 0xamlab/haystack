@@ -14,6 +14,9 @@ on:
     paths:
       - packages/python-sdk/pyproject.toml
       - packages/ts-sdk/package.json
+  # Manual run: tag whatever version main currently declares (no-op when its tag already exists).
+  # Exists for the case where the automatic run failed after the version bump had landed.
+  workflow_dispatch:
 
 # contents: read is what actions/checkout needs to clone this PRIVATE repo; the tag push itself
 # uses the sync App's token below, so the workflow token never needs write access.
@@ -28,6 +31,10 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+          # Do NOT leave GITHUB_TOKEN in the repo config: checkout stores it as an
+          # http.extraheader, and a second Authorization header on the App-token push below made
+          # GitHub answer "Duplicate header: Authorization" (400) on the first live run.
+          persist-credentials: false
 
       - name: Compute the declared SDK version (both manifests must agree)
         id: v
@@ -82,6 +89,8 @@ jobs:
           git config user.name "algenta-sdk-sync[bot]"
           git config user.email "algenta-sdk-sync[bot]@users.noreply.github.com"
           git tag -a "sdk-v${VERSION}" -m "auto-tag: SDK version bumped to ${VERSION} on main"
+          # belt and braces: no other Authorization header may ride along on this push
+          git config --local --unset-all http.https://github.com/.extraheader || true
           auth="$(printf 'x-access-token:%s' "$APP_TOKEN" | base64 -w0)"
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" \
             push "https://github.com/${REPO}.git" "refs/tags/sdk-v${VERSION}"
