@@ -1,0 +1,16 @@
+# Hash-pinned dependency set for the lockstep guard step of .github/workflows/sdk-auto-bump.yml.
+#
+# That step runs on ubuntu-latest's system python3 (no pytest) inside the job that holds the
+# sync App token which pushes the release commit to main. Whatever pip installs there runs with
+# that write access, so the install is `--require-hashes -r sdk-auto-bump.txt`: pytest AND its
+# whole dependency closure, each artifact verified by sha256 (codna, MEDIUM/security on #1064).
+#
+# sdk-auto-bump.txt is compiled from this file, with full transitive hashes, by:
+#
+#   cd .github/requirements && uv pip compile --generate-hashes --python-version 3.12 \
+#       --python-platform linux sdk-auto-bump.in -o sdk-auto-bump.txt
+#
+# 3.12/linux is what ubuntu-latest's python3 is; the guard itself needs only pytest + stdlib
+# (tomllib, json, hashlib). The pytest pin deliberately equals mojo_env/pixi.toml's -- move the
+# two together, then recompile (../dependabot.yml opens security updates only for this file).
+pytest==9.0.3

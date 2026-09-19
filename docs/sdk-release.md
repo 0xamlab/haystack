@@ -4,9 +4,10 @@ A pull request that changes SDK source is the whole release. Nothing else to ope
 
 1. Merge the pull request (Codna review + CI as usual).
 2. `sdk-auto-bump.yml` sees SDK source changed on `main` and pushes one commit as the sync App:
-   `chore(release): SDK X.Y.Z` — all eight lockstep version fields moved by
+   `chore(release): SDK X.Y.Z` — all nine lockstep version fields moved by
    `scripts/bump_sdk_version.py` (python-sdk, algenta and mcp `pyproject.toml`, the two
-   `__version__` files, `package.json`, the lockfile's root package, `server.json`).
+   `__version__` files, the MCP server's `_FALLBACK_VERSION` in `algenta_mcp/config.py`,
+   `package.json`, the lockfile's root package, `server.json`).
 3. `auto-tag-sdk.yml` tags that commit `sdk-vX.Y.Z` (App token, so the tag triggers workflows).
 4. `release-sdks.yml` publishes `algenta-mcp`, mirrors to `thyn-ai/algenta-sdk`, signs the release
    authorization, tags the SDK repo; its `release.yml` publishes `algenta-sdk` to PyPI and npm.

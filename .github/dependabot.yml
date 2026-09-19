@@ -42,6 +42,18 @@ updates:
     commit-message:
       prefix: "chore(ts-sdk)"
 
+  # CI tooling locks under .github/requirements (hash-pinned for the --require-hashes installs
+  # in token-holding workflow jobs, e.g. sdk-auto-bump.yml's lockstep-guard pytest). The pins there
+  # deliberately track mojo_env/pixi.toml and move with it, so no routine bump PRs; Dependabot
+  # security updates (GitHub Security Advisories) still open regardless of this limit.
+  - package-ecosystem: "pip"
+    directory: "/.github/requirements"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(ci)"
+
   - package-ecosystem: "pip"
     directory: "/apps/api-server"
     schedule:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bump the public SDK version in lockstep across every manifest the D2 guard checks.
 
-The eight locations below MUST agree (tests/test_sdk_package_metadata.py fails the build
+The nine locations below MUST agree (tests/test_sdk_package_metadata.py fails the build
 otherwise), so a release is never "bump one file and hope". Used by
 .github/workflows/sdk-auto-bump.yml on every merge that touches SDK code, and by hand:
 
@@ -28,6 +28,12 @@ LOCKSTEP: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("packages/algenta/pyproject.toml", (r'(?m)^version = "([^"]+)"$',)),
     ("packages/algenta/algenta/__init__.py", (r'(?m)^__version__ = "([^"]+)"$',)),
     ("packages/mcp/pyproject.toml", (r'(?m)^version = "([^"]+)"$',)),
+    # serverInfo.version for source checkouts; the guard's
+    # test_mcp_serverinfo_fallback_version_is_aligned requires it to equal
+    # packages/mcp/pyproject.toml. Absent from this table, the first bump that got past the pytest
+    # install (run 35463050651, 1.0.14 -> 1.0.15) failed that guard and never pushed.
+    ("packages/mcp/algenta_mcp/config.py",
+     (r'(?m)^_FALLBACK_VERSION: Final\[str\] = "([^"]+)"$',)),
     ("packages/ts-sdk/package.json", (r'(?m)^  "version": "([^"]+)",$',)),
     # lockfile v3: the root "version" and packages[""].version. The latter is matched INSIDE the
     # `"": {` block (every dependency entry also has an indent-6 "version" line -- 226 of them).
