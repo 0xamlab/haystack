@@ -1,0 +1,5 @@
+# PEP 517 build backend for the Dockerfile's offline `pip wheel --no-build-isolation .` step.
+# Keep in lockstep with [build-system].requires in pyproject.toml; refresh the lock with the
+# command recorded in requirements-build.txt's header (run from this directory).
+setuptools>=68.0
+wheel

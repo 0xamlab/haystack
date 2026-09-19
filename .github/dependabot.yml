@@ -49,3 +49,32 @@ updates:
     open-pull-requests-limit: 0
     commit-message:
       prefix: "chore(api-server)"
+
+  # MCP server image (packages/mcp/Dockerfile -- mirrored to the public SDK repo and built by
+  # e.g. the Docker MCP Toolkit): its base image is pinned by digest, and this entry is what moves
+  # that digest when python:3.12-slim-bookworm is rebuilt. Moving to a new Python line is a
+  # deliberate change (the same stance as the app entries above), so tag bumps are ignored.
+  - package-ecosystem: "docker"
+    directory: "/packages/mcp"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    commit-message:
+      prefix: "chore(mcp)"
+
+  # MCP server pip locks (packages/mcp/requirements.txt + requirements-build.txt, hash-pinned
+  # for the Dockerfile's --require-hashes installs): weekly and grouped so the pinned versions
+  # and their hashes keep moving in one reviewable PR. A bump that pyproject.toml pins exactly
+  # is a deliberate change and gets reviewed like any other dependency bump here.
+  - package-ecosystem: "pip"
+    directory: "/packages/mcp"
+    schedule:
+      interval: "weekly"
+    groups:
+      mcp-pip-locks:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(mcp)"

@@ -74,7 +74,10 @@ jobs:
             fi
             source_changes="$(printf '%s\n' "$changed" \
               | grep -E '^(packages/(python-sdk|ts-sdk|mcp|algenta)/|server\.json$)' \
-              | grep -vE '(^|/)(tests?|__tests__|test-fixtures|fixtures)/|\.md$|\.test\.(ts|js|mjs)$|_test\.py$|^packages/ts-sdk/package-lock\.json$' || true)"
+              | grep -vE '(^|/)(tests?|__tests__|test-fixtures|fixtures)/|\.md$|\.test\.(ts|js|mjs)$|_test\.py$|^packages/ts-sdk/package-lock\.json$|^packages/mcp/(Dockerfile|\.dockerignore|requirements[^/]*\.(in|txt))$' || true)"
+            # packages/mcp's Dockerfile and its hash-locked requirements files build the container image only;
+            # they are not in the PyPI package, so a base-image digest or hash refresh (Dependabot, weekly) must
+            # not cut an SDK release. Without this exclusion every such bump would publish a new version.
             [ -n "$source_changes" ] || noop "only tests/docs changed under packages/ -- nothing to release"
             labels="$(gh api "repos/$GITHUB_REPOSITORY/commits/$AFTER/pulls" --jq '[.[].labels[].name] | join(" ")' 2>/dev/null || true)"
             level="patch"
