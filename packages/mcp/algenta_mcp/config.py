@@ -8,7 +8,20 @@ from typing import Final
 # Egress/privacy reused from the published SDK (single source of truth — no vendored logic).
 from decision_engine.privacy_profile import cloud_disabled
 
-VERSION: Final[str] = "1.0.4"
+def _resolve_version() -> str:
+    # The installed distribution is authoritative; the fallback literal only serves source
+    # checkouts (tests, local runs) and is kept in lockstep with pyproject by
+    # tests/test_sdk_package_metadata.py.
+    try:
+        from importlib.metadata import version
+
+        return version("algenta-mcp")
+    except Exception:  # PackageNotFoundError or a broken metadata store — never fatal at import
+        return _FALLBACK_VERSION
+
+
+_FALLBACK_VERSION: Final[str] = "1.0.13"
+VERSION: Final[str] = _resolve_version()
 # Public default API base URL (same value the SDK uses); only used when nothing is configured and
 # cloud is not disabled.
 _DEFAULT_API_BASE_URL: Final[str] = "https://api.algenta.ai"

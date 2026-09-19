@@ -73,6 +73,19 @@ def test_public_sdk_versions_are_aligned() -> None:
     assert len(set(versions.values())) == 1, f"SDK versions diverge: {versions}"
 
 
+def test_mcp_serverinfo_fallback_version_is_aligned() -> None:
+    # algenta_mcp.config._FALLBACK_VERSION is reported as serverInfo.version when the
+    # package runs from a source checkout; it must never drift from the release version
+    # (it did once — 1.0.4 shipped in serverInfo long after packages moved on).
+    config_src = (_PACKAGES / "mcp" / "algenta_mcp" / "config.py").read_text("utf-8")
+    match = re.search(r'_FALLBACK_VERSION: Final\[str\] = "([^"]+)"', config_src)
+    assert match, "_FALLBACK_VERSION literal not found in algenta_mcp/config.py"
+    expected = _py_meta("mcp")["version"]
+    assert match.group(1) == expected, (
+        f"_FALLBACK_VERSION {match.group(1)} != mcp pyproject version {expected}"
+    )
+
+
 def test_public_package_descriptions_use_algenta_branding_and_agent_discovery() -> None:
     descriptions = {
         pkg: str(_py_meta(pkg)["description"]) for pkg in _PYPROJECT_PKGS
