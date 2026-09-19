@@ -4,7 +4,7 @@
   "title": "Algenta MCP Server",
   "description": "Governed data discovery, exact queries, decisions, simulations, and runtime utilities over MCP.",
   "repository": {
-    "url": "https://github.com/thyn-ai/algenta",
+    "url": "https://github.com/thyn-ai/algenta-sdk",
     "source": "github"
   },
   "websiteUrl": "https://algenta.ai",
