@@ -32,6 +32,7 @@ import {
   baseHeaderName,
   canonicalizeCsvHeaders,
   coerceCsvScalar,
+  csvFieldTokens,
   runtimeSqlConnectionString,
   sqlIdentifier,
   stripUndefined,
@@ -462,7 +463,13 @@ describe("CSV parsing and coercion (_runtime_helpers_c, _runtime_helpers_d)", ()
     /[",\r\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
   const serializeCsv = (rows: string[][], terminator: string, trailing: boolean): string =>
     rows.map((row) => row.map(quoteCell).join(",")).join(terminator) + (trailing ? terminator : "");
-  const headerArb = fc.stringMatching(/^[a-z][a-z_]{0,10}$/).filter((header) => !header.includes("__"));
+  // Lowercase letters and "_" only, "__" included (see the canonicalizeCsvHeaders property for why
+  // that class matters). No digits, deliberately: the dedup suffix is "__<n>", and an input header
+  // that already has that shape collides with a generated one -- ["a", "a", "a__2"] canonicalizes to
+  // ["a", "a__2", "a__2"] in BOTH the TS and the Python (_canonicalize_csv_headers) implementation,
+  // so uniqueness and idempotence only hold on inputs without such headers. That is a limit of the
+  // shared algorithm; lifting it belongs in _runtime_helpers_c.ts and map_parsing.py together.
+  const headerArb = fc.stringMatching(/^[a-z][a-z_]{0,10}$/);
 
   it("parseCsvRows inverts RFC 4180 quoting under every line terminator", () => {
     fc.assert(
@@ -488,18 +495,41 @@ describe("CSV parsing and coercion (_runtime_helpers_c, _runtime_helpers_d)", ()
         expect(canonical).toHaveLength(headers.length);
         expect(new Set(canonical).size).toBe(canonical.length);
         expect(canonicalizeCsvHeaders(canonical)).toEqual(canonical);
-        const seen = new Set<string>();
+        const occurrences = new Map<string, number>();
         headers.forEach((header, index) => {
           const base = header.trim() || "Unnamed_Column";
-          expect(baseHeaderName(canonical[index])).toBe(base);
-          if (!seen.has(base)) {
-            expect(canonical[index]).toBe(base);
-          }
-          seen.add(base);
+          const occurrence = (occurrences.get(base) ?? 0) + 1;
+          occurrences.set(base, occurrence);
+          // The exact contract, shared with Python's _canonicalize_csv_headers: the first occurrence
+          // is the trimmed header itself and the n-th repeat is `${base}__${n}`.
+          expect(canonical[index]).toBe(occurrence === 1 ? base : `${base}__${occurrence}`);
+          // baseHeaderName is NOT the inverse of that suffixing. Like Python's _base_header_name it
+          // cuts at the FIRST "__", so a base that already contains "__" ("a__b" -> "a") or ends in
+          // "_" ("z_", suffixed to "z___2" -> "z") projects to a shorter prefix. An earlier oracle
+          // asserted a round-trip here and fast-check refuted it (seed 2001436404, path
+          // "8:1:1:8:15", counterexample ["z_", "z_"]). What looksLikeHeaderAliasRow actually relies
+          // on is weaker and always holds: the projection is a prefix of the original header, and
+          // the dedup suffix never leaks into the header tokens -- "_" is not a token character, so
+          // cutting one trailing "_" changes nothing the heuristic compares.
+          const projected = baseHeaderName(canonical[index]);
+          expect(base.startsWith(projected)).toBe(true);
+          expect(csvFieldTokens(projected)).toEqual(csvFieldTokens(baseHeaderName(base)));
         });
       }),
       RUNS,
     );
+  });
+
+  it("canonicalizeCsvHeaders/baseHeaderName on a repeat whose base ends in '_' or contains '__' (seed 2001436404)", () => {
+    // Pinned against Python (algenta.map_parsing._canonicalize_csv_headers / _base_header_name):
+    // both SDKs must produce exactly these values.
+    expect(canonicalizeCsvHeaders(["z_", "z_"])).toEqual(["z_", "z___2"]);
+    expect(["z_", "z___2"].map(baseHeaderName)).toEqual(["z_", "z"]);
+    expect(canonicalizeCsvHeaders(["a__b", "a__b"])).toEqual(["a__b", "a__b__2"]);
+    expect(["a__b", "a__b__2"].map(baseHeaderName)).toEqual(["a", "a"]);
+    // The header-alias heuristic compares tokens, and the cut never changes those.
+    expect(csvFieldTokens(baseHeaderName("z___2"))).toEqual(csvFieldTokens("z_"));
+    expect(csvFieldTokens(baseHeaderName("a__b__2"))).toEqual(csvFieldTokens(baseHeaderName("a__b")));
   });
 
   it("coerceCsvScalar reads accounting/currency/grouped integers on measures, keeps identifiers verbatim, never throws", () => {
