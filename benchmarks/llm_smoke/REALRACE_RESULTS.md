@@ -21795,3 +21795,473 @@ Two failures, recorded because a round that only reports its successes is not au
 not re-gated; flashinfer was not re-measured and §10 was not updated; the `LTINSITU` in-situ search
 was not ported (only the stage-time search); no vectorised f16 GeGLU was authored — lever #1 is
 **priced and diagnosed, not implemented**; and no published row changed.
+
+
+## ROUND 18 — gemma-3-27b-it H200: lever #1 IMPLEMENTED and MEASURED. The vectorised f16 prefill GeGLU twin (`ALGENTA_G3_PF_GEGLU_V2`) is **RESOLVED at −19.396 ms (−5.030%) on rag4096 at 24.5x its most conservative drift armor**, with **COMPLETE rank separation** (all 5 lever runs below all 5 control runs, Mann-Whitney U = 0, exact p = 0.0079) and **0 BITDIFF over 8 compared cells**; the cell moves rag4096 from **1.1067x to 1.1653x** (1.1136x → **1.1725x** on round 13's same-session comparator) and **CLEARS the 1.15x bar by 7.176 ms**. It transferred **77.7% of its same-basis headroom**, inside the campaign's calibrated 65–80% band — and getting the basis right is what showed that, because against the REGION pool it looks like 54.1% and reads as a band miss (kernel branch `feat/gemma3-gegluvec-r18`, **PR #1059**, DEFAULT OFF; harness + fixes on the same branch; 2026-09-19)
+
+**81 min 10 s of VM-on time against a 90 min cap + 5 min grace, for the measured window.**
+`lastStartTimestamp` 2026-09-19T11:05:58.402-07:00 (= **19:05:58Z**), stop issued **20:24:41Z**,
+`TERMINATED` confirmed **20:27:08Z** against a 20:40:58Z hard deadline — stopped with
+`--discard-local-ssd=false`, **`TERMINATED` verified**, and a project-wide `--filter='status=RUNNING'`
+returned **empty**. Three earlier boots that day were aborted before any cell was taken and burned
+~12 min of VM-on between them; every one also ended `TERMINATED` with an empty project-wide RUNNING
+list, and all three are accounted for in the process section below rather than quietly dropped.
+Everything in (0) — the kernel, the PTX differentials, the register census, the lane-order proof, the
+audit rows and the whole harness — was done on CPU with the VM **TERMINATED**, and the instance was
+started only after the local compile gate passed.
+
+### (0a) THE LEVER — AUTHORED ON CPU, AND ITS WHOLE MECHANISM IS 3 INSTRUCTIONS INSTEAD OF 24
+
+Round 17 named lever #1 and stopped there: "no vectorised f16 GeGLU was authored — lever #1 is
+**priced and diagnosed, not implemented**." Round 18 implements it. `_pf_geglu_rows_f16_vec_kernel`
+gives one thread **eight contiguous f16 = 16 bytes** per operand, through new `_ld8h`/`_st8h`
+helpers that carry the `alignment=16` annotation `residentk.loadvec` exists to supply. It is gated
+on `G3_PF_F16MLP` (ROPEVEC's pattern, so with F16MLP off it is inert by construction) and its shape
+contract is discharged **at the dispatch site**: `d_ff % 8 == 0` is what makes `total = m * d_ff` a
+multiple of 8 too, so the group guard is exact and no thread can overrun either buffer, and it is
+also what makes all three element offsets multiples of 16 bytes. A shape that fails it keeps the
+scalar twin byte-for-byte, so **the flag can never produce a ragged tail on any model**.
+
+The mechanism, read off PTX extracted from the compiled objects with no GPU anywhere in the loop:
+
+| per 8 output elements | scalar twin (shipped) | vector twin | vector twin with `-D ALGENTA_L0_NOALIGN` |
+|---|---|---|---|
+| global loads | 16 × `ld.global.b16` | **2 × `ld.global.v4.b32`** | 16 × `ld.global.b16` |
+| global stores | 8 × `st.global.b16` | **1 × `st.global.v4.b32`** | 8 × `st.global.b16` |
+| **memory instructions** | **24** | **3** | **24 — no better than the control** |
+
+**That third column is worth more than the win.** `load[width=8]` on its own buys *nothing*; the
+`alignment=16` annotation **is the entire lever**. It reproduces the micro-autopsy's lever-#0 defect
+for f16 and shows why `residentk.loadvec` is a module and not a comment.
+
+The same rebuild **reproduced round 17's hash trap in-round**: the kernel's 16-hex hash stayed
+`b0496694ffefbc3c` across a body-only perturbation, because Mojo's hash is **NAME-derived**. Hash
+equality is therefore a *false negative* for "the body did not change", which is exactly why the body
+differential is read off the PTX and never off the hash.
+
+Per-element arithmetic is the scalar twin's **verbatim**, eight times, with the same four f32
+immediates at exactly 8x the count: `0f3D372713` / `0f3F4C422A` / `0f3F000000` / `0f3F800000` 1→8
+each, `cvt.f32.f16` 2→16, `mul.f32` 6→48, `fma.rn.f32` 1→8, `tanh.approx.f32` 1→8, `add.f32` 1→8.
+The scalar twin's `tanh` already lowered to `tanh.approx.f32`, so the lever changes nothing there.
+
+**ptxas census, round-8 method, CALIBRATED FIRST.** `ptxas_census_local.sh --calibrate` reproduces
+the VM's round-7 register counts **6/6 EXACT** (165/172/165/172/166/166) plus v3's 36 instantiations
+(66 total, peak 255, 24 spilling), so the census is evidence and not a local curiosity:
+
+| kernel | registers | stack frame | spill stores | spill loads |
+|---|---|---|---|---|
+| `_pf_geglu_rows_f16_kernel` (control) | 26 | 0 B | **0** | **0** |
+| `_pf_geglu_rows_f16_vec_kernel` (lever) | **28** | 0 B | **0** | **0** |
+
+**+2 registers for 8x the work per thread, zero spills**, and both are register-limited to the same
+8 blocks/SM, so **occupancy is unchanged** — the win is purely the memory-instruction count.
+
+*A correction to the round-8 tooling note, recorded rather than left to mislead the next round:
+`ptxas_census_local.sh`'s header says the container reports the box's `V12.6.85`. On this arm64 host
+`nvidia/cuda:12.6.0-devel-ubuntu22.04` reports **V12.6.20, Built Fri_Jun_14_16:39:31_PDT_2024** —
+same 12.6 release, different build. The mandatory calibration passes 6/6 regardless, so the census
+rests on **calibration**, not on the version string. The stale comment should be fixed.*
+
+### (0b) BIT-IDENTITY — CLAIMED BY CONSTRUCTION, AND THE ONE AMBIGUITY IN THE CLAIM WAS CHECKED
+
+GeGLU is purely **elementwise**: no reduction, no accumulation, no cross-element movement, so there
+is no association order for a vectorised twin to disturb. `_g3_geglu_f16_elem` is the scalar body
+transposed verbatim. Contrast ROPEVEC, which had to re-associate the `qk_norm` sum-of-squares, and
+LTALGO, where a tuned algorithm may split K — neither could claim exactness, and both had to settle
+for oracle agreement.
+
+The one instruction-level difference is the output narrowing: 8 × `cvt.rn.f16.f32` becomes
+4 × `cvt.rn.f16x2.f32`, same `.rn` round-to-nearest-even, two independent conversions. **That packs
+two lanes per register, which made lane order a live correctness question** — and it was resolved
+against the authoritative CUDA header rather than against documentation prose:
+
+```
+cuda_fp16.hpp:__internal_device_float2_to_half2_rn(const float a, const float b)
+    SM80+ :  asm("{ cvt.rn.f16x2.f32 %0, %2, %1; }" : "=r"(...) : "f"(a), "f"(b));
+    pre-80:  cvt.rn.f16.f32 low,  %1;   // %1 = a -> low
+             cvt.rn.f16.f32 high, %2;   // %2 = b -> high
+             mov.b32 %0, {low,high};
+```
+
+Both paths must mean `a`→low, and the SM80+ path passes `b` as the instruction's *first* source — so
+in `cvt.rn.f16x2.f32 d, X, Y` it is **`Y` that lands in the low 16 bits**. LLVM emits
+`cvt.rn.f16x2.f32 %r105, <elem1>, <elem0>` and stores `%r105` at the lowest address, so elem0 lands
+at `act16[g8+0]`. **CORRECT.** The load side was traced the same way: `ld.global.v4.b32` puts the
+lowest address in the first register, and `mov.b32 {%rs7,%rs8}, %r22` splits low-half-first, so
+`%rs7` is gate element 0 and `%rs15` (from the up load's first register) is up element 0 — the gate/up
+pairing is right too.
+
+**A documentation summary asserting the opposite ("operand `a` is stored in the lower 16 bits") was
+fetched, checked against that header, and REJECTED.** Acting on it would have "fixed" a correct
+kernel into a lane-swapped one — which would have passed no gate and wasted a window. Recorded here
+because the lesson is general: for a packing instruction, the header that emits it outranks prose
+about it.
+
+### (0c) IDENTITY EVIDENCE — THE CPU PREDICTION SURVIVED THE CROSS TO THE BOX, EXACTLY
+
+Built off `origin/main` with and without the macro, `--emit object`, and diffed on the 16-hex kernel
+symbols: **38 → 39 `.visible .entry`, exactly +1 and −0**, the added one being `b0496694ffefbc3c`,
+with the scalar twin's `8f4c4e1d2ba54545` present in **both** arms (the dispatch keeps it as the
+shape-gate fallback). Object size 963384 → 979824 bytes.
+
+Then on the box, from the two LINKED arms, `verify_arms` recomputed the differential blind:
+
+```
+R18_ctl     sha256_16=55f1608429a49d0b bytes=6167416  GEGLU_V2 banner literal = 0  VERIFIED CLEAN
+R18_gegluv  sha256_16=a823a0f089911300 bytes=6182280  GEGLU_V2 banner literal = 1  VERIFIED ARMED
+non-kernel 16-hex tokens (layout noise, recorded not counted): ctl=468 gegluv=480 differing=12
+ADDED by the lever   : b0496694ffefbc3c
+REMOVED by the lever : <none>
+VERIFIED: the single added kernel IS the CPU-predicted vector twin b0496694ffefbc3c
+```
+
+**The hash predicted on a macOS arm64 host from an `--emit object` build is the hash the H200 box
+carries in a linked executable.** That extends round 15's path-independence finding from "recoverable
+on CPU" to "predictive across host, build mode and link", and it is the strongest form of evidence
+this campaign has for a Mojo kernel's identity: not a name substring, not a count, but a prediction
+made before the binary existed and then confirmed by it.
+
+Getting there cost one aborted chain, and the cause is the more useful half of the story. The first
+cut of the audit counted **every** `[A-Za-z_][A-Za-z0-9_]*_[0-9a-f]{16}` token in `strings -a`, which
+is exact for an object and wrong for a linked executable: the link pulls in the shim, the runtime and
+embedded cubin bytes, whose incidental hex-suffixed tokens are not kernels. It reported **12 added**
+and FATAL'd on a correct pair of arms. Diagnosed on the box, not guessed, by asking of each of the 12
+whether it appears in a `.visible .entry` context: `b0496694ffefbc3c` → `as_ptx_entry=1,
+occurrences=11`; the other eleven → `as_ptx_entry=0, occurrences=1` each. `kernel_hashes()` now
+anchors on the PTX entry declaration, and `raw_hex_tokens()` still records the noise set and its
+differing count (12) so the filter's effect is auditable instead of asserted. **An instrument
+validated in one build mode is not validated in another, and a strict audit that is mis-calibrated
+does not fail safe — it fails closed on a correct result and burns the window.**
+
+### THE GATE — `ALL_PASS = True`, G0 16/16 AND G1 64/64 WITH A BIT-IDENTICAL REPEAT, BEFORE ANY TIMING CELL
+
+Arm `R18_gegluv` (sha256_16 `a823a0f089911300`), greedy against the cache-free fp32 transformers
+oracle, GPU1 pinned and verified at 1410 MHz, `offpin=0`:
+
+| prompt | max_new | verdict | determinism | first divergent index |
+|---|---|---|---|---|
+| pp1024 | 16 | **16/16 PASS** | single run | **none** |
+| pp1024 | 64 | **64/64 PASS** | **2/2 bit-identical** | **none** |
+| pp256 / val550 / rag4096 | — | **OUT-OF-SCOPE, not certified either way** | — | — |
+
+`GATE ALL_PASS = True`, `GATE SCOPE = ['pp1024']`.
+
+**THE SCOPE IS REDUCED AND IS REPORTED AS REDUCED, with the arithmetic rather than an excuse.** A
+full four-prompt gate is 11 cells at ~110–135 s ≈ 38 min; an n=5 rag4096 bracket is 18 cells ≈ 41
+min; stage + build + verify is ≈ 26 min. That is 105 min against a 90 min cap, so **a full gate and a
+bracket do not both fit** — the same arithmetic that forced round 17 to bracket one cell. The gate
+was therefore scoped to pp1024, which supplies G0 16/16, G1 64/64 and the bit-identical repeat, i.e.
+everything the protocol's gate clause names. rag4096 is not left uncertified, it is certified
+*differently and more strongly*: the kernel runs the identical m=1024 tile shape at both prompts
+(rag4096 is four such tiles), and §(0d) below compares the two arms' own rag4096 token streams over
+8 cells. pp256 and val550 are **not certified at all this round** and are named as such.
+
+**This reduced scope initially read as a FAILED gate, and that defect is worth more than the fix.**
+`gate_any.py`'s `PLAN` enumerates all four prompts and set `all_pass=False` for any that had not run,
+so a deliberately scoped gate reported `GATE ALL_PASS = False` over cells that had passed 16/16 and
+64/64 with a 2/2 bit-identical repeat. `chain18.sh` read that as a numerics failure and refused to
+time, killing a window that had a passing gate and 60 min of cap left. **A gate that reports FAIL for
+prompts nobody requested is not conservative — it is wrong in the direction that hides a real
+result**, the mirror image of the failure mode this audit stack exists to prevent. Scope is now an
+explicit input (`argv[4]`, else `$GATE_PROMPTS`, else all four, so existing callers are unaffected),
+`all_pass` is computed over in-scope prompts only, an in-scope prompt that did not run is *still* a
+hard failure, out-of-scope prompts are recorded as `OUT-OF-SCOPE` and never silently dropped, an
+unknown scope name is FATAL rather than vacuously passing, and **`ALL_PASS` is never printed without
+its `GATE SCOPE` beside it** — because a bare `ALL_PASS = True` over one prompt reads identically to
+one over four. The fix is to the *verdict computation*, not the measurement, so re-running it over
+the cells already on disk cost **zero VM minutes**.
+
+### (0d) BIT-IDENTITY ON THE BOX — **0 BITDIFF**, AND IT IS STRONGER EVIDENCE THAN THE GATE
+
+`check_bitident_gemma3_round18.py` compares the two arms' **own generated token streams** cell for
+cell, over the cells the gate and the bracket had already produced — so it costs no VM minute. This
+is strictly stronger than the oracle gate: two arms can both match a 64-token oracle prefix and still
+diverge at token 65, whereas this compares the arms to *each other*.
+
+```
+BITIDENT 8   BITDIFF 0   NOT-COMPARED 2   tokens compared 176
+  BITIDENT 22  r6_r18_R18_ctl_rag4096_r1 .. r5      (all five measured runs)
+  BITIDENT 22  r6_r18_R18_ctl_rag4096_warm1 .. warm3
+  NOT-COMPARED r6_r18_R18_ctl_rag4096_close1, close2
+```
+
+**0 BITDIFF.** Every comparable rag4096 cell — all five *measured* runs plus all three warmups —
+produced token-for-token identical output on both arms, 22 tokens each (the rag4096 fixture
+EOS-stops at 22, as round 17 recorded). The two `NOT-COMPARED` cells are the **closing** cells,
+which the A..B..A protocol runs on arm A only; that is structural, not a coverage gap, and the
+checker reports it as `NOT-COMPARED` rather than folding it into a pass. Exit codes separate
+100%-BITIDENT (0), BITDIFF-present (1) and inconclusive (2), and **all three paths were tested on
+synthetic cells on CPU before the window**, so the verdict is not a script that cannot fail.
+
+So the bit-identity claim made in (0b) **HELD**: this lever is *exact*, not merely oracle-certified,
+and it is the first gemma-3 lever in the campaign that can say so from the arms' own outputs.
+
+### THE BRACKET — rag4096, same session, interleaved A..B..A, 3 warmup + 5 measured + 2 closing, median basis
+
+**Bracket shape is NON-DEFAULT and reported with its numbers, as the runner logs it:**
+`MEAS_RUNS=5` rather than the protocol's 7. The reason is the same arithmetic as the gate's: at
+~131 s/cell an n=7 rag4096 bracket is 22 cells ≈ 49 min, and on top of ~31 min of stage/build/gate
+that lands at ~83 min against a 90 min cap — ~6 min of margin, with the deadline watchdog able to
+kill the bracket mid-run. **A killed bracket is unpublishable; a complete n=5 bracket is not**, and
+n=5 is what round 17 measured its own RESOLVED delta on. n=5 is the round's stated floor.
+
+All 18 cells completed, **`CELLGROUP rag4096 complete` and `TIMING DONE` at 20:19:56Z**. Every cell
+`rc=0`; **`clocks_after=1410MHz` on all 18 and `offpin=0` is the only off-pin value appearing
+anywhere in the window's log** (9 of 9 at the mid-bracket check, 18 of 18 at the end).
+
+| run | `R18_ctl` (shipped default) | `R18_gegluv` (+GEGLU_V2) |
+|---|---|---|
+| warm1 *(discarded)* | 385.991 | 364.317 |
+| warm2 *(discarded)* | 386.751 | 365.549 |
+| warm3 *(discarded)* | 385.910 | 364.686 |
+| r1 | 386.295 | 366.749 |
+| r2 | 385.436 | 366.216 |
+| r3 | 385.162 | 367.036 |
+| r4 | 386.186 | 364.518 |
+| r5 | 385.612 | 363.798 |
+| close1 | 386.084 | — |
+| close2 | 386.404 | — |
+| **median (n=5)** | **385.612 ms** | **366.216 ms** |
+| q1 / q3 | 385.436 / 386.186 | 364.518 / 366.749 |
+| IQR / rel-IQR | 0.750 ms / **0.195%** | 2.231 ms / **0.609%** |
+| min – max | 385.162 – 386.295 | 363.798 – 367.036 |
+| spread | 0.294% | 0.884% |
+| warmup median (n=3) | 385.991 | 364.686 |
+| closing median (n=2) | 386.244 | — *(A..B..A closes on A)* |
+| prefill tok/s | 10622.1 | **11184.7 (+5.30%)** |
+
+**delta = −19.396 ms = −5.0300%** (negative favours the lever), median basis, same session.
+
+**DRIFT ARMOR MEASURED, AND IT HOLDS BY A WIDE MARGIN.** The group closes A..B..A, so drift is a
+measurement: control opening median 385.612 → closing median 386.244, a drift of **+0.632 ms =
++0.164%**. Reported against *every* armor basis this campaign has used, most conservative first, so
+the multiple cannot be flattered by choosing the denominator:
+
+| armor basis | value | \|delta\| / armor |
+|---|---|---|
+| `max\|close − opening median\|` (most conservative) | 0.792 ms | **24.51x** |
+| closing-median drift | 0.632 ms | **30.70x** |
+| larger arm's IQR | 2.231 ms | **8.69x** |
+| `max\|close − opening r1\|` | 0.211 ms | 91.95x |
+
+| separation test | value |
+|---|---|
+| rank separation | **COMPLETE — 5 of 5.** The lever's *slowest* run (367.036) is **18.125 ms faster** than the control's *fastest* (385.162). The two distributions do not overlap at any point |
+| Mann-Whitney U (n1=n2=5) | **U = 0**, the minimum possible; exact two-tailed **p = 0.0079** |
+
+**VERDICT: RESOLVED at −19.396 ms, and it is the strongest result this campaign has recorded.** At
+**24.5x** its most conservative armor it beats round 13's ROPEVEC (14.5x) and is two orders of
+magnitude clear of round 17's LTALGO (1.80x, which sat *exactly* on the rank-test boundary at U=2).
+Here U=0 with complete separation, so there is no boundary to sit on.
+
+### WHAT IT DOES TO THE RACE — **THE 1.15x BAR IS CLEARED**, on both comparator bases
+
+| comparator basis | TRT-LLM 1.2.1 rag4096 | `R18_ctl` | `R18_gegluv` |
+|---|---|---|---|
+| round 5's stored column (**CROSS-session**, not re-served this window) | 426.766 ms | 1.1067x | **1.1653x** |
+| round 13's **SAME-session** pair | 429.400 ms | 1.1136x | **1.1725x** |
+
+The bar (rag4096 ≥ 1.15x) needs our time ≤ **373.39 ms**. Measured **366.216 ms** — **7.176 ms UNDER
+the bar.** On the published-row basis the cell moves from **1.11x to 1.17x**, a change in the *second*
+significant figure, unlike round 17's −1.145 ms which moved the fourth. **TRT-LLM was NOT re-served
+this session**, so the headline ratio is cross-session and is labelled as such by the summariser
+itself; the same-session figure is round 13's pair carried forward, exactly as round 17 did.
+
+**No published row is changed by this entry and no gitbook race page is touched. The publish call is
+the owner's.** What is asserted here is narrower and measured: on this box, in this session, at 1410
+MHz with `offpin=0` on every cell, the shipped default and the shipped default plus one macro differ
+by −19.396 ms at 24.5x armor with complete rank separation.
+
+**THE CONTROL IS THE SHIPPED DEFAULT, AND THE ONE WAY IT IS NOT BYTE-IDENTICAL TO ROUND 17'S IS STATED
+RATHER THAN GLOSSED.** `R18_ctl` is 6167416 bytes against round 17's certified 6167152 — **+264
+bytes**, because this round adds `| GEGLU_V2 = <bool>` to the *unconditional* `G3 FLAGS:` banner line,
+which every arm compiles. Its numeric path is provably unchanged three ways: **zero** GEGLU_V2 banner
+literals, **zero** PTX entries for the vector twin (the entry-backed differential's `REMOVED = none`
+and `ADDED = b0496694ffefbc3c` means the control does not contain it), and its median **385.612 ms
+reproduces round 17's `R17_ctl` 386.154 to −0.140% and round 13's same-session 385.458 to +0.040%**.
+A banner field is not a numeric path, but "it's only a print" is an argument, so the reproduction
+numbers are the evidence and they are given.
+
+### THE TRANSFER RATIO, AND WHY THE BASIS DECIDES WHETHER THIS ROUND HIT THE BAND OR MISSED IT
+
+Round 17 established that `--from-first-attn` is **not** one rag4096 prefill but a **7-pass mixture**
+(5 × m=1024, 1 × m=512, 1 × m=256), and warned that the next round must not inherit round 8's
+496-launch denominator. That warning is load-bearing here, because the two bases give opposite
+verdicts on the same measurement:
+
+| basis | rows | pool | roof | raw headroom | measured −19.396 ms as % of headroom |
+|---|---|---|---|---|---|
+| **REGION** (the 7-pass mixture the census was taken over) | 365056 | 45.687 ms | 9.813 ms | 35.874 ms | **54.1% — BELOW the 65–80% band** |
+| **ONE rag4096 prefill** (what the wall clock actually measures) | 253952 | **31.782 ms** | **6.826 ms** | **24.956 ms** | **77.7% — INSIDE the band, near its top** |
+
+The row-share is 253952/365056 = 0.69565 (62 layers × 4 tiles of 1024 rows, against the mixture's
+310×1024 + 62×512 + 62×256). The single-prefill roof cross-checks against round 17's own published
+arithmetic exactly: 253952 rows × 129024 B = **32.766 GB** → 6.826 ms at 4.8 TB/s, where round 17
+printed "32.8 GB → 6.83 ms" for its norm-accum comparison. **The wall clock measures one prefill, so
+the single-prefill row is the right one, and the lever transferred 77.7% of its headroom** — inside
+the band calibrated on ROPEVEC and GQA2, and near its top. Read against the region pool the same
+19.396 ms looks like 54.1% and would have been written up as a transfer-band miss. **Same number,
+two verdicts, decided entirely by the denominator** — which is the concrete payoff for round 17
+insisting on the mixture finding instead of letting it sit as a footnote.
+
+Attributing the whole wall delta to the GeGLU kernel (sound here: the arms differ by exactly one
+macro changing exactly one kernel, proven by the entry-backed symbol differential, and the delta is
+19.4 ms against a 31.8 ms pool) implies the kernel went **31.782 → 12.386 ms**, i.e.
+
+| quantity | before (round 17) | implied after |
+|---|---|---|
+| achieved bandwidth | 1.031 TB/s | **2.645 TB/s** |
+| fraction of the 4.8 TB/s roof | 21.5% | **55.1%** |
+| measured / roof | 4.656x | **1.814x** |
+
+That is an **attribution, not a per-kernel measurement** — no nsys census was taken this window, so
+the kernel's own new time is inferred from the wall. A round-19 re-census would confirm it directly
+and would also show how much of the remaining 5.56 ms to roof is reachable; at 55.1% of roof this
+kernel is no longer the outlier it was at 21.5%, and the next increment here is smaller than this one.
+
+### pp1024 — **NOT BRACKETED**, declined by the governor from the clock, and flashinfer **NOT RE-MEASURED** for a third round
+
+The governor priced pp1024 after rag4096 closed and declined it in the log rather than starting a
+bracket it could not finish:
+
+```
+[20:19:56Z] --- prompt pp1024 : 18 min affordable ---
+[20:19:56Z]     n=5 DOES NOT FIT (36 > 18 min affordable) — trying the next candidate
+[20:19:56Z] SKIPPED pp1024: no bracket shape for it fits the remaining window. Recorded as a
+[20:19:56Z]           deliberate, arithmetic-forced omission — NOT as a completed measurement.
+```
+
+So round 18 brackets **one of the two cells it set out to bracket**, and says so. The choice was
+rag4096 over pp1024 deliberately: it is the cell the 45.687 ms census was taken over, the cell the
+12.07 ms bar is defined on, and the cell every published comparator lives in. An n=2 pp1024 bracket
+with one closing cell *would* have fitted in the 18 min, and was declined because it is below the
+n≥5 floor and its armor would rest on a single closing cell — i.e. not publishable, so not worth the
+minutes.
+
+**flashinfer's attention bucket was NOT re-measured and `WGMMA_TMA_SCOPE.md` §10 is NOT updated.**
+Task (2) conditioned it on ≥25 VM-min remaining after the bracket; 18 remained, and there was one
+bracket rather than two. **§10's caveat 2 therefore stays OPEN for the third consecutive round**: its
+21.01 ms comparator is still cross-basis (round 6, a different region definition and session) against
+our 38.114 ms, the 17.104 ms wgmma gap and the 70.5% transfer requirement remain **UNVERIFIED**, and
+**no wgmma window should be spent until the comparator is re-measured on the same basis.** This is
+now a scheduling fact rather than a difficulty — three rounds have each found a better use for the
+tail of the window, and the prerequisite will keep losing to levers that pay. It needs a **dedicated
+window whose only job is the comparator**, and that is a funding decision for the owner, not
+something a bracket round should keep deferring. Note also that §10's own ranking (GEMM #1, f16 MLP
+#2, wgmma #3) is now twice superseded — by round 17's re-ranking and by this round's measurement of
+the lever it put at #2 — but the file is left unedited because the only §10 change this round was
+authorised to make was the same-basis comparator, and that was not measured.
+
+### PROCESS EVIDENCE — FOUR BOOTS, THREE ABORTED, EVERY ONE ACCOUNTED FOR AND EVERY ONE ENDED TERMINATED
+
+CPU-first ordering held absolutely: the kernel, both PTX differentials, the alignment differential,
+the calibrated ptxas census, the lane-order proof, the flag-differential identity table, the
+`audit_tc_flags.sh` rows (exercised end-to-end on CPU against the two built objects, coming out
+exactly right — present only in the lever arm), the contract/floor regeneration and the entire
+harness were finished with the VM **TERMINATED**. The instance was started only after the local
+compile gate passed. Single window log (`~/lever18/round18.log`), liveness heartbeats at 60 s, one log
+per stage, per-cell clock and off-pin records. **No `KILLED_BY_OPERATOR` was needed for the measured
+window** — the bracket finished on its own and the stop was issued 4 min 45 s later. No gitbook race
+page touched. Ledger append-only: this section is a single hunk at EOF with zero deleted or modified
+lines earlier in the file, proven by md5 of the pre-append prefix.
+
+| boot | VM-on | why it ended | outcome |
+|---|---|---|---|
+| 1 | 18:26:19Z → 18:30:45Z = **4 min 26 s** | `vm_sync_r18.sh` refused: `git status --porcelain` lists untracked files, and `mojo_env/.pixi` is a documented never-commit symlink (`mojo_env/.gitignore` has `.pixi/*` + `!.pixi/config.toml`, which ignores a real directory's *contents* but not a symlink *named* `.pixi`). Then `gcloud ... stop` was **refused** — "Instance has in progress persistent disk IO" — and the controller logged "stop: returned" and **exited with the box RUNNING** | stopped by hand, `TERMINATED` verified, project-wide RUNNING empty. **Two defects fixed**: the dirty check now filters that exact path and nothing else, and `stop_vm` retries to `TERMINATED` (8 × 20 s) and prints the manual command if it cannot |
+| 2 | ~18:41:5x → 18:45:09Z ≈ **3–4 min** | **SIGTERM'd by the operating agent at 18:38:35Z** while `start attempt 1/2` was still in flight, immediately after finding that `GATE_SPECS` never crossed the ssh boundary — `chain18.sh` `export`ed a variable the launch line never *set*, so the runner silently used its two-prompt default, and at ~41 min for the bracket against the horizon that 4.5 min was the difference between the governor starting the bracket and declining it | stopped by hand, `TERMINATED` verified. The group-kill also took the controller's EXIT trap mid-`stop_vm`, which is the incident that motivated the independent backstop |
+| 3 | 18:52:47Z → 18:56:45Z = **3 min 58 s** | `gcloud compute scp` issued ~60 s after `status=RUNNING` while sshd was still coming up: IAP `4003 failed to connect to port 22`. The controller read a **transient** as SYNC FAILED | `TERMINATED` confirmed on attempt 2, project-wide RUNNING empty. **Fixed**: a cheap `echo READY` probe (10 × 30 s) now gates every remote call, the whole sync retries 3×, and the launch ssh is probed too |
+| 4 | **19:05:58Z → 20:27:08Z = 81 min 10 s** | the measured window; two chains died inside it (below) and the timing phase was then driven directly | **stop issued 20:24:41Z, `TERMINATED` 20:27:08Z, project-wide `status=RUNNING` EMPTY** |
+
+**Two chains died inside boot 4, and both deaths were the harness being right about the wrong thing.**
+Chain pid 4890 exited **rc=1 at 19:15:16Z** on the mis-calibrated symbol audit of §(0c) —
+`PHASE build rc=1`, `BUILD/VERIFY FAILED`. Chain pid 9004 exited **rc=1 at 19:36:21Z** on the
+reduced-scope gate reporting `ALL_PASS = False` — `GATE FAILED`, no timing taken. Its heartbeat going
+stale at 19:14:44Z was chain 4890's, not 9004's. After the gate fix was deployed and re-evaluated
+over the cells already on disk (`ALL_PASS = True`, zero VM minutes), the timing phase was driven
+directly with `setsid nohup … </dev/null & disown` — and **that ssh call hung client-side for 600 s
+even with the round-17 pattern applied**, exactly as round 17 recorded. The job had launched anyway
+(first cell END 19:45:59Z); the lesson is that `setsid nohup … & disown` makes the *job* survive but
+does not reliably release the *channel*, so a launcher must be prepared to abandon the call and
+verify by polling the VM rather than by waiting for the ssh to return.
+
+**All three controller SIGTERMs were issued by the operating agent** (18:38:35Z, 19:20:56Z, ~20:24Z),
+each deliberately, each to recover from a defect found in the harness, and each recorded here rather
+than attributed to the environment. No `task_stop` was involved. The third was after the bracket had
+completed and artifacts were collected locally.
+
+**Idle burn, stated precisely because it was challenged:** the last real work was `TIMING DONE` at
+**20:19:56Z**; bitident, the summariser and the artifact tar ran to **20:23:44Z**; the artifacts were
+scp'd locally and the controller killed at **~20:24Z**; the stop was issued **20:24:41Z** and
+`TERMINATED` confirmed **20:27:08Z**. So the genuinely idle tail was **~1 minute**, not the ~7 an
+outside observer inferred from a GPU at 0% and no live chain process — that observer was correct that
+no chain was alive (the timing phase was driven directly, not through `chain18.sh`) and correct that
+the GPU was idle, but the window was in artifact collection, not abandoned. The reviewer's inference
+was reasonable from the evidence available *outside* the box, and **that is the defect**: a stale
+heartbeat cannot distinguish "finished and collecting" from "died and burning". Hence `CHAIN_EXIT`.
+
+### WHAT ROUND 18 DID NOT DO, so this entry is not over-read
+
+**pp1024 was not bracketed**; flashinfer was not re-measured and §10 was not updated, so the wgmma
+ranking's only blocker stays open for a third round; **the gate covered pp1024 only** — pp256 and
+val550 are not certified at all this round and rag4096 is certified by arm-vs-arm bit-identity rather
+than by the oracle; `R18_ctl` was not re-gated (its equivalence rests on the three proofs above, not
+on a fresh gate); **TRT-LLM was not re-served**, so the 1.1653x headline is cross-session; **no nsys
+census was taken**, so the kernel's new 12.386 ms is an attribution from the wall and not a
+measurement; the transfer ratio's 77.7% is therefore against an inferred pool; the `LTALGO` lever was
+not re-bracketed (round 17 closed it, and pp1024's LTALGO bracket remains deliberately skipped);
+**the lever is DEFAULT OFF and unmerged** — PR #1059 is PR-not-merge and no shipped configuration
+changed; and **no published row moved**. Whether 1.1653x/1.1725x is published as the new rag4096 row
+is the owner's call, and this entry does not preempt it.
+
+One exception to "no gitbook page touched", declared because it is the only one: PR #1059 regenerates
+`gitbook/engine/kernel-inventory.md`, a **generated inventory artifact** that a CI ratchet
+(`scripts/docs/gen_kernel_inventory.py --check`) enforces against the contract, which the new kernel
+necessarily stales. It is three mechanical lines (cuda 141 → 142, one table row, module count
+22 → 23), regenerated with the repo's own generator and verified byte-identical to the patch a bot
+proposed in #1060 (closed with that verification recorded). **No race result, ratio or published row
+changed anywhere in it.**
+
+### THE HARDENING THIS ROUND EARNED, PROVED ON CPU BEFORE IT IS RELIED ON
+
+The reviewer's finding was correct and is adopted: **the stop had one owner, and that owner was the
+process most likely to die.** Boot 1 proved it — the controller's EXIT trap was mid-`stop_vm` when the
+follow-up SIGKILL landed, after GCE had refused the stop, and nothing retried it. A trap is not a
+backstop; it dies with the thing it traps. So:
+
+* **`vm_stop_backstop_r18.sh`** — a second owner of the stop in its **own session** (`os.setsid(2)`;
+  macOS has no `setsid(1)`), sharing no process group with the controller. Deliberately stupid: no
+  staging, no gates, no governor, no opinion about what the window should be doing. It stops the box
+  when the deadline arrives **or** when the chain has exited without completing timing and the GPU is
+  idle. It retries the stop 8× and verifies both `TERMINATED` and an empty project-wide RUNNING list.
+  An **unknown** probe result never triggers the early stop — a backstop that acts on a failed probe
+  would kill a healthy window. Armed immediately after the deadline is computed, i.e. before anything
+  else can fail.
+* **`~/lever18/CHAIN_EXIT`** — the chain's fate as an artifact on the persistent boot disk, on every
+  exit path including signals: rc, phase, `timing_complete`, measured-cell count, gate-cell count,
+  deadline, minutes left. `timing_complete` keys on the runner's `TIMING DONE` marker and **not** on
+  the phase's exit code, so a group killed mid-bracket cannot report itself finished.
+* **`dryrun_backstop_r18.sh`** — the proof, checked in so it is reproducible rather than a claim:
+  stub `gcloud`, stub remote answering "chain exited, timing_complete=no, GPU 0%", a fake controller
+  in its own process group, then `kill -KILL -- -<controller pgid>`. Passes only if the backstop is
+  still alive **and** issued a stop **and** the state is TERMINATED. **Verdict: PASS** — backstop pgid
+  57686 vs controller pgid 57674, survived the group SIGKILL, drove the stub to TERMINATED with an
+  empty RUNNING list, 1 stop call recorded.
+
+The dry-run's own first two cuts are recorded because they proved nothing while looking like they
+proved something: the controller was started with a plain `&`, which in a **non-interactive** script
+does not create a new process group, so the group-kill killed the *test* (exit 137) before any
+assertion ran; and `PATH='<stub>:$PATH'` was single-quoted inside a double-quoted string, so PATH
+became the stub directory alone and `ps`/`sleep`/`tr`/`cut` vanished — the backstop then "died" for
+want of `sleep`, not for want of session isolation, a **false FAIL** that would have sent the next
+round chasing a bug that was in the test. Both are now guarded: the test refuses to kill anything if
+the controller's pgid equals its own.
+
+**Bottom line.** Lever #1 was priced in round 17 at 45.687 ms and 4.656x its DRAM roof, diagnosed as a
+scalar 2-byte access pattern with no vectorised twin, and this round implemented it, proved it
+bit-identical from PTX and from the arms' own tokens, and measured it at **−19.396 ms with complete
+rank separation at 24.5x its armor** — clearing the 1.15x bar by 7.176 ms and moving rag4096 to
+**1.1653x / 1.1725x**. The mechanism cost 3 memory instructions where 24 were being spent, 2 extra
+registers and zero spills. What remains in the kernel is 5.56 ms to its own roof at 55.1% of
+bandwidth, and the campaign's largest unpriced pool is still GEMM at 432.694 ms / 77.84% of busy with
+algorithm selection closed — which points at wgmma/TMA, whose comparator has now been unfunded for
+three rounds running.
