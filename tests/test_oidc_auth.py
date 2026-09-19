@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import time
 import uuid
 from typing import Any
@@ -289,3 +290,65 @@ def test_unknown_kid_flood_forces_at_most_one_refetch(_patch, monkeypatch) -> No
             _verify(_token(kid=f"random-{uuid.uuid4().hex}"))
         assert e.value.code == "unknown_kid"
     assert forced_calls["n"] == 1, f"expected 1 forced refetch, got {forced_calls['n']}"
+
+
+# ── signature/forgery: the unverified iss pre-read may route, never admit ────────────────────────
+
+
+def _b64url_json(obj: dict[str, Any]) -> str:
+    return base64.urlsafe_b64encode(json.dumps(obj).encode()).rstrip(b"=").decode()
+
+
+def _tamper_signature(token: str) -> str:
+    header, payload, sig = token.split(".")
+    flipped = ("A" if sig[0] != "A" else "B") + sig[1:]
+    return f"{header}.{payload}.{flipped}"
+
+
+def test_tampered_signature_is_rejected(_patch) -> None:
+    with pytest.raises(OidcAuthError) as ei:
+        _verify(_tamper_signature(_token()))
+    assert ei.value.code == "invalid_token"
+
+
+def test_tampered_payload_under_the_original_signature_is_rejected(_patch) -> None:
+    token = _token(sub="victim")
+    header, payload, sig = token.split(".")
+    claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    claims["sub"] = "attacker"
+    forged = f"{header}.{_b64url_json(claims)}.{sig}"
+    assert looks_like_oidc_token(forged)  # routing-grade pre-read still matches the issuer
+    with pytest.raises(OidcAuthError) as ei:
+        _verify(forged)
+    assert ei.value.code == "invalid_token"
+
+
+def test_token_signed_by_another_key_with_our_kid_is_rejected(_patch) -> None:
+    other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    now = int(time.time())
+    claims = {"iss": ISSUER, "aud": AUDIENCE, "sub": "subject-1", "iat": now, "exp": now + 600,
+              "scope": "decisions.read", "azp": "client-app-1"}
+    forged = jwt.encode(claims, other, algorithm="RS256", headers={"kid": KID})
+    with pytest.raises(OidcAuthError) as ei:
+        _verify(forged)
+    assert ei.value.code == "invalid_token"
+
+
+def test_unsigned_alg_none_token_is_rejected(_patch) -> None:
+    now = int(time.time())
+    claims = {"iss": ISSUER, "aud": AUDIENCE, "sub": "subject-1", "iat": now, "exp": now + 600,
+              "scope": "decisions.read"}
+    unsigned = f"{_b64url_json({'alg': 'none', 'typ': 'JWT', 'kid': KID})}.{_b64url_json(claims)}."
+    assert looks_like_oidc_token(unsigned)
+    with pytest.raises(OidcAuthError) as ei:
+        _verify(unsigned)
+    assert ei.value.code == "invalid_token"
+
+
+def test_unreadable_payload_is_not_routed_and_is_rejected(_patch) -> None:
+    header, _payload, sig = _token().split(".")
+    garbage = f"{header}.!!not-base64url!!.{sig}"
+    assert looks_like_oidc_token(garbage) is False
+    with pytest.raises(OidcAuthError) as ei:
+        _verify(garbage)
+    assert ei.value.code == "malformed_token"  # dies in the header/payload load, before any key

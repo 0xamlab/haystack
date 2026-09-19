@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -232,8 +233,14 @@ def _files_changed(workdir: Path) -> int:
 
 
 def _verify(workdir: Path, cmd: str, timeout: int) -> tuple[bool, str]:
+    """Run the verify command in the checkout as an argv (shlex-split, no shell). Quoting works
+    as on a shell command line (``"pytest -q -k 'a or b'"``); shell operators (``&&``, ``|``,
+    redirects) do not -- wrap those in a script and name the script."""
+    argv = shlex.split(cmd)
+    if not argv:
+        return False, "empty verify command"
     try:
-        proc = subprocess.run(cmd, cwd=str(workdir), shell=True, capture_output=True,
+        proc = subprocess.run(argv, cwd=str(workdir), capture_output=True,
                               text=True, timeout=timeout)
         return proc.returncode == 0, proc.stdout[-4000:] + proc.stderr[-4000:]
     except subprocess.TimeoutExpired:
@@ -309,8 +316,9 @@ def main() -> int:
     g = parser.add_mutually_exclusive_group(required=True)
     g.add_argument("--prompt", help="Task instruction given to every agent.")
     g.add_argument("--prompt-file", help="File containing the task instruction.")
-    parser.add_argument("--verify", default="", help="Shell command run in the checkout to "
-                        "decide pass/fail (e.g. 'pytest -q'). Empty = skip verification.")
+    parser.add_argument("--verify", default="", help="Command run in the checkout (as an argv, "
+                        "shlex-split, no shell) to decide pass/fail (e.g. 'pytest -q'). "
+                        "Empty = skip verification.")
     parser.add_argument("--agents", default="algenta,codex,gemini",
                         help=f"Comma list. Known: {','.join(ADAPTERS)}")
     parser.add_argument("--model", default=None, help="Optional model override (per-agent CLIs).")

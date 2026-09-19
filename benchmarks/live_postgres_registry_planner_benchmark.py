@@ -617,7 +617,8 @@ async def run_registry_planner_workload(
     connection = psycopg2.connect(connection_string)
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"SET statement_timeout = {int(statement_timeout_ms)}")
+            # Bound parameter, not an f-string: psycopg2 quotes/interpolates the value itself.
+            cursor.execute("SET statement_timeout = %s", (int(statement_timeout_ms),))
         results: list[PlannerBenchmarkResult] = []
         for index, question in enumerate(selected_questions, start=1):
             expected_rows: tuple[dict[str, object], ...] = ()

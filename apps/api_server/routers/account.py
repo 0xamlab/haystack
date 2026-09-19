@@ -799,6 +799,7 @@ async def telys_onboard(
 )
 async def product_whoami(
     product: str,
+    request: Request,
     authorization: Annotated[str | None, Header()] = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, object]:
@@ -847,9 +848,25 @@ async def product_whoami(
     }
     if linked_org is not None:
         try:
-            out["device_count"] = len(await list_devices_with_activity(linked_org.id, db))
-        except Exception as exc:  # noqa: BLE001 — diagnostics must never 500
-            out["device_count_error"] = str(exc)
+            # list_devices_with_activity returns a summary dict ({devices, total, active, ...});
+            # `len()` of it was a constant 4, which defeated the drift check this field exists for.
+            summary = await list_devices_with_activity(linked_org.id, db)
+            out["device_count"] = int(summary["total"])
+        except Exception:  # noqa: BLE001 — diagnostics must never 500
+            # The exception text (driver messages, paths, stack detail) stays server-side; the
+            # client gets a generic message plus the correlation id that finds this log line.
+            correlation_id = (
+                str(getattr(request.state, "request_id", None) or uuid.uuid4().hex)
+            )
+            logger.exception(
+                "product_whoami_device_count_failed",
+                correlation_id=correlation_id,
+                org_id=str(linked_org.id),
+                product=cfg.id,
+            )
+            out["device_count_error"] = (
+                f"device lookup failed; correlation id {correlation_id}"
+            )
     return out
 
 

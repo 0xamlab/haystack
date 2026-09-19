@@ -924,7 +924,8 @@ def run_workload(
     connection = psycopg2.connect(connection_string)
     try:
         with connection.cursor() as setup_cursor:
-            setup_cursor.execute(f"SET statement_timeout = {int(statement_timeout_ms)}")
+            # Bound parameter, not an f-string: psycopg2 quotes/interpolates the value itself.
+            setup_cursor.execute("SET statement_timeout = %s", (int(statement_timeout_ms),))
         results: list[WorkloadResult] = []
         for index, question in enumerate(generated_questions, start=1):
             if limit_questions is not None and len(results) >= limit_questions:

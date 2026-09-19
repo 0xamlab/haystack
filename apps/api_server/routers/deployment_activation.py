@@ -13,6 +13,7 @@ from __future__ import annotations
 import base64
 import os
 import secrets
+import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -201,12 +202,18 @@ async def activate_deployment(
         record=per_deployment_record,
     )
 
+    # The license id is chosen HERE and handed to the minter, so the audit/revocation record
+    # and the signed token share one jti by construction -- there is nothing to read back out
+    # of the token afterwards (the old flow decoded our own freshly minted JWT unverified
+    # just to learn its jti).
+    license_jti = str(uuid.uuid4())
     try:
         token = build_deployment_license(
             snapshot,
             deployment_id=body.deployment_id,
             deployment_pubkey_thumbprint=body.deployment_pubkey_thumbprint,
             ttl_days=body.ttl_days,
+            jti=license_jti,
         )
     except DeploymentActivationError as exc:
         raise HTTPException(status_code=422, detail={"error": "activation_invalid", "message": str(exc)}) from exc
@@ -218,10 +225,6 @@ async def activate_deployment(
             detail={"error": "signing_unavailable", "message": "deployment license signing is not configured"},
         ) from exc
 
-    # Decode our own token (unverified) only to capture the jti for the audit/revocation record.
-    import jwt as _jwt
-
-    license_jti = str(_jwt.decode(token, options={"verify_signature": False}).get("jti", ""))
     now = datetime.now(UTC)
 
     existing = (

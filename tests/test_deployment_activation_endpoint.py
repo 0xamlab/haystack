@@ -76,6 +76,10 @@ async def test_activate_deployment_endpoint_mints_and_persists(client, monkeypat
     assert verified.payload["license_scope"] == "deployment"
     assert verified.payload["deployment_id"] == dep_id
     assert verified.payload["device_pubkey_thumbprint"] == "ed25519:DEPLOY"
+    # The jti the endpoint reports (and persists for revocation) IS the jti inside the SIGNED
+    # token — established by choosing it before minting, not by decoding the token unverified.
+    assert verified.payload["jti"] == data["license_jti"]
+    assert verified.payload["license_id"] == data["license_jti"]
 
     # a registration row was persisted (scope the query to this run's unique deployment id)
     from apps.api_server.db.session import AsyncSessionLocal  # noqa: F405

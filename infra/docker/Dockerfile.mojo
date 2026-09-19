@@ -77,3 +77,8 @@ RUN cd /build && bash scripts/build_mojo_binary.sh && test -x /build/mojo_build/
 FROM scratch AS export
 COPY --from=mojo-builder /build/mojo_build/simulate /app/mojo_build/simulate
 COPY --from=mojo-builder /build/mojo_env/.pixi/envs/default/lib /app/mojo_env/.pixi/envs/default/lib
+# This stage is only ever a `COPY --from=` source for the api/worker/engine images (header above)
+# and is never run -- but should it ever be, it must not run as root. Numeric uid:gid because a
+# scratch image has no /etc/passwd to resolve a name against; /app is read-only payload, so
+# nothing needs chown. `COPY --from=` in the consumers is unaffected by USER.
+USER 65532:65532

@@ -292,13 +292,15 @@ def _create_postgres_fixture(
     schema: str,
     table: str,
 ) -> str:
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import create_engine
+    from sqlalchemy.schema import CreateSchema
 
     df = pd.DataFrame(records)
     engine = create_engine(database_url, pool_pre_ping=True)
     try:
         with engine.begin() as conn:
-            conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+            # DDL construct, not textual SQL: SQLAlchemy quotes the identifier itself.
+            conn.execute(CreateSchema(schema, if_not_exists=True))
         df.to_sql(table, engine, schema=schema, if_exists="replace", index=False)
     finally:
         engine.dispose()

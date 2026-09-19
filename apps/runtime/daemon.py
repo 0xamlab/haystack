@@ -41,6 +41,12 @@ from apps.runtime.runtime_shards import (
     load_runtime_shard_map,
     max_lazy_shard_workers,
 )
+from apps.runtime.worker_launch import (
+    launchable_worker_executable,
+    launchable_worker_socket,
+    worker_override_path,
+    worker_socket_path,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -51,31 +57,18 @@ _PID_FILE = _RUNTIME_DIR / "daemon.pid"
 _LOG_FILE = _RUNTIME_DIR / "daemon.log"
 _TEMP_DIR = Path(tempfile.gettempdir())
 
-# Bundled runtime worker executable. ALGENTA_MOJO_BINARY remains as a legacy dev override.
+# Bundled runtime worker executable. The operator override env vars (ALGENTA_NATIVE_WORKER /
+# ALGENTA_RUNTIME_WORKER / legacy ALGENTA_MOJO_BINARY) and the worker socket (ALGENTA_MOJO_SOCK)
+# are read and vetted by apps/runtime/worker_launch.py -- the one place that decides what this
+# daemon may spawn -- so nothing operator-supplied reaches the worker's argv unchecked.
 _REPO_ROOT = Path(__file__).parent.parent.parent
 _RESOLVED_WORKER = resolve_native_worker(require_verified=False)
-_MOJO_BINARY = Path(
-    os.environ.get(
-        "ALGENTA_NATIVE_WORKER",
-        os.environ.get(
-            "ALGENTA_RUNTIME_WORKER",
-            os.environ.get(
-                "ALGENTA_MOJO_BINARY",
-                str(
-                    _RESOLVED_WORKER.path
-                    if _RESOLVED_WORKER
-                    else _REPO_ROOT / "mojo_build" / "simulate"
-                ),
-            ),
-        ),
-    )
+_MOJO_BINARY = worker_override_path() or (
+    _RESOLVED_WORKER.path if _RESOLVED_WORKER else _REPO_ROOT / "mojo_build" / "simulate"
 )
 _MOJO_BINARY_SOURCE = _RESOLVED_WORKER.source if _RESOLVED_WORKER else "repo-dev runtime"
 _MOJO_BINARY_VERIFIED = bool(_RESOLVED_WORKER and _RESOLVED_WORKER.verified)
-_MOJO_SOCK = os.environ.get(
-    "ALGENTA_MOJO_SOCK",
-    str(_TEMP_DIR / "algenta-mojo" / "worker-0.sock"),
-)
+_MOJO_SOCK = worker_socket_path(default=_TEMP_DIR / "algenta-mojo" / "worker-0.sock")
 
 # gRPC daemon socket (consumed by SDK clients)
 _DAEMON_SOCK = os.environ.get(
@@ -247,16 +240,23 @@ class MojoProcess:
         if not _MOJO_BINARY_VERIFIED and not freshness.is_fresh:
             raise RuntimeError(freshness.failure_message())
 
+        # Vet both operator-supplied launch parameters right here, before anything touches the
+        # filesystem or the OS: the socket path (bindable length, never an existing non-socket --
+        # the stale-socket unlink below must not be pointable at an arbitrary file) and the
+        # executable (absolute path, regular file, executable bit). Fail closed on either.
+        sock_path = launchable_worker_socket(_MOJO_SOCK)
+        worker = launchable_worker_executable(_MOJO_BINARY)
+
         # Ensure socket directory exists
-        Path(_MOJO_SOCK).parent.mkdir(parents=True, exist_ok=True)
+        Path(sock_path).parent.mkdir(parents=True, exist_ok=True)
 
         # Remove stale socket
-        sock = Path(_MOJO_SOCK)
+        sock = Path(sock_path)
         if sock.exists():
             sock.unlink()
 
         self._proc = subprocess.Popen(  # noqa: S603
-            [str(_MOJO_BINARY), "--server", _MOJO_SOCK],
+            [str(worker), "--server", sock_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )

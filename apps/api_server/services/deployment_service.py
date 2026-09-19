@@ -181,11 +181,14 @@ def build_deployment_license(
     ttl_days: int = 365,
     private_key_pem: str | None = None,
     kid: str = "",
+    jti: str = "",
 ) -> str:
     """Mint the signed strict-profile deployment license for a resolved snapshot.
 
     Requires deployment scope and a deployment key thumbprint (the license is bound to it — a
-    copied license file alone can't activate). Returns the RS256 JWT.
+    copied license file alone can't activate). Returns the RS256 JWT. ``jti`` lets the caller
+    choose the license id up front (so its own record and the signed token agree without
+    decoding the token back); empty means the minter generates one.
     """
     if snapshot.license_scope != "deployment":
         raise DeploymentActivationError(
@@ -213,7 +216,7 @@ def build_deployment_license(
         license_claims=snapshot.license_claims,
         device_pubkey_thumbprint=deployment_pubkey_thumbprint,
         ttl_days=ttl_days,
-        jti="",
+        jti=jti,
         kid=kid,
         private_key_pem=private_key_pem,
     )

@@ -69,11 +69,15 @@ jobs:
 
       - name: Resolve bundle version
         id: version
+        env:
+          # `${{ }}` never appears inside `run:`: the dispatch input reaches bash as data through
+          # env and is read back as "$VAR", so a crafted value cannot become script text.
+          INPUT_VERSION: ${{ github.event.inputs.version || '0.1.1-dev' }}
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == runtime-bundle-v* ]]; then
             echo "version=${GITHUB_REF_NAME#runtime-bundle-v}" >> "$GITHUB_OUTPUT"
           else
-            echo "version=${{ github.event.inputs.version || '0.1.1-dev' }}" >> "$GITHUB_OUTPUT"
+            echo "version=${INPUT_VERSION}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build linux bundle in an amd64 container

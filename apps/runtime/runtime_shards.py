@@ -53,6 +53,7 @@ from typing import Any
 import structlog
 
 from apps.runtime.mojo_binary_freshness import inspect_mojo_binary_freshness
+from apps.runtime.worker_launch import launchable_worker_executable, launchable_worker_socket
 
 logger = structlog.get_logger(__name__)
 
@@ -189,7 +190,12 @@ class ShardWorkerProcess:
         """Start the worker. Returns False only when the binary is absent.
 
         Raises RuntimeError when an unverified binary is stale relative to its
-        sources — the same fail-fast the historical single-worker boot had.
+        sources — the same fail-fast the historical single-worker boot had — and
+        fails closed, exactly like ``daemon.MojoProcess.start()``, when a launch
+        parameter does not pass ``apps.runtime.worker_launch`` vetting:
+        ``NativeWorkerUnavailable`` (a RuntimeError) for a worker path that is
+        not an absolute, executable regular file; ``ValueError`` for a socket
+        path that is too long to bind or names an existing non-socket.
         """
         freshness = inspect_mojo_binary_freshness(self._binary)
         if not freshness.exists:
@@ -198,21 +204,30 @@ class ShardWorkerProcess:
                 worker=self._name,
                 path=str(self._binary),
                 hint=(
-                    "Install an Algenta build that includes the bundled runtime "
-                    "for this platform."
+                    "Install an Algenta build that includes the bundled runtime for this platform."
                 ),
             )
             return False
         if not self._verified and not freshness.is_fresh:
             raise RuntimeError(freshness.failure_message())
 
-        sock = Path(self._sock)
+        # Vet both launch parameters right here, before anything touches the filesystem
+        # or the OS -- the same gate daemon.MojoProcess.start() runs. The engine dir (and
+        # so every shard binary) derives from the operator's worker override and the shard
+        # sockets sit beside ALGENTA_MOJO_SOCK, so neither is trusted: the socket path must
+        # be bindable and never an existing non-socket (the stale-socket unlink below must
+        # not be pointable at an arbitrary file); the executable must be an absolute path
+        # to an executable regular file. Fail closed on either.
+        sock_path = launchable_worker_socket(self._sock)
+        worker = launchable_worker_executable(self._binary)
+
+        sock = Path(sock_path)
         sock.parent.mkdir(parents=True, exist_ok=True)
         if sock.exists():
             sock.unlink()
 
         self._proc = subprocess.Popen(  # noqa: S603
-            [str(self._binary), "--server", self._sock],
+            [str(worker), "--server", sock_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
@@ -397,7 +412,10 @@ class ShardWorkerPool:
             if not worker.is_running():
                 try:
                     started = worker.start()
-                except RuntimeError as exc:
+                except (RuntimeError, ValueError) as exc:
+                    # RuntimeError: stale unverified binary, or a worker path that failed
+                    # launch vetting. ValueError: a shard socket path that failed vetting.
+                    # Both surface as the typed error the executor reports to the caller.
                     raise ShardWorkerUnavailable(
                         f"runtime shard worker '{worker_name}' refused to start: {exc}"
                     ) from exc

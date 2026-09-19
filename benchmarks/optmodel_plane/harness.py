@@ -522,10 +522,11 @@ def main() -> None:
     # ── run the plane ──────────────────────────────────────────────────────────
     emit_runner()
     # Deterministic interleave: chunking the authored order would give one chunk
-    # all the deep-search instances of a family; hashing spreads them evenly.
+    # all the deep-search instances of a family; hashing spreads them evenly. (The digest is
+    # only a shuffle key -- nothing persists it -- so sha256 costs nothing here.)
     run_order = sorted(
         instances,
-        key=lambda i: hashlib.sha1(i["id"].encode("utf-8")).hexdigest())
+        key=lambda i: hashlib.sha256(i["id"].encode("utf-8")).hexdigest())
     chunks = emit_wires(run_order, args.chunk_size)
     if args.corrupt_wire:
         path, _ = chunks[0]

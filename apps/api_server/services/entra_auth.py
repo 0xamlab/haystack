@@ -37,6 +37,10 @@ from jwt import PyJWKSet
 
 from apps.api_server.config import get_settings
 from apps.api_server.services import egress_guard
+from apps.api_server.services.unverified_jwt_peek import (
+    UnverifiedJwtError,
+    peek_unverified_claims,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -122,8 +126,8 @@ def looks_like_entra_token(token: str) -> bool:
     if token.count(".") != 2:
         return False
     try:
-        iss = str(jwt.decode(token, options={"verify_signature": False}).get("iss") or "")
-    except jwt.PyJWTError:
+        iss = str(peek_unverified_claims(token).get("iss") or "")
+    except UnverifiedJwtError:
         return False
     # Parse and compare the HOST exactly — never a substring match (a substring check would
     # route e.g. "https://evil.example/login.microsoftonline.com" here; harmless because the
@@ -248,11 +252,16 @@ async def _signing_key(token: str, tenant_id: str) -> Any:
 
 
 def _reject_forbidden_audience(token: str) -> None:
-    """Fail fast (and with a precise error) when the token was minted for another resource."""
+    """Fail fast (and with a precise error) when the token was minted for another resource.
+
+    Reads the UNVERIFIED ``aud`` (routing-grade only): this can only ever make the gateway
+    reject sooner and more precisely. Acceptance is decided solely by the pinned, signature-
+    verified ``jwt.decode`` in :func:`verify_entra_token`, which re-checks ``aud`` itself.
+    """
 
     try:
-        aud = jwt.decode(token, options={"verify_signature": False}).get("aud")
-    except jwt.PyJWTError:
+        aud = peek_unverified_claims(token).get("aud")
+    except UnverifiedJwtError:
         return  # the real decode below will produce the canonical error
     auds = {str(a).lower().rstrip("/") for a in (aud if isinstance(aud, list) else [aud]) if a}
     if auds & {f.lower().rstrip("/") for f in _FORBIDDEN_AUDIENCES}:
@@ -284,11 +293,15 @@ async def verify_entra_token(token: str) -> EntraPrincipal:
 
     # Multi-tenant: the token's own tid determines which tenant JWKS signs it, but the tid
     # must be allowlisted BEFORE we fetch that tenant's keys (no key-fetch for strangers).
+    # This is an UNVERIFIED pre-read (payload segment only, no key involved) used purely to
+    # pick the issuer + JWKS; a forged tid buys an attacker nothing but the allowlisted
+    # tenant's public keys, against which their signature then fails in the verified decode
+    # below -- which also pins ``iss`` to that same tid, so the two can never disagree.
     try:
-        unverified = jwt.decode(token, options={"verify_signature": False})
-    except jwt.PyJWTError as exc:
+        unverified_claims = peek_unverified_claims(token)
+    except UnverifiedJwtError as exc:
         raise EntraAuthError("malformed_token", "Token was not parseable.") from exc
-    tid = str(unverified.get("tid") or "").strip().lower()
+    tid = str(unverified_claims.get("tid") or "").strip().lower()
     if not tid:
         raise EntraAuthError("missing_tenant", "Token carries no tenant id (tid).")
     if tid not in _allowed_tenants(settings):

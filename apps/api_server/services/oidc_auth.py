@@ -49,6 +49,10 @@ from jwt import PyJWKSet
 
 from apps.api_server.config import get_settings
 from apps.api_server.services import egress_guard
+from apps.api_server.services.unverified_jwt_peek import (
+    UnverifiedJwtError,
+    peek_unverified_claims,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -126,8 +130,8 @@ def looks_like_oidc_token(token: str) -> bool:
     if not configured_issuer:
         return False
     try:
-        iss = str(jwt.decode(token, options={"verify_signature": False}).get("iss") or "").strip()
-    except jwt.PyJWTError:
+        iss = str(peek_unverified_claims(token).get("iss") or "").strip()
+    except UnverifiedJwtError:
         return False
     return bool(iss) and iss.rstrip("/") == configured_issuer.rstrip("/")
 
