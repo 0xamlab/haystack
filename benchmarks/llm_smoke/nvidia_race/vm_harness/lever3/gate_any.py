@@ -6,6 +6,7 @@ fp32 oracle prefix, the 64-token run must be bit-identical across a repeat (dete
 and an early stop is only admissible when the oracle has EOS at the same index.
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -24,6 +25,31 @@ PLAN = {
     "rag4096": [(64, ["gate_rag4096_maxnew64"])],
 }
 
+# ── SCOPE, AND WHY A REDUCED GATE MUST NOT READ AS A FAILED ONE ───────────────────────────────
+# `PLAN` above enumerates all four prompts, and `all_pass` used to be False whenever any of them
+# had not run. That is correct when the caller asked for all four and WRONG when the caller
+# deliberately gated a subset: round 18 gated pp1024 alone (a 90-min cap cannot fund a full
+# four-prompt gate at ~38 min AND an n=5 rag4096 bracket at ~41 min), the cells it did run passed
+# 16/16 and 64/64 with a 2/2 bit-identical repeat, and this script still printed
+# `GATE ALL_PASS = False` — which the chain read as a numerics failure and refused to time.
+# A gate that reports FAIL for prompts nobody requested is not conservative, it is WRONG in the
+# direction that hides a real result, and it is the mirror image of the failure mode this script
+# exists to prevent.
+#
+# So: scope is an explicit input (argv[4], comma-separated, else $GATE_PROMPTS, else all four).
+# `all_pass` is computed over the IN-SCOPE prompts only. Out-of-scope prompts are recorded as
+# `OUT-OF-SCOPE` in the table and as `out_of_scope_prompts` in the JSON — never as NOT-RUN, never
+# silently dropped, so a reader can always see exactly what was and was not certified. An
+# in-scope prompt that did not run is still a hard failure. Backwards compatible: with no argv[4]
+# and no $GATE_PROMPTS the scope is all four and the behaviour is byte-for-byte the old one.
+_scope_arg = sys.argv[4] if len(sys.argv) > 4 else os.environ.get("GATE_PROMPTS", "")
+IN_SCOPE = {s.strip() for s in _scope_arg.replace(":", ",").split(",") if s.strip()} or set(PLAN)
+OUT_OF_SCOPE = [p for p in PLAN if p not in IN_SCOPE]
+UNKNOWN_SCOPE = sorted(IN_SCOPE - set(PLAN))
+if UNKNOWN_SCOPE:
+    print(f"FATAL: scope names no known prompt plan: {UNKNOWN_SCOPE} (known: {sorted(PLAN)})")
+    sys.exit(2)
+
 
 def last(path):
     if not path.exists():
@@ -40,10 +66,18 @@ def last(path):
 
 out = {"gate": f"oracle gate on {ARM}", "arm": ARM,
        "oracle": "cache-free fp32 transformers (~/adj/oracle3)",
+       "scope": sorted(IN_SCOPE), "out_of_scope_prompts": OUT_OF_SCOPE,
        "cells": {}, "all_pass": None}
 rows, allpass = [], True
 
 for p, specs in PLAN.items():
+    if p not in IN_SCOPE:
+        # RECORDED, NOT COUNTED. An out-of-scope prompt is a scope statement about what this gate
+        # certified, never a failure of the arm — and never silently omitted either.
+        out["cells"][p] = {"out_of_scope": True,
+                           "note": "not requested by this gate's scope; NOT certified either way"}
+        rows.append((p, "-", "OUT-OF-SCOPE", "not requested; not certified either way"))
+        continue
     op = ORC / f"{p}.json"
     if not op.exists():
         rows.append((p, "-", "ORACLE-MISSING", str(op))); allpass = False; continue
@@ -102,4 +136,8 @@ print("%-9s %8s %-30s %s" % ("prompt", "max_new", "verdict", "note"))
 for p, k, v, note in rows:
     print("%-9s %8s %-30s %s" % (p, k, v, note))
 print("\nGATE ALL_PASS =", allpass)
+# NEVER PRINT ALL_PASS WITHOUT ITS SCOPE. A bare `ALL_PASS = True` over one prompt reads the same
+# as one over four, and the whole point of a gate is that a reader knows what was certified.
+print(f"GATE SCOPE = {sorted(IN_SCOPE)}"
+      + (f"  (OUT OF SCOPE, NOT CERTIFIED: {OUT_OF_SCOPE})" if OUT_OF_SCOPE else "  (all four)"))
 print(f"WROTE {OUT}")

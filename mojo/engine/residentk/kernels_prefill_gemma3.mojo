@@ -88,7 +88,7 @@ from residentk.kernels_prefill_f32_v2 import (
     _G2_APAD,
     _G2_BPAD,
 )
-from residentk.loadvec import _ld4, _st4
+from residentk.loadvec import L0_ALIGN, _ld4, _st4
 
 alias _FP = UnsafePointer[Float32, origin=MutAnyOrigin]
 alias _HP = UnsafePointer[Float16, origin=MutAnyOrigin]
@@ -98,6 +98,65 @@ comptime _TG: Int = 256
 comptime _LANES: Int = 32
 comptime _SUBS: Int = _TG // _LANES
 comptime _NEG_HUGE: Float32 = -3.0e38
+
+comptime _G3_GEGLUV_VEC: Int = 8
+"""ROUND 18: f16 elements ONE THREAD owns in `_pf_geglu_rows_f16_vec_kernel`
+(`-D ALGENTA_G3_PF_GEGLU_V2`). 8 x Float16 = 16 bytes = `ld.global.v4.b32` /
+`st.global.v4.b32`, the widest single global access the ISA has, so one instruction per operand
+replaces the scalar twin's eight 2-byte accesses. This is the f16 analogue of `_VEC`/`_VEC_H` in
+`residentk.kernels`; `_VEC_H = 4` there is a METAL finding (half4 is a real MSL type) and does not
+carry over — on CUDA the transaction is 16 bytes wide regardless of element type."""
+
+
+@always_inline
+def _ld8h(p: _HP, off: Int) -> SIMD[DType.float16, _G3_GEGLUV_VEC]:
+    """A 16-byte global Float16 load at ELEMENT offset `off`, which MUST be a multiple of
+    `_G3_GEGLUV_VEC` at every call site. The f16 twin of `residentk.loadvec._ld4`: with
+    `L0_ALIGN` it carries the `alignment=16` annotation that lets the backend emit ONE
+    `ld.global.v4.b32` instead of eight scalar `ld.global.u16`, which is the defect the
+    micro-autopsy root-caused for f32 and which `_pf_geglu_rows_f16_kernel` still has — every
+    kernel-pointer parameter lowers `.param .u64 .ptr .align 1`, so no alignment survives to PTX
+    unless the load site states it.
+
+    MATH IS BIT-IDENTICAL: this changes only the load INSTRUCTION WIDTH, not the loaded bytes."""
+    @parameter
+    if L0_ALIGN:
+        return p.load[width=_G3_GEGLUV_VEC, alignment=16](off)
+    else:
+        return p.load[width=_G3_GEGLUV_VEC](off)
+
+
+@always_inline
+def _st8h(p: _HP, off: Int, v: SIMD[DType.float16, _G3_GEGLUV_VEC]):
+    """The STORE twin of `_ld8h` — a 16-byte global Float16 store at element offset `off`, which
+    MUST be a multiple of `_G3_GEGLUV_VEC` at every call site. Same reasoning as `loadvec._st4`:
+    vectorising the loads and then writing back eight scalar `st.global.u16` would leave half the
+    issue-slot pressure in place. MATH IS BIT-IDENTICAL: instruction width only."""
+    @parameter
+    if L0_ALIGN:
+        p.store[width=_G3_GEGLUV_VEC, alignment=16](off, v)
+    else:
+        p.store[width=_G3_GEGLUV_VEC](off, v)
+
+
+@always_inline
+def _g3_geglu_f16_elem(g: Float16, u: Float16) -> Float16:
+    """ONE GeGLU element, f16 in / f16 out. This is `_pf_geglu_rows_f16_kernel`'s body
+    TRANSPOSED VERBATIM — same constants, same f32 intermediate arithmetic, same operation order
+    (`inner = c0 * (g + c1*g*g*g)`, then `0.5*g*(1+tanh(inner))*u`), same single f16 rounding at
+    the end — so the vector kernel that calls it eight times is BIT-IDENTICAL to the scalar twin
+    per element. Nothing is re-associated, because there is nothing to re-associate: GeGLU is
+    purely elementwise, with no reduction across elements. That is exactly why this lever can
+    promise bit-identity where ROPEVEC could not (ROPEVEC moved the qk_norm reduction's
+    association; there is no reduction here).
+
+    Kept as its own `@always_inline` function rather than inlined at the eight call sites so the
+    transcription is in ONE place and a future reader diffs one body against one body."""
+    var gf = Float32(g)
+    var uf = Float32(u)
+    var inner = Float32(0.7978845608028654) * (gf + Float32(0.044715) * gf * gf * gf)
+    return Float16(Float32(0.5) * gf * (Float32(1.0) + tanh(inner)) * uf)
+
 
 comptime G3_PF_TILE: Int = 1024
 """Largest m_rows tile one gemma3 prefill chunk processes. 1024 puts both raced sonnet shapes
@@ -305,6 +364,102 @@ def _pf_geglu_rows_f16_kernel(act16: _HP, gu16: _HP, total_i64: Int64, n_ff_i64:
         var u = Float32(gu16[row * 2 * n_ff + n_ff + j])
         var inner = Float32(0.7978845608028654) * (g + Float32(0.044715) * g * g * g)
         act16[i] = Float16(Float32(0.5) * g * (Float32(1.0) + tanh(inner)) * u)
+
+
+def _pf_geglu_rows_f16_vec_kernel(act16: _HP, gu16: _HP, total_i64: Int64, n_ff_i64: Int64):
+    """`_pf_geglu_rows_f16_kernel` with the scalar 2-byte accesses replaced by 16-byte
+    `_ld8h`/`_st8h` — `-D ALGENTA_G3_PF_GEGLU_V2`, ROUND 18's lever #1.
+
+    WHY THIS KERNEL AND NOT ANOTHER. Round 15's exactly-attributed bucket census put this kernel
+    at **45.687 ms / 434 instances / 8.22% of `--from-first-attn` region busy** — larger than the
+    entire fused-attention bucket (38.114 ms) and never examined by any round before it. Round 17
+    priced it: its traffic is 6 bytes per output element (f16 gate read + f16 up read + f16
+    activation write), no re-reads, so over the region's 365056 rows x 21504 elements it moves
+    **47.101 GB**, whose roof at the campaign's own 4.8 TB/s HBM3e constant is **9.813 ms**. It
+    measures 4.656x that, i.e. it achieves **1.031 TB/s = 21.5% of roof**. And it is not compute:
+    the 70.65 GFLOP of elementwise math prices at 0.0714 ms (0.156% of measured) at the 1410
+    MHz-pinned 989 TF/s, and even charging every one of the 7.850 G `tanh` calls to the SFU at
+    16/SM/clk x 132 SM x 1.41 GHz leaves 2.636 ms = 5.8%. **The 4.66x gap to roof is an
+    access-pattern problem, and the source says which one:** one thread per element, three 2-byte
+    global accesses each. `-D ALGENTA_G3_GEGLU_U4` is in the shipped default's flag stack but
+    vectorises the DECODE GEMV (`_g3_norm_gemv2_geglu_kernel_f16_u4`, `grid = ceil(d_ff/_SUBS)`);
+    the prefill f16 GeGLU had **no vectorised twin at all**.
+
+    THE PRECEDENT IS IN-LANE AND MEASURED. ROPEVEC (`-D ALGENTA_G3_PF_ROPEVEC`, round 13, now
+    default ON) made exactly this change to the RoPE family — scalar 4-byte accesses to
+    `_ld4`/`_st4` 16-byte quads — and delivered **-1.687 ms on rag4096 at 14.5x its bracket drift
+    armor**. That was against a 6.680 ms pool. This one is 45.687 ms at 21.5% of roof, so the
+    same mechanism is being applied to a pool 6.8x larger and 4.4x further from its roof.
+
+    WHAT CHANGES. Thread `t` of block `b` owns the EIGHT CONTIGUOUS elements
+    `g8 = b * (_TG * _G3_GEGLUV_VEC) + t * _G3_GEGLUV_VEC`, so:
+
+        per 8 output elements, scalar twin   ->  this kernel
+        global loads   16 x ld.global.u16    ->  2  x ld.global.v4.b32
+        global stores   8 x st.global.u16    ->  1  x st.global.v4.b32
+        memory instrs  24                   ->  3        (8x fewer)
+        threads       8                     ->  1
+        grid blocks   ceil(total/256)       ->  ceil(total/2048)   (8x fewer launches)
+        cross-lane     none                 ->  none
+        arithmetic     8 elements' worth    ->  the same 8 elements' worth, unchanged
+
+    A warp of 32 lanes now covers 256 contiguous f16 = 512 bytes per instruction, which is four
+    fully-coalesced 128-byte sectors — the scalar twin's warp covered 64 bytes and wasted three
+    quarters of every sector it touched.
+
+    **BIT-IDENTICAL BY CONSTRUCTION, and this is the strongest correctness claim in the file.**
+    GeGLU is purely ELEMENTWISE: there is no reduction, no accumulation and no cross-element
+    data movement anywhere in it, so there is no association order to change. Each of the eight
+    lanes is computed by `_g3_geglu_f16_elem`, which is the scalar twin's body transposed
+    VERBATIM — the same two constants `0.7978845608028654` / `0.044715`, the same f32 widening of
+    both operands, the same `inner = c0 * (g + c1*g*g*g)` order, the same
+    `0.5*g*(1+tanh(inner))*u` order, the same single f16 rounding at the store. The SIMD lanes do
+    not interact. So the output tensor is bit-for-bit the scalar twin's, element for element, at
+    every m. Contrast ROPEVEC, which had to re-associate the qk_norm sum-of-squares and is
+    therefore certified by the fp32 oracle rather than claimed exact. **This lever is still put
+    through the same G0/G1 oracle gates with a bit-identical repeat, because a claim of
+    bit-identity is a hypothesis until the gate says so** — but unlike ROPEVEC and LTALGO the
+    expected result is EXACT equality with the control arm, not merely oracle agreement.
+
+    STRUCTURAL CONTRACT, discharged at the dispatch site (which keeps the scalar twin for any
+    shape that does not meet it, so no build can reach this kernel with a ragged tail):
+      * `n_ff % _G3_GEGLUV_VEC == 0`. gemma-3-27b's `d_ff = 21504 = 8 x 2688`, so this holds;
+        it is what makes `total = m * n_ff` a multiple of 8 too, so the group guard `g8 < total`
+        is exact and NO thread can read or write past either buffer.
+      * 16-BYTE ALIGNMENT of all three access streams. Both buffers are `DeviceBuffer` bases,
+        which `align_check_probe.mojo` PROVED 256-byte aligned on the A100 (a superset of 16);
+        the gate/up element offset is `row * 2*n_ff + j` with `j` a multiple of 8 and `2*n_ff`
+        therefore a multiple of 16, and the up half adds `n_ff` which is itself a multiple of 8 —
+        so gate, up and activation offsets are all multiples of 8 elements = 16 bytes. That is
+        the same promise `loadvec` exists to make, restated for f16 and for this layout.
+
+    Grid `ceil(m * n_ff / (_TG * _G3_GEGLUV_VEC))`, block `_TG` — the scalar twin's grid divided
+    by `_G3_GEGLUV_VEC`, with the same `_TG` block so occupancy per SM is unchanged."""
+    var total = Int(total_i64)
+    var n_ff = Int(n_ff_i64)
+    # The element index of this thread's FIRST owned element. Multiples of _G3_GEGLUV_VEC by
+    # construction, which is what discharges both halves of the alignment contract above.
+    var g8 = (Int(block_idx.x) * _TG + Int(thread_idx.x)) * _G3_GEGLUV_VEC
+    if g8 < total:
+        var row = g8 // n_ff
+        var j = g8 - row * n_ff
+        var base = row * 2 * n_ff + j
+        var gv = _ld8h(gu16, base)          # gate columns j .. j+7
+        var uv = _ld8h(gu16, base + n_ff)   # their up partners, n_ff + j .. n_ff + j+7
+        _st8h(
+            act16,
+            g8,
+            SIMD[DType.float16, _G3_GEGLUV_VEC](
+                _g3_geglu_f16_elem(gv[0], uv[0]),
+                _g3_geglu_f16_elem(gv[1], uv[1]),
+                _g3_geglu_f16_elem(gv[2], uv[2]),
+                _g3_geglu_f16_elem(gv[3], uv[3]),
+                _g3_geglu_f16_elem(gv[4], uv[4]),
+                _g3_geglu_f16_elem(gv[5], uv[5]),
+                _g3_geglu_f16_elem(gv[6], uv[6]),
+                _g3_geglu_f16_elem(gv[7], uv[7]),
+            ),
+        )
 
 
 comptime _G3_ROPE_WARPS_PER_BLOCK: Int = 8

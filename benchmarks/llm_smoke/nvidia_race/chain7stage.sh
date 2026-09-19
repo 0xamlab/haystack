@@ -36,6 +36,23 @@ HB_PID=$!
 trap 'kill $HB_PID 2>/dev/null' EXIT
 setphase() { PHASE="$1"; echo "=== [$(ts)] PHASE: $1 ==="; }
 
+# Which synced tree the fixture checker is read from. ROUND 18: this was HARDCODED to $HOME/g3r7,
+# which worked only because that directory happens to survive on the boot disk (the local SSD
+# persists across a stop; /tmp and /mnt/ramblob do not). A round that syncs to a fresh directory
+# and finds g3r7 cleaned up would have died at the fixture-identity phase with the GPU pinned and
+# the clock running. So: STAGE_SRC if the caller set it, else the newest g3r* tree that actually
+# carries the checker, else g3r7 for byte-compatibility with every previous round.
+stage_src() {
+  local d
+  if [[ -n "${STAGE_SRC:-}" && -f "$STAGE_SRC/benchmarks/llm_smoke/nvidia_race/check_fixtures_gemma3_round5.py" ]]; then
+    echo "$STAGE_SRC"; return
+  fi
+  for d in $(ls -1dt "$HOME"/g3r* 2>/dev/null); do
+    [[ -f "$d/benchmarks/llm_smoke/nvidia_race/check_fixtures_gemma3_round5.py" ]] && { echo "$d"; return; }
+  done
+  echo "$HOME/g3r7"
+}
+
 setphase "inventory"
 echo "--- what survived the stop (local SSD) ---"
 for d in "$TR" "$HOME/lever3" "$HOME/lever6/runs" "$HOME/adj/build"; do
@@ -80,7 +97,7 @@ setphase "fixture_identity"
 # later round can point at its own newest certified echoes.
 FIXREF_RUNS="${FIXREF_RUNS:-$HOME/lever6/gate_R6_kv16_bn32}" \
 FIXREF_MARKER="${FIXREF_MARKER:-$L7/FIXTURES_OK}" \
-  /usr/bin/python3 "$HOME/g3r7/benchmarks/llm_smoke/nvidia_race/check_fixtures_gemma3_round5.py"
+  /usr/bin/python3 "$(stage_src)/benchmarks/llm_smoke/nvidia_race/check_fixtures_gemma3_round5.py"
 rc=$?
 if (( rc != 0 )) || [[ ! -f "$L7/FIXTURES_OK" ]]; then
   echo "FIXTURE_IDENTITY_FAIL — ABORT. Nothing may be measured against unproven fixtures."

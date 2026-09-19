@@ -88,6 +88,8 @@ from residentk.kernels_prefill_gemma3 import (
     _pf_embed_rows_g3_kernel_f16,
     _pf_geglu_rows_kernel,
     _pf_geglu_rows_f16_kernel,
+    _pf_geglu_rows_f16_vec_kernel,
+    _G3_GEGLUV_VEC,
     _pf_rmsnorm_rows_f16_kernel,
     _pf_ropewrt_warps_kernel,
     _pf_ropewrt_warps_vec_kernel,
@@ -256,6 +258,37 @@ layer's largest non-GEMM traffic term: the f32 chain writes 176 MB of C, reads i
 GEMM epilogue instead of after it), so it carries its own flag and its own token-identity gate;
 the down_proj A itself IS bit-identical, since `_pf_geglu_rows_f16_kernel` rounds its f32
 result once at the store exactly where the shim's convert pass would have."""
+
+comptime G3_PF_GEGLU_V2: Bool = G3_PF_F16MLP and is_defined["ALGENTA_G3_PF_GEGLU_V2"]()
+"""ROUND 18 (`-D ALGENTA_G3_PF_GEGLU_V2`, **DEFAULT OFF**): dispatch the VECTORISED f16 prefill
+GeGLU twin `_pf_geglu_rows_f16_vec_kernel` — 8 f16 per thread through one 16-byte
+`ld.global.v4.b32` per operand and one per store — instead of F16MLP's scalar one-thread-per-
+element `_pf_geglu_rows_f16_kernel` with its three 2-byte accesses per element.
+
+Gated on `G3_PF_F16MLP` because it replaces THAT kernel and not the f32 `_pf_geglu_rows_kernel`,
+so with F16MLP off this is inert by construction and no build can reach the vector twin without
+also carrying the f16 chain it vectorises. This is ROPEVEC's gating pattern exactly
+(`G3_PF_ROPEVEC = G3_PF_ROPE2 and not NO_ROPEVEC`), and it is the reason an A/B of this flag
+isolates ONE lever: the control arm is the shipped default byte-for-byte.
+
+WHY THIS IS LEVER #1 AND NOT A MICRO-OPTIMISATION. Round 15's exactly-attributed census put this
+kernel at **45.687 ms = 8.22% of `--from-first-attn` region busy, 434 instances** — a larger pool
+than the whole fused-attention bucket (38.114 ms), and one no round had examined. Round 17 priced
+it against its own traffic: 6 bytes per output element with no re-reads is **47.101 GB** over the
+region, whose roof at the campaign's 4.8 TB/s constant is **9.813 ms**, so it runs at **4.656x
+roof = 1.031 TB/s = 21.5% of achievable bandwidth**, with the FMA pipe at 0.156% of measured and
+even the 7.850 G `tanh` calls at the SFU rate only 5.8%. Memory bound, badly, for a structural
+reason visible in the source. Evidenced headroom **35.874 ms raw / 23.318-28.700 ms at the
+campaign's calibrated 65-80% probe->wall transfer band** — against a bar that needs **12.07 ms**,
+so this single lever clears it at any transfer ratio in the band.
+
+**BIT-IDENTICAL to the control by construction** (the kernel's own docstring carries the argument:
+GeGLU is purely elementwise, so there is no reduction to re-associate, and the per-element
+expression is transposed verbatim into `_g3_geglu_f16_elem`). It is nevertheless gated on the
+fp32 oracle with a bit-identical determinism repeat before any timing cell, because "bit-identical
+by construction" is a hypothesis until a gate says so — and here the gate's expected result is
+EXACT agreement with the control arm rather than the weaker oracle agreement ROPEVEC and LTALGO
+had to settle for."""
 
 comptime G3_PF_F16ATTN: Bool = G3_PF_FA and is_defined["ALGENTA_G3_PF_F16ATTN"]()
 """The pre-staged-A attention-output lever (round 5): the fused flash kernel writes its
@@ -1222,7 +1255,8 @@ struct _CudaResidentGemma3F16(Movable):
               "| F16MLP =", G3_PF_F16MLP, "| F16ATTN =", G3_PF_F16ATTN, "| ROPE2 =",
               G3_PF_ROPE2,
               "| STREAM =", G3_STREAM,
-              "| GEGLU_U4 =", _G3_GEGLU_U4, "| FA_BN =", _G3_PF_FA_BN, "| FA_KV32 =",
+              "| GEGLU_U4 =", _G3_GEGLU_U4, "| GEGLU_V2 =", G3_PF_GEGLU_V2,
+              "| FA_BN =", _G3_PF_FA_BN, "| FA_KV32 =",
               _G3_PF_FA_KV32, "| FA_MIN_M =", _G3_PF_FA_MIN_M, "| max_ctx =", self.max_ctx)
         @parameter
         if G3_PF_ROPE2:
@@ -1274,6 +1308,22 @@ struct _CudaResidentGemma3F16(Movable):
         @parameter
         if G3_PF_F16MLP:
             print("TCFLAG ALGENTA_G3_PF_F16MLP=1 (f16 gate/up C + f16 GeGLU -> f16 down A)")
+        @parameter
+        if G3_PF_GEGLU_V2:
+            # ROUND 18. Audited by BOTH this literal AND `gegluv_armed`, for the reason round 17
+            # restated from the 7B lane: the literal proves the macro reached the compiler, but
+            # only the field proves the LEVER TOOK EFFECT. The dispatch site declines to the
+            # scalar twin whenever `d_ff % _G3_GEGLUV_VEC != 0`, so a binary can carry the flag
+            # and still run the control kernel — `gegluv_armed = false` means exactly that, and
+            # a cell measured on such a binary must be read as a control cell. It cannot happen
+            # on gemma-3-27b (`d_ff = 21504 = 8 x 2688`), which is why the value is printed
+            # rather than assumed.
+            print("TCFLAG ALGENTA_G3_PF_GEGLU_V2=1 (the f16 prefill GeGLU combine dispatches the",
+                  "VECTORISED twin:", _G3_GEGLUV_VEC, "f16 = 16 bytes per thread per operand,",
+                  "one ld.global.v4.b32 for the gate, one for the up, one st.global.v4.b32 out,",
+                  "grid ceil(m*d_ff/", _TG * _G3_GEGLUV_VEC, "); BIT-IDENTICAL to the scalar",
+                  "twin — elementwise only, no reduction, expression transposed verbatim) |",
+                  "gegluv_armed =", self.d_ff % _G3_GEGLUV_VEC == 0, "| d_ff =", self.d_ff)
         @parameter
         if G3_PF_F16ATTN:
             print("TCFLAG ALGENTA_G3_PF_F16ATTN=1 (fused attention writes the f16 o_proj A)")
@@ -1849,11 +1899,51 @@ struct _CudaResidentGemma3F16(Movable):
                         if r != 0:
                             return _StepOut(-1, 0.0, issued, RESIDENT_ERR_LAUNCH_FAILED)
                         if gu_f16:
-                            self.ctx.enqueue_function[_pf_geglu_rows_f16_kernel](
-                                self.pf_act16.unsafe_ptr(), self.pf_gu16.unsafe_ptr(),
-                                Int64(m * self.d_ff), Int64(self.d_ff),
-                                grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
-                            )
+                            # ROUND 18 (`-D ALGENTA_G3_PF_GEGLU_V2`): the vector twin takes the
+                            # SAME two arguments — total elements and n_ff — and derives its own
+                            # 8-element groups internally, so the ONLY difference at this site is
+                            # the grid (`_TG * _G3_GEGLUV_VEC` elements per block instead of
+                            # `_TG`, i.e. 8x fewer launches for the same work).
+                            #
+                            # Its structural contract is DISCHARGED HERE, not inside the kernel:
+                            # `d_ff % _G3_GEGLUV_VEC == 0` is what makes `total = m * d_ff` a
+                            # multiple of 8 too, so the group guard is exact and no thread can
+                            # read or write past either buffer, and it is also what makes all
+                            # three element offsets multiples of 8 elements = 16 bytes, which is
+                            # the alignment promise `_ld8h`/`_st8h` carry. A shape that does not
+                            # meet it keeps the scalar twin byte-for-byte, so the flag can never
+                            # produce a ragged tail on ANY model. gemma-3-27b's
+                            # `d_ff = 21504 = 8 x 2688` meets it at every m.
+                            #
+                            # With the flag off this whole `@parameter if` is elided, so the
+                            # control binary never instantiates the twin at all — which is what
+                            # makes a flag-differential over the kernel symbols a valid identity
+                            # proof for this lever (the twin's symbol APPEARS with the define and
+                            # the scalar f16 one's launch site is unchanged).
+                            @parameter
+                            if G3_PF_GEGLU_V2:
+                                if self.d_ff % _G3_GEGLUV_VEC == 0:
+                                    self.ctx.enqueue_function[_pf_geglu_rows_f16_vec_kernel](
+                                        self.pf_act16.unsafe_ptr(),
+                                        self.pf_gu16.unsafe_ptr(),
+                                        Int64(m * self.d_ff), Int64(self.d_ff),
+                                        grid_dim=_ceil_div(
+                                            m * self.d_ff, _TG * _G3_GEGLUV_VEC),
+                                        block_dim=_TG,
+                                    )
+                                else:
+                                    self.ctx.enqueue_function[_pf_geglu_rows_f16_kernel](
+                                        self.pf_act16.unsafe_ptr(),
+                                        self.pf_gu16.unsafe_ptr(),
+                                        Int64(m * self.d_ff), Int64(self.d_ff),
+                                        grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
+                                    )
+                            else:
+                                self.ctx.enqueue_function[_pf_geglu_rows_f16_kernel](
+                                    self.pf_act16.unsafe_ptr(), self.pf_gu16.unsafe_ptr(),
+                                    Int64(m * self.d_ff), Int64(self.d_ff),
+                                    grid_dim=_ceil_div(m * self.d_ff, _TG), block_dim=_TG,
+                                )
                         else:
                             self.ctx.enqueue_function[_pf_geglu_rows_kernel](
                                 self.pf_act.unsafe_ptr(), self.pf_gu.unsafe_ptr(),

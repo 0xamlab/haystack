@@ -1,5 +1,5 @@
 {
- "kernel_count": 198,
+ "kernel_count": 199,
  "kernels": [
   {
    "backend": "metal",
@@ -1040,6 +1040,14 @@
    ],
    "module": "residentk.kernels_prefill_gemma3",
    "name": "pf_geglu_rows_f16_kernel"
+  },
+  {
+   "backend": "cuda",
+   "families": [
+    "gemma3"
+   ],
+   "module": "residentk.kernels_prefill_gemma3",
+   "name": "pf_geglu_rows_f16_vec_kernel"
   },
   {
    "backend": "cuda",

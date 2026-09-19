@@ -160,6 +160,12 @@ FLAGS_G3=(
     "ALGENTA_G3_PF_GQA2=1|ALGENTA_G3_PF_GQA2"
     "ALGENTA_G3_PF_TCATTN=1|ALGENTA_G3_PF_TCATTN"
     "ALGENTA_G3_STREAM=1|ALGENTA_G3_STREAM"
+    # ROUND 18 — the vectorised f16 prefill GeGLU twin. The literal proves the macro reached the
+    # compiler; `gegluv_armed` (below) proves the LEVER TOOK EFFECT, because the dispatch site
+    # declines to the scalar twin whenever `d_ff % _G3_GEGLUV_VEC != 0`. Same hazard class as
+    # LTALGO's `lt_shapes_tuned`, and checked for the same reason: a cell measured on a declined
+    # arm is a CONTROL cell wearing the lever's name.
+    "ALGENTA_G3_PF_GEGLU_V2=1|ALGENTA_G3_PF_GEGLU_V2"
 )
 # ALGENTA_7B_CTX8192 has no banner of its own (it only widens MAX_CTX); it is audited through
 # the runtime `TC FLAGS:` banner's `max_ctx =` field, which the session prints at open. The
@@ -190,6 +196,12 @@ O16_ARMED_PAT="o16_twin = armed"
 O16_DECLINED_PAT="f16 O twin DECLINED"
 O16_VERIFY_PAT="O16 VERIFY RESULT: PASS"
 LT_INSITU_FROZEN_PAT="LT INSITU: FROZEN 4"
+# ROUND 18's runtime-effect field. It rides the GEGLU_V2 TCFLAG line rather than the `G3 FLAGS:`
+# banner for LTALGO's reason restated: the banner is printed unconditionally, so reading a
+# lever-conditional value from it would make every flag-off build reference the twin.
+# `gegluv_armed = false` means the shape gate declined and the arm ran the SCALAR twin — i.e. the
+# cell is a control cell. It cannot be false on gemma-3-27b (`d_ff = 21504 = 8 x 2688`).
+GEGLUV_ARMED_PAT="gegluv_armed = true"
 
 # POSITIVE CONTROLS. A literal every driver of the family carries regardless of flags. If
 # neither is found, the audit is broken (not the binary) and must abort rather than report an
@@ -255,6 +267,7 @@ for bin in "$BIN_DIR"/$pat; do
     o16ver=""
     o16shimver=""
     ltins=""
+    gegluvline=""
     if [[ -n "$LOG_DIR" ]]; then
         lg=$(grep -rl -m1 -F "$name" "$LOG_DIR" 2>/dev/null | head -1)
         if [[ -n "${lg:-}" && -f "$lg" ]]; then
@@ -284,6 +297,8 @@ for bin in "$BIN_DIR"/$pat; do
             o16ver=$(grep -m1 "O16 VERIFY RESULT" "$lg" 2>/dev/null | head -1)
             o16shimver=$(grep -m1 "TC O16 VERIFY" "$lg" 2>/dev/null | head -1)
             ltins=$(grep -m1 "LT INSITU: FROZEN" "$lg" 2>/dev/null | head -1)
+            # ROUND 18: the GEGLU_V2 TCFLAG line, which carries `gegluv_armed` and `d_ff`.
+            gegluvline=$(grep -m1 "gegluv_armed" "$lg" 2>/dev/null | head -1)
         fi
     fi
     {
@@ -328,6 +343,11 @@ for bin in "$BIN_DIR"/$pat; do
         echo "   \"o16_declined_at_runtime\": $( [[ -n "$o16dec" ]] && echo true || echo false ),"
         echo "   \"o16_verify_pass\": $( [[ "$o16ver" == *"$O16_VERIFY_PAT"* ]] && echo true || echo false ),"
         echo "   \"lt_insitu_frozen_4\": $( [[ "$ltins" == *"$LT_INSITU_FROZEN_PAT"* ]] && echo true || echo false ),"
+        # ROUND 18: `gegluv_armed` is the one field whose FALSE value is bad while the flag is
+        # present — it means the shape gate declined to the scalar twin, so the cell measured the
+        # control kernel while claiming ALGENTA_G3_PF_GEGLU_V2. Recorded per-arm, never assumed.
+        echo "   \"gegluv_armed\": $( [[ "$gegluvline" == *"$GEGLUV_ARMED_PAT"* ]] && echo true || echo false ),"
+        echo "   \"gegluv_line\": $( [[ -n "$gegluvline" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$gegluvline" || echo null ),"
         echo "   \"o16_line\": $( [[ -n "$o16line" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16line" || echo null ),"
         echo "   \"o16_decline_line\": $( [[ -n "$o16dec" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16dec" || echo null ),"
         echo "   \"o16_verify_line\": $( [[ -n "$o16ver" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16ver" || echo null ),"

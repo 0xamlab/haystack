@@ -159,8 +159,17 @@ if [[ "$STAGE" == "gate" ]]; then
   banner_audit "$ARM" || exit 3
   quiesce || exit 1
   BIN=$BIN_DIR/$ARM
-  for spec in "pp256:/tmp/g3pp256/prompt_0000.txt" "pp1024:/tmp/g3pp1024/prompt_0000.txt" \
-              "val550:/tmp/g3race500/prompt_0000.txt" "rag4096:/tmp/g3rag/rag4096.txt"; do
+  # GATE_SPECS lets a caller gate a SUBSET of the four prompts. The default is the full round-6
+  # set, so nothing changes for any existing caller. ROUND 18 uses it because a full four-prompt
+  # gate is 11 cells at ~110-135 s = ~38 min, and a 90-min cap that also has to fund staging
+  # (~14 min), a build (~6 min) and an n=5 bracket (~41 min) cannot carry both a full gate and a
+  # bracket. Gating the TWO BRACKETED SHAPES is the subset the timing claim actually rests on, and
+  # a reduced gate is recorded as reduced in the ledger rather than passed off as the full one.
+  GATE_SPECS=${GATE_SPECS:-"pp256:/tmp/g3pp256/prompt_0000.txt pp1024:/tmp/g3pp1024/prompt_0000.txt \
+val550:/tmp/g3race500/prompt_0000.txt rag4096:/tmp/g3rag/rag4096.txt"}
+  n_specs=$(echo "$GATE_SPECS" | wc -w | tr -d ' ')
+  (( n_specs != 4 )) && log "NOTE: NON-DEFAULT gate scope -- $n_specs of 4 prompts: [$GATE_SPECS]"
+  for spec in $GATE_SPECS; do
     n=${spec%%:*}; f=${spec##*:}
     for k in 16 64; do
       [[ "$n" == "rag4096" && "$k" == "16" ]] && continue
@@ -168,8 +177,16 @@ if [[ "$STAGE" == "gate" ]]; then
     done
     cw_cell "gate_${n}_maxnew64_rep2" "$BIN" "$CKPT" --tokens-file "$f" --max-new 64 --f16 --prefill
   done
+  # PASS THE SCOPE TO THE GATE. gate_any.py's PLAN enumerates all four prompts and used to report
+  # all_pass=False for any prompt that had not run, so a deliberately reduced gate read as a FAILED
+  # gate and the chain refused to time an arm whose in-scope cells had all passed. Deriving the
+  # scope from the same GATE_SPECS that decided which cells to run makes the two impossible to
+  # disagree, and gate_any.py prints the scope next to ALL_PASS so a reduced gate can never be
+  # mistaken for a full one.
+  gate_scope=$(echo "$GATE_SPECS" | tr ' ' '\n' | cut -d: -f1 | paste -sd, -)
+  log "gate scope passed to gate_any.py: [$gate_scope]"
   $PY "$GATE_ANY" "$RUNS" "$MEAS/oracle_gate_$ARM.json" \
-    "round-6 $ARM" 2>&1 | tee -a "$CW_LOGFILE"
+    "round-6 $ARM" "$gate_scope" 2>&1 | tee -a "$CW_LOGFILE"
   if ! $PY -c "import json,sys; sys.exit(0 if json.load(open('$MEAS/oracle_gate_$ARM.json'))['all_pass'] else 1)"; then
     log "GATE FAILED for $ARM -> no timing cells may be published for this arm"
     exit 1
