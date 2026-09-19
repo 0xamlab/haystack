@@ -1,0 +1,171 @@
+# gitbook-status-repair -- re-asserts a GitBook `success` commit status that GitBook itself
+# buried under an out-of-order `pending`.
+#
+# GitBook's GitHub App posts two commit statuses per commit, contexts `GitBook` and
+# `GitBook - docs.algenta.ai/`. The normal sequence is pending -> success within ~3 s (#1071,
+# head 4524e341: 21:13:06Z pending -> 21:13:09Z success). Sometimes the pair arrives inverted.
+# PR #1072 (head 5f12d6f5) is the verified case: `success` at 21:50:27Z ("Check the changes in
+# the GitBook editor.", with a target_url) and then `pending` ("Updating content on GitBook...")
+# at 21:50:28Z -- ONE SECOND LATER. GitHub renders the most recently created status per context,
+# so the pull request showed "GitBook -- pending" indefinitely although GitBook had already
+# finished. GitBook is not a required check, so nothing was blocked; the stuck check had to be
+# cleared by hand at 22:22:59Z. This workflow is that repair, performed by GitHub itself.
+#
+# Mechanism. The `status` event fires on every commit status in the repository. The job is gated
+# to GitBook `pending` statuses only, so every other status (other apps, GitBook's own
+# success/failure/error, and the success this job re-posts -- which, being posted with
+# GITHUB_TOKEN, does not start a run at all) produces a skipped job and nothing else. The job
+# then re-reads every status on the commit and, for the context that fired, checks whether the
+# LATEST status is still `pending` while GitBook's last non-pending word on that context was
+# `success`. If so, it re-posts that success: same context, same target_url, and a description
+# naming the original success time. If the context has no terminal status yet, GitBook is
+# genuinely still working: the job re-reads for up to 90 s (the inverted pair lands within
+# seconds, and a run starts a few seconds after its event) and then leaves it alone.
+#
+# Invariants, each enforced in the script below: never touch a non-GitBook context; never post
+# any state but `success`; never post when the latest status is already `success`; never post
+# when GitBook's last terminal state was `failure`/`error`. (GitBook has never posted a pending
+# after a genuine failure, but re-asserting a success over one would be wrong, so the check is
+# on the LAST terminal state, not on "a success exists somewhere in the history".)
+#
+# Deliberately dependency-free: no actions, no checkout, the runner image's own `gh` and `jq`.
+name: gitbook-status-repair
+
+on:
+  status: {}
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA whose GitBook statuses to inspect and, if out of order, repair"
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  repair:
+    # A `status` run only makes sense for the stuck half of the pair: a GitBook `pending`. A
+    # dispatch always runs; the script re-checks every invariant itself before posting anything.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (startsWith(github.event.context, 'GitBook') && github.event.state == 'pending')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      statuses: write # POST /repos/{repo}/statuses/{sha}; read is implied by write
+    steps:
+      - name: Re-post GitBook's success over its out-of-order pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.event.sha }}
+          # A `status` run repairs only the context that fired: each GitBook context fires its own
+          # event, so two contexts get two independent runs and no duplicate posts. A dispatch
+          # covers every GitBook context on the commit.
+          ONLY_CONTEXT: ${{ github.event_name == 'status' && github.event.context || '' }}
+          TRIGGER: ${{ github.event_name }}
+          # How long to keep re-reading while a context is pending with no terminal status yet.
+          WAIT_BUDGET_S: "90"
+          POLL_EVERY_S: "15"
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$SHA" =~ ^[0-9a-f]{7,40}$ ]]; then
+            echo "::error::expected a hex commit SHA, got '${SHA}'"
+            exit 1
+          fi
+
+          summary() { printf '%s\n' "$*" | tee -a "$GITHUB_STEP_SUMMARY"; }
+
+          scope=""
+          if [[ -n "$ONLY_CONTEXT" ]]; then
+            scope=" for context \`${ONLY_CONTEXT}\`"
+          fi
+
+          # Every status ever posted on the commit, all pages, oldest first. `--paginate` follows
+          # the Link header, `--jq '.[]'` streams the elements, `jq -s` gathers them back into one
+          # array. Order by created_at then id: the API's timestamps are whole seconds, and GitHub
+          # itself breaks a same-second tie by id (the later post has the higher id).
+          fetch_statuses() {
+            gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${SHA}/statuses?per_page=100" --jq '.[]' \
+              | jq -s 'sort_by(.created_at, .id)'
+          }
+
+          # One decision per GitBook context, one compact JSON object per line:
+          #   {context, action, latest_state, latest_at, terminal_state, success_at, target_url}
+          # action:
+          #   repair  -- latest is pending, last terminal state is success     -> re-post that success
+          #   wait    -- latest is pending, no terminal state yet              -> GitBook still working
+          #   settled -- latest is not pending                                 -> nothing to do
+          #   leave   -- latest is pending, last terminal state failure/error  -> never post over it
+          decide() {
+            jq -c --arg only "$ONLY_CONTEXT" '
+              map(select(.context | startswith("GitBook")))
+              | map(select($only == "" or .context == $only))
+              | group_by(.context)
+              | map(
+                  .[-1] as $latest
+                  | (map(select(.state != "pending")) | if length > 0 then .[-1] else null end) as $terminal
+                  | ($terminal != null and $terminal.state == "success") as $ok
+                  | {
+                      context: $latest.context,
+                      latest_state: $latest.state,
+                      latest_at: $latest.created_at,
+                      terminal_state: (if $terminal != null then $terminal.state else null end),
+                      success_at: (if $ok then $terminal.created_at else null end),
+                      target_url: (if $ok then $terminal.target_url else null end),
+                      action: (
+                        if $latest.state != "pending" then "settled"
+                        elif $terminal == null then "wait"
+                        elif $terminal.state == "success" then "repair"
+                        else "leave" end)
+                    })
+              | .[]'
+          }
+
+          deadline=$(( SECONDS + WAIT_BUDGET_S ))
+          while :; do
+            decisions="$(fetch_statuses | decide)"
+            if [[ -z "$decisions" ]]; then
+              summary "gitbook-status-repair: no GitBook status on ${SHA}${scope} -- nothing to do."
+              exit 0
+            fi
+            waiting="$(jq -r 'select(.action == "wait") | .context' <<<"$decisions")"
+            if [[ -z "$waiting" ]] || (( SECONDS >= deadline )); then
+              break
+            fi
+            echo "pending with no terminal status yet: ${waiting//$'\n'/, } -- re-reading in ${POLL_EVERY_S}s ($(( deadline - SECONDS ))s of the wait budget left)"
+            sleep "$POLL_EVERY_S"
+          done
+
+          summary "## gitbook-status-repair -- ${SHA} (${TRIGGER}${scope})"
+          while IFS= read -r d; do
+            ctx="$(jq -r '.context' <<<"$d")"
+            action="$(jq -r '.action' <<<"$d")"
+            latest_state="$(jq -r '.latest_state' <<<"$d")"
+            latest_at="$(jq -r '.latest_at' <<<"$d")"
+            case "$action" in
+              settled)
+                summary "- \`${ctx}\`: latest is \`${latest_state}\` at ${latest_at} -- nothing to do."
+                ;;
+              wait)
+                summary "- \`${ctx}\`: \`pending\` since ${latest_at} with no success or failure after ${WAIT_BUDGET_S}s -- GitBook is genuinely still working; left alone."
+                ;;
+              leave)
+                terminal_state="$(jq -r '.terminal_state' <<<"$d")"
+                summary "- \`${ctx}\`: latest is \`pending\` at ${latest_at} but GitBook's last terminal state was \`${terminal_state}\` -- left alone (never posting success over a failure)."
+                ;;
+              repair)
+                success_at="$(jq -r '.success_at' <<<"$d")"
+                target_url="$(jq -r '.target_url // empty' <<<"$d")"
+                # Commit-status descriptions are capped at 140 characters; this one is 123 with the
+                # API's 20-character timestamp.
+                description="GitBook reported success at ${success_at}; its later \"pending\" was out of order. Re-posted by gitbook-status-repair."
+                args=(-f state=success -f "context=${ctx}" -f "description=${description}")
+                if [[ -n "$target_url" ]]; then
+                  args+=(-f "target_url=${target_url}")
+                fi
+                gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" "${args[@]}" > /dev/null < /dev/null
+                summary "- \`${ctx}\`: success at ${success_at} was followed by pending at ${latest_at} -- re-posted success (target_url: ${target_url:-none})."
+                ;;
+            esac
+          done <<<"$decisions"

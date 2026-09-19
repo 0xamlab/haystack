@@ -239,3 +239,21 @@ surfaces later, because the fix is a migration, not a restoration.
   wave landed rather than part of it.
 - `gh api organizations/thyn-ai/settings/billing/usage` — `Actions Linux` minutes should stay
   under the included quota; larger-runner line items should show only `thyn-8c` job names.
+
+## 11. Third-party status hygiene — `gitbook-status-repair.yml`
+
+GitBook's GitHub App posts two commit statuses per commit (`GitBook`, `GitBook - docs.algenta.ai/`)
+and normally walks each pending → success within ~3 s. On PR #1072 (head 5f12d6f5) the pair
+arrived inverted — `success` at 21:50:27Z, then `pending` at 21:50:28Z — and because GitHub
+renders the most recently created status per context, the PR showed "GitBook — pending"
+indefinitely although GitBook had finished; nothing was blocked (GitBook is not a required check)
+but the stuck check had to be cleared by hand. `gitbook-status-repair.yml` is the GitHub-native
+fix: it runs on the `status` event, gated to GitBook `pending` statuses only (every other status
+yields a skipped job and nothing else), re-reads all statuses on the commit, and when the latest
+status for the firing context is still `pending` while GitBook's last terminal state was
+`success`, re-posts that success under the same context and `target_url` with a description
+naming the original success time. A context with no terminal state yet is re-read for up to 90 s
+and then left alone; a `failure`/`error` is never overwritten; the step summary records exactly
+what was done per context. Zero actions, no checkout, `permissions: {}` at the top and
+`statuses: write` on the one job, `ubuntu-latest`, `timeout-minutes: 2`. `workflow_dispatch` with
+a `sha` input repairs any commit by hand and doubles as the end-to-end probe.
