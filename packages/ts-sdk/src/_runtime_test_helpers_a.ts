@@ -729,7 +729,7 @@ export function base64UrlJson(value: Record<string, unknown>): string {
  * to disk" case.
  */
 export function issueControlPlaneLicense(
-  apiKey: string,
+  fixtureKey: string,
   expiresAt = 0,
 ): { token: string; publicKey: string } {
   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
@@ -740,7 +740,11 @@ export function issueControlPlaneLicense(
   const header = base64UrlJson({ alg: "RS256", typ: "JWT" });
   const issuedAt = Math.floor(Date.now() / 1000);
   const payload = base64UrlJson({
-    api_key_prefix: apiKey.slice(0, 12),
+    // Deliberately not named like a credential: callers pass a fixture string (e.g.
+    // "de_live_ts_runtime_key"), and only its public 12-char prefix -- the `api_key_prefix`
+    // claim the control plane mints and parseStoredLicenseToken reads back -- enters the
+    // signed payload. Nothing secret is hashed or signed here.
+    api_key_prefix: fixtureKey.slice(0, 12),
     device_id: "ts-device-1",
     plan: "pro",
     device_limit: 5,
@@ -792,8 +796,8 @@ export function issueOfflineLocalLicense(expiresAt = 0): { token: string; public
  * (via `ALGENTA_LOCAL_LICENSE_PUBLIC_KEY`) so `parseStoredLicenseToken`/`loadLocalLicense` can
  * verify it. Returns the public key PEM in case a caller wants to assert on it directly.
  */
-export function seedStoredLicense(runtimeDir: string, apiKey: string, expiresAt = 0): string {
-  const { token, publicKey } = issueControlPlaneLicense(apiKey, expiresAt);
+export function seedStoredLicense(runtimeDir: string, fixtureKey: string, expiresAt = 0): string {
+  const { token, publicKey } = issueControlPlaneLicense(fixtureKey, expiresAt);
   writeFileSync(join(runtimeDir, "license.jwt"), token, {
     mode: 0o600,
   });
