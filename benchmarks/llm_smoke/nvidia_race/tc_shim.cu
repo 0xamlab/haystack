@@ -4604,6 +4604,36 @@ static int64_t matmul(Entry& e, const void* a16, const void* w16, void* c) {
     return (int64_t)ce;
 }
 
+// SEAM-FREE TWIN of matmul(), added for the gemma-3 lane's cublasLt port (round 17).
+//
+// WHY THIS EXISTS RATHER THAN REUSING matmul(). The gemma-3 lane dispatches the `_async` GemmEx
+// entries, which enqueue on g_stream and NEVER synchronize. Under `-D ALGENTA_G3_STREAM` it calls
+// `tc_shim_use_stream(cudaStreamLegacy)`, which repoints g_stream but **deliberately leaves
+// g_noseam == 0** (see the note at the `_pre` entries above: NOSEAM is the 7B lane's separate
+// switch). So calling matmul() from this lane would execute its trailing
+// `cudaStreamSynchronize(g_stream)` on EVERY projection GEMM — a per-call sync seam the shipped path
+// does not have. That is not a small effect and it is not an algorithm effect: it would make the
+// tuned-algorithm arm differ from the control for a reason that has nothing to do with which
+// cublasLt algorithm was chosen, invalidating the A/B. Turning on ALGENTA_TC_NOSEAM to suppress it
+// is not the answer either, because that switch also repoints g_stream and flips the seam behaviour
+// of every other sync-bearing entry, changing the control arm too.
+//
+// So: same handle, same workspace, same tuned algorithm, same g_stream — and return without syncing,
+// matching tc_shim_gemm_f16_32c_pre_async's contract exactly. The ONLY difference from the shipped
+// async path is then the algorithm, which is the one variable the bracket is allowed to measure.
+//
+// SCOPE LIMIT, stated rather than implied: the LTINSITU rotating in-situ search block that matmul()
+// carries is NOT replicated here. This is the STAGE-TIME-search path only (`tc_shim_lt_tune` fills
+// the cache before any timed dispatch), which is what the gemma-3 port requires; an in-situ search
+// on this lane would need the event ring ported too and is deliberately out of scope.
+static int64_t matmul_async(Entry& e, const void* a16, const void* w16, void* c) {
+    float alpha = 1.0f, beta = e.accum ? 1.0f : 0.0f;
+    cublasStatus_t s = cublasLtMatmul(handle, e.op, &alpha, w16, e.La, a16, e.Lb, &beta,
+                                      c, e.Lc, c, e.Lc, &e.algo, ws, ws_bytes, g_stream);
+    if (s != CUBLAS_STATUS_SUCCESS) { record_error((int64_t)s); return -(int64_t)s; }
+    return 0;   // no seam: the caller's ordering rides the legacy-stream contract, as with _async
+}
+
 }  // namespace tc_lt
 
 // Create the Lt handle and its workspace. Called once from the session's stage-time headroom
@@ -4801,6 +4831,28 @@ extern "C" int64_t tc_shim_gemm_f16_16c_pre_lt(const void* a16, const void* w16,
     tc_lt::Entry* e = tc_lt::find(M, N, K, 1, (int)accum);
     if (e == nullptr) return -320;
     return tc_lt::matmul(*e, a16, w16, c_f16);
+}
+
+// ── ROUND 17: the SEAM-FREE twins, for the gemma-3 lane (`-D ALGENTA_G3_PF_LTALGO`). ──────────
+// Identical contract to the two entries above — same cache lookup, same -320 "never tuned, decline
+// to the shipped path" return — except that they dispatch through tc_lt::matmul_async and therefore
+// do NOT introduce the per-GEMM cudaStreamSynchronize that matmul() would add on a lane whose
+// g_noseam is 0. See matmul_async's comment for why reusing matmul() here would have invalidated
+// the A/B rather than merely slowing it.
+extern "C" int64_t tc_shim_gemm_f16_32c_pre_async_lt(const void* a16, const void* w16,
+                                                     int64_t M, int64_t K, int64_t N,
+                                                     void* c_f32, int64_t accum) {
+    tc_lt::Entry* e = tc_lt::find(M, N, K, 0, (int)accum);
+    if (e == nullptr) return -320;
+    return tc_lt::matmul_async(*e, a16, w16, c_f32);
+}
+
+extern "C" int64_t tc_shim_gemm_f16_16c_pre_async_lt(const void* a16, const void* w16,
+                                                     int64_t M, int64_t K, int64_t N,
+                                                     void* c_f16, int64_t accum) {
+    tc_lt::Entry* e = tc_lt::find(M, N, K, 1, (int)accum);
+    if (e == nullptr) return -320;
+    return tc_lt::matmul_async(*e, a16, w16, c_f16);
 }
 
 extern "C" int64_t tc_shim_lt_count(void) { return (int64_t)tc_lt::n_cache; }

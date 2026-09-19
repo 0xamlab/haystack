@@ -135,6 +135,29 @@ is non-blocking the gates catch the race; if it is blocking/legacy the per-GEMM 
 (2 full device drains per GEMM role per layer) disappears."""
 
 
+comptime TC_G3_LTALGO: Bool = TC_SHIM_BUILD and is_defined["ALGENTA_G3_PF_LTALGO"]()
+"""ROUND 17 (`-D ALGENTA_G3_PF_LTALGO`, DEFAULT OFF): let the GEMMA-3 lane's seam-free projection
+entries try a stage-time TUNED cublasLt algorithm before falling back to the shipped GemmEx.
+
+This is the gemma-3 counterpart of the 7B lane's `ALGENTA_7B_PF_LTALGO`, and it lives HERE in the
+bridge rather than at the session's ~10 dispatch sites for two reasons. First, every gemma-3
+projection already funnels through `_tc_gemm_f16_32c_pre_async` / `_tc_gemm_f16_16c_pre_async`, so
+one gated change covers all of them and cannot miss a site. Second, it is comptime: with the flag
+undefined no LT code is emitted at all, so the shipped arm is byte-for-byte unchanged and the A/B
+measures only the algorithm.
+
+It is a GEMMA-3-SPECIFIC flag on purpose. The 7B lane's `PF_LTALGO_B1` gates the SYNC `_pre_lt`
+entries, whose `tc_lt::matmul` ends in `cudaStreamSynchronize` unless `g_noseam` is set — and the
+gemma-3 lane deliberately runs with `g_noseam == 0` (it gets zero-sync ordering from
+`ALGENTA_G3_STREAM` instead). Reusing the 7B entries here would have inserted a per-GEMM sync seam
+the control arm does not have. So this flag dispatches the `_async_lt` twins, which are seam-free.
+
+DECLINE SEMANTICS, identical to the 7B lane: the shim returns **-320** when that exact
+(M, K, N, C-dtype, beta) was never tuned, and the wrapper then falls through to the shipped GemmEx
+call — so an untuned shape runs the shipped path byte-for-byte and a partially tuned build degrades
+to the control rather than failing. Any OTHER non-zero return is a real error and is propagated."""
+
+
 def _tc_noseam(on: Int) -> Int:
     """Switch the shim's integration entries into (on=1) or out of (on=0) NOSEAM mode —
     the legacy default stream + no per-call sync (see TC_NOSEAM). Call ONCE at session open
@@ -488,6 +511,22 @@ def _tc_gemm_f16_32c_pre_async(a16: Int, w16: Int, m: Int, k: Int, n: Int, c32: 
     0 = success."""
     @parameter
     if TC_SHIM_BUILD:
+        @parameter
+        if TC_G3_LTALGO:
+            # ROUND 17: try the stage-time TUNED cublasLt algorithm first, on the same seam-free
+            # contract as the GemmEx call below. -320 means this exact (M, K, N, C-dtype, beta)
+            # was never tuned, and declining lands on precisely that GemmEx call — so an untuned
+            # shape runs the shipped path byte-for-byte and a partially tuned build degrades to
+            # the control instead of failing. Any other non-zero is a real error, returned as-is.
+            var rlt = Int(
+                external_call[
+                    "tc_shim_gemm_f16_32c_pre_async_lt", Int64, Int64, Int64, Int64, Int64,
+                    Int64, Int64, Int64,
+                ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c32),
+                  Int64(accum))
+            )
+            if rlt != -320:
+                return rlt
         return Int(
             external_call[
                 "tc_shim_gemm_f16_32c_pre_async", Int64, Int64, Int64, Int64, Int64, Int64,
@@ -509,6 +548,21 @@ def _tc_gemm_f16_16c_pre_async(a16: Int, w16: Int, m: Int, k: Int, n: Int, c16: 
     token-identity gate. 0 = success."""
     @parameter
     if TC_SHIM_BUILD:
+        @parameter
+        if TC_G3_LTALGO:
+            # ROUND 17: the f16-C twin of the tuned-algorithm try above, same -320 decline
+            # semantics. This is the gate/up role under ALGENTA_G3_PF_F16MLP, i.e. the widest
+            # GEMM in the layer (N = 2*d_ff = 43008 for gemma-3-27b) and therefore the shape
+            # where an algorithm choice is worth the most.
+            var rlt = Int(
+                external_call[
+                    "tc_shim_gemm_f16_16c_pre_async_lt", Int64, Int64, Int64, Int64, Int64,
+                    Int64, Int64, Int64,
+                ](Int64(a16), Int64(w16), Int64(m), Int64(k), Int64(n), Int64(c16),
+                  Int64(accum))
+            )
+            if rlt != -320:
+                return rlt
         return Int(
             external_call[
                 "tc_shim_gemm_f16_16c_pre_async", Int64, Int64, Int64, Int64, Int64, Int64,

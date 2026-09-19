@@ -16,6 +16,17 @@ SM=${SM:-sm_90}
 COMPUTE=${COMPUTE:-compute_90}
 CUDA_HOME=${CUDA_HOME:-/usr/local/cuda}
 REGLOG=${REGLOG:-$HOME/lever7/logs/ptxas_v.log}
+# ROUND 17 additions, both defaulting to this script's previous behaviour so rounds 5/6/7/9 are
+# byte-for-byte unaffected:
+#   EXTRA_MACROS  extra -D flags for tc_shim.cu. Round 17 needs `-D ALGENTA_TC_SHIM_LT` to compile
+#                 the cublasLt block in; WITHOUT it the object carries no `tc_lt` symbols at all
+#                 (tc_shim.cu deliberately has NO `#else` stubs), which is what lets a baseline arm
+#                 prove it carries no part of the lever rather than merely not reaching it.
+#   OBJNAME       output object name, so a stock and an LT-enabled shim can coexist in one $D. They
+#                 share the generated tc_rt_ptx.h (that header is macro-independent) but must not
+#                 overwrite each other's .o.
+EXTRA_MACROS=${EXTRA_MACROS:-}
+OBJNAME=${OBJNAME:-tc_shim.o}
 mkdir -p "$D" "$(dirname "$REGLOG")"
 if [[ ! -f "$D/tc_rt_ptx.h" ]]; then
   echo "=== generating $D/tc_rt_ptx.h from tc_rt_kernels.cu ==="
@@ -32,15 +43,29 @@ with open(dst, "w") as out:
     out.write(",0};\n")
 PY
 fi
-echo "=== nvcc tc_shim.cu -arch=$SM -I $D -Xptxas -v ==="
-"$CUDA_HOME/bin/nvcc" -O3 -arch="$SM" -Xcompiler -fPIC -I "$D" -Xptxas -v \
-  -c "$NR/tc_shim.cu" -o "$D/tc_shim.o" 2> "$REGLOG"
+echo "=== nvcc tc_shim.cu -arch=$SM -I $D -Xptxas -v ${EXTRA_MACROS:+$EXTRA_MACROS }-> $OBJNAME ==="
+# $EXTRA_MACROS is deliberately unquoted: it is a space-separated list of -D flags that must word
+# split into separate argv entries. It is empty by default, in which case the command line is
+# identical to this script's pre-round-17 form.
+# shellcheck disable=SC2086
+"$CUDA_HOME/bin/nvcc" -O3 -arch="$SM" -Xcompiler -fPIC -I "$D" -Xptxas -v $EXTRA_MACROS \
+  -c "$NR/tc_shim.cu" -o "$D/$OBJNAME" 2> "$REGLOG"
 rc=$?
-echo "RC_SHIM=$rc bytes=$(stat -c %s "$D/tc_shim.o" 2>/dev/null) reglog=$REGLOG"
+echo "RC_SHIM=$rc bytes=$(stat -c %s "$D/$OBJNAME" 2>/dev/null) reglog=$REGLOG"
 if (( rc != 0 )); then
   echo "--- last 60 lines of the ptxas/nvcc log ---"
   tail -60 "$REGLOG"
   exit $rc
+fi
+# ROUND 17: prove which shim flavour was just built, from the object itself rather than from the
+# command line we intended to run. The cublasLt block has NO `#else` stubs, so the presence or
+# absence of `tc_shim_lt_tune` is a definitive, binary-level statement about whether an arm linked
+# against this object can reach the lever at all.
+if nm "$D/$OBJNAME" 2>/dev/null | grep -q "tc_shim_lt_tune"; then
+  echo "SHIM_FLAVOUR=cublasLt-ENABLED (tc_shim_lt_tune present) obj=$OBJNAME"
+else
+  echo "SHIM_FLAVOUR=STOCK (no tc_lt symbols; a Mojo arm carrying ALGENTA_G3_PF_LTALGO or"
+  echo "               ALGENTA_7B_PF_LTALGO will FAIL TO LINK against this object, by design)"
 fi
 # ── the register/spill census for the round-7 kernel, printed by the build so the decision does
 #    not wait on a timing run. `spill` non-zero at RT=2 means the lever is dead on arrival. ──

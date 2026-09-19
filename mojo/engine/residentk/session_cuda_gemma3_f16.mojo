@@ -42,6 +42,7 @@ from max.gpu.host import (
 from std.collections import Optional
 from std.origin import MutAnyOrigin
 from std.sys import is_defined
+from std.time import perf_counter_ns
 from residentk.contract import (
     RESIDENT_ERR_CONTEXT_FULL,
     RESIDENT_ERR_LAUNCH_FAILED,
@@ -111,6 +112,7 @@ from residentk.kernels_batched_gemma3 import (
 from residentk.tc_shim_bridge import (
     TC_SHIM_BUILD,
     TC_MIN_M,
+    TC_G3_LTALGO,
     _tc_init,
     _tc_last_error,
     _tc_gemm_dispatch,
@@ -127,6 +129,9 @@ from residentk.tc_shim_bridge import (
     _tc_fa_g3_window3_async,
     _tc_gemm_f16_32c_pre_async,
     _tc_gemm_f16_16c_pre_async,
+    _tc_lt_init,
+    _tc_lt_tune,
+    _tc_lt_count,
 )
 from residentk.session import (
     RESIDENT_GPU_BUILD,
@@ -471,6 +476,58 @@ kv32=1 never double-buffers at any n (cp.async cannot convert f32)."""
 comptime G3_ROUND5_FLAGS: Bool = G3_PF_FA or G3_PF_F16NORM or G3_PF_F16MLP or G3_PF_F16ATTN
 """One gate for the round-5 scratch: any of the four levers needs the f16 pre-staged-A
 buffers, so they are allocated together and are 1-element placeholders in a flag-off build."""
+
+# ── ROUND 17 (2026-09-19): the cublasLt algorithm lever, ported from the 7B lane ────────────
+#
+# Round 16's identity-based census re-ranked the levers by MEASURED pool rather than by campaign
+# momentum and put GEMM first by a wide margin: 432.694 ms = 77.84% of region busy at rag4096,
+# running at 484.7 TFLOP/s = 68.8% of the 1410 MHz-pinned 989 TF/s peak. A mere +5% of efficiency
+# there is 21.6 ms, which ALONE clears the 12.07 ms the 1.15x bar needs — and unlike the wgmma
+# route its comparator is the same library on the same shapes, not a cross-basis number.
+#
+# The machinery already exists in the 7B lane (`ALGENTA_7B_PF_LTALGO`, `session_cuda_p3.mojo`), so
+# this is a port rather than a new lever: the shim's `tc_lt` namespace does a TIMED SEARCH over the
+# top-N cublasLt heuristics per shape and caches the winner, and the dispatch tries that winner
+# before declining (-320) to the shipped `cublasGemmEx` DEFAULT heuristic. cublasGemmEx's
+# per-call DEFAULT is an ESTIMATE, and gemm_probe measured winners that were not heuristic index 0,
+# which is why the search is timed rather than taking result[0].
+
+comptime G3_PF_LTALGO: Bool = TC_G3_LTALGO
+"""`-D ALGENTA_G3_PF_LTALGO`, DEFAULT OFF. This is an ALIAS of the bridge's `TC_G3_LTALGO` and
+deliberately NOT a second `is_defined` test, because the two halves of this lever must never
+disagree: the bridge decides whether a dispatch TRIES the tuned algorithm, and this session decides
+whether that algorithm was ever SEARCHED FOR. Two independent reads of the same macro could drift
+apart under an edit and produce the worst possible failure mode — a build that tunes shapes nothing
+consumes, or one whose dispatch declines (-320) on every call while the banner still claims the
+lever. One definition, imported, makes that unrepresentable."""
+
+comptime _G3_LT_WS_BYTES: Int = 64 * 1024 * 1024
+"""cublasLt algorithm workspace, 64 MB — the 7B lane's value, kept so the two lanes are directly
+comparable. gemm_probe found the m=4096 winners identical at 32 MB and 256 MB (the split-K they
+need is shallow), so the extra bytes buy nothing. `_tc_lt_init` returning non-zero demotes the WHOLE
+lever with a printed record rather than half-enabling it, which is the 7B lane's rule."""
+
+comptime _G3_LT_TOP: Int = 16
+"""Heuristics timed per shape. gemm_probe's winners were never beyond index 7, so 16 is ~2x the
+observed need. Each candidate costs (_G3_LT_ITERS measured + warmup) launches, so the one-time
+stage cost is a few hundred ms across all four shapes and is paid in `seal()`, never in a request."""
+
+comptime _G3_LT_ITERS: Int = 7
+"""Measured iterations per candidate algorithm — the 7B lane's value, unchanged so a gemma winner
+index means the same thing a 7B winner index means."""
+
+comptime _G3_LT_N_SHAPES: Int = 4
+"""How many projection shapes the SHIPPED DEFAULT dispatches through the seam-free f16-A entries at
+a full tile, and therefore how many this session tunes: qkv (f32 C), o_proj (f32 C), gate/up (f16 C,
+under `G3_PF_F16MLP`) and down (f32 C). Printed as the denominator of the banner's
+`lt_shapes_tuned = N of 4` so a PARTIAL tune is visible rather than silent.
+
+WHY ONLY ONE M. `G3_PF_TILE` is a comptime 1024 with no flag override, so a prompt is walked in
+1024-row passes and every projection dispatches at m = 1024 regardless of prompt length. rag4096
+(4 passes) and pp1024 (1 pass) therefore present the SAME four GEMM shapes, and one tune at
+m = `G3_PF_TILE` covers both raced cells. A cell whose prompt is not a multiple of the tile runs a
+shorter final pass at a different M; that shape was never tuned, so it declines (-320) to the
+shipped GemmEx path byte-for-byte rather than borrowing an algorithm tuned for another M."""
 
 alias _FP = UnsafePointer[Float32]
 
@@ -920,6 +977,24 @@ struct _CudaResidentGemma3F16(Movable):
         if G3_PF_FA:
             self._arm_fused_fa()
         @parameter
+        if G3_PF_LTALGO:
+            # ROUND 17. The ordering here is load-bearing in BOTH directions, for the same
+            # reason the priming pass already comes last:
+            #   * AFTER `_arm_fused_fa`, because o_proj's f16-A operand (`pf_attn16`) is only
+            #     consumed when the fused attention actually armed and writes its f16 O twin —
+            #     tuning that shape when FA declined would put an entry in the cache nothing
+            #     ever dispatches, and would inflate `lt_shapes_tuned` into a lie.
+            #   * BEFORE `_print_round5_flag_audit`, because the banner prints
+            #     `_tc_lt_count()`. A count read before the search ran would print 0 for a
+            #     lever that is about to work, which is the exact silent-drop failure mode the
+            #     banner exists to make unrepresentable.
+            #   * BEFORE `_prime_prefill_modules`, because the tuned algorithm is a DIFFERENT
+            #     nvjet kernel than the DEFAULT heuristic's, and CUDA loads modules lazily.
+            #     Priming after the search primes the module the timed dispatches will really
+            #     launch; priming before it would charge the first request for a JIT of a
+            #     kernel the lever then never uses.
+            self._tune_lt_shapes()
+        @parameter
         if CUDA_GEMMA3_BUILD:
             self._print_round5_flag_audit()
             self._prime_prefill_modules()
@@ -984,6 +1059,147 @@ struct _CudaResidentGemma3F16(Movable):
                 print("gemma3-f16: fused windowed TC flash attention v2 DECLINED, status",
                       rfa2, "| d_head =", self.d_head, "| h_q/h_kv =", self.h_q, "/",
                       self.h_kv, "| prefill attention keeps round 5's WMMA window kernel")
+
+    def _tune_lt_shapes(mut self) raises:
+        """ROUND 17 (`-D ALGENTA_G3_PF_LTALGO`, DEFAULT OFF): run the cublasLt TIMED algorithm
+        search for the four projection shapes the shipped default dispatches at a full tile, ONCE,
+        at session-setup time — so no request is ever charged for it and no search GEMM can land in
+        a buffer a timed pass still needs.
+
+        THE SHAPES, and why these four. Under the shipped default (`G3_PF_F16NORM` + `G3_PF_F16MLP`
+        + `G3_PF_F16ATTN` + `G3_PF_FA` armed) every projection dispatches through the seam-free f16-A
+        entries with `m = G3_PF_TILE = 1024`, so the searched set is exactly:
+
+            qkv      m=1024  k=d_model      n=(h_q+2*h_kv)*d_head   f32 C  beta 0
+            o_proj   m=1024  k=h_q*d_head   n=d_model               f32 C  beta 0
+            gate/up  m=1024  k=d_model      n=2*d_ff                f16 C  beta 0
+            down     m=1024  k=d_ff         n=d_model               f32 C  beta 0
+
+        Each is gated below on the SAME comptime condition its dispatch site uses, so a flag
+        combination that would not route a role through the f16-A entry does not tune it either.
+        That is what keeps `lt_shapes_tuned` a truthful count of shapes a dispatch can consume.
+
+        WEIGHTS: layer 0's. The shim's cache is keyed on (M, N, K, C-dtype, beta) and NOT on the
+        operand pointers, and every layer's projections are the same shape with the same f16
+        layout — `_narrow_transposed_into_f16` writes them identically — so a winner found against
+        layer 0 is the winner for all 62. The 7B lane does the same with `w16_*[0]`.
+
+        C BUFFERS ARE SCRATCH AND ARE WRITTEN. Every role here is ASSIGN (beta 0), so the search
+        overwrites each destination outright rather than accumulating into it, and each of those
+        destinations — `pf_qkv`, `pf_branch`, `pf_gu16` — is rewritten by the first prefill's own
+        GEMM before anything reads it. That is the 7B lane's argument, restated for these buffers:
+        the search cannot poison a result, because nothing reads a search output.
+
+        RETURNS nothing; every failure mode is a PRINTED decline that leaves the shipped
+        `cublasGemmEx` DEFAULT path in place, so a failed search degrades to the control arm rather
+        than to a wrong number or a crash."""
+        @parameter
+        if G3_PF_LTALGO:
+            if self.tc_ready != 1:
+                print("gemma3-f16 LT: cublasLt search DECLINED, the TC shim handle is not bound",
+                      "(tc_ready =", self.tc_ready, ") | projections keep cublasGemmEx DEFAULT")
+                return
+            if len(self.layers) < 1:
+                print("gemma3-f16 LT: cublasLt search DECLINED, no layer weights are resident yet",
+                      "| seal() must run after upload_layer() | projections keep GemmEx DEFAULT")
+                return
+            var rlt = _tc_lt_init(_G3_LT_WS_BYTES)
+            if rlt != 0:
+                print("gemma3-f16 LT: cublasLt init FAILED, status", rlt, "| the shim object was",
+                      "probably built without -D ALGENTA_TC_SHIM_LT or not linked against",
+                      "-lcublasLt | projections keep cublasGemmEx DEFAULT")
+                return
+
+            ref lw = self.layers[0]
+            var tm = G3_PF_TILE
+            var dm = self.d_model
+            var dff = self.d_ff
+            var nq = self.h_q * self.d_head
+            var nqkv = (self.h_q + 2 * self.h_kv) * self.d_head
+            var lt_t0 = perf_counter_ns()
+            var n_tuned = 0
+            var n_tried = 0
+
+            # ── qkv: A is the F16NORM twin `pf_xn16`, C is f32. Dispatch gate is `xn_f16`,
+            #    which is `use_tc and G3_PF_F16NORM`. ──
+            @parameter
+            if G3_PF_F16NORM:
+                n_tried += 1
+                var rq = _tc_lt_tune(Int(self.pf_xn16.unsafe_ptr()),
+                                     Int(lw.w_qkv.unsafe_ptr()),
+                                     Int(self.pf_qkv.unsafe_ptr()),
+                                     tm, dm, nqkv, 0, 0, _G3_LT_TOP, _G3_LT_ITERS)
+                if rq >= 0:
+                    n_tuned += 1
+                print("gemma3-f16 LT: qkv     m,k,n =", tm, ",", dm, ",", nqkv,
+                      "| f32 C, beta 0 | winning heuristic idx =", rq)
+
+            # ── o_proj: A is the fused attention's f16 O twin `pf_attn16`, C is f32. The
+            #    dispatch gate is `attn_o_f16`, set per call from the window kernel's `of16=1`
+            #    instantiation, which requires BOTH the flag and an armed FA — hence the runtime
+            #    `pf_fa_armed` test here, so a DECLINED FA does not tune a shape nothing reads. ──
+            @parameter
+            if G3_PF_F16ATTN:
+                if self.pf_fa_armed == 1:
+                    n_tried += 1
+                    var ro = _tc_lt_tune(Int(self.pf_attn16.unsafe_ptr()),
+                                         Int(lw.w_o.unsafe_ptr()),
+                                         Int(self.pf_branch.unsafe_ptr()),
+                                         tm, nq, dm, 0, 0, _G3_LT_TOP, _G3_LT_ITERS)
+                    if ro >= 0:
+                        n_tuned += 1
+                    print("gemma3-f16 LT: o_proj   m,k,n =", tm, ",", nq, ",", dm,
+                          "| f32 C, beta 0 | winning heuristic idx =", ro)
+                else:
+                    print("gemma3-f16 LT: o_proj   SKIPPED, fused attention DECLINED so the f16 O",
+                          "twin is never written and the dispatch keeps the f32 A ladder")
+
+            # ── gate/up: the widest GEMM in the layer (n = 2*d_ff = 43008 at 27B's shapes) and
+            #    therefore the shape where an algorithm choice is worth the most. Under
+            #    `G3_PF_F16MLP` the C is f16 (`pf_gu16`) and the GeGLU kernel reads it directly.
+            #    A is `pf_xn16` when F16NORM is also on (the shipped default), else `tc_a16`
+            #    after a convert — the shape is identical either way, so the winner is the same,
+            #    but the A buffer passed must be a real one, hence the gate. ──
+            @parameter
+            if G3_PF_F16MLP:
+                n_tried += 1
+                var agu = Int(self.tc_a16.unsafe_ptr())
+                @parameter
+                if G3_PF_F16NORM:
+                    agu = Int(self.pf_xn16.unsafe_ptr())
+                var rg = _tc_lt_tune(agu, Int(lw.w_gu.unsafe_ptr()),
+                                     Int(self.pf_gu16.unsafe_ptr()),
+                                     tm, dm, 2 * dff, 1, 0, _G3_LT_TOP, _G3_LT_ITERS)
+                if rg >= 0:
+                    n_tuned += 1
+                print("gemma3-f16 LT: gate/up m,k,n =", tm, ",", dm, ",", 2 * dff,
+                      "| f16 C, beta 0 | winning heuristic idx =", rg)
+
+                # ── down: A is the f16 GeGLU output `pf_act16`, C is f32 into the same branch
+                #    scratch o_proj uses. Both roles are ASSIGN, so sharing it is safe here
+                #    exactly as it is in the timed path. ──
+                n_tried += 1
+                var rd = _tc_lt_tune(Int(self.pf_act16.unsafe_ptr()),
+                                     Int(lw.w_down.unsafe_ptr()),
+                                     Int(self.pf_branch.unsafe_ptr()),
+                                     tm, dff, dm, 0, 0, _G3_LT_TOP, _G3_LT_ITERS)
+                if rd >= 0:
+                    n_tuned += 1
+                print("gemma3-f16 LT: down    m,k,n =", tm, ",", dff, ",", dm,
+                      "| f32 C, beta 0 | winning heuristic idx =", rd)
+
+            self.ctx.synchronize()
+            print("gemma3-f16 LT: tuned", n_tuned, "of", n_tried, "attempted roles at m =", tm,
+                  "in", Float64(perf_counter_ns() - lt_t0) / 1.0e6,
+                  "ms one-time | shim cache holds", _tc_lt_count(), "shapes |",
+                  "shipped-default role count =", _G3_LT_N_SHAPES)
+            if n_tuned < n_tried or n_tried < _G3_LT_N_SHAPES:
+                # PARTIAL is printed rather than left to the count alone, because a mixed arm is
+                # a real measurement hazard: some roles would run the tuned algorithm and others
+                # the shipped DEFAULT heuristic, and the cell would still claim the flag.
+                print("gemma3-f16 LT: PARTIAL — the untuned or skipped roles decline (-320) to",
+                      "cublasGemmEx DEFAULT, so this arm is a MIX; the flag audit reports the",
+                      "count and the per-role lines above name which ones")
 
     def _print_round5_flag_audit(self):
         """── THE FLAG AUDIT BANNER ──
@@ -1067,6 +1283,23 @@ struct _CudaResidentGemma3F16(Movable):
         @parameter
         if G3_PF_TCATTN:
             print("TCFLAG ALGENTA_G3_PF_TCATTN=1 (five-pass tensor-core prefill attention)")
+        @parameter
+        if G3_PF_LTALGO:
+            # ROUND 17. Audited by BOTH this literal AND the tuned-shape count printed with it,
+            # for the 7B lane's reason restated here: the literal proves the macro reached the
+            # compiler, but only the count proves the LEVER TOOK EFFECT. 0 tuned shapes means
+            # every dispatch declined (-320) and the cell was timed on the shipped GemmEx DEFAULT
+            # path while still claiming the flag — precisely the silent-drop failure mode that
+            # cost this campaign a wrong gemma-3-27b column once already (a rebuild that had
+            # quietly lost `-D ALGENTA_G3_STREAM`). A count below `_G3_LT_N_SHAPES` means a MIXED
+            # arm, which `_tune_lt_shapes` also prints as PARTIAL with the responsible roles.
+            # There are no stub entries to fool this: a shim object built without
+            # -D ALGENTA_TC_SHIM_LT fails the link, so "flag passed, code absent" cannot even
+            # produce a binary.
+            print("TCFLAG ALGENTA_G3_PF_LTALGO=1 (the four full-tile projections dispatch cublasLt",
+                  "on a STAGE-TIME timed-search algorithm via the seam-free _async_lt entries;",
+                  "untuned shapes decline -320 to GemmEx DEFAULT) | lt_shapes_tuned =",
+                  _tc_lt_count(), "of", _G3_LT_N_SHAPES)
 
     def prefill(mut self, prompt_ids: List[Int]) raises -> _StepOut:
         """The WHOLE prompt, tiled — the f16-weight twin of `_CudaResidentGemma3.prefill`'s
