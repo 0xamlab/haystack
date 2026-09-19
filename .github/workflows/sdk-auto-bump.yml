@@ -114,6 +114,10 @@ jobs:
           set -euo pipefail
           out="$(python3 scripts/bump_sdk_version.py --level "$LEVEL" --json)"
           new="$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["new"])')"
+          # The lockstep guard is a pytest module; ubuntu-latest's python3 ships without pytest,
+          # so the first real bump (run 35461955397, after #1061) died with "No module named
+          # pytest" before ever pushing. Pin == the pytest in mojo_env/pixi.toml.
+          python3 -m pip install --disable-pip-version-check --quiet "pytest==9.0.3"
           python3 -m pytest -q -c /dev/null -p no:cacheprovider --noconftest --rootdir . tests/test_sdk_package_metadata.py \
             || { echo "::error::lockstep guard failed after the bump -- not pushing"; exit 1; }
           git config user.name "algenta-sdk-sync[bot]"
