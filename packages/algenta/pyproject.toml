@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta"
-version = "1.0.12"
+version = "1.0.13"
 description = "Algenta repository intelligence and computational runtime CLI with an automatically installed native runtime."
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
