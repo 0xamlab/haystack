@@ -495,8 +495,11 @@ def test_published_mcp_package_uses_same_streamable_http_contract(monkeypatch) -
     assert response.status_code == 200
     payload = response.json()["result"]
     assert payload["protocolVersion"] == "2025-11-25"
-    from apps.mcp_server import config as _engine_mcp_config
-    assert payload["serverInfo"]["version"] == _engine_mcp_config.VERSION
+    # This test exercises the standalone published package, whose serverInfo reports the
+    # package version (importlib.metadata, guarded by the D2 lockstep test) — not the
+    # engine router's embedded literal.
+    from algenta_mcp import config as _pkg_mcp_config
+    assert payload["serverInfo"]["version"] == _pkg_mcp_config.VERSION
     # Discovery (initialize) is open; execution is not. The standalone app used to mount the session
     # manager bare, so a keyless tools/call ran the tool with the server's own ambient credential.
     assert anonymous_tool_response.status_code == 401
