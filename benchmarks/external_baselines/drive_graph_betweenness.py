@@ -65,9 +65,20 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
+sys.path.insert(0, str(ROOT / "benchmarks"))
+from bench_tools import (  # noqa: E402
+    ToolError,
+    current_python,
+    find_tool,
+    run_tool,
+    tool_in_dir,
+    tool_path,
+)
+
 ENGINE = ROOT / "mojo" / "engine"
 SOURCE = HERE / "graph_betweenness_h2h.mojo"
 REFS = HERE / "graph_betweenness_refs.py"
+MOJO_TOOL = "graph_betweenness_h2h"  # bench_tools' name for the binary built from SOURCE
 
 # Structures and sizes for the timed sweep. `ba` (Barabasi-Albert, scale-free) is primary
 # -- it matches the social/web-network topology betweenness is normally computed over.
@@ -106,25 +117,33 @@ def _pixi() -> str:
 
 
 def build_mojo(out: Path) -> Path:
-    binary = out / "graph_betweenness_h2h"
-    cmd = [_pixi(), "run", "mojo", "build", f"-I{ENGINE}", str(SOURCE), "-o", str(binary)]
+    """Build the Mojo arm into *out*; the path handed back is the one bench_tools admitted."""
+    cmd = [_pixi(), "run", "mojo", "build", f"-I{ENGINE}", str(SOURCE), "-o", str(out / MOJO_TOOL)]
     print(f"building: {' '.join(cmd)}", flush=True)
     proc = subprocess.run(cmd, cwd=str(ROOT / "mojo_env"), capture_output=True, text=True, timeout=1800)
-    if proc.returncode != 0 or not binary.exists():
+    binary = tool_in_dir(out, MOJO_TOOL) if proc.returncode == 0 else None
+    if binary is None:
         print(proc.stdout[-4000:])
         print(proc.stderr[-4000:], file=sys.stderr)
         raise SystemExit("the Mojo arm did not build")
     return binary
 
 
-def find_python_with_networkx() -> str:
-    candidates = [sys.executable, "/usr/local/bin/python3", "/usr/bin/python3", shutil.which("python3") or ""]
-    seen = set()
+def find_python_with_networkx() -> Path:
+    # The operator's $BENCH_BIN_DIR / PATH python3 first (a venv with networkx goes there),
+    # then the interpreter running this driver, then the system installs.
+    candidates = [
+        find_tool("python3"),
+        current_python(),
+        tool_in_dir("/usr/local/bin", "python3"),
+        tool_in_dir("/usr/bin", "python3"),
+    ]
+    seen: set[Path] = set()
     for c in candidates:
-        if not c or c in seen:
+        if c is None or c in seen:
             continue
         seen.add(c)
-        probe = subprocess.run([c, "-c", "import networkx"], capture_output=True)
+        probe = run_tool(c, "-c", "import networkx", capture_output=True)
         if probe.returncode == 0:
             return c
     raise SystemExit("no Python interpreter with networkx importable was found")
@@ -139,26 +158,28 @@ def kv(line: str) -> dict[str, str]:
     return out
 
 
-def gen_graph(python: str, kind: str, n: int, seed: int, edge_file: Path, m_target: int | None = None) -> dict:
-    cmd = [python, str(REFS), "gen", kind, str(n), str(seed), str(edge_file)]
-    if m_target is not None:
-        cmd.append(str(m_target))
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+def gen_graph(
+    python: Path, kind: str, n: int, seed: int, edge_file: Path, m_target: int | None = None
+) -> dict:
+    extra = () if m_target is None else (m_target,)
+    proc = run_tool(
+        python, REFS, "gen", kind, n, seed, edge_file, *extra, capture_output=True, text=True
+    )
     if proc.returncode != 0:
         raise SystemExit(f"gen failed: {proc.stderr}")
     return kv(proc.stdout.strip().splitlines()[-1])
 
 
 def dump_mojo(binary: Path, edge_file: Path, out_file: Path) -> dict:
-    proc = subprocess.run([str(binary), "dump", str(edge_file), str(out_file)], capture_output=True, text=True)
+    proc = run_tool(binary, "dump", edge_file, out_file, capture_output=True, text=True)
     lines = [l for l in proc.stdout.splitlines() if l.startswith("DUMP")]
     if proc.returncode != 0 or not lines:
         raise SystemExit(f"mojo dump failed: rc={proc.returncode} out={proc.stdout!r} err={proc.stderr[-2000:]!r}")
     return kv(lines[-1])
 
 
-def dump_nx(python: str, edge_file: Path, out_file: Path) -> dict:
-    proc = subprocess.run([python, str(REFS), "dump", str(edge_file), str(out_file)], capture_output=True, text=True)
+def dump_nx(python: Path, edge_file: Path, out_file: Path) -> dict:
+    proc = run_tool(python, REFS, "dump", edge_file, out_file, capture_output=True, text=True)
     lines = [l for l in proc.stdout.splitlines() if l.startswith("DUMP")]
     if proc.returncode != 0 or not lines:
         raise SystemExit(f"nx dump failed: rc={proc.returncode} out={proc.stdout!r} err={proc.stderr[-2000:]!r}")
@@ -253,12 +274,13 @@ def parse_t_lines(text: str) -> list[tuple[int, int, int]]:
     return out
 
 
-def run_bench(cmd: list[str]) -> tuple[list[tuple[int, int, int]], float]:
+def run_bench(tool: Path, *args: object) -> tuple[list[tuple[int, int, int]], float]:
     before = os.getloadavg()[0]
     start = time.perf_counter()
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = run_tool(tool, *args, capture_output=True, text=True)
     wall = time.perf_counter() - start
     if proc.returncode != 0:
+        cmd = [str(tool), *(str(a) for a in args)]
         print(f"  *** bench FAILED: {cmd} -> {proc.stderr[-1500:]}", file=sys.stderr)
         return [], wall
     return parse_t_lines(proc.stdout), before
@@ -290,17 +312,28 @@ def cell_from_reps(reps: list[tuple[int, int, int]]) -> tuple[float, float | Non
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch", default=str(Path(tempfile.gettempdir()) / "graph_betweenness_bench"))
-    parser.add_argument("--binary", default="")
-    parser.add_argument("--python", default="")
+    parser.add_argument(
+        "--prebuilt",
+        action="store_true",
+        help="do not build: run the graph_betweenness_h2h binary found in $BENCH_BIN_DIR, "
+        "then --scratch, then PATH",
+    )
     args = parser.parse_args()
 
     scratch = Path(args.scratch)
     scratch.mkdir(parents=True, exist_ok=True)
-    binary = Path(args.binary) if args.binary else build_mojo(scratch)
-    python = args.python or find_python_with_networkx()
+    try:
+        binary = (
+            tool_path(MOJO_TOOL, search_dirs=(scratch,)) if args.prebuilt else build_mojo(scratch)
+        )
+        python = find_python_with_networkx()
+    except ToolError as exc:
+        raise SystemExit(f"{parser.prog}: error: {exc}") from None
     print(f"mojo binary: {binary}")
     print(f"python (networkx): {python}")
-    ver = subprocess.run([python, "-c", "import networkx; print(networkx.__version__)"], capture_output=True, text=True)
+    ver = run_tool(
+        python, "-c", "import networkx; print(networkx.__version__)", capture_output=True, text=True
+    )
     print(f"networkx version: {ver.stdout.strip()}")
     print(f"host load now: {os.getloadavg()}")
     print("")
@@ -440,9 +473,9 @@ def main() -> int:
             )
             for arm, reps in arms:
                 if arm == "mojo":
-                    reps_list, load = run_bench([str(binary), "bench", str(edge_file), str(reps)])
+                    reps_list, load = run_bench(binary, "bench", edge_file, reps)
                 else:
-                    reps_list, load = run_bench([python, str(REFS), "bench", str(edge_file), str(reps)])
+                    reps_list, load = run_bench(python, REFS, "bench", edge_file, reps)
                 loads.append(f"{kind}{n} r{r} {arm}: load {load:.1f}")
                 if not reps_list:
                     print(f"    {arm} round {r}: NO DATA (bench failed)")

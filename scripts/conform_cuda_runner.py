@@ -5,24 +5,36 @@ converted battery cell and compares the tokens against the fp64 reference
 recorded in the battery report. Prints a per-cell PASS/FAIL line and a final
 summary; exit 0 only when every cell the table claims supported matches.
 
-Usage: python3 conform_cuda_runner.py <driver> <cells_dir> <report.json> [--max-new 8]
+Usage: python3 conform_cuda_runner.py <cells_dir> <report.json> [--max-new 8]
+
+The `conform_generate_cuda` binary is found by name in $BENCH_BIN_DIR, then PATH
+(benchmarks/bench_tools.py); build it into one of those instead of passing a path.
 """
 
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "benchmarks"))
+from bench_tools import ToolError, run_tool, tool_path  # noqa: E402
+
+DRIVER_TOOL = "conform_generate_cuda"
+
 
 def main() -> int:
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 3:
         print(__doc__)
         return 2
-    driver = Path(sys.argv[1])
-    cells_dir = Path(sys.argv[2])
-    report = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+    try:
+        driver = tool_path(DRIVER_TOOL)
+    except ToolError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    cells_dir = Path(sys.argv[1])
+    report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
     max_new = 8
     if "--max-new" in sys.argv:
         max_new = int(sys.argv[sys.argv.index("--max-new") + 1])
@@ -39,8 +51,8 @@ def main() -> int:
         if not (converted / "manifest.json").is_file():
             print(f"SKIP {name}: no converted checkpoint")
             continue
-        proc = subprocess.run(
-            [str(driver), str(converted), "--max-new", str(max_new)],
+        proc = run_tool(
+            driver, converted, "--max-new", str(max_new),
             capture_output=True,
             text=True,
             timeout=300,

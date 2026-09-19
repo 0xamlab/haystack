@@ -30,7 +30,10 @@ engine and before llama-bench); servers killed and GPU drained between engines;
 3 warmup runs per cell (excluded), then RUNS measured runs, median + IQR; the
 algenta arm runs first and re-runs last as a regime-drift check.
 
-Runs on the VM with the paths below; stdlib only. Results land in
+Runs on the VM with the paths below; stdlib only. The algenta binary is found by NAME
+(qwen25_7b_p3_graph_cuda_tc_b1_ns) in $BENCH_BIN_DIR, then ALGENTA_BIN_DIR, then PATH,
+through benchmarks/bench_tools.py -- copy that file beside this one when running
+standalone. Results land in
 /tmp/w7b/race/results/*.json with every raw sample for audit.
 """
 
@@ -45,13 +48,18 @@ import threading
 import time
 import urllib.request
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+# bench_tools.py is benchmarks/bench_tools.py in the repository; a standalone copy of this
+# file on the GPU box carries bench_tools.py beside it (still stdlib only).
+sys.path[:0] = [HERE, os.path.dirname(os.path.dirname(HERE))]
+from bench_tools import run_tool, tool_path  # noqa: E402
+
 MODEL_HF = "/home/angel/models/Qwen2.5-7B-Instruct"
 GGUF_Q8 = "/home/angel/models/qwen2.5-7b-instruct-q8_0.gguf"
 LLAMA_SERVER = "/home/angel/llama.cpp/build/bin/llama-server"
 LLAMA_BENCH = "/home/angel/llama.cpp/build/bin/llama-bench"
-ALGENTA_BIN = os.environ.get(
-    "ALGENTA_RACE_BIN",
-    "/home/angel/algenta_nv/qwen25_7b_p3_graph_cuda_tc_b1_ns")
+ALGENTA_TOOL = "qwen25_7b_p3_graph_cuda_tc_b1_ns"  # bench_tools allowlist name
+ALGENTA_BIN_DIR = "/home/angel/algenta_nv"  # searched after $BENCH_BIN_DIR, before PATH
 CKPT = "/tmp/w7b/ckpt"
 RACE_DIR = "/tmp/w7b/race"
 RESULTS = os.path.join(RACE_DIR, "results")
@@ -291,7 +299,8 @@ def correctness(engine_name, gen_text_16, tokenize_fn):
 
 
 def run_algenta(tag, runs=20):
-    log(f"algenta arm run '{tag}' ({runs} runs/cell, oracle gates inside)")
+    algenta_bin = tool_path(ALGENTA_TOOL, search_dirs=(ALGENTA_BIN_DIR,))
+    log(f"algenta arm run '{tag}' ({runs} runs/cell, oracle gates inside): {algenta_bin}")
     if not wait_gpu_idle():
         raise RuntimeError("GPU not idle before algenta run")
     ref = json.load(open(REF_TOKENS))
@@ -299,10 +308,9 @@ def run_algenta(tag, runs=20):
     out_txt = os.path.join(RESULTS, f"algenta_{tag}.txt")
     out_log = os.path.join(RESULTS, f"algenta_{tag}.log")
     with open(out_log, "w") as lf:
-        subprocess.run(
-            [ALGENTA_BIN, "--checkpoint", CKPT, "--arm", "p3",
-             "--oracle", oracle, "--runs", str(runs), "--out", out_txt],
-            stdout=lf, stderr=subprocess.STDOUT, check=True)
+        run_tool(algenta_bin, "--checkpoint", CKPT, "--arm", "p3",
+                 "--oracle", oracle, "--runs", str(runs), "--out", out_txt,
+                 stdout=lf, stderr=subprocess.STDOUT, check=True)
     report = {}
     for line in open(out_txt):
         m = re.match(r"^(\w+)=([0-9.eE+-]+)$", line.strip())

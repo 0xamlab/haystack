@@ -49,6 +49,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "timing"))
 sys.path.insert(0, str(ROOT / "benchmarks" / "timing"))
+sys.path.insert(0, str(ROOT / "benchmarks"))
+from bench_tools import current_python, run_tool  # noqa: E402
 
 FROZEN_TEST_SEASON = 2025
 DEV_SEASONS = (2019, 2020, 2021, 2023, 2024)
@@ -278,14 +280,18 @@ def main() -> int:
             return 2
         print("running the frozen final test on 2025 — once")
         print("this is the number, whatever it says.\n")
-        cmd = [sys.executable, "-m", "benchmarks.timing.backtest",
-               "--seasons", ",".join(str(x) for x in art.get("frozen_test_season", test_seasons)),
-               "--session-types", ",".join(art.get("session_types", ["Race"])),
-               "--reps", str(args.reps), "--pace-prior", "history", "--theta-json", args.theta]
-        print("  " + " ".join(cmd) + "\n")
+        python = current_python()
+        seasons = art.get("frozen_test_season", test_seasons)
+        backtest = [
+            "-m", "benchmarks.timing.backtest",
+            "--seasons", ",".join(str(x) for x in seasons),
+            "--session-types", ",".join(art.get("session_types", ["Race"])),
+            "--reps", str(args.reps), "--pace-prior", "history", "--theta-json", args.theta,
+        ]
+        print("  " + " ".join([str(python), *backtest]) + "\n")
         env = dict(os.environ)
         env["ALGENTA_FINAL_TEST"] = "1"   # the single sanctioned path past backtest.py's season guard
-        r = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, env=env)
+        r = run_tool(python, *backtest, cwd=str(ROOT), capture_output=True, text=True, env=env)
         sys.stdout.write(r.stdout)
         sys.stderr.write(r.stderr)
         RESULT.write_text(json.dumps({

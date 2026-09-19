@@ -25,7 +25,9 @@ No timing is gated. The cost multiple is measured in
 nanosecond threshold on a shared machine fails for reasons that have nothing to do with the
 code, and this gate has to mean something when it goes red.
 
-Run: /tmp/bb/bin/python -P bench_gate.py [--binary /tmp/measure_strd_O3]
+Run: /tmp/bb/bin/python -P bench_gate.py [--prebuilt]
+     --prebuilt runs the `measure_exactnum_strd` binary found in $BENCH_BIN_DIR (then PATH)
+     instead of compiling the driver through pixi for every dataset.
 """
 
 from __future__ import annotations
@@ -44,6 +46,9 @@ import load  # noqa: E402
 load.HERE = os.path.join(HERE, "data")
 
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+sys.path.insert(0, os.path.join(REPO, "benchmarks"))
+from bench_tools import ToolError, run_tool, tool_path  # noqa: E402
+
 MOJO_ENV = "/Users/angel/Developer/decision-engine/mojo_env"
 ENGINE = os.path.join(REPO, "mojo", "engine")
 DRIVER = os.path.join(REPO, "benchmarks", "mojo_benchmarks", "measure_exactnum_strd.mojo")
@@ -67,8 +72,17 @@ def mojo_run(path: str, args: list[str]) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--binary", default=None)
+    ap.add_argument(
+        "--prebuilt", action="store_true",
+        help="run the measure_exactnum_strd binary from $BENCH_BIN_DIR / PATH instead of pixi",
+    )
     args = ap.parse_args()
+    binary = None
+    if args.prebuilt:
+        try:
+            binary = tool_path("measure_exactnum_strd")
+        except ToolError as exc:
+            ap.error(str(exc))
 
     failures: list[str] = []
     checks = 0
@@ -88,8 +102,8 @@ def main() -> int:
 
     for name in load.ORDER:
         spec = os.path.join(HERE, "specs", name + ".spec")
-        if args.binary:
-            proc = subprocess.run([args.binary, spec], capture_output=True, text=True)
+        if binary is not None:
+            proc = run_tool(binary, spec, capture_output=True, text=True)
             out = proc.stdout if proc.returncode == 0 else "MOJO_FAILED"
         else:
             out = mojo_run(DRIVER, [spec])

@@ -15,11 +15,12 @@ both sides' text). Serialized: our engine runs first (it is a one-shot process t
 GPU on exit), then llama-server is started, queried, and stopped — never two GPU tenants at
 once, matching the solo-GPU census the campaign measures under.
 
-Usage (on the VM):
+Usage (on the VM; both executables are found by NAME -- qwen25_7b_p3_graph_cuda and
+llama-server -- in $BENCH_BIN_DIR, then PATH, through benchmarks/bench_tools.py, copied beside
+this file):
+    BENCH_BIN_DIR=~/w7b_bins:~/llama.cpp/build/bin \
     python3 gate_cross_engine.py --ckpt /tmp/w7b/ckpt \
-        --driver ~/w7b_bins/qwen25_7b_p3_graph_cuda \
         --gguf ~/models/qwen2.5-7b-instruct-f16.gguf \
-        --llama-server ~/llama.cpp/build/bin/llama-server \
         --model-dir ~/models/Qwen2.5-7B-Instruct \
         [--n-tokens 64] [--port 8099]
 """
@@ -33,6 +34,13 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path[:0] = [str(HERE), str(HERE.parents[1])]  # standalone copy / in-repo benchmarks/
+from bench_tools import ToolError, popen_tool, run_tool, tool_path  # noqa: E402
+
+DRIVER_TOOL = "qwen25_7b_p3_graph_cuda"
+LLAMA_SERVER_TOOL = "llama-server"
 
 
 def _log(msg: str) -> None:
@@ -77,14 +85,14 @@ def _wait_http(port: int, timeout_s: float = 180.0) -> None:
     raise SystemExit(f"llama-server never became ready on port {port}")
 
 
-def _run_our_engine(driver: str, ckpt: str, arm: str, ids, n_tokens: int, dump: Path) -> list:
+def _run_our_engine(driver: Path, ckpt: str, arm: str, ids, n_tokens: int, dump: Path) -> list:
     id_csv = ",".join(str(int(t)) for t in ids)
-    cmd = [
-        driver, "--checkpoint", ckpt, "--arm", arm,
-        "--gen-only", str(n_tokens), "--prompt-ids", id_csv, "--dump", str(dump),
-    ]
     _log(f"  our engine (arm={arm}): {len(ids)} prompt tokens -> {n_tokens} generated")
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = run_tool(
+        driver, "--checkpoint", ckpt, "--arm", arm,
+        "--gen-only", str(n_tokens), "--prompt-ids", id_csv, "--dump", dump,
+        capture_output=True, text=True,
+    )
     if r.returncode != 0:
         _log("  our engine FAILED:\n" + r.stdout[-2000:] + "\n" + r.stderr[-2000:])
         raise SystemExit("our engine failed")
@@ -94,7 +102,7 @@ def _run_our_engine(driver: str, ckpt: str, arm: str, ids, n_tokens: int, dump: 
     return [int(line) for line in dump.read_text().split() if line.strip()]
 
 
-def _run_llama(server_bin: str, gguf: str, port: int, prompt_text: str, n_tokens: int) -> str:
+def _run_llama(server_bin: Path, gguf: str, port: int, prompt_text: str, n_tokens: int) -> str:
     import urllib.request
 
     body = json.dumps({
@@ -117,9 +125,7 @@ def _run_llama(server_bin: str, gguf: str, port: int, prompt_text: str, n_tokens
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", default="/tmp/w7b/ckpt")
-    ap.add_argument("--driver", required=True)
     ap.add_argument("--gguf", required=True)
-    ap.add_argument("--llama-server", required=True)
     ap.add_argument("--model-dir", required=True)
     ap.add_argument("--n-tokens", type=int, default=64)
     ap.add_argument("--port", type=int, default=8099)
@@ -130,6 +136,12 @@ def main() -> int:
                          "full-f32 arm so it tests the model implementation, not the packed3 "
                          "quantization; run --arm p3 separately to price quant flips)")
     args = ap.parse_args()
+    try:
+        driver = tool_path(DRIVER_TOOL)
+        llama_server = tool_path(LLAMA_SERVER_TOOL)
+    except ToolError as exc:
+        raise SystemExit(f"{ap.prog}: error: {exc}") from None
+    _log(f"our engine: {driver}; llama-server: {llama_server}")
 
     work = Path(args.workdir)
     work.mkdir(parents=True, exist_ok=True)
@@ -143,7 +155,7 @@ def main() -> int:
     for idx, entry in enumerate(chat):
         _free_gpu()
         dump = work / f"our_{args.arm}_p{idx}.txt"
-        ids = _run_our_engine(args.driver, args.ckpt, args.arm, entry["ids"],
+        ids = _run_our_engine(driver, args.ckpt, args.arm, entry["ids"],
                               args.n_tokens, dump)
         our_ids.append(ids)
         _log(f"  prompt {idx}: got {len(ids)} generated tokens")
@@ -152,10 +164,9 @@ def main() -> int:
     _free_gpu()
     _log("starting llama-server (F16) ...")
     srv_log = open(work / "llama_server.log", "w")
-    srv = subprocess.Popen(
-        [args.llama_server, "-m", args.gguf, "--host", "127.0.0.1",
-         "--port", str(args.port), "-c", str(args.ctx), "-ngl", "99",
-         "--no-webui"],
+    srv = popen_tool(
+        llama_server, "-m", args.gguf, "--host", "127.0.0.1",
+        "--port", str(args.port), "-c", str(args.ctx), "-ngl", "99", "--no-webui",
         stdout=srv_log, stderr=subprocess.STDOUT,
     )
     try:
@@ -163,7 +174,7 @@ def main() -> int:
         _log("llama-server up")
         llama_texts = []
         for idx, entry in enumerate(chat):
-            txt = _run_llama(args.llama_server, args.gguf, args.port,
+            txt = _run_llama(llama_server, args.gguf, args.port,
                              entry["rendered"], args.n_tokens)
             llama_texts.append(txt)
             _log(f"  prompt {idx}: llama generated {len(txt)} chars")

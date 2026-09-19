@@ -7,9 +7,10 @@ driver-reported TTFT distribution — the prefill cost ALONE, no decode contamin
 prompt is the harness's own synthesized chat prompt (enterprise_bench.synthesize_prompt,
 char/4 tokenizer contract), so its token count is exactly `prompt_tokens_approx`.
 
-Usage:
-    python3 ttft_probe.py --driver "$HOME/leverpush/serve_l2 /tmp/qwen3smoke" \
-        --tokens 1024 --repeats 9 --mix chat
+Usage (the driver is selected by allowlisted NAME and found in $BENCH_BIN_DIR, then PATH,
+through benchmarks/bench_tools.py -- copied beside this file like enterprise_bench.py):
+    BENCH_BIN_DIR=$HOME/leverpush python3 ttft_probe.py --driver qwen3_serve_batched_cuda \
+        --driver-args /tmp/qwen3smoke --tokens 1024 --repeats 9 --mix chat
 
 The driver subprocess is started once; one request per repeat (the driver keeps its KV
 resident across repeats exactly like the harness's closed-loop cells). Exit code 0 when all
@@ -20,31 +21,44 @@ imports anything from the engine, so it runs on any host with python3.
 import argparse
 import json
 import math
+import os
+import shlex
 import statistics
 import subprocess
 import sys
 import time
 
-sys.path.insert(0, ".")
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [".", HERE, os.path.dirname(os.path.dirname(HERE))]
+from bench_tools import SERVE_DRIVERS, ToolError, popen_tool, tool_path  # noqa: E402
 from enterprise_bench import MIX_SPECS, synthesize_prompt  # noqa: E402
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--driver", required=True, help="driver command line (binary + args)")
+    ap.add_argument("--driver", required=True, choices=SERVE_DRIVERS,
+                    help="which JSON-lines serve driver to launch (found by name in "
+                         "$BENCH_BIN_DIR, then PATH)")
+    ap.add_argument("--driver-args", default="",
+                    help="arguments after the driver binary, e.g. '/tmp/qwen3smoke' "
+                         "(shlex-split; data, never a shell)")
     ap.add_argument("--tokens", type=int, default=0,
                     help="nominal prompt tokens (0 = the chat mix default)")
     ap.add_argument("--mix", default="chat")
     ap.add_argument("--repeats", type=int, default=9)
     ap.add_argument("--timeout", type=float, default=120.0)
     args = ap.parse_args()
+    try:
+        driver = tool_path(args.driver)
+    except ToolError as exc:
+        raise SystemExit(f"{ap.prog}: error: {exc}") from None
 
     n_in = args.tokens or MIX_SPECS[args.mix]["in_tokens"]
     prompt = synthesize_prompt(0, n_in, 20260820)
     approx = max(1, math.ceil(len(prompt) / 4))
 
-    proc = subprocess.Popen(
-        args.driver.split(),
+    proc = popen_tool(
+        driver, *shlex.split(args.driver_args),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,

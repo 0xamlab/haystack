@@ -8,27 +8,35 @@ and diffs the dumped 16-token stream against ref_tokens.json. Gate (a) of the ca
 requires 16/16 identity on every prompt for both arms; gate (b) (first-token sanity) is the
 strict subset of that. Exit 0 only when every prompt passes for both arms.
 
-Usage (on the VM):
-    python3 run_gates_7b.py --driver ~/w7b_bins/qwen25_7b_p3_graph_cuda \
-        --ckpt /tmp/w7b/ckpt --workdir /tmp/w7b/gate
+Usage (on the VM; the driver binary is found by NAME -- qwen25_7b_p3_graph_cuda -- in
+$BENCH_BIN_DIR, then PATH, through benchmarks/bench_tools.py, copied beside this file):
+    BENCH_BIN_DIR=~/w7b_bins python3 run_gates_7b.py --ckpt /tmp/w7b/ckpt --workdir /tmp/w7b/gate
 """
 
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 
+HERE = Path(__file__).resolve().parent
+sys.path[:0] = [str(HERE), str(HERE.parents[1])]  # standalone copy / in-repo benchmarks/
+from bench_tools import ToolError, run_tool, tool_path  # noqa: E402
+
 N_TOKENS = 16
+DRIVER_TOOL = "qwen25_7b_p3_graph_cuda"
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--driver", required=True)
     ap.add_argument("--ckpt", default="/tmp/w7b/ckpt")
     ap.add_argument("--workdir", default="/tmp/w7b/gate")
     ap.add_argument("--arms", default="f32,p3")
     args = ap.parse_args()
+    try:
+        driver = tool_path(DRIVER_TOOL)
+    except ToolError as exc:
+        raise SystemExit(f"{ap.prog}: error: {exc}") from None
+    print(f"driver: {driver}", flush=True)
 
     work = Path(args.workdir)
     work.mkdir(parents=True, exist_ok=True)
@@ -47,10 +55,10 @@ def main() -> int:
             id_csv = ",".join(str(int(t)) for t in ids)
             oracle_csv = ",".join(str(int(t)) for t in ref_ids[:N_TOKENS])
             dump = work / f"gate_{arm}_{name}.txt"
-            cmd = [args.driver, "--checkpoint", args.ckpt, "--arm", arm,
-                   "--gen-only", str(N_TOKENS), "--prompt-ids", id_csv,
-                   "--oracle", oracle_csv, "--dump", str(dump)]
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = run_tool(driver, "--checkpoint", args.ckpt, "--arm", arm,
+                         "--gen-only", str(N_TOKENS), "--prompt-ids", id_csv,
+                         "--oracle", oracle_csv, "--dump", dump,
+                         capture_output=True, text=True)
             if r.returncode != 0 or "GEN_ONLY DONE" not in r.stdout:
                 print(f"{arm}/{name}: RUN FAILED rc={r.returncode}", flush=True)
                 print(r.stdout[-1500:], flush=True)

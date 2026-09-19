@@ -26,6 +26,7 @@ how the timing looks -- there is no ratio a wrong answer can buy back.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import statistics
@@ -36,47 +37,68 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
+sys.path.insert(0, str(REPO / "benchmarks"))
+from bench_tools import (  # noqa: E402
+    ToolError,
+    env_path,
+    run_tool,
+    tool_from_env,
+    tool_in_dir,
+    tool_path,
+)
+
 MOJO_ENV = REPO / "mojo_env"
 ENGINE = REPO / "mojo" / "engine"
 H2H = HERE / "survival_h2h.mojo"
 REFS = HERE / "lifelines_refs.py"
 PREP = HERE / "prep_rossi.py"
-DRIVESTATS_SUMMARY_CSV = os.environ.get(
+DRIVESTATS_SUMMARY_CSV = env_path(
     "SURV_DRIVESTATS_SUMMARY", "/tmp/backblaze_q4_2025/drivestats_summary.csv"
 )
-MOTORSPORT_SUMMARY_CSV = os.environ.get(
-    "SURV_MOTORSPORT_SUMMARY", "/tmp/motorsport_survival.csv"
-)
+MOTORSPORT_SUMMARY_CSV = env_path("SURV_MOTORSPORT_SUMMARY", "/tmp/motorsport_survival.csv")
 PREP_DRIVESTATS = HERE / "prep_drivestats.py"
 PREP_MOTORSPORT = HERE / "prep_motorsport.py"
 
-REF_PYTHON = os.environ.get("SURV_BENCH_PYTHON", "/usr/local/bin/python3")
-DATA_DIR = os.environ.get("SURV_DATA", "/tmp/survival_lifelines_data")
-DUMP_ROOT = os.environ.get("SURV_DUMP_ROOT", "/tmp/survival_lifelines_dump")
-MOJO_BIN = os.environ.get("SURV_MOJO_BIN", "/tmp/survival_h2h")
+DATA_DIR = env_path("SURV_DATA", "/tmp/survival_lifelines_data")
+DUMP_ROOT = env_path("SURV_DUMP_ROOT", "/tmp/survival_lifelines_dump")
+# Where `mojo build` writes the survival_h2h binary. With --skip-build the binary is found by that
+# name in $BENCH_BIN_DIR, then here, then PATH -- never by a path taken from the environment.
+BUILD_DIR = env_path("SURV_BUILD_DIR", "/tmp")
+MOJO_TOOL = "survival_h2h"
 
 MAX_SPREAD = 2.0  # matches bench_vs_sort.mojo's Tier.valid()
 
 
-def build_mojo() -> None:
+@functools.cache
+def ref_python() -> Path:
+    """The lifelines interpreter, resolved on first use so that importing this module needs none.
+
+    SURV_BENCH_PYTHON selects it by allowlisted NAME ("python3" / "python"); the venv that has
+    lifelines goes in $BENCH_BIN_DIR. /usr/local/bin is the historical default location.
+    """
+    return tool_from_env("SURV_BENCH_PYTHON", "python3", search_dirs=("/usr/local/bin",))
+
+
+def build_mojo() -> Path:
     print(f"building {H2H.name} ...", file=sys.stderr)
+    out = os.path.join(BUILD_DIR, MOJO_TOOL)
     proc = subprocess.run(
-        ["pixi", "run", "mojo", "build", "-I", str(ENGINE), str(H2H), "-o", MOJO_BIN],
+        ["pixi", "run", "mojo", "build", "-I", str(ENGINE), str(H2H), "-o", out],
         cwd=str(MOJO_ENV), capture_output=True, text=True,
     )
-    if proc.returncode != 0:
+    binary = tool_in_dir(BUILD_DIR, MOJO_TOOL) if proc.returncode == 0 else None
+    if binary is None:
         print(proc.stdout[-4000:])
         print(proc.stderr[-4000:])
         raise SystemExit("mojo build failed")
+    return binary
 
 
 def ensure_rossi_data() -> None:
     if os.path.exists(os.path.join(DATA_DIR, "rossi_week.f64")):
         return
     print("prepping Rossi dataset ...", file=sys.stderr)
-    proc = subprocess.run(
-        [REF_PYTHON, str(PREP), DATA_DIR], capture_output=True, text=True,
-    )
+    proc = run_tool(ref_python(), PREP, DATA_DIR, capture_output=True, text=True)
     print(proc.stdout)
     if proc.returncode != 0:
         print(proc.stderr)
@@ -93,8 +115,8 @@ def ensure_drivestats_data() -> None:
             "docstring for the two-step fetch + transform."
         )
     print("prepping Drive Stats dataset ...", file=sys.stderr)
-    proc = subprocess.run(
-        [REF_PYTHON, str(PREP_DRIVESTATS), DRIVESTATS_SUMMARY_CSV, DATA_DIR],
+    proc = run_tool(
+        ref_python(), PREP_DRIVESTATS, DRIVESTATS_SUMMARY_CSV, DATA_DIR,
         capture_output=True, text=True,
     )
     print(proc.stdout)
@@ -108,17 +130,17 @@ def ensure_motorsport_data() -> None:
         return
     if not os.path.exists(MOTORSPORT_SUMMARY_CSV):
         print("building motorsport survival summary from the local corpus ...", file=sys.stderr)
-        proc = subprocess.run(
-            [REF_PYTHON, str(HERE / "build_motorsport_survival.py"),
-             os.path.expanduser("~/.algenta/f1/raw"), MOTORSPORT_SUMMARY_CSV],
+        proc = run_tool(
+            ref_python(), HERE / "build_motorsport_survival.py",
+            os.path.expanduser("~/.algenta/f1/raw"), MOTORSPORT_SUMMARY_CSV,
             capture_output=True, text=True,
         )
         print(proc.stdout, proc.stderr)
         if proc.returncode != 0:
             raise SystemExit("build_motorsport_survival.py failed -- corpus not present locally?")
     print("prepping motorsport dataset ...", file=sys.stderr)
-    proc = subprocess.run(
-        [REF_PYTHON, str(PREP_MOTORSPORT), MOTORSPORT_SUMMARY_CSV, DATA_DIR],
+    proc = run_tool(
+        ref_python(), PREP_MOTORSPORT, MOTORSPORT_SUMMARY_CSV, DATA_DIR,
         capture_output=True, text=True,
     )
     print(proc.stdout)
@@ -165,42 +187,44 @@ def parse_timing(output: str, mode: str) -> list[int]:
     return reps
 
 
-def run(cmd: list[str], cwd: str | None = None, timeout: float = 300.0) -> tuple[int, str]:
-    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout)
+def run(
+    tool: Path, *args: object, cwd: str | None = None, timeout: float = 300.0
+) -> tuple[int, str]:
+    proc = run_tool(tool, *args, capture_output=True, text=True, cwd=cwd, timeout=timeout)
     return proc.returncode, proc.stdout + proc.stderr
 
 
 REAL_DATA_MODES = {"km_rossi", "km_drivestats", "km_motorsport", "cox_rossi", "cox_drivestats", "cox_motorsport"}
 
 
-def run_km_cell(mode: str, arg: str, reps: int) -> dict:
+def run_km_cell(mojo: Path, mode: str, arg: str, reps: int) -> dict:
     dump_dir = os.path.join(DUMP_ROOT, f"{mode}_{arg}")
     os.makedirs(dump_dir, exist_ok=True)
     if mode in REAL_DATA_MODES:
-        mojo_cmd = [MOJO_BIN, mode, DATA_DIR, dump_dir, str(reps)]
-        py_cmd = [REF_PYTHON, str(REFS), mode, DATA_DIR, dump_dir, str(reps)]
+        mojo_args = (mode, DATA_DIR, dump_dir, reps)
+        py_args = (REFS, mode, DATA_DIR, dump_dir, reps)
     else:
-        mojo_cmd = [MOJO_BIN, mode, arg, dump_dir, str(reps)]
-        py_cmd = [REF_PYTHON, str(REFS), mode, arg, dump_dir, str(reps)]
-    rc1, out1 = run(mojo_cmd)
-    rc2, out2 = run(py_cmd, timeout=600.0)
+        mojo_args = (mode, arg, dump_dir, reps)
+        py_args = (REFS, mode, arg, dump_dir, reps)
+    rc1, out1 = run(mojo, *mojo_args)
+    rc2, out2 = run(ref_python(), *py_args, timeout=600.0)
     return {
         "mode": mode, "n": arg, "mojo_out": out1, "py_out": out2,
         "mojo_rc": rc1, "py_rc": rc2,
     }
 
 
-def run_cox_cell(mode: str, n: str, p: str, max_iter: int, reps: int) -> dict:
+def run_cox_cell(mojo: Path, mode: str, n: str, p: str, max_iter: int, reps: int) -> dict:
     dump_dir = os.path.join(DUMP_ROOT, f"{mode}_{n}_{p}")
     os.makedirs(dump_dir, exist_ok=True)
     if mode in REAL_DATA_MODES:
-        mojo_cmd = [MOJO_BIN, mode, DATA_DIR, dump_dir, str(max_iter), str(reps)]
-        py_cmd = [REF_PYTHON, str(REFS), mode, DATA_DIR, dump_dir, str(max_iter), str(reps)]
+        mojo_args = (mode, DATA_DIR, dump_dir, max_iter, reps)
+        py_args = (REFS, mode, DATA_DIR, dump_dir, max_iter, reps)
     else:
-        mojo_cmd = [MOJO_BIN, mode, n, p, str(max_iter), dump_dir, str(reps)]
-        py_cmd = [REF_PYTHON, str(REFS), mode, n, p, str(max_iter), dump_dir, str(reps)]
-    rc1, out1 = run(mojo_cmd)
-    rc2, out2 = run(py_cmd, timeout=600.0)
+        mojo_args = (mode, n, p, max_iter, dump_dir, reps)
+        py_args = (REFS, mode, n, p, max_iter, dump_dir, reps)
+    rc1, out1 = run(mojo, *mojo_args)
+    rc2, out2 = run(ref_python(), *py_args, timeout=600.0)
     return {
         "mode": mode, "n": n, "p": p, "mojo_out": out1, "py_out": out2,
         "mojo_rc": rc1, "py_rc": rc2,
@@ -288,8 +312,11 @@ def main() -> int:
     args = ap.parse_args()
 
     os.makedirs(DUMP_ROOT, exist_ok=True)
-    if not args.skip_build:
-        build_mojo()
+    try:
+        mojo = tool_path(MOJO_TOOL, search_dirs=(BUILD_DIR,)) if args.skip_build else build_mojo()
+        ref_python()  # fail here, with the allowlist's message, not inside the first prep step
+    except ToolError as exc:
+        raise SystemExit(f"{ap.prog}: error: {exc}") from None
     ensure_rossi_data()
     ensure_drivestats_data()
     ensure_motorsport_data()
@@ -299,8 +326,8 @@ def main() -> int:
     print("SURVIVAL ANALYSIS HEAD-TO-HEAD: Algenta survival_analysis vs lifelines 0.30.0")
     print("=" * 96)
     print(f"load average BEFORE (1m/5m/15m): {load_before}")
-    print(f"mojo binary: {MOJO_BIN}")
-    print(f"reference python: {REF_PYTHON}")
+    print(f"mojo binary: {mojo}")
+    print(f"reference python: {ref_python()}")
     print()
 
     results = []
@@ -308,29 +335,29 @@ def main() -> int:
     # ── KM ───────────────────────────────────────────────────────────────────
     print("### PRIMARY: Kaplan-Meier (km_fit vs KaplanMeierFitter) ###")
     print()
-    r = judge(run_km_cell("km_drivestats", "", args.reps_cheap))
+    r = judge(run_km_cell(mojo, "km_drivestats", "", args.reps_cheap))
     print_cell("km_drivestats n=341664 (real hard-drive fleet, current quarter)", r)
     results.append(r)
 
-    r = judge(run_km_cell("km_motorsport", "", args.reps_cheap))
+    r = judge(run_km_cell(mojo, "km_motorsport", "", args.reps_cheap))
     print_cell("km_motorsport n=2596 (real car-racing retirement corpus, 2019-2026)", r)
     results.append(r)
 
-    r = judge(run_km_cell("km_rossi", "", args.reps_cheap))
+    r = judge(run_km_cell(mojo, "km_rossi", "", args.reps_cheap))
     print_cell("km_rossi n=432 (real Rossi recidivism dataset, 1980 -- secondary cross-check, "
                "not featured: see the page for why)", r)
     results.append(r)
 
     for n in args.km_sizes.split(","):
         reps = args.reps_cheap
-        r = judge(run_km_cell("km_synth", n, reps))
+        r = judge(run_km_cell(mojo, "km_synth", n, reps))
         print_cell(f"km_synth n={n} (synthetic, 25% censored, ~2.4% tie rate)", r)
         results.append(r)
 
     # ── Cox ──────────────────────────────────────────────────────────────────
     print("### SECONDARY: Cox proportional hazards (cox_fit vs CoxPHFitter) ###")
     print()
-    r = judge(run_cox_cell("cox_motorsport", "", "", 100, args.reps_cheap))
+    r = judge(run_cox_cell(mojo, "cox_motorsport", "", "", 100, args.reps_cheap))
     print_cell("cox_motorsport n=2596 p=2 (real car-racing corpus, 2019-2026)", r)
     results.append(r)
 
@@ -342,7 +369,7 @@ def main() -> int:
     print("  arm to check against is not a comparison. See the page's Method section.")
     print()
 
-    r = judge(run_cox_cell("cox_rossi", "", "", 100, args.reps_cheap))
+    r = judge(run_cox_cell(mojo, "cox_rossi", "", "", 100, args.reps_cheap))
     print_cell("cox_rossi n=432 p=7 (real Rossi recidivism dataset, 1980 -- secondary "
                "cross-check, not featured: see the page for why)", r)
     results.append(r)
@@ -355,7 +382,7 @@ def main() -> int:
         max_iter = max(max_iter, 1)
         expensive = n * p >= 800_000
         reps = args.reps_expensive if expensive else args.reps_cheap
-        r = judge(run_cox_cell("cox_synth", n_s, p_s, max_iter, reps))
+        r = judge(run_cox_cell(mojo, "cox_synth", n_s, p_s, max_iter, reps))
         print_cell(f"cox_synth n={n} p={p} (max_iter={max_iter}, synthetic proportional-hazards)", r)
         results.append(r)
 
