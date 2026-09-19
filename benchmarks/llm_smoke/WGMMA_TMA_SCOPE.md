@@ -168,3 +168,96 @@ finished.
 **Recommendation:** land ROPEVEC and price norm-accum first — they are hours, not windows — and
 treat wgmma as a scoped project with its own budget, undertaken only once those are closed and the
 remaining gap is still worth ~10 ms.
+
+---
+
+## 8. PASS 1 RESULTS — authored and censused on CPU, 2026-09-19 (round 14), zero VM time
+
+`benchmarks/llm_smoke/nvidia_race/fa_g3_tma_probe.cu` exists, **compiles clean for `sm_90a`** under
+the calibrated CUDA 12.6 container (`NVCC_RC=0`, `error_lines=0`), and is censused. Calibration was
+re-run first and passed **6/6 exact** against the VM's round-7 log (165/172/165/172/166/166), so the
+numbers below are evidence and not a local-toolchain artifact.
+
+| kernel | role | BN=32 | BN=64 | spill |
+|---|---|---|---|---|
+| `_tma_dump_kernel` | probe [0], staging byte-dump | 26 | 26 | 0 |
+| `_tma_dlayout_kernel` | probe [1], accumulator layout, identity B | 58 | 64 | 0 |
+| `_tma_product_kernel` | probe [2], product identity over a TMA-staged tile | 58 | 64 | 0 |
+| `_tma_regA_kernel` | probe [3], m64n128k16 with **register-A** (64 f32 accumulators) | **96** | **96** | **0** |
+
+**12 instantiations, peak 96/255 registers, zero spill in all 12**, across both swizzle modes
+(0=none, 1=128B) and both key-block widths.
+
+What that establishes, and what it does not:
+
+* **Established:** the TMA + wgmma *mechanics* compile and do not blow the register file. That
+  includes `cp.async.bulk.tensor.2d.shared::cluster.global.tile.mbarrier::complete_tx::bytes`, the
+  full mbarrier handshake (`init` / `arrive.expect_tx` / `try_wait.parity` spin), a
+  `__grid_constant__ CUtensorMap` kernel parameter, and host-side `cuTensorMapEncodeTiled` over the
+  **real** cache layout — 2D map, `globalDim={d,n_keys}`, `globalStrides={kvld*2}` bytes, kv-head
+  folded into the base pointer at `hk*d*2`. The heaviest arm, register-A with 64 accumulators, costs
+  **96**, leaving **159 registers of headroom** to the 255 cliff. Round 7 died because its RT=2
+  shared-B-fragment route needed 255 **and spilled in 24 of 36 instantiations**; this route's
+  ceiling is nowhere near that, so the register file is not the obstacle here.
+* **NOT established:** 96 is a **floor for the real kernel, not an estimate of it**. These probes
+  carry no online softmax, no running max/sum, no alpha rescale, no `kb_min`/`kb_max` window logic,
+  no double buffering and no epilogue. Round 8's censused arms (106 descriptor-BN32 / 122
+  descriptor-BN64 / 126 register-A) were closer to real because they included more of the loop. The
+  honest statement is that the *staging and MMA mechanics* are cheap and the budget question is
+  entirely about the softmax/window machinery that has to live alongside them — which is the same
+  machinery v2 already fits in 158-172.
+* **A defect found and fixed in the probe itself, worth keeping visible:** the first census reported
+  *"1 instantiation, 26 registers"* because a `__global__` **template is emitted only where it is
+  instantiated**, and `main()` launched just the dump kernel. The three wgmma arms — the only ones
+  whose register count decides anything — were never compiled. A `g_tma_force_instantiations[]` array
+  taking each variant's address now forces all 12. **Generalises: any census of a templated probe
+  must assert the instantiation COUNT matches the intended sweep, or it silently censuses one arm
+  and looks like a pass.** Round 7's census did not have this trap because `tc_shim.cu` instantiates
+  through explicit macros.
+
+### Design change made during pass 1, and why it is better than §4 proposed
+
+§4 proposed pinning the accumulator layout with an identity B. That still **infers** the operand
+layout from a product result — the exact ambiguity that made round 12 inconclusive between "wrong B
+descriptor" and "wrong D layout". So probe **[0]** does something strictly better and nearly free:
+after the TMA copy it writes the shared-memory bytes **straight back to global**, and the host
+recovers the core-matrix permutation the copy engine actually applied by reading which source row
+each 16-byte chunk came from (the source pattern makes rows identifiable: only `x==0` is non-zero,
+and its value is `y+1`). **That converts the descriptor's LBO/SBO/swizzle from a search space into a
+lookup table**, and it is the measurement round 12 lacked. Probes [1]-[3] then run in dependency
+order behind it, so a failure in any of them is attributable rather than ambiguous. §4's caveat about
+identity B still holds and is now recorded in the file itself: identity is invariant under transpose
+but **not** under an arbitrary core-matrix permutation, so [1] alone could not have separated B from
+D.
+
+Honest status of the host side: **[0] is fully wired and runnable**; the host-side identity-pattern
+buffers and exact-integer comparisons for **[1]/[2]/[3] are pass-2 work** and `main()` says so
+explicitly rather than pretending to run them. The kernels compile and are censused, which is what
+pass 1 was for.
+
+## 9. PASS 2, PRICED
+
+| step | where | cost | produces |
+|---|---|---|---|
+| B1. Host drivers for [1]/[2]/[3]: a second source buffer with the identity and `(r+1)(n+1)` patterns, the exact-integer comparison, and per-probe exit codes | **CPU, 0 VM** | one short authoring pass (~the size of pass 1's host side) | a probe binary that returns pinned/refuted per probe |
+| B2. Run [0] then [1]-[3] on the box, in that order | **VM, ~20 min** | one short window | the swizzle→(LBO,SBO) lookup table, the D mapping, and whether register-A feedback holds |
+| C. `_fa_g3_window4_kernel`: the windowed wgmma kernel against the pinned layout, + host entry + DECLINED fallbacks to v2/v1 + `fa_g3_probe` arms with the host-f64 windowed reference | **CPU, 0 VM** | the largest pass; census is free and calibrated | kernel + a register number for the REAL loop, which is the number that actually matters |
+| D. f64 numeric gate + bit-identity vs v2 + A/B cells + same-session TRT re-serve | **VM, ~60-90 min** | one full window | a publishable number or a measured refutation |
+
+**Unchanged from §6: 2 VM windows (~1.5-2 h of cap) and 2 CPU authoring passes**, now with pass 1 of
+the two CPU passes spent and its risk retired — the mechanics compile, the tensor-map plumbing is
+written against the real layout, and the register file is not the blocker. What remains genuinely
+unknown is only what B2 answers: the swizzle→descriptor mapping and the accumulator layout, both of
+which [0] and [1] observe directly instead of inferring.
+
+One integration cost now confirmed rather than predicted: the probe needs **`-lcuda`** for
+`cuTensorMapEncodeTiled`, on top of the shim's existing `-lcublas -lcudart`, and the host entry must
+build and cache one map per (cache pointer, geometry, kv-head-base) with an **explicit** answer to
+what happens when the cache is reallocated. Both are in the file's header rather than left to be
+discovered during C.
+
+**Recommendation, unchanged and now better-supported:** the prize is still bounded by flashinfer's
+21.01 ms, so ~12.5 ms of headroom and ~10 ms after the ~65-80% transfer discount ⇒ rag4096 ≈
+1.133x — the largest remaining single-lever win but **not** the route to the 1.15x bar. Pass 1 has
+made it cheaper to finish and removed the register-file risk, but it has not changed the prize, so
+norm-accum (still unpriced; ~25 min of nsys) remains the better next spend per unit of VM time.

@@ -20906,3 +20906,225 @@ new undeclared kernels, mojo inventory audit threshold met. `bash -n` clean on a
 artifacts dir** (`/private/tmp/gemma_artifacts/`). It is the audit trail for round 13 and currently
 exists only on the persistent boot disk — the round-13 numbers were read live over SSH and the log was
 never retrieved. This applies whether the next window is TMA work or the pp256/pp1024 bracket.
+
+---
+
+## ROUND 14 — gemma-3-27b-it H200: the NEW SHIPPED DEFAULT measured at pp1024 **94.249 ms** and pp256 **30.706 ms** (n=8 each, same-session TRT within 1%), and the double flip PROVEN equivalent to the certified arm on a real linked binary — but **NOT PUBLISHABLE, no drift armor**, because my own summariser glob excluded the closing cells (branch `feat/gemma-round14-default`, 2026-09-19; the double flip being measured was merged to main as `5607e5b7`, PR #1042, and the rag4096 row published as #1044)
+
+One self-serve window, **1h21m19s of a 1.5 h cap** (start issued 05:49:11Z, `STOPPED` 07:10:30Z with
+`--discard-local-ssd=false`, `TERMINATED` confirmed and `status=RUNNING` verified empty
+project-wide). Spot capacity granted on the **first** attempt this time, though the boot took 6m16s
+and sshd refused connections for a further ~2.5 min after the API reported RUNNING — an IAP
+`4003 failed to connect to backend` during that interval is normal, not a capacity refusal.
+
+### (0) THE STANDING INSTRUCTION WAS HONoured FIRST, AND THE AUDIT PAID OFF
+
+`~/lever7/window13.log` was pulled to `/private/tmp/gemma_artifacts/window13.log` (18579 bytes) at
+**05:58:14Z, before any other work**. Auditing it against what round 13 published:
+
+* **TRT re-serve confirmed exactly**: pp256 41.292 (-0.549%), pp1024 110.713 (-0.062%), rag4096
+  429.400 (+0.617%) — all three match the ledger to the digit.
+* `offpin` count 0; bracket shape `1warm+3meas+1close`; cells interleaved A..B..A as described.
+* **One correction:** the `KILLED_BY_OPERATOR` line is timestamped **04:09:56Z**, not 04:08:56Z as
+  the round-13 section says. One minute out, in a line quoted as evidence. Corrected here rather
+  than by editing the earlier section (append-only).
+* The log also confirms `/mnt/ramblob/g3conv27b` and all four `/tmp/g3*` fixture dirs are **WIPED by
+  a stop** (tmpfs), while `$HOME` survives on the boot disk — so every window pays ~6.5 min of
+  re-stage, dominated by the 101 G checkpoint conversion (03:33:46 -> 03:39:40 in round 13,
+  06:01:28 -> 06:08:06 here).
+
+### THE GATE WAS NOT RE-RUN — DECLARED DEVIATION, WITH THE EVIDENCE THAT JUSTIFIES IT
+
+Established **on CPU before the box was started**, so no VM minute was spent discovering it:
+`git diff 5bf62c29 HEAD` touches six files, and the three that contain kernels —
+`kernels_prefill_gemma3.mojo`, `tc_shim.cu`, `tc_shim_bridge.mojo` — are **BYTE-IDENTICAL** to the
+source the round-12-certified arm `ca66b41a2ee34cde` was built from (`5bf62c29` carries round 9's
+`bb1f034fe` version of the session file). The only changed Mojo source is
+`session_cuda_gemma3_f16.mojo` (+76/-28), and its non-comment changes are exactly two comptime
+default expressions and two `print` banner strings.
+
+**What I did NOT manage to prove, stated plainly.** I compiled both configurations locally and
+diffed the LLVM IR: 4498 lines differ. ~500 are string constants and ~374 are source line/col
+metadata shifted by the lines I added, but **3624 resisted classification** — they are SSA
+renumbering and string-length stores (`store i64 14` / `store i64 18`) cascading from the banner
+edits. That is *consistent* with a text-only change and I believe it is one, but a cascade is not a
+proof, so **no IR-equivalence claim is made**. The load-bearing evidence is instead the
+byte-identical kernel sources plus the runtime flag audit below, which agrees with them.
+
+Substitute evidence collected on the VM, and it is better than an argument: the flag audit over the
+**real linked binaries** gives
+
+| arm | sha256_16 | flag family |
+|---|---|---|
+| `R9_both` — the NEW DEFAULT, built with **no** lever flags | `3c70880f9fe95910` (6167152 B) | FA FA2 KV16 BN32 F16NORM F16MLP F16ATTN ROPE2 **ROPEVEC GQA2** TCATTN STREAM |
+| `R9_both_r12cert` — the round-12 CERTIFIED arm, preserved before the rebuild | `ca66b41a2ee34cde` (6165984 B) | **IDENTICAL LIST** |
+| `R9_base` — built with **both** opt-outs | `63b631ed6e4add99` | FA FA2 KV16 BN32 F16NORM F16MLP F16ATTN ROPE2 TCATTN STREAM — **no ROPEVEC, no GQA2** |
+
+So the shipped default and the certified arm carry the **same flag family**, the +1168 bytes is the
+longer banner text, and `CERTIFIED_HASH_MATCH=True` confirmed the preserved binary really is the
+gated one before the rebuild overwrote the filename. This also **upgrades #1042's audit validation**:
+its two new rows were demonstrated only on `--emit object` artifacts, and are now demonstrated on
+real linked arms, including the inverted case (an arm that correctly shows BOTH levers absent).
+Round 12 set the precedent for this call when it abandoned a redundant `R9_base` re-gate.
+
+### THE BRACKET — same binary under two names, and why
+
+`run_gemma3_round6_cells.sh` names cells `r6<TAG>_<ARM>_<prompt>_r<i>` and **always runs both ARM_A
+and ARM_B each round**, and `ARM_B` cannot be left empty (it has a default). Setting `ARM_A=ARM_B`
+would therefore **collide on the cell filename and silently discard half the samples** — a bracket
+that looks complete and is not. So the default was built once and `cp`'d to `R14_defB`, with
+`TWIN_IDENTICAL=True` asserted by hash before any cell ran. Both slots are the same configuration,
+so all 8 measured cells per prompt belong to one arm, and the A-vs-B spread doubles as a
+run-to-run **reproducibility** measurement instead of being a wasted slot.
+
+`CELLTAG=e`, 1 warmup + 4 measured + 1 closing per slot, **22 cells, every one `END rc=0` with
+`offpin=0` and 1410 MHz on every 1 Hz sample**, ~110-117 s per cell (dominated by the driver loading
+the 101 G checkpoint in a fresh process, which is why pp256 and pp1024 cells cost about the same).
+
+| prompt | n (A+B) | median ms | IQR | rel-IQR% | values |
+|---|---|---|---|---|---|
+| **pp1024** | 8 (4+4) | **94.249** | 0.271 | **0.288** | 93.754 93.911 94.105 94.163 94.336 94.346 94.377 94.377 |
+| **pp256** | 8 (4+4) | **30.706** | 0.048 | **0.157** | 30.396 30.432 30.686 30.687 30.725 30.730 30.735 30.761 |
+
+Both prompts complete as CELLGROUPs, pp1024 at 06:38:21Z and pp256 at 07:00:21Z, each **with its
+closing cell**. Controls (`R9_gqa2` / `R9_ropev`) were declared out of scope before the window — the
+brief allows them only with >=30 min remaining, and the bracket plus re-serve consumed the budget.
+
+### SAME-SESSION TRT-LLM 1.2.1 RE-SERVE — all three reproduce within 1%
+
+Genuinely fresh: server launched 07:00:51Z, `READY after 72s` at 07:02:28Z, three cells
+07:02:28 -> 07:03:28Z all `rc=0 offpin=0` at 1410 MHz, server stopped 07:03:36Z, JSON mtime
+07:03:36Z.
+
+| cell | re-served | stored | delta | within 1% |
+|---|---|---|---|---|
+| pp256 | **41.329 ms** | 41.520 | **-0.460%** | YES |
+| pp1024 | **110.968 ms** | 110.782 | **+0.168%** | YES |
+| rag4096 | **428.212 ms** | 426.766 | **+0.339%** | YES |
+
+**Attribution correction:** these numbers come from the repo's own `summarize_gemma3_round6.py`,
+**not** from chain14's inline phase-5 check, which printed `could not parse a median` for all three
+cells — my key list did not match the real JSON schema. The re-serve ran and the numbers are sound;
+only my redundant parser was broken, and it failed *loudly* rather than silently, which is the
+acceptable failure mode. Fixed to dump the raw JSON so the value can never be lost to a schema guess.
+
+### THE RATIOS, COMPUTED BUT **NOT PUBLISHED — NO DRIFT ARMOR**
+
+| prompt | default ms | same-session TRT | ratio | tok/s | published | verdict |
+|---|---|---|---|---|---|---|
+| pp256 | 30.706 | 41.329 | **1.3460x** | **8,337** | 32.108 ms, 7,973 tok/s, 1.2931x | **+4.567% tok/s, BEYOND its own 0.157% spread** — a real refresh candidate |
+| pp1024 | 94.249 | 110.968 | **1.1774x** | **10,865** | 94.022 ms, 10,891 tok/s, 1.1779x | **-0.240%, WITHIN its own 0.288% spread** — rounding, no refresh |
+
+**Neither row is publishable, and the reason is mine.** The brief is "closing cell mandatory (armor
+or no publish)". Both closing cells **ran and ENDed `rc=0 offpin=0`**, but chain14's phase-6(b)
+globbed `r6e_*_r*.out` — a pattern that **excludes `close1`** — so the closing values were never
+read, and I stopped the VM before pulling the two `.out` files. Armor is therefore not computable
+from anything in hand, and per the rule the ratios above stay internal.
+
+**Recovery costs seconds, not a window:** the values are on the persistent boot disk at
+`~/lever7/runs/r6e_R9_both_pp1024_close1.out` and `..._pp256_close1.out`, preserved by
+`--discard-local-ssd=false`. Read those two files and the armor falls out against the opening
+medians already recorded above. **No re-measurement is needed** — the bracket is complete and banked.
+
+Worth recording what the spread does and does not license: the 8 pp256 values span 1.2% and the 8
+pp1024 values 0.66%, and the bracket ran 06:16 -> 07:00 across which a thermal or drift effect would
+have to hide inside those ranges. That is *suggestive* of small drift and is **not** armor — armor is
+a measured open-vs-close delta, and the distinction is the whole point of the rule.
+
+### FOUR HARNESS DEFECTS FOUND, THREE FIXED IN `chain14.sh`
+
+1. **The off-pin census read the WRONG FIELD and flagged every cell in the window.** It reported
+   `OFF_PIN ... RE-TAKE REQUIRED` for 100+ "samples" in each of my cells *and* in round-9 files,
+   while the harness's own per-cell sampler reported `offpin=0` on all 22. The sampler writes
+   `2026-09-19T06:42:17Z 1410 MHz, 0 %, 0 %, 0 MiB, 97.13 W, 35` — a **space**-separated
+   timestamp+clock followed by **comma**-separated nvidia-smi fields, with no header row. Under
+   `-F,` that makes `$2` the GPU **utilization**, so `$2+0 != 1410` compared utilization to a clock
+   and could only ever fail. **A census that flags everything is worse than none**: it cries wolf
+   until a genuinely off-pin window gets waved off as the same bug. Fixed to split `$1` on spaces,
+   scoped to this window's `r6e_`/`smoke_` files only (the clocks dir accumulates every previous
+   window), and made to cross-check the harness's own `offpin=` values. Note chain13's identical
+   census reported "no off-pin samples", so round 13's clean result was luck of a different code
+   path, not a validated check — its per-cell `offpin=0` values are the real evidence there too.
+2. **The phase-6(b) glob excluded the closing cells** — the direct cause of the unpublished ratios
+   above. Fixed with a separate `vals_close()` so a missing close cell prints
+   `ARMOR NOT COMPUTABLE — NO PUBLISH` instead of quietly yielding a median with no armor.
+3. **The phase-5 TRT parser failed silently-ish** on a schema mismatch. Fixed to dump the raw JSON.
+4. **NOT FIXED, recorded instead: `summarize_gemma3_round6.py` does not scan the `r6e_` label** (only
+   `r6_`, `r6b_`, `r6c_`), so "pooled labels" did **not** pool — it reported `no measured runs` for
+   pp1024 and for `R14_defB` entirely, and emitted a long `STALLED / MISSING CELLS` list of
+   `r6e_*:NO-JSON` entries that are **artifacts of the unknown label, not real stalls**. Either add
+   `r6e_` to the summariser's label list or keep using the same-bracket-only comparison, which is
+   what governs here. Reading that list at face value would have sent someone hunting for 80 missing
+   cells that all exist.
+5. **TRAP, recorded for the next round: the summariser prints `ORACLE GATES ... ALL_PASS=True` keyed
+   by ARM NAME, not by hash.** It showed `R9_both ALL_PASS=True` in a window where `R9_both` had been
+   **rebuilt to a different hash** (`3c70880f9fe95910`). The gate belongs to `ca66b41a2ee34cde`. An
+   arm renamed or rebuilt in place inherits the previous binary's gate line silently, so the flag
+   audit's `sha256_16` column — not the gate line — is what ties a certification to a binary.
+
+### FORECAST vs MEASURED
+
+No forecast was pre-registered for this window: it measured an already-measured configuration at two
+prompts it had not been timed at, so there was nothing to predict. The one prediction made was
+procedural — that pp256 would come in near round 13's indicative 30.380/30.571 rather than near the
+published 32.108 — and it did (30.706, n=8), which corroborates round 13's finding that **the
+published pp256 row was computed from a stale 32.108 ms that round 6 never re-timed**. That row
+overstates our pp256 time by 4.4% and therefore **understates our win**; it is the conservative
+direction, and per the owner's decision it stays as published until a bracketed measurement with
+armor exists. This window produced the bracket; only the armor extraction is outstanding.
+
+### EVIDENCE
+
+`window14.log` (28676 bytes) **pulled to `/private/tmp/gemma_artifacts/` BEFORE the stop** — the
+round-13 mistake not repeated. `window13.log` (18579 bytes) pulled first per the standing
+instruction. Single log per window, liveness lines every 120 s, no `KILLED_BY_OPERATOR` needed (the
+cap was not breached: `CHAIN14_DONE 07:03:36Z elapsed=48min of cap=56min`). `chain14.sh` committed
+with its three fixes and the reasoning inline. No gitbook page touched. Ledger append-only.
+
+---
+
+## ROUND 14 ADDENDUM — TMA-staged wgmma authoring pass 1 COMPLETE on CPU, censused GREEN at peak 96/255 registers with zero spill; the register file is NOT this route's obstacle (2026-09-19, zero VM time)
+
+Task (4) of the same window, done entirely on CPU after the VM was stopped.
+`benchmarks/llm_smoke/nvidia_race/fa_g3_tma_probe.cu` **compiles clean for `sm_90a`** under the
+calibrated CUDA 12.6 container, and the census was taken only after `--calibrate` re-passed **6/6
+exact** against the VM's round-7 log, so the numbers are evidence.
+
+| probe kernel | role | BN=32 | BN=64 | spill |
+|---|---|---|---|---|
+| `_tma_dump_kernel` | [0] staging byte-dump | 26 | 26 | 0 |
+| `_tma_dlayout_kernel` | [1] accumulator layout, identity B | 58 | 64 | 0 |
+| `_tma_product_kernel` | [2] product identity over a TMA-staged tile | 58 | 64 | 0 |
+| `_tma_regA_kernel` | [3] m64n128k16, **register-A**, 64 f32 accumulators | **96** | **96** | **0** |
+
+**12 instantiations, peak 96/255, zero spill in all 12**, across both swizzle modes and both
+key-block widths. The heaviest arm leaves **159 registers of headroom** to the cliff that killed
+round 7 (v3 RT=2 at 255/255, spilling in 24 of 36). Established: `cp.async.bulk.tensor.2d` with the
+full mbarrier handshake, a `__grid_constant__ CUtensorMap` parameter, and host-side
+`cuTensorMapEncodeTiled` over the **real** `[n_keys][h_kv][d]` cache layout all compile. NOT
+established: 96 is a **floor for the real kernel, not an estimate** — no online softmax, window
+logic, double buffering or epilogue is in these probes yet.
+
+**A census defect found in my own probe, generalisable.** The first run reported *"1 instantiation,
+26 registers"* — a `__global__` **template is emitted only where instantiated**, and `main()`
+launched only the dump kernel, so the three wgmma arms whose register count decides everything were
+never compiled and the census *looked like a pass*. Fixed with a forced-instantiation array.
+**Any census of a templated probe must assert the instantiation COUNT matches the intended sweep.**
+
+**Design improvement over the scope doc:** §4 proposed pinning the accumulator layout with an
+identity B, which still *infers* operand layout from a product result — the exact ambiguity that made
+round 12 inconclusive. Probe **[0]** instead writes the shared-memory bytes straight back to global
+after the TMA copy, so the host reads the core-matrix permutation the copy engine actually applied.
+**That converts the descriptor's LBO/SBO/swizzle from a search space into a lookup table.** [0] is
+fully wired and runnable; the host drivers for [1]-[3] are pass-2 work and `main()` says so rather
+than pretending.
+
+Pass 2 priced in `WGMMA_TMA_SCOPE.md` §9: **unchanged at 2 VM windows (~1.5-2 h of cap) and 2 CPU
+authoring passes**, with pass 1 of the two now spent and the register-file risk retired. Confirmed
+rather than predicted: the shim needs **`-lcuda`** for `cuTensorMapEncodeTiled`, and the host entry
+must answer explicitly what happens to cached tensor maps when the KV cache is reallocated. The
+recommendation is also unchanged and now better-supported — the prize is bounded by flashinfer's
+21.01 ms (≈10 ms after the ~65-80% transfer discount ⇒ rag4096 ≈1.133x), so **norm-accum remains the
+better next spend per VM minute** at ~25 min of nsys versus a multi-window project.
+
+No gitbook page touched. Ledger append-only. No VM time spent on this addendum.
