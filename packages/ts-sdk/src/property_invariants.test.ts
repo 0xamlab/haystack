@@ -3,9 +3,10 @@
 //
 // Every property below is a contract the rest of the SDK -- or the Python SDK, where noted --
 // already depends on: canonical-JSON + sha256 parity, CSV parse round-trips, aggregation
-// arithmetic, error-envelope totality, the HTTP status -> error-class mapping, base-URL
-// normalization, Algenta-owned host classification and device-id validation. Each property
-// runs at most 100 generated cases; nothing here touches the network, timers or the disk.
+// arithmetic, SQL DSN provider lookup, error-envelope totality, the HTTP status -> error-class
+// mapping, base-URL normalization, Algenta-owned host classification and device-id validation.
+// Each property runs at most 100 generated cases; nothing here touches the network, timers or
+// the disk.
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -31,6 +32,7 @@ import {
   baseHeaderName,
   canonicalizeCsvHeaders,
   coerceCsvScalar,
+  runtimeSqlConnectionString,
   sqlIdentifier,
   stripUndefined,
 } from "./_runtime_helpers_c.js";
@@ -81,6 +83,26 @@ const jsonArb = fc.jsonValue().filter(hasOnlySafeKeys);
 const anythingArb = fc.anything().filter(hasOnlySafeKeys);
 const safeKeyArb = fc.string().filter((key) => key !== "__proto__");
 const padArb = fc.constantFrom("", " ", "  ", "\t");
+
+// Every name a plain `{}` answers `in` / `[]` for without owning it: the Object.prototype
+// members, plus "prototype" (owned by any Function-valued entry). A lookup table keyed by
+// caller text must reject all of them or it hands back an inherited function instead of
+// throwing -- the HIGH finding of codna review on thyn-ai/algenta-sdk#70.
+const INHERITED_NAMES = [
+  "constructor",
+  "toString",
+  "toLocaleString",
+  "valueOf",
+  "hasOwnProperty",
+  "isPrototypeOf",
+  "propertyIsEnumerable",
+  "__proto__",
+  "__defineGetter__",
+  "__defineSetter__",
+  "__lookupGetter__",
+  "__lookupSetter__",
+  "prototype",
+] as const;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -275,15 +297,11 @@ describe("aggregation and value semantics (_runtime_helpers_b, _runtime_helpers_
   });
 
   it("canonicalizeAggregation never falls back silently: unknown spellings throw invalid_aggregation", () => {
-    // Precondition uses `in`, not an own-property check, on purpose: names inherited from
-    // Object.prototype ("__proto__", "constructor", "toString", ...) are excluded because the
-    // SDK's alias table is a plain object and its lookup is not own-property guarded, so those
-    // spellings currently return the inherited value instead of throwing. fast-check samples
-    // "__proto__" deliberately and surfaced this; the fix belongs in _runtime_helpers_b.ts
-    // (a null-prototype table or a hasOwnProperty guard), not in this test.
+    // Own-key precondition (`hasOwn`, never `in`, which walks the prototype chain), with the
+    // inherited names mixed into the generator so every run samples them.
     const unknownArb = fc
-      .string()
-      .filter((text) => !(text.trim().toLowerCase() in AGGREGATION_SPELLINGS));
+      .oneof(fc.string(), fc.constantFrom(...INHERITED_NAMES))
+      .filter((text) => !hasOwn(AGGREGATION_SPELLINGS, text.trim().toLowerCase()));
     fc.assert(
       fc.property(unknownArb, (spelling) => {
         const thrown = captureError(() => canonicalizeAggregation(spelling));
@@ -294,6 +312,22 @@ describe("aggregation and value semantics (_runtime_helpers_b, _runtime_helpers_
       }),
       RUNS,
     );
+  });
+
+  it("canonicalizeAggregation rejects Object.prototype names in any case and padding, so they never reach aggregateValues", () => {
+    const supported = [...CANONICAL_AGGREGATIONS].sort();
+    for (const name of INHERITED_NAMES) {
+      const spellings = [name, ` ${name} `, `\t${name}\t`, name.toUpperCase(), mixCase(name, [true, false])];
+      for (const spelling of spellings) {
+        const thrown = captureError(() => canonicalizeAggregation(spelling));
+        expect(thrown).toBeInstanceOf(RuntimeValidationError);
+        const error = thrown as RuntimeValidationError;
+        expect(error.code).toBe("invalid_aggregation");
+        expect(error.message).toBe(`Unknown aggregation '${spelling}'. Supported: ${supported.join(", ")}.`);
+        expect(error.details).toEqual({ aggregation: spelling, supported });
+        expect(captureError(() => aggregateValues([1, 2, 3], spelling))).toBeInstanceOf(RuntimeValidationError);
+      }
+    }
   });
 
   it("aggregateValues: count is the length, sum is exact, min <= avg <= max, and aliases agree", () => {
@@ -602,6 +636,51 @@ describe("CSV parsing and coercion (_runtime_helpers_c, _runtime_helpers_d)", ()
       }),
       RUNS,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// SQL connection strings: the provider -> DSN scheme table is keyed by caller text
+// ---------------------------------------------------------------------------------------------
+
+describe("SQL connection strings (_runtime_helpers_c)", () => {
+  // Mirrors _SQL_DSN_SCHEMES in the Python SDK's runtime_connection_sql.py.
+  const SQL_SCHEMES: Readonly<Record<string, string>> = {
+    postgres: "postgresql",
+    postgresql: "postgresql",
+    mysql: "mysql",
+    mssql: "mssql",
+    redshift: "redshift",
+  };
+  const structured = { host: "db.internal", database: "analytics" };
+
+  it("builds a DSN for every known provider from a structured host/database descriptor", () => {
+    for (const [provider, scheme] of Object.entries(SQL_SCHEMES)) {
+      expect(runtimeSqlConnectionString(provider, structured)).toMatch(
+        new RegExp(`^${scheme}://db\\.internal:\\d+/analytics$`),
+      );
+    }
+  });
+
+  it("rejects every provider the table does not own -- Object.prototype names included -- with missing_connection_string", () => {
+    const unknownProviderArb = fc
+      .oneof(fc.string(), fc.constantFrom(...INHERITED_NAMES))
+      .filter((provider) => !hasOwn(SQL_SCHEMES, provider));
+    fc.assert(
+      fc.property(unknownProviderArb, (provider) => {
+        const thrown = captureError(() => runtimeSqlConnectionString(provider, structured));
+        expect(thrown).toBeInstanceOf(RuntimeValidationError);
+        const error = thrown as RuntimeValidationError;
+        expect(error.code).toBe("missing_connection_string");
+        expect(error.details).toEqual({ provider });
+      }),
+      RUNS,
+    );
+    for (const provider of INHERITED_NAMES) {
+      const thrown = captureError(() => runtimeSqlConnectionString(provider, structured));
+      expect(thrown).toBeInstanceOf(RuntimeValidationError);
+      expect((thrown as RuntimeValidationError).code).toBe("missing_connection_string");
+    }
   });
 });
 

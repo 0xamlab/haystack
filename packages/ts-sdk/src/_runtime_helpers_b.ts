@@ -273,24 +273,28 @@ export function mergeRequest(
 // SDKs must canonicalize identically for cross-language hash parity.
 export const CANONICAL_AGGREGATIONS = ["sum", "avg", "count", "min", "max"] as const;
 
-const AGGREGATION_ALIASES: Record<string, string> = {
-  sum: "sum",
-  total: "sum",
-  avg: "avg",
-  average: "avg",
-  mean: "avg",
-  count: "count",
-  min: "min",
-  minimum: "min",
-  max: "max",
-  maximum: "max",
-};
+// A Map, not a plain object: the key is caller-supplied text, and a plain object also answers
+// for everything it inherits from Object.prototype ("constructor", "toString", "__proto__", ...),
+// so those spellings resolved to an inherited function instead of throwing. Map.get is own-keys
+// only, exactly like the Python SDK's dict.get in map_query.canonicalize_aggregation.
+const AGGREGATION_ALIASES: ReadonlyMap<string, string> = new Map([
+  ["sum", "sum"],
+  ["total", "sum"],
+  ["avg", "avg"],
+  ["average", "avg"],
+  ["mean", "avg"],
+  ["count", "count"],
+  ["min", "min"],
+  ["minimum", "min"],
+  ["max", "max"],
+  ["maximum", "max"],
+]);
 
 /** Map an aggregation spelling to its canonical name; throw on unknown.
  * Unknown aggregations must never silently fall back to sum. */
 export function canonicalizeAggregation(value: string): string {
-  const canonical = AGGREGATION_ALIASES[value.trim().toLowerCase()];
-  if (!canonical) {
+  const canonical = AGGREGATION_ALIASES.get(value.trim().toLowerCase());
+  if (canonical === undefined) {
     throw new RuntimeValidationError(
       "invalid_aggregation",
       `Unknown aggregation '${value}'. Supported: ${[...CANONICAL_AGGREGATIONS].sort().join(", ")}.`,

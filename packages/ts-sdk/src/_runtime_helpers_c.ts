@@ -526,7 +526,10 @@ export function runtimeSqlConnectionString(provider: string, source: Record<stri
   if (typeof connectionString === "string" && connectionString.trim()) {
     return connectionString.trim();
   }
-  if (provider in SQL_DSN_SCHEMES) {
+  // Own-key check, never `in`: `provider` is caller-supplied text and `in` also matches what a
+  // plain object inherits from Object.prototype, so "constructor" et al. built a garbage DSN
+  // instead of reaching the missing_connection_string rejection below. Python: dict membership.
+  if (Object.prototype.hasOwnProperty.call(SQL_DSN_SCHEMES, provider)) {
     const hostValue = source.host;
     const databaseValue = source.database;
     if (
