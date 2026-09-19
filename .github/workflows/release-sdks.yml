@@ -2,8 +2,8 @@
 #   - algenta-mcp (PyPI only): published directly from here, by token, same as always.
 #   - algenta-sdk (PyPI + npm, the extracted public SDK): this repo never publishes it. Instead
 #     the sdk-release job below drives the WHOLE chain automatically, in order:
-#       1. mirror packages/python-sdk + packages/ts-sdk (and examples/) from the tested tree
-#          DIRECTLY onto thyn-ai/algenta-sdk's main,
+#       1. mirror packages/python-sdk + packages/ts-sdk + packages/mcp (and examples/) from
+#          the tested tree DIRECTLY onto thyn-ai/algenta-sdk's main,
 #       2. re-run the diff guard as the verification backstop,
 #       3. sign the release authorization (version + exact algenta-sdk commit + contract-file
 #          digest + Ed25519 signature),
@@ -286,18 +286,20 @@ jobs:
       # signing). The Ed25519 signature produced below remains the trust anchor for what the
       # public repo is allowed to publish. sync-public-sdk.yml stays available as a manual
       # repair/review path via its workflow_dispatch trigger.
-      - name: Mirror the two SDK packages into the algenta-sdk checkout
+      - name: Mirror the public packages (python-sdk, ts-sdk, mcp) into the algenta-sdk checkout
         working-directory: algenta-sdk-checkout
         run: |
           set -euo pipefail
           # Mirror logic is byte-for-byte the one from sync-public-sdk.yml -- keep them in lockstep.
-          for pkg in python-sdk ts-sdk; do
+          for pkg in python-sdk ts-sdk mcp; do
             mkdir -p "packages/$pkg"
             # Explicit allowlist copy, not a blind rsync of the whole tree -- anything not
             # matched here simply doesn't cross the boundary. --delete propagates real deletions
             # from this repo, but packages/python-sdk/tests/ is excluded: it's a smoke-test suite
             # that only exists in the public repo (this repo's python-sdk test coverage lives
             # elsewhere, see the guard job above) -- a blind mirror would silently delete it.
+            # The same exclude keeps engine-side test trees (packages/mcp/tests/) out of the
+            # source-only public mirror.
             rsync -a --delete --exclude 'build/' --exclude '*.egg-info' --exclude 'node_modules/' \
               --exclude 'dist/' --exclude '.git' --exclude 'tests/' \
               "../packages/$pkg/" "packages/$pkg/"
@@ -355,7 +357,7 @@ jobs:
             echo "REHEARSE mode: mirror diff computed and logged above; NOT committing or pushing."
             exit 0
           fi
-          git commit -m "sync: mirror packages/python-sdk + packages/ts-sdk from thyn-ai/algenta@${{ github.sha }}"
+          git commit -m "sync: mirror packages/python-sdk + packages/ts-sdk + packages/mcp from thyn-ai/algenta@${{ github.sha }}"
           git push origin HEAD:main
           echo "Mirror pushed to thyn-ai/algenta-sdk main."
 
@@ -368,7 +370,7 @@ jobs:
           EXCLUDES=(--exclude=build --exclude='*.egg-info' --exclude=node_modules --exclude=dist \
             --exclude=.git --exclude=tests --exclude=__pycache__ --exclude='*.pyc' \
             --exclude=_build_info.py --exclude=_build_info.ts)
-          for pkg in python-sdk ts-sdk; do
+          for pkg in python-sdk ts-sdk mcp; do
             if ! diff -rq "${EXCLUDES[@]}" "packages/$pkg" "algenta-sdk-checkout/packages/$pkg"; then
               echo "::error::thyn-ai/algenta-sdk's packages/$pkg doesn't match this repo's tree after the inline mirror -- refusing to sign. This indicates a bug in the mirror step above." >&2
               exit 1

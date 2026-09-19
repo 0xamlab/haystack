@@ -1,5 +1,5 @@
-# Mirrors packages/python-sdk + packages/ts-sdk out to the public, forkable
-# thyn-ai/algenta-sdk repo as a reviewable pull request — never a direct push.
+# Mirrors packages/python-sdk + packages/ts-sdk + packages/mcp out to the public,
+# forkable thyn-ai/algenta-sdk repo as a reviewable pull request — never a direct push.
 #
 # This workflow itself is CODEOWNED (see CODEOWNERS) — changes to the sync
 # mechanism require the same review rigor as changes to what it exports.
@@ -21,6 +21,7 @@ on:
     paths:
       - "packages/python-sdk/**"
       - "packages/ts-sdk/**"
+      - "packages/mcp/**"
 
 permissions:
   contents: read
@@ -79,11 +80,11 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true
 
-      - name: Mirror the two SDK packages, preserving the packages/ prefix
+      - name: Mirror the public packages (python-sdk, ts-sdk, mcp), preserving the packages/ prefix
         run: |
           set -euo pipefail
           mkdir -p algenta-sdk-public/packages
-          for pkg in python-sdk ts-sdk; do
+          for pkg in python-sdk ts-sdk mcp; do
             mkdir -p "algenta-sdk-public/packages/$pkg"
             # Explicit allowlist copy, not a blind rsync of the whole tree — anything not
             # matched here simply doesn't cross the boundary. --delete propagates real deletions
@@ -91,6 +92,8 @@ jobs:
             # that only exists in the public repo (this repo's python-sdk test coverage lives
             # elsewhere, see release-sdks.yml's guard job) — a blind mirror would silently delete
             # it every single run. Tested against a real clone and confirmed the hard way.
+            # The same exclude keeps engine-side test trees (packages/mcp/tests/) out of the
+            # source-only public mirror.
             rsync -a --delete --exclude 'build/' --exclude '*.egg-info' --exclude 'node_modules/' \
               --exclude 'dist/' --exclude '.git' --exclude 'tests/' \
               "packages/$pkg/" "algenta-sdk-public/packages/$pkg/"
@@ -153,11 +156,11 @@ jobs:
             echo "No changes to sync — clean no-op."
             exit 0
           fi
-          git commit -m "sync: mirror packages/python-sdk + packages/ts-sdk from thyn-ai/algenta@${{ github.sha }}"
+          git commit -m "sync: mirror packages/python-sdk + packages/ts-sdk + packages/mcp from thyn-ai/algenta@${{ github.sha }}"
           git push origin "$BRANCH"
           gh pr create \
             --repo thyn-ai/algenta-sdk \
             --base main \
             --head "$BRANCH" \
             --title "sync: mirror from thyn-ai/algenta@${{ github.sha }}" \
-            --body "Automated mirror of packages/python-sdk and packages/ts-sdk from thyn-ai/algenta at ${{ github.sha }}. A human CODEOWNER must review and merge — this PR does not merge itself."
+            --body "Automated mirror of packages/python-sdk, packages/ts-sdk, and packages/mcp from thyn-ai/algenta at ${{ github.sha }}. A human CODEOWNER must review and merge — this PR does not merge itself."

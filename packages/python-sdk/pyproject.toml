@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-keywords = ["decision", "simulation", "monte-carlo", "probabilistic", "risk", "api", "algenta"]
+keywords = ["decision", "simulation", "monte-carlo", "probabilistic", "risk", "api", "algenta", "mcp", "model-context-protocol", "ai-agents", "agent-governance", "mojo", "receipts", "audit-trail"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

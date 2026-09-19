@@ -29,16 +29,20 @@
   },
   "keywords": [
     "algenta",
-    "sdk",
     "typescript",
-    "javascript",
     "decision",
     "runtime",
     "simulation",
     "monte-carlo",
     "governed-data",
     "repository-intelligence",
-    "api"
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "agent-governance",
+    "mojo",
+    "receipts",
+    "approvals"
   ],
   "homepage": "https://docs.algenta.ai/sdks/typescript",
   "repository": {

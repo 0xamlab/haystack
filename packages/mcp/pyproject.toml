@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-keywords = ["mcp", "model-context-protocol", "cursor", "codex", "claude", "algenta", "agent", "tools"]
+keywords = ["mcp", "model-context-protocol", "cursor", "codex", "claude", "algenta", "agent", "tools", "agent-governance", "receipts", "approvals"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -46,9 +46,9 @@ dev = ["pytest", "respx", "ruff"]
 algenta-mcp = "algenta_mcp.server:main"
 
 [project.urls]
-Homepage = "https://algenta.ai"
+Homepage = "https://docs.algenta.ai"
 Documentation = "https://docs.algenta.ai/sdk/mcp"
-Repository = "https://github.com/thyn-ai/algenta"
+Repository = "https://github.com/thyn-ai/algenta-sdk"
 
 [tool.setuptools.packages.find]
 where = ["."]
