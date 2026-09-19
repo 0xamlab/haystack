@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta-sdk"
-version = "1.0.14"
+version = "1.0.15"
 description = "Python SDK for Algenta — public data, query, and simulation API"
 readme = "README.md"
 requires-python = ">=3.10"
