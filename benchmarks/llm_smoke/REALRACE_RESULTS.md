@@ -21405,3 +21405,393 @@ with zero VM time. `mojo_kernel_identity.sh` (differential identity table genera
 window, liveness, no `KILLED_BY_OPERATOR` needed. No kernel code. No gitbook page touched. Ledger
 append-only. **PR-not-merge**; publish decisions remain the owner's — and nothing in this round is
 publishable, because no cell was timed.
+
+
+## ROUND 17 — gemma-3-27b-it H200: the cublasLt algorithm lever PORTED, GATED and BRACKETED at **-1.145 ms** on rag4096 (1.80x its measured drift armor, so RESOLVED — and only **9.5% of the 12.07 ms the bar needs**); the mechanism is that **three of four projection roles already had the timed winner at heuristic index 0**, which largely CLOSES round 16's #1 lever; the UNATTRIBUTED 14.225 ms kernel is NAMED and round 16's norm pricing turns out to have been applied to the WRONG KERNEL; the f16 MLP kernel prices at **4.66x its DRAM roof, 35.874 ms of raw headroom**, making it the new #1 (branch `feat/gemma3-ltalgo-r17`, PR #1052 merged by the owner at `c906ad35`; ledger branch `feat/gemma3-r17-ledger`, 2026-09-19)
+
+**93 min 58 s of VM-on time against a 90 min cap + 5 min grace.** `lastStartTimestamp`
+2026-09-19T08:26:50.016-07:00 (= 15:26:50Z), stop issued 16:58:26Z, stop returned **17:00:48Z**
+against a 17:01:50Z hard deadline. Stopped with `--discard-local-ssd=false`, **`TERMINATED`
+confirmed**, and a project-wide `--filter='status=RUNNING'` returned **empty**. Every port, compile,
+identity experiment and roofline below was done on CPU with the VM TERMINATED; the VM was started
+only after the lever compiled clean locally, exactly as the round's ordering required.
+
+### (0a) THE LTALGO PORT — COMPILED CLEAN LOCALLY BEFORE A SINGLE VM MINUTE, AND THE GATE IS PROVEN FROM THE OBJECTS
+
+Round 16 declared this lever unreachable in its window and said so *before* spending a VM minute,
+because the machinery existed only in the 7B lane (`session_cuda_p3.mojo`,
+`ALGENTA_7B_PF_LTALGO`, `PF_LTINSITU_B1`, `lt_shapes_tuned`). Round 17 ports it. Three pieces,
+in PR #1052:
+
+* **`tc_shim.cu`** — a SEAM-FREE twin `tc_lt::matmul_async` plus the two `_async_lt` entries. The
+  twin exists rather than reusing `matmul()` because this lane runs with the shim's `g_noseam == 0`
+  (it gets zero-sync ordering from `ALGENTA_G3_STREAM` instead), so `matmul()`'s trailing
+  `cudaStreamSynchronize` would have added a **per-projection sync seam the control arm does not
+  have**. That is not an algorithm effect, so the bracket would have measured the seam instead of
+  the algorithm — invalidating the A/B rather than merely slowing it. Turning on
+  `ALGENTA_TC_NOSEAM` to suppress it is not the answer either: that switch also repoints `g_stream`
+  and flips every other sync-bearing entry, changing the control too. Scope limit stated in the
+  source: **stage-time search only**, the `LTINSITU` rotating event ring is not ported.
+* **`tc_shim_bridge.mojo`** — `TC_G3_LTALGO` plus the gated try inside the two `_pre_async`
+  wrappers every gemma-3 projection already funnels through, so one comptime change covers all
+  dispatch sites and cannot miss one. Decline semantics identical to the 7B lane: **-320** (never
+  tuned) falls through to the shipped `cublasGemmEx` call, so an untuned shape runs the shipped path
+  byte-for-byte and a partially tuned build degrades to the control instead of failing.
+* **`session_cuda_gemma3_f16.mojo`** — `_tune_lt_shapes()` from `seal()`, and the banner's
+  `lt_shapes_tuned = N of 4` field.
+
+**`G3_PF_LTALGO` is an ALIAS of the bridge's `TC_G3_LTALGO`, not a second `is_defined` test.** The
+bridge decides whether a dispatch *tries* the tuned algorithm; the session decides whether it was
+ever *searched for*. Two independent reads of one macro could drift apart under an edit into the
+worst available failure mode — a build that tunes shapes nothing consumes, or one whose dispatch
+declines on every call while the banner still claims the lever. One definition makes that
+unrepresentable.
+
+**`seal()`'s ordering is load-bearing in three directions** (documented at the call site): *after*
+`_arm_fused_fa`, because o_proj's f16 A twin only exists if FA armed and tuning a shape nothing
+dispatches would inflate the count into a lie; *before* `_print_round5_flag_audit`, because the
+banner prints `_tc_lt_count()` and reading it before the search ran would print 0 for a lever about
+to work; *before* `_prime_prefill_modules`, because the tuned algorithm is a **different nvjet
+kernel** and CUDA loads modules lazily — priming after the search primes the module the timed
+dispatches actually launch, priming before it charges the first request for a JIT of a kernel the
+lever then never uses.
+
+**ONE TUNE COVERS BOTH RACED CELLS, and that is a shape fact rather than a convenience.**
+`G3_PF_TILE` is a comptime **1024** with no flag override, so a prompt is walked in 1024-row passes
+and every projection dispatches at m = 1024 regardless of prompt length. **rag4096 (4 passes) and
+pp1024 (1 pass) therefore present the same four GEMM shapes.** A prompt that is not a multiple of
+the tile runs a shorter final pass at an untuned M, which declines (-320) to GemmEx rather than
+borrowing an algorithm tuned for another shape — which is also why pp256 is a *structural* null for
+this lever, not merely an unmeasured one.
+
+**The compile gate, proven from the artifacts rather than asserted.** Both arms build rc=0 with zero
+errors and an **identical warning count (979/979)**, locally, no GPU:
+
+| probe of the `--emit object` output | shipped default | default + `ALGENTA_G3_PF_LTALGO` |
+|---|---|---|
+| bytes | 962792 | 983392 |
+| undefined `tc_shim_*` symbols (`nm -u`) | 15, **none of them cublasLt** | the same 15 **+ exactly 5**: `tc_shim_lt_init`, `_lt_tune`, `_lt_count`, `_32c_pre_async_lt`, `_16c_pre_async_lt` |
+| `lt_shapes_tuned` string literal | 0 | 1 |
+| `TCFLAG ALGENTA_G3_PF_LTALGO=1` literal | 0 | 1 |
+
+Two **independent** builds of the shipped default were **byte-identical** (md5
+`04471f0cdb3049fafcd99737dceb329c`, 962792 B), which is what makes that comparison a real
+comparison rather than two artifacts of one invocation. `tc_shim.cu`'s cublasLt block has **no
+`#else` stubs**, so an arm that passes the macro but links a stock shim **fails at link time** — the
+loud failure this campaign prefers over a silent runtime decline that would leave a cell measured on
+the wrong code path.
+
+**Two shim flavours, so the control is provably lever-free.** `build_shim_gemma3_round7.sh` gained
+`EXTRA_MACROS` and `OBJNAME`, both defaulting to its previous behaviour so rounds 5/6/7/9 are
+unaffected. `run_ab_gemma3_round17.sh` builds a stock object for the control and an
+`-D ALGENTA_TC_SHIM_LT` object for the lever arm. Because there are no stubs, the control linked
+against the stock object **contains no part of the lever provably** — not "contains it but does not
+reach it". Its `verify` stage then re-checks that from the **linked binaries**, since this campaign
+was already burned once by a rebuild that had silently dropped `-D ALGENTA_G3_STREAM` and produced a
+gemma-3-27b column wrong at oracle index 0 on 5/6 prompts. On the VM it read:
+
+| arm | sha256_16 | bytes | cublasLt symbol refs | LTALGO banner literal | verdict |
+|---|---|---|---|---|---|
+| `R17_ctl` | `dc276126803d1479` | **6167152** | **0** (nm=0, nm -D=0, strings=0) | **0** | **VERIFIED CLEAN** |
+| `R17_lt` | `41aa6f502d1d0323` | 6198032 | 4 (nm=3, strings=4) | 1 | **VERIFIED ARMED** |
+
+`R17_ctl`'s byte size **6167152 is exactly round 16's certified `R9_both` arm size**, so the control
+is the shipped default rebuilt rather than some other configuration. The symbol probe takes the max
+of `nm`, `nm -D` and `strings` because the shim is linked *in*, making `tc_shim_lt_tune` a **defined**
+symbol rather than an undefined reference; had all three read zero for **both** arms the stage
+reports itself INCONCLUSIVE instead of being silently read as "the control is clean" — an instrument
+that cannot fail cannot pass either.
+
+**THE SEARCH RAN, AND ITS OUTPUT IS THE MOST INFORMATIVE NUMBER IN THIS ENTRY.** `lt_shapes_tuned =
+4 of 4`, one-time cost **342.526 ms**, paid in `seal()` and never in a request:
+
+| role | m, k, n | C | beta | **winning heuristic idx** |
+|---|---|---|---|---|
+| qkv | 1024, 5376, **8192** | f32 | 0 | **4** |
+| o_proj | 1024, **4096**, 5376 | f32 | 0 | **0** |
+| gate/up | 1024, 5376, **43008** | **f16** | 0 | **0** |
+| down | 1024, **21504**, 5376 | f32 | 0 | **0** |
+
+(Those k/n values independently confirm the shapes derived on paper: `n_qkv = (h_q + 2*h_kv) *
+d_head = (32 + 32) * 128 = 8192`, `n_q = 4096`, `2*d_ff = 43008`.)
+
+**Three of the four roles had their timed winner AT HEURISTIC INDEX 0.** That is the whole story of
+this lever's size: for o_proj, gate/up and down, `cublasGemmEx`'s `CUBLAS_GEMM_DEFAULT` estimate was
+already selecting the algorithm a timed search selects. Only **qkv** disagreed, preferring index 4.
+The premise that made this lever worth porting — "gemm_probe measured winners that were not index
+0" — turns out to hold for **one of four** gemma-3-27b projection roles, not for the GEMM pool as a
+whole.
+
+### (0b) THE UNATTRIBUTED 14.225 ms KERNEL IS NAMED — AND THE PRESCRIBED INSTRUMENT WAS BROKEN
+
+**`residentk_kernels_prefill_gemma6A6A_0e8212f1154807d7` IS `_pf_norm_accum_rows_kernel`**
+(`kernels_prefill_gemma3.mojo:152`) — Gemma 3's fused post-branch rmsnorm **+ residual add**,
+`hidden[m,:] += rmsnorm(y[m,:]) * gamma`, launched twice per layer (post_attention on the o_proj
+output, post_feedforward on the down_proj output) at `grid_dim = m_rows`, `block_dim = 256`.
+
+Named by **differential source perturbation**, as round 16 prescribed, with a **double lock**:
+
+| # | experiment | PTX body of the entry | entry hash `0e8212f1…` |
+|---|---|---|---|
+| 1 | perturb `_pf_norm_accum_rows_kernel`'s **body** (`inv += Float32(1e-7)`, store `+ Float32(1e-7)`) — confirmed codegen-visible, object md5 moved, +64 B, PTX len 2605 -> 2671 | **CHANGED** | unchanged |
+| 4 | **rename** `_pf_norm_accum_rows_kernel` -> `…ZZ`, body byte-identical | unchanged (`4497a7b1564290fb`) | **CHANGED -> `3a37b7cd25c9d50e`** |
+
+Experiments 1 and 4 read together are the identification: the body that moves when this function is
+perturbed is the body that hash dispatches, and renaming the function moves the hash while leaving
+the body identical. Both cross-validations also landed, confirming the method: **`edb887a57300fe94`
+= `_pf_rmsnorm_rows_f16_kernel`** and **`8f4c4e1d2ba54545` = `_pf_geglu_rows_f16_kernel`**. The
+reverted tree rebuilt **byte-identical** to the baseline object, so there is zero perturbation
+residue and the builds are deterministic.
+
+**THE INSTRUMENT CORRECTION, WHICH IS WORTH MORE THAN THE IDENTIFICATION.** Round 16 recorded that
+"the hash is **content-derived**" and inferred that a hand-maintained table "would be wrong after
+the first source edit". **Both claims are false, and the first one disabled the obvious instrument.**
+The 16-hex suffix is derived from the **mangled name** (qualified name + signature), *not* from the
+body — proven in both directions above: a genuine body change moved the PTX and left the hash alone,
+and a pure rename moved the hash and left the PTX alone. Consequences:
+
+1. **Round 16's prescribed method for exactly this kernel returns a FALSE NEGATIVE.** "Perturb one
+   candidate function at a time in a way visible to codegen … observe which content-hash moves"
+   cannot work, because a codegen-visible body change does not move the hash. A round following that
+   instruction literally would have concluded the kernel is unnameable and moved on.
+2. **The instrument that works is the embedded-plaintext-PTX body diff.** `--emit object` produces a
+   host object carrying the PTX as plaintext (`.visible .entry <mangled>(…)`); split on `.entry`,
+   digest each body with the entry name normalised out, diff against baseline. It works on
+   **unconditional** kernels, which is precisely the class the flag-differential cannot reach — the
+   reason round 16 could not name this one.
+3. **The identity table does NOT go stale on every source edit.** It is stable unless a kernel's name
+   or signature changes, which makes it cheaper to maintain than round 16 assumed.
+4. Round 16's *flag*-differential results are **unaffected** and remain valid: removing a `-D` flag
+   removes or adds whole functions, so their names appear and disappear regardless of whether the
+   hash tracks name or body. Only the stated *premise*, and the source-perturbation method built on
+   it, were wrong.
+
+**A CONSEQUENT CORRECTION TO ROUND 16's LEDGER — the norm pricing was applied to the wrong kernel.**
+Round 16 labelled the 11.782 ms / 867-instance pool "f16 NORM (= norm-accum)" and priced it against
+round 8's 6.83 ms DRAM roof, concluding "1.73x its roof". But round 8 derived that 6.83 ms roof for
+`_pf_norm_accum_rows_kernel` ("12n x 1024 rows x 496 launches = 32.8 GB -> 6.83 ms at 4.8 TB/s"),
+and the 11.782 ms pool is `_pf_rmsnorm_rows_f16_kernel` — the plain pre-projection rmsnorm. **These
+are two distinct kernels and two distinct levers, not one:**
+
+| pool | ms | n | identity (0b, evidenced) | what it does |
+|---|---|---|---|---|
+| `0e8212f1154807d7` | **14.225** | 868 | **`_pf_norm_accum_rows_kernel`** | residual add **+** rmsnorm, 2x/layer — round 16 left this UNATTRIBUTED |
+| `edb887a57300fe94` | 11.782 | 867 | `_pf_rmsnorm_rows_f16_kernel` | pre-projection rmsnorm writing the f16 A twin, 2x/layer — round 16 *called* this "norm-accum" |
+
+Their instance counts (868 vs 867, i.e. 62 x 14 and 62 x 14 - 1) are near-identical because both are
+row-per-block, twice-per-layer kernels — which is exactly why a count could never separate them, and
+why round 16 was right to refuse the inference. They are also **signature twins**: both emit 6 PTX
+params (3 `.u64 .ptr .align 1` + 2 `.u64` + 1 `.f32`), both `grid_dim = m`, both `block_dim = 256`.
+Geometry cannot separate them either. Only the body differential can.
+
+**A BASIS FINDING ABOUT THE REGION ITSELF.** Splitting every kernel's instances by `gridX` (which
+*is* the row count m for these row-per-block kernels) shows the `--from-first-attn` region is not a
+single 4-pass rag4096 prefill but a **7-pass mixture**: 5 passes at m=1024, 1 at m=512, 1 at m=256.
+Evidence — the f16 GeGLU's grid is `ceil(m*d_ff/256)`, and its three observed grids are exactly
+86016 / 43008 / 21504 = m 1024 / 512 / 256, at 310 / 62 / 62 instances = 62 layers x 5 / x1 / x1;
+`_pf_norm_accum_rows_kernel` shows 620 / 124 / 124 = 62 x 10 / x2 / x2, i.e. twice per layer-pass
+over the same 7 passes. Round 8's 496-launch assumption (4 passes) is therefore **not the right
+denominator for this region**, and the "% of busy" figures published in rounds 15/16 describe that
+mixture rather than one rag4096 prefill. This does **not** disturb any per-kernel roofline ratio
+below, because those are computed per geometry from the trace's own grids — but it does mean the
+census should not be read as a pure single-cell rag4096 profile, and it is recorded here so the next
+round does not inherit the assumption.
+
+### (0c) THE f16 MLP KERNEL PRICED — **4.66x ITS DRAM ROOF**, AND IT IS NOW THE LARGEST POOL IN THE MODEL
+
+`_pf_geglu_rows_f16_kernel`, hash `8f4c4e1d2ba54545` (identity evidenced in 0b), **45.687 ms / 434
+instances / 8.22% of region busy**. Its traffic comes straight from the source: per output element
+it reads `gu16[row*2*n_ff + j]` (gate, f16) and `gu16[row*2*n_ff + n_ff + j]` (up, f16) and writes
+`act16[i]` (f16) — **6 bytes per element, d_ff = 21504 elements per row, no re-reads**. Same table
+format round 16 used for norm-accum, on the campaign's own constants (4.8 TB/s HBM3e roof, 989 TF/s
+at the 1410 MHz pin):
+
+| quantity | value |
+|---|---|
+| rows in the region (from the trace's own grids) | 365056 = 310x1024 + 62x512 + 62x256 |
+| bytes per row | 129024 B (6 B/elem x 21504) |
+| total traffic | **47.101 GB** |
+| **DRAM roof at 4.8 TB/s** | **9.813 ms** |
+| measured | **45.687 ms** |
+| **measured / roof** | **4.656x** — running at **21.5% of roof** |
+| achieved bandwidth | **1.031 TB/s** |
+| compute: 70.65 GFLOP at 989 TF/s | 0.0714 ms = **0.156%** of measured -> the FMA pipe is irrelevant |
+| 7.850 G `tanh` at the SFU rate (16/SM/clk x 132 SM x 1.41 GHz) | 2.636 ms = 5.8% of measured |
+| **max headroom to roof** | **35.874 ms** |
+| **headroom at the 65-80% transfer band** | **23.318 - 28.700 ms** |
+
+**It is unambiguously MEMORY BOUND** — arithmetic is 0.156% of the measured time, and even pricing
+every `tanh` at the SFU rate leaves 5.8%. So the 4.66x gap to roof is an access-pattern problem, not
+a math problem, and the source says why: the kernel is **scalar, one thread per element, with 2-byte
+f16 loads and stores**. `-D ALGENTA_G3_GEGLU_U4` exists and is in the shipped default's flag stack,
+but it selects a u4 variant of the **decode** GEMV (`_g3_norm_gemv2_geglu_kernel_f16_u4`,
+`grid_dim = ceil(d_ff/_SUBS)`); **the prefill f16 GeGLU has no vectorised twin at all.** The
+precedent for the fix is in this campaign: ROPEVEC replaced scalar RoPE accesses with `_ld4/_st4`
+16-byte quads and delivered **-1.687 ms measured at 14.5x its drift armor** — and that was against a
+6.680 ms pool, whereas this one is 45.687 ms at 21.5% of roof.
+
+**REVISED LEVER RANKING — and round 16's #1 is now largely closed.** Re-ranked by *evidenced*
+headroom rather than by pool size, with this round's bracket folded in:
+
+| # | pool | measured ms | evidenced headroom | status after round 17 |
+|---|---|---|---|---|
+| 1 | **f16 MLP (`_pf_geglu_rows_f16_kernel`)** | 45.687 | **35.874 ms raw / 23.3-28.7 transferred** | **OPEN, and now #1.** Memory bound at 21.5% of roof with a scalar 2-byte access pattern and no vectorised twin. Clears the 12.07 ms bar on its own at any transfer ratio in the band |
+| 2 | GEMM (algorithm selection) | 432.694 | **1.145 ms MEASURED** | **LARGELY CLOSED.** Round 16 ranked this #1 on "+5% eff = 21.6 ms". The mechanism that would have delivered it does not exist: **3 of 4 roles already had the timed winner at heuristic index 0.** The pool is at 68.8% of peak because of the algorithms cuBLAS already picks, not because it picks badly |
+| 3 | wgmma (attention) | 38.114 | 17.104 ms ceiling, bar at 70.5% transfer | Unchanged, but its **cross-basis comparator caveat is still OPEN** (see below) |
+| 4 | `_pf_rmsnorm_rows_f16_kernel` | 11.782 | 6.877 ms raw (2.402x its own 6n roof) / 4.47-5.50 transferred | **RE-PRICED on its own kernel** — round 16 priced it against the *other* kernel's roof |
+| 5 | `_pf_norm_accum_rows_kernel` (the real norm-accum) | 14.225 | 4.412 ms raw (1.450x its 12n roof) / 2.87-3.53 transferred | **RE-PRICED.** At 69.0% of roof it is much closer to exhausted than round 16's "1.73x" implied. If the y re-read misses L2 (16n model) the roof is 13.084 ms and it is at **92.0% of roof**, headroom 1.141 ms — i.e. possibly nothing to win |
+
+The re-pricing above is on the same 4.8 TB/s basis round 8 used, cross-checked by reproducing its
+published figure exactly: 12n x 1024 x 496 = 32.766 GB -> **6.826 ms** against its published
+"32.8 GB -> 6.83 ms". Scaled to this region's actual 730112 norm-accum rows the comparable roof is
+**9.813 ms**, not 6.83 ms.
+
+### GATES — `R17_lt` ALL_PASS, full detail, on the fresh checkpoint
+
+Staging first: `chain7stage.sh` reported **STAGE_OK at 15:40:29Z** — fixtures regenerated and
+**proven identical to round 6's certified echoes** (not hand-rolled: "do not hand-roll fixtures,
+identity must be provable"), 101 GB checkpoint converted to `/mnt/ramblob/g3conv27b`, and **GPU1
+pinned and verified at 1410 MHz with zero off-pin tolerance**. Both had been wiped by the stop,
+`/mnt/ramblob` and `/tmp` being RAM-backed.
+
+Oracle gate on the **changed** arm, `R17_lt`, greedy against the cache-free fp32 transformers
+oracle, completed **16:18:15Z**, `GATE ALL_PASS = True`:
+
+| prompt | max_new | result | determinism |
+|---|---|---|---|
+| pp256 | 16 | **16/16 PASS** | single run |
+| pp256 | 64 | **64/64 PASS** | **det=2/2 bit-identical** |
+| pp1024 | 16 | **16/16 PASS** | single run |
+| pp1024 | 64 | **64/64 PASS** | **det=2/2 bit-identical** |
+| val550 | 16 | **16/16 PASS** | single run |
+| val550 | 64 | **64/64 PASS** | **det=2/2 bit-identical** |
+| rag4096 | 64 | **22/22 + EOS-stop PASS** | single run |
+
+That is G0 16/16 and G1 64/64 with the **bit-identical repeat** the protocol requires, taken
+**before any timing cell**. It matters more than usual here: this lever is **not** bit-identical to
+the control by construction, because a tuned algorithm may split K or tile differently, moving the
+reduction order so the f32 accumulator rounds differently. The gate is a prerequisite, not a
+formality. All 11 gate cells ran at `clocks_after=1410MHz`, `offpin=0`.
+
+**`R17_ctl` was NOT re-gated this window, and that is recorded rather than glossed.** The cap left
+~42 min after the changed arm's gate, which is one bracket or one more gate, not both. The evidence
+that the control *is* the shipped default, so that skipping its re-gate does not weaken the bracket:
+its byte size **6167152 is identical to round 16's certified `R9_both`**; it carries **zero**
+cublasLt symbols and **zero** LTALGO literals (verified from the linked binary, above); its pp1024
+smoke ttft **93.929 ms** reproduces round 14's published **94.249 ms** to 0.34%; and its rag4096
+bracket median **386.154 ms** reproduces round 13's same-session **385.458 ms** to **0.181%**. It is
+also the arm rounds 13/14/15 already gated on these same certified-identical fixtures.
+
+### THE BRACKET — rag4096, same session, interleaved A..B..A, 3 warmup + 5 measured + 2 closing
+
+**Bracket shape is NON-DEFAULT and is reported with its numbers, as the runner itself logs:**
+`MEAS_RUNS=5` rather than the protocol's 7, chosen because at the measured 134.6 s/cell an 18-cell
+bracket is 38 min and the cap left 42. n=5 is the round's stated floor. **pp1024 was NOT bracketed**
+— the rag4096 bracket consumed the remaining window — so this round brackets one of the two cells it
+set out to bracket, and says so.
+
+All 18 cells completed, **`TIMING DONE` 16:57:51Z**. Every cell `rc=0`, `clocks_after=1410MHz`,
+`offpin=0`; the only `offpin` value appearing anywhere in the window's log is `0`.
+
+| run | `R17_ctl` (shipped default) | `R17_lt` (+LTALGO) |
+|---|---|---|
+| warm1 *(discarded)* | 386.178 | 397.870 |
+| warm2 *(discarded)* | 385.635 | 385.496 |
+| warm3 *(discarded)* | 385.776 | 392.967 |
+| r1 | 385.780 | **384.670** |
+| r2 | 386.154 | **385.545** |
+| r3 | 385.801 | **384.866** |
+| r4 | 387.248 | **386.102** |
+| r5 | 386.792 | **385.010** |
+| close1 | 386.417 | — |
+| close2 | 386.153 | — |
+| **median (n=5)** | **386.154 ms** | **385.010 ms** |
+| IQR / rel-IQR | 0.992 ms / 0.2568% | 0.679 ms / 0.1764% |
+| spread | 1.468 ms | 1.432 ms |
+
+**delta = -1.145 ms = -0.2964%** (negative favours the lever), median basis, same session.
+
+**DRIFT ARMOR MEASURED, AND IT HOLDS.** The group closes A..B..A, so drift is a measurement:
+control opening median 386.154 -> closing median 386.285, a drift of **+0.131 ms = 0.132x the
+opening rel-IQR** (0.992 ms); worst-case `max|close - open(r1)|` = **0.637 ms**. Drift is well inside
+the opening noise scale, so **the armor holds and the bracket is not disqualified on drift.**
+
+| comparison | value |
+|---|---|
+| \|delta\| vs measured drift armor (0.637 ms) | **1.798x** — the delta EXCEEDS its armor |
+| \|delta\| vs the larger arm's IQR (0.992 ms) | **1.154x** — only just |
+| rank separation | **4 of 5** `R17_lt` runs fall below **all 5** `R17_ctl` runs; the 5th (386.102) lands between the control's 385.801 and 386.154 |
+| Mann-Whitney U (n1=n2=5) | **U = 2**, against a two-tailed critical value of **2** at alpha=0.05 — significant, but exactly at the boundary |
+
+**VERDICT: RESOLVED at -1.145 ms, and NOT WORTH SHIPPING.** The delta exceeds its measured drift
+armor by 1.80x, so by the campaign's own rule it is a real effect rather than noise — but it is only
+**1.154x the pooled IQR** and sits exactly on the rank-test boundary, i.e. it is the *weakest*
+RESOLVED result this campaign has recorded, against round 13's ROPEVEC at **14.5x** its armor. And
+its size is the finding: **-1.145 ms is 9.48% of the 12.07 ms the 1.15x bar needs.** Against round
+13's same-session TRT-LLM 1.2.1 pair (429.400 ms) it would move rag4096 from **1.1140x to 1.1153x**
+— a change in the fourth significant figure, far below what a published row should be republished
+for. **No row changes; the publish/ledger call is the owner's and this entry does not preempt it.**
+
+**WHY IT IS SO SMALL — AND WHY THAT ANSWER IS WORTH MORE THAN A WIN WOULD HAVE BEEN.** The bracket
+and the search output agree on a mechanism: only **qkv** moved off heuristic index 0 (to index 4),
+while o_proj, gate/up and down all had their timed winner **at index 0 already**. So the lever could
+only ever improve one of four projection roles, and it improved the wall by 0.30% — consistent with
+roughly a 1.5% gain on the qkv GEMM alone. **Round 16's #1 ranked lever was priced on "+5% GEMM
+efficiency = 21.6 ms"; the +5% is not available from algorithm selection, because for three of four
+roles cuBLAS's DEFAULT estimate already picks what a timed search picks.** The GEMM pool sits at
+68.8% of pinned peak for reasons that are not heuristic mis-selection, and any further gain there
+needs a different kernel (wgmma/TMA), not a different algorithm choice. That is a *cheap* refutation
+— one 342 ms search and one bracket—and it redirects the campaign to a pool with 35.874 ms of
+evidenced headroom instead of one with ~1.1 ms.
+
+### FLASHINFER SAME-BASIS RE-MEASUREMENT — **NOT TAKEN**, so §10's largest uncertainty stays OPEN
+
+`WGMMA_TMA_SCOPE.md` §10 is **deliberately not updated this round.** Its caveat 2 is that the
+flashinfer comparator's 21.01 ms is **cross-basis** (round 6, a different region definition and
+session) against our 38.114 ms `--from-first-attn`, and that this is "the single largest uncertainty
+in the number [and] should be closed before any window is spent" on wgmma. Closing it needs a
+same-basis, same-session, same-region-definition flashinfer attention bucket. The bracket completed
+at 16:57:51Z against a 17:01:50Z hard stop, leaving **under four minutes** — not merely short but
+off by an order of magnitude, since a flashinfer arm needs its own environment, warmup and region
+extraction. **The choice was explicit: a complete gated bracket with holding armor, or an incomplete
+bracket plus an incomplete comparator. The bracket was chosen**, because a partial bracket is not
+publishable under any reading of the protocol while an open caveat merely defers a decision that is
+not yet funded. Consequence, stated plainly: **the 17.104 ms wgmma gap and the 70.5% transfer
+requirement remain UNVERIFIED, and no wgmma window should be spent until the comparator is
+re-measured on the same basis.** That is now the prerequisite for lever #3, and it is a *cheaper*
+prerequisite than the lever itself.
+
+### PROCESS EVIDENCE, AND TWO FAILURES RECORDED BECAUSE THEY COST MINUTES
+
+CPU-first ordering held: the port, both local compiles, the whole of (0b) and (0c) and the harness
+were finished with the VM **TERMINATED**, and the instance was started only after the compile gate
+passed. Single window log (`~/lever17/round17.log`), liveness heartbeats from `chain7stage.sh`,
+per-cell clock and off-pin records, one log per stage. **No `KILLED_BY_OPERATOR`** — nothing was
+killed; the bracket finished on its own 69 s before the stop was issued. No gitbook page touched.
+Ledger append-only: this section is a single hunk at EOF with zero deleted or modified lines earlier
+in the file. Kernel and harness code went out as **PR #1052, PR-not-merge**, and the owner merged it
+at `c906ad35`; this ledger entry is a separate PR off `origin/main`, cut as a **new** branch after
+#1052's branch was auto-deleted on merge (pushing to a merged PR's deleted branch silently recreates
+it, and `* [new branch]` is the tell — so it was not reused).
+
+Two failures, recorded because a round that only reports its successes is not auditable:
+
+1. **A self-inflicted quoting bug cost ~1 minute at the worst possible moment.** The gate->timing
+   waiter was written as an inline `bash -c` string containing a nested `python3 -c` gate check;
+   the `'"'"'all_pass'"'"'` escaping survived one layer of quoting and not two, producing
+   `['all_pass'])` with an unmatched paren. The waiter raised `SyntaxError`, read it as "gate did not
+   pass", and **aborted before launching the bracket** — at 16:18:15Z with 43 min of cap left and
+   36 min of bracket to run. Recovered by reading `GATE ALL_PASS = True` directly from the gate log
+   and launching the bracket without the broken re-check. The lesson is the one
+   `run_gemma3_round6_cells.sh` already documents for `pgrep`: **a guard whose own expression can
+   fail silently must not be the only thing standing between a window and its measurement.** A
+   gate-check that errors should abort *loudly and distinguishably* from a gate that fails.
+2. **Two SSH calls hung client-side for 300 s each** because a backgrounded remote process inherited
+   the channel; the jobs had in fact launched correctly both times. Recovered with
+   `setsid nohup … </dev/null & disown` plus a local redirect. Cost ~5 min of wall clock, none of it
+   VM-on.
+
+**What round 17 did NOT do**, so the entry is not over-read: pp1024 was not bracketed; `R17_ctl` was
+not re-gated; flashinfer was not re-measured and §10 was not updated; the `LTINSITU` in-situ search
+was not ported (only the stage-time search); no vectorised f16 GeGLU was authored — lever #1 is
+**priced and diagnosed, not implemented**; and no published row changed.
