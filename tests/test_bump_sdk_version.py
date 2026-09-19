@@ -71,3 +71,21 @@ def test_cli_json_output(tmp_path):
                           "--level", "minor", "--json"], check=True, capture_output=True, text=True).stdout
     data = json.loads(out)
     assert data["new"] == bump.next_version(data["old"], "minor") and len(data["files"]) == len(bump.LOCKSTEP_FILES)
+
+
+
+def test_plan_replaces_only_the_captured_version_even_when_the_match_contains_it_elsewhere(tmp_path):
+    """Codna review of #1037: the lockfile pattern spans the root block; a `name` carrying the same
+    digits must survive, and only the captured version field may change."""
+    root = _copy_lockstep_tree(tmp_path)
+    old = bump.current_version(root)
+    lock = root / "packages/ts-sdk/package-lock.json"
+    text = lock.read_text(encoding="utf-8")
+    text = text.replace('    "": {\n      "name": "algenta-sdk",', f'    "": {{\n      "name": "algenta-sdk-{old}",', 1)
+    lock.write_text(text, encoding="utf-8")
+    new = bump.next_version(old, "patch")
+    changes = bump.plan(root, old, new)
+    updated = changes[lock]
+    assert f'"name": "algenta-sdk-{old}"' in updated          # the look-alike field is untouched
+    assert f'      "version": "{new}",' in updated              # the captured field moved
+    assert updated.count(old) == text.count(old) - 2           # the two version fields, nothing else

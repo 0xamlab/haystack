@@ -79,16 +79,23 @@ def plan(root: Path, old: str, new: str) -> dict[Path, str]:
             problems.append(f"{rel}: missing")
             continue
         text = path.read_text(encoding="utf-8")
+        file_ok = True
         for pat in patterns:
-            hits = re.findall(pat, text)
-            if len(hits) != 1:
-                problems.append(f"{rel}: pattern {pat!r} matched {len(hits)} time(s), expected 1")
+            matches = list(re.finditer(pat, text))
+            if len(matches) != 1:
+                problems.append(f"{rel}: pattern {pat!r} matched {len(matches)} time(s), expected 1")
+                file_ok = False
                 continue
-            if hits[0] != old:
-                problems.append(f"{rel}: carries {hits[0]!r}, expected {old!r}")
+            m = matches[0]
+            if m.group(1) != old:
+                problems.append(f"{rel}: carries {m.group(1)!r}, expected {old!r}")
+                file_ok = False
                 continue
-            text = re.sub(pat, lambda m: m.group(0).replace(old, new, 1), text, count=1)
-        out[path] = text
+            # Replace exactly the captured version -- never the first occurrence of `old` inside the
+            # whole match (a multi-line match may contain the same digits in an earlier field).
+            text = text[: m.start(1)] + new + text[m.end(1):]
+        if file_ok:
+            out[path] = text
     if problems:
         raise SystemExit("lockstep check failed -- nothing written:\n  " + "\n  ".join(problems))
     return out
