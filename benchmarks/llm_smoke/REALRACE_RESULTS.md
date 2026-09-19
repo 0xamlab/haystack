@@ -21128,3 +21128,138 @@ recommendation is also unchanged and now better-supported — the prize is bound
 better next spend per VM minute** at ~25 min of nsys versus a multi-window project.
 
 No gitbook page touched. Ledger append-only. No VM time spent on this addendum.
+
+---
+
+## ROUND 15 — pp256 armor extracted and the row is **PUBLISHABLE at 1.3460x**; norm-accum turns out to be **UNPRICEABLE with the current extractor** (Mojo's hashed kernel names defeat name-based bucketing); and the first exact bucket census of the shipped default shows **GEMM at 77.8% of GPU busy, 68.8% of pinned peak** (branch `fix/gemma3-summarizer-labels`, 2026-09-19)
+
+Window used **19m51s of a 45 min cap** (start issued 07:51:14Z, stopped 08:11:05Z with
+`--discard-local-ssd=false`, `TERMINATED` confirmed and `status=RUNNING` empty project-wide).
+`window15.log`, both extract JSONs and the driver log were pulled **before** the stop. The window was
+cheap because `chain15_nsys.sh` waits for `STAGE_OK` internally, so it could be launched while the
+checkpoint was still converting — that overlap is the difference between 20 min and 35.
+
+### (1) THE ARMOR, AND THE pp256 ROW IS NOW PUBLISHABLE
+
+Read off the boot disk in ~10 s, exactly as round 14 predicted: `r6e_R9_both_pp256_close1.out` and
+`..._pp1024_close1.out`. (`R14_defB` has no close cell by design — the closing cell is ARM_A-only,
+which is what makes the group A..B..A.)
+
+| prompt | opening median (n=8) | closing cell | **drift armor** | rel-IQR | armor / IQR | ≤2x |
+|---|---|---|---|---|---|---|
+| **pp256** | 30.706 ms | **30.685133 ms** | **-0.0680% (-0.0209 ms)** | 0.157% | **0.433x** | **HOLDS** |
+| **pp1024** | 94.249 ms | **94.342485 ms** | **+0.0992% (+0.0935 ms)** | 0.288% | **0.344x** | **HOLDS** |
+
+**Drift is BELOW the run-to-run scatter in both cases** — the bracket ran 06:16 -> 07:00Z across 44
+minutes and accumulated no systematic drift at all. That is the strongest form of this result: the
+armor is not merely inside tolerance, it is smaller than the noise it is being compared against.
+
+**pp256 IS PUBLISHABLE, median basis, same-session:** **30.706 ms = 8,337 tok/s vs same-session
+TRT-LLM 1.2.1 at 41.329 ms = 6,194 tok/s ⇒ 1.3460x.** This replaces the published row of
+32.108 ms / 7,973 tok/s / 1.2931x, which round 14 established was computed from a stale arm round 6
+never re-timed — so the refresh is **+4.567% tok/s**, far beyond the row's own 0.157% spread.
+**Publish decision is the owner's.**
+
+**pp1024 stays as published.** 94.249 ms vs the published 94.022 ms is **+0.241%, inside its own
+0.288% spread** — rounding, not a change. Ratio 1.1774x vs published 1.1779x.
+
+### (2) NORM-ACCUM: THE PRE-REGISTERED QUESTION CANNOT BE ANSWERED, AND THE REASON IS INSTRUMENTATION
+
+The question was registered before the trace was taken, so the answer cannot be shopped: measured
+`norms` bucket vs the **6.83 ms** DRAM roof — near the roof means bandwidth-bound, *nothing to win*,
+close the lever; near **~16 ms** means instruction/loop-bound and vectorising the loops is the fix.
+
+**The measured `norms` bucket is 0.046 ms from only 4 instances.** In a 62-layer rag4096 prefill that
+cannot be the per-layer norm work — 4 instances where at least 124 are expected means the bucket
+caught essentially nothing. **So neither branch of the test can be asserted: the lever is NOT priced
+and NOT closed**, and round 6's ~16.2 ms geometry-attributed figure is neither confirmed nor refuted.
+
+**ROOT CAUSE, and it is not the region logic.** The per-layer norm and rope kernels are
+**Mojo-compiled with content-hash names** — `residentk_kernels_prefill_gemma6A6A_8f4c4e1d2ba54545`,
+`residentk_kernels__pf_rmsnorm_6A6A6A6A_280bf58af8ffb4e6`. The extractor's bucket rules match **NAME
+SUBSTRINGS** (`rmsnorm`, `layernorm`, `_norm`, ...), and a hashed Mojo symbol does not present those
+substrings usefully, so the work falls into the `mojo_per_layer` catch-all: **79.156 ms across 2616
+instances**, 45.687 ms of it in one kernel appearing **434 times = 62 layers x 7**. The norm work is
+in the trace and it is being measured; it is simply not being *attributed*.
+
+The fix is therefore to bucket by kernel **IDENTITY** (the emitting Mojo module/function) rather than
+by name substring. A table of hashed names would work once and then go stale on **every build**, since
+the hash is content-derived — so identity-based bucketing is the only durable answer. Until then
+norm-accum stays unpriced, and it should not be ranked against other levers as though it were.
+
+**CONTROL RESULT, recorded so nobody "fixes" the region logic again expecting it to rescue this row.**
+`--from-first-attn` worked exactly as designed: it excluded **821 leading records (33.887 ms busy)** as
+model load / weight staging, with the boundary correctly identified as
+`_fa_g3_window2_kernel<(int)32,(bool)0,(bool)1,(int)1>`, and produced **no negative rows**. But on
+this trace round 6's idle-gap basis gave nearly identical numbers (gemm 432.667 vs 432.693;
+mojo_per_layer 79.132 vs 79.156; `norms` **0.046 in both**), because the idle-gap clustering had
+already separated the load into its own cluster (cluster 0: 802 records, 33.305 ms busy). Round 6's
+negative-row failure did **not** reproduce here. **The region fix is real but it is not what blocked
+norm-accum — the bucket rules are.**
+
+### (3) BONUS: THE FIRST EXACT BUCKET CENSUS OF THE SHIPPED DEFAULT AT rag4096
+
+`--from-first-attn` basis, region = 5725 records / **555.876 ms busy**, arm `R9_both` (the merged
+default), 1410 MHz:
+
+| bucket | ms | % of busy | instances | top kernel |
+|---|---|---|---|---|
+| **gemm_projection** | **432.693** | **77.8%** | 1801 | `nvjet_hsh_176x128_64x5_1x2_h_bz_TNN` (n=310, 200.625 ms) |
+| mojo_per_layer | 79.156 | 14.2% | 2616 | `residentk_kernels_prefill_gemma6A6A_8f4c4e1d2ba54545` (n=434, 45.687 ms) |
+| **fused_tc_attention** | **38.114** | **6.9%** | 434 | `_fa_g3_window3_kernel<(int)32,(bool)0,(bool)1,...>` (n=186, 24.564 ms) |
+| f32_f16_convert | 5.867 | 1.1% | 870 | `_f32_to_f16_v8_kernel` (n=866, 5.862 ms) |
+| norms | 0.046 | 0.0% | 4 | (see §2 — NOT the per-layer norms) |
+
+Four things worth carrying forward:
+
+* **The prefill is GEMM-bound, and the GEMMs are at 68.8% of peak.** Exact-FLOP model (4096 tokens x
+  62 layers + lm_head = 209.7 TF) over 432.693 ms gives **484.7 TFLOP/s = 68.8% of the 1410 MHz-pinned
+  989 TF/s dense f16/bf16 peak**. Attention — the lever this campaign has spent rounds 6-13 on — is
+  **6.9%** of GPU busy. That does not make attention work wrong (it is where the measurable gap to
+  TRT-LLM lives) but it does bound how much any attention lever can return, and it says the largest
+  single pool of remaining time is GEMM efficiency at 31.2% below peak.
+* **The v3 GQA-packed kernel is confirmed LIVE in the shipped default at runtime**: the top attention
+  kernel is `_fa_g3_window3_kernel` — window3 is v3 — at BN=32. Independent confirmation that GQA2
+  engaged, agreeing with the flag audit and the `TCFLAG ALGENTA_G3_PF_GQA2=1` banner.
+* **The KV16 staging twin costs 5.867 ms measured** (870 instances of `_f32_to_f16_v8_kernel`), roughly
+  **double** round 6's ~2-3 ms estimate for that pass. The KV16 trade is still clearly net-positive
+  given attention's size, but the recorded cost was optimistic by ~2x and should be quoted as 5.867 ms.
+* **The bar arithmetic is corroborated from a fresh measurement, and the wgmma prize needs re-deriving.**
+  Attention's gap to flashinfer's 21.01 ms is 38.114 - 21.01 = **17.1 ms** on this basis, while the bar
+  (rag4096 >= 1.15x) needs ~18.3 ms — so even *complete* attention parity with flashinfer would only
+  just reach the bar, matching round 7's independent arithmetic (full attention+rope parity = 1.1406x).
+  **Caveat that matters before anyone spends a window on it:** this bucket basis (`--from-first-attn`)
+  differs from round 6's, so 38.114 ms is **not** directly comparable to round 6's 33.53 ms, and
+  `WGMMA_TMA_SCOPE.md`'s ~12.5 ms headroom estimate was derived on round 6's basis. Re-derive the prize
+  on this basis before committing VM windows to wgmma.
+
+### (4) THE TWO SUMMARISER DEFECTS ARE FIXED
+
+Both were found in round 14 and both are fixed in `summarize_gemma3_round6.py`:
+
+1. **Cell labels are now DISCOVERED from the filesystem, not enumerated.** The hard-coded tag list
+   `("", "b", "c")` and range `r1..r7` caused three failures from one root cause: a new `CELLTAG`
+   (`r6e_`) reported "no measured runs" for a bracket that had completed 22 cells and emitted ~80
+   bogus `NO-JSON` STALLED/MISSING entries; any bracket shape beyond r7 was truncated; and warm/close
+   cells were never enumerated at all, so `bracket_drift_pct` was silently absent — **a median printed
+   with no drift armor behind it and nothing saying so**. That last one is precisely what made round
+   14's rows unpublishable despite a complete, clean bracket. Discovery cannot go stale when a round
+   invents a tag or a bracket shape.
+2. **The ORACLE GATES line is now hash-bound.** It was keyed by ARM NAME via `oracle_gate_<ARM>.json`,
+   so an arm rebuilt in place silently inherited the previous binary's `ALL_PASS` — round 14 printed
+   `R9_both ALL_PASS=True` for a binary whose hash had just changed from the certified
+   `ca66b41a2ee34cde` to `3c70880f9fe95910`. The gate's recorded hash is now compared against the flag
+   audit's `sha256_16` for the same arm and prints MATCH / MISMATCH / NOT-HASH-BOUND next to the
+   verdict, so a certification can never again imply coverage of a binary it was not earned on.
+
+### (5) PROCESS
+
+`chain15_nsys.sh` committed with its pre-registered question and the reason for the rag4096 basis in
+the header (the 6.83 ms roof and round 6's ~16.2 ms are both rag4096-basis; comparing a pp1024
+measurement against a rag4096 roof would be a basis mismatch). Single log, 60 s liveness, no
+`KILLED_BY_OPERATOR` needed. **PR #1045 was merged by the owner at 07:51:55Z as `82f373e1`**, which
+auto-deleted its branch — the second time in one session that a push silently recreated a merged PR's
+branch (`* [new branch]` is the tell), so the recovery is now a known procedure: branch off
+`origin/main`, cherry-pick only the genuinely new commit, delete the recreated remote branch.
+
+No kernel code this window. No gitbook page touched. Ledger append-only.

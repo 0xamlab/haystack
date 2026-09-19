@@ -180,6 +180,15 @@ def main():
 
     # the gate verdicts and the strings-based flag audit travel WITH the numbers: a cell is only
     # a measurement if the arm that produced it was token-exact and provably carried the flags.
+    #
+    # HASH-BINDING, added in round 14 after a real trap: the gate file is named
+    # `oracle_gate_<ARM>.json`, so the verdict is keyed by ARM NAME and an arm that was REBUILT IN
+    # PLACE silently inherits the previous binary's ALL_PASS line. Round 14 printed
+    # `R9_both ALL_PASS=True` for a binary whose hash had just changed from the certified
+    # ca66b41a2ee34cde to 3c70880f9fe95910 — the gate belonged to the older one. So capture
+    # whatever hash the gate JSON records and, at print time, compare it against the flag audit's
+    # sha256_16 for the same arm; a mismatch or a missing hash is reported next to the verdict
+    # rather than being allowed to imply a certification the timed binary never earned.
     gates = {}
     for arm in ARMS:
         p = L6 / f"oracle_gate_{arm}.json"
@@ -188,7 +197,13 @@ def main():
                 g = json.loads(p.read_text())
             except Exception:
                 continue
+            gh = None
+            for k in ("sha256_16", "sha256", "arm_sha256_16", "binary_sha256_16", "hash"):
+                if g.get(k):
+                    gh = str(g[k])[:16]
+                    break
             gates[arm] = {"all_pass": g.get("all_pass"),
+                          "gate_sha256_16": gh,
                           "verdicts": {k: {kk: vv.get("verdict")
                                            for kk, vv in v.items() if isinstance(vv, dict)}
                                        for k, v in (g.get("cells") or {}).items()}}
@@ -200,12 +215,30 @@ def main():
         except Exception:
             pass
 
+    # LABEL DISCOVERY, NOT ENUMERATION. Round 14 found three silent-exclusion defects in the
+    # hard-coded lists that used to be here, all from the same root cause:
+    #   * the tag list was ("", "b", "c"), so a window run with a NEW CELLTAG (r6e_) reported
+    #     "no measured runs" for a bracket that had in fact completed 22 cells, and emitted ~80
+    #     bogus `r6e_*:NO-JSON` STALLED/MISSING entries that sent the reader hunting for cells
+    #     that all existed;
+    #   * the measured range was hard-coded r1..r7, so any bracket shape beyond it was truncated;
+    #   * warm and close were enumerated the same way, so the CLOSING cells were never found and
+    #     `bracket_drift_pct` was silently absent — a median printed with NO drift armor behind it
+    #     and nothing saying so. That is the defect that made round 14's pp256/pp1024 rows
+    #     unpublishable despite a complete, clean bracket.
+    # Discovering from the filesystem cannot go stale when a round invents a tag or a bracket shape.
+    def discover(arm, name, kind):
+        found = set()
+        for ext in ("out", "json"):
+            for p in RUNS.glob(f"r6*_{arm}_{name}_{kind}*.{ext}"):
+                found.add(p.name.rsplit(".", 1)[0])
+        return sorted(found)
+
     for name, ntok in CELLS.items():
         cell = {"prompt_tokens": ntok, "arms": {}}
         base_med = None
         for arm in ARMS:
-            labels = [f"r6{tag}_{arm}_{name}_r{i}" for tag in ("", "b", "c")
-                      for i in range(1, 8)]
+            labels = discover(arm, name, "r")
             xs, bad = [], []
             for lb in labels:
                 t, why = ttft(lb)
@@ -216,10 +249,8 @@ def main():
                 c = clocks(lb)
                 if c and not c["all_pinned_1410"]:
                     res["off_pin_cells"].append({"label": lb, **c})
-            warm = [ttft(f"r6{tag}_{arm}_{name}_warm{i}")[0]
-                    for tag in ("", "b", "c") for i in (1, 2, 3)]
-            close = [ttft(f"r6{tag}_{arm}_{name}_close{i}")[0]
-                     for tag in ("", "b", "c") for i in (1, 2)]
+            warm = [ttft(lb)[0] for lb in discover(arm, name, "warm")]
+            close = [ttft(lb)[0] for lb in discover(arm, name, "close")]
             warm = [w for w in warm if w is not None]
             close = [c for c in close if c is not None]
             st = stats(xs)
@@ -307,6 +338,9 @@ def main():
         for s in res["stalled_or_missing"]:
             print(f"  {s['arm']} {s['prompt']}: {s['why']}")
     if res.get("oracle_gates"):
+        # sha256_16 of the binary the flag audit actually saw this window, per arm name
+        audited = {a.get("arm"): a.get("sha256_16")
+                   for a in (res.get("flag_audit") or {}).get("arms", [])}
         print("\nORACLE GATES (cache-free fp32 transformers oracle; must pass BEFORE any speed claim):")
         for arm, g in res["oracle_gates"].items():
             vs = []
@@ -315,6 +349,21 @@ def main():
                     if v:
                         vs.append(f"{p}/{k}: {v}")
             print(f"  {arm:<9} ALL_PASS={g['all_pass']}  " + " | ".join(vs))
+            # The verdict above is keyed by ARM NAME. Say out loud which BINARY it belongs to, so a
+            # rebuild-in-place cannot quietly borrow the previous binary's certification.
+            gh, ah = g.get("gate_sha256_16"), audited.get(arm)
+            if gh and ah:
+                print(f"            gate hash {gh} vs audited binary {ah}: "
+                      + ("MATCH — the certification is the timed binary's"
+                         if gh == ah else
+                         "MISMATCH — THIS GATE BELONGS TO A DIFFERENT BINARY than the one "
+                         "audited/timed; do not cite it for these numbers"))
+            elif ah:
+                print(f"            gate JSON records NO hash; audited binary is {ah} — the "
+                      f"certification is NOT hash-bound to it, verify separately before citing")
+            else:
+                print("            gate JSON records NO hash and this arm was not in the flag "
+                      "audit — the certification is NOT bound to any binary in this window")
     if res.get("flag_audit"):
         print("\nFLAG AUDIT (strings on the shipped binary; positive control per family):")
         for a in res["flag_audit"].get("arms", []):
