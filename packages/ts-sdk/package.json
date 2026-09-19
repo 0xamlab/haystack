@@ -1,6 +1,6 @@
 {
   "name": "algenta-sdk",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence",
   "main": "dist/index.js",
   "module": "dist/index.js",
