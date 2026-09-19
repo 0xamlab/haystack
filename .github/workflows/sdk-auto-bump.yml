@@ -1,0 +1,125 @@
+name: sdk-auto-bump
+
+# The public SDK version bumps itself. Every push to main that changes SDK source (the four
+# packages the D2 guard releases together, or the MCP registry manifest) gets ONE follow-up commit
+# from the sync App -- "chore(release): SDK X.Y.Z" -- moving all eight lockstep version fields
+# (scripts/bump_sdk_version.py). That commit changes the manifests, so auto-tag-sdk.yml tags it and
+# release-sdks.yml publishes. Nobody opens a "bump the version" pull request any more (the last one
+# was #1036); the regular pull request is the whole release.
+#
+# Level: patch, unless the merged pull request carried a `release:minor` / `release:major` label;
+# `release:none` skips the bump (docs-only refactors, etc.). Tests/docs-only changes under packages/
+# never bump. A push that itself changed the version manifests (a hand bump) is left to auto-tag.
+#
+# Pushing to main needs the rulesets to let the sync App through: it is a bypass actor
+# (Integration 4614082, mode always) on the repo ruleset and on the org "codna review" ruleset --
+# the same App token release-sdks.yml already uses to write to algenta-sdk.
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/python-sdk/**
+      - packages/ts-sdk/**
+      - packages/mcp/**
+      - packages/algenta/**
+      - server.json
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "bump level for a manual run"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: sdk-auto-bump
+
+jobs:
+  bump:
+    if: github.repository_owner == 'thyn-ai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Decide whether (and how far) to bump
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          LEVEL_INPUT: ${{ inputs.level }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          current="$(python3 -c "import tomllib; print(tomllib.load(open('packages/python-sdk/pyproject.toml','rb'))['project']['version'])")"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          noop() { echo "::notice::sdk-auto-bump: $1"; echo "mode=noop" >> "$GITHUB_OUTPUT"; exit 0; }
+          level="$LEVEL_INPUT"
+          if [ "$EVENT" = "push" ]; then
+            subject="$(git log -1 --format=%s "$AFTER")"
+            case "$subject" in
+              "chore(release): SDK "*) noop "HEAD is this workflow's own bump commit" ;;
+            esac
+            changed="$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || git show --name-only --format= "$AFTER")"
+            if printf '%s\n' "$changed" | grep -qxE 'packages/(python-sdk|algenta|mcp)/pyproject.toml|packages/ts-sdk/package.json'; then
+              noop "this push changed the version manifests itself (a hand bump); auto-tag-sdk owns it"
+            fi
+            source_changes="$(printf '%s\n' "$changed" \
+              | grep -E '^(packages/(python-sdk|ts-sdk|mcp|algenta)/|server\.json$)' \
+              | grep -vE '(^|/)(tests?|__tests__|test-fixtures|fixtures)/|\.md$|\.test\.(ts|js|mjs)$|_test\.py$|^packages/ts-sdk/package-lock\.json$' || true)"
+            [ -n "$source_changes" ] || noop "only tests/docs changed under packages/ -- nothing to release"
+            labels="$(gh api "repos/$GITHUB_REPOSITORY/commits/$AFTER/pulls" --jq '[.[].labels[].name] | join(" ")' 2>/dev/null || true)"
+            level="patch"
+            case " $labels " in
+              *" release:none "*) noop "merged pull request is labeled release:none" ;;
+              *" release:major "*) level=major ;;
+              *" release:minor "*) level=minor ;;
+            esac
+          fi
+          if ! git rev-parse -q --verify "refs/tags/sdk-v${current}" >/dev/null 2>&1; then
+            noop "sdk-v${current} is not tagged yet (release in flight, or auto-tag-sdk failed -- run it) -- not stacking a second bump"
+          fi
+          echo "mode=bump" >> "$GITHUB_OUTPUT"
+          echo "level=$level" >> "$GITHUB_OUTPUT"
+          echo "will bump $current ($level)"
+
+      - name: Mint the sync App token (engine-repo scope, for the push to main)
+        if: steps.plan.outputs.mode == 'bump'
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.ALGENTA_SDK_SYNC_APP_ID }}
+          private-key: ${{ secrets.ALGENTA_SDK_SYNC_APP_PRIVATE_KEY }}
+          owner: thyn-ai
+          repositories: algenta
+
+      - name: Bump all eight lockstep fields, commit as the App, push to main
+        if: steps.plan.outputs.mode == 'bump'
+        env:
+          LEVEL: ${{ steps.plan.outputs.level }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          out="$(python3 scripts/bump_sdk_version.py --level "$LEVEL" --json)"
+          new="$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["new"])')"
+          python3 -m pytest -q -c /dev/null -p no:cacheprovider --noconftest --rootdir . tests/test_sdk_package_metadata.py \
+            || { echo "::error::lockstep guard failed after the bump -- not pushing"; exit 1; }
+          git config user.name "algenta-sdk-sync[bot]"
+          git config user.email "algenta-sdk-sync[bot]@users.noreply.github.com"
+          git add -A -- packages/python-sdk/pyproject.toml packages/python-sdk/decision_engine/__init__.py \
+            packages/algenta/pyproject.toml packages/algenta/algenta/__init__.py packages/mcp/pyproject.toml \
+            packages/ts-sdk/package.json packages/ts-sdk/package-lock.json server.json
+          git commit -m "chore(release): SDK ${new}" -m "Automatic lockstep bump after a merge that changed SDK source (sdk-auto-bump.yml). auto-tag-sdk.yml tags this commit; release-sdks.yml publishes it."
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          auth="$(printf 'x-access-token:%s' "$APP_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" push "https://github.com/${REPO}.git" HEAD:main
+          echo "::notice::pushed chore(release): SDK ${new} to main -- auto-tag-sdk.yml takes it from here"

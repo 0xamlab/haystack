@@ -104,6 +104,10 @@ jobs:
             echo "::notice::changes: no usable before-sha ($BEFORE) -- assuming a build is needed"
             echo "deploy_needed=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
+          if git log -1 --format=%s "$AFTER" | grep -qE '^chore\(release\): SDK '; then
+            echo "::notice::changes: automatic SDK version bump (sdk-auto-bump.yml) -- version fields only, nothing ships from the engine images -> skipping image builds, scans, chart push and deploys"
+            echo "deploy_needed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
           changed=$(git diff --name-only "$BEFORE" "$AFTER") || { echo "::notice::changes: diff failed -- assuming a build is needed"; echo "deploy_needed=true" >> "$GITHUB_OUTPUT"; exit 0; }
           if [ -z "$changed" ]; then
             echo "::notice::changes: empty diff -- assuming a build is needed"; echo "deploy_needed=true" >> "$GITHUB_OUTPUT"; exit 0
