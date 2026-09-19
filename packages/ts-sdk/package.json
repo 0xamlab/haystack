@@ -63,6 +63,7 @@
     "@modelcontextprotocol/sdk": "1.30.0",
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.11",
+    "fast-check": "4.10.1",
     "typescript": "^5.4.0",
     "vitest": "^4.1.11"
   },
