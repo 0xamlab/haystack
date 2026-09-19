@@ -21263,3 +21263,145 @@ branch (`* [new branch]` is the tell), so the recovery is now a known procedure:
 `origin/main`, cherry-pick only the genuinely new commit, delete the recreated remote branch.
 
 No kernel code this window. No gitbook page touched. Ledger append-only.
+
+---
+
+## ROUND 16 — CPU-only: kernel identities recovered by DIFFERENTIAL COMPILATION, the 79.156 ms catch-all is 99.99% attributed, norm-accum PRICED at 11.782 ms (1.73x its roof — between the two pre-registered branches), and the wgmma verdict REVERSES: the bar is now at the edge of reach (branch `fix/gemma3-summarizer-labels`, 2026-09-19)
+
+**~11 minutes of VM-on time against a 1.5 h cap** (start issued ~08:22Z, stopped 08:33:28Z with
+`--discard-local-ssd=false`, `TERMINATED` confirmed, `status=RUNNING` empty project-wide). Everything
+except a 30-second validation and a 2.9 MB trace pull was done on CPU. No cell was timed, so no ratio
+changes and nothing here is publishable on its own.
+
+### (0) KERNEL-IDENTITY BUCKETING, BUILT AND VALIDATED — NO HAND-MAINTAINED NAME TABLE
+
+Round 15's blocker was that Mojo device kernels in `kernels_prefill_gemma3.mojo` are named
+`residentk_kernels_prefill_gemma6A6A_<16-hex content hash>`: the module path alone consumes the whole
+31-char name budget, so **the function name is gone and only the hash distinguishes them**. Name-
+substring bucketing therefore dumped 79.156 ms (14.2% of busy, 2616 instances) into one catch-all and
+the `norms` bucket caught 4 instances instead of the >=124 a 62-layer prefill implies.
+
+**Method — differential compilation.** Two facts make it work locally: the hash is **content-derived**
+and, verified this round, **path-independent** — a macOS build reproduces the exact hashes the H200
+binary carries. So `mojo_kernel_identity.sh` builds the shipped default, then one variant per comptime
+flag removed (`PF_ROPE2`, `PF_F16NORM`, `PF_F16MLP`, `GEGLU_U4`, `PF_F16ATTN`, `PF_KV16`, `PF_BN32`,
+`PF_FA2`, plus the `NO_ROPEVEC` and `NO_GQA2` opt-outs), and diffs the kernel-symbol sets. **A kernel
+that VANISHES when flag F is removed is a kernel F enables; one that APPEARS is the alternate
+implementation F was suppressing.** That is evidence, not a guess, and it regenerates on every build —
+a hand-maintained hash table would be wrong after the first source edit, because the hash is
+content-derived. 11 builds at ~4 s each.
+
+**Validated against the deployed binary, not assumed.** The profiled arm is `R9_both`
+`sha256_16=3c70880f9fe95910` (6167152 B), and all five identity hashes were found in it by `strings`
+with **hit counts identical to the local object** (11/18/35/18/27). So the CPU-generated table provably
+describes the binary that produced the trace.
+
+### THE RE-BUCKETED CENSUS — every kernel named, region reproduced exactly
+
+`rebucket_by_identity.py` re-derives the region independently and lands on **exactly** the extractor's
+numbers (record 821 of 6546, 33.887 ms excluded as model load, n=5725, busy **555.876 ms**), which
+cross-validates both implementations. Full table, arm `R9_both`, rag4096, 1410 MHz:
+
+| ms | % busy | n | kernel | identity |
+|---|---|---|---|---|
+| 200.625 | 36.09 | 310 | `nvjet_hsh_176x128_64x5_1x2_h_bz_TNN` | GEMM |
+| 138.987 | 25.00 | 744 | `nvjet_hss_168x128_64x5_1x2_h_bz_TNN` | GEMM |
+| 47.105 | 8.47 | 372 | `nvjet_hss_256x128_64x4_1x2_h_bz_coopA_TNT` | GEMM |
+| **45.687** | **8.22** | 434 | `…prefill_gemma6A6A_8f4c4e1d2ba54545` | **f16 MLP** (`PF_F16MLP`) |
+| 24.564 | 4.42 | 186 | `_fa_g3_window3_kernel<32,0,1,1,2,1>` | attention **v3** (GQA-packed) |
+| 21.257 | 3.82 | 62 | `nvjet_hsh_192x128_64x5_1x2_h_bz_coopB_TNT` | GEMM |
+| **14.225** | 2.56 | 868 | `…prefill_gemma6A6A_0e8212f1154807d7` | **UNATTRIBUTED** |
+| 13.550 | 2.44 | 248 | `_fa_g3_window2_kernel<32,0,1,1>` | attention **v2** |
+| **11.782** | **2.12** | 867 | `…prefill_gemma6A6A_edb887a57300fe94` | **f16 NORM** (`PF_F16NORM`) |
+| 11.570 | 2.08 | 62 | `nvjet_hsh_168x128_64x5_1x2_h_bz_TNN` | GEMM |
+| **6.680** | 1.20 | 433 | `…prefill_gemma6A6A_73236b689b7945c4` | **ROPE vector** (`PF_ROPE2`+`ropevec`) |
+| 5.862 | 1.05 | 866 | `_f32_to_f16_v8_kernel` | KV16 staging |
+| 5.829 | 1.05 | 62 | `nvjet_hss_168x128_64x5_1x2_h_bz_splitK_TNN` | GEMM |
+| 2.723 / 2.415 / 1.616 / 0.567 | 0.93 | 4/61/62/62 | remaining `nvjet_*` + `splitKreduce_kernel` | GEMM |
+| 0.551 | 0.10 | 4 | `…batched_gemma6A6A_9e7ec81649d35ff3` | batched path |
+| 0.226 / 0.046 / 0.005 / 0.005 | 0.06 | 6/4/4/4 | small prefill kernels + `_pf_rmsnorm` | final norm etc. |
+
+The `mojo_per_layer` catch-all is now **99.99% attributed** (top-6 = 79.151 of 79.156 ms), and
+**64.149 ms (11.54% of region busy) carries positive differential evidence** for its identity. Two
+independent confirmations fall out: **v3 (GQA-packed) serves 186 of the 434 attention launches and v2
+the other 248**, exactly as the `n_keys >= 2048` shape gate predicts; and the ROPE vector kernel is
+confirmed live at 6.680 ms / 433 instances.
+
+### (1) NORM-ACCUM PRICED — AND IT FALLS BETWEEN THE TWO PRE-REGISTERED BRANCHES
+
+**Measured f16 NORM bucket: 11.782 ms (867 instances = 62 layers x 14, i.e. 14 norm launches per
+layer), 2.12% of region busy.**
+
+| comparator | value | ratio |
+|---|---|---|
+| DRAM roof | 6.83 ms | measured is **1.73x the roof** (running at **58.0%** of roof) |
+| round 6's geometry-attributed estimate | ~16.2 ms | measured is **72.7%** of it |
+| **max headroom to roof** | **4.952 ms** | 42.0% of the bucket; **3.22-3.96 ms** at the 65-80% transfer band |
+
+The pre-registered rule was: near the roof ⇒ record "nothing to win" and close the lever; near ~16 ms
+⇒ vectorise-the-loops, gate it, bracket it. **11.782 ms is neither** — it is 1.73x the roof, so there
+IS headroom and the lever is **not** closed; and it is 72.7% of the 16 ms figure, so the
+vectorise-the-loops branch was calibrated against an over-estimate. **The decision rule did not cover
+this outcome, so no kernel was authored and the call is reported rather than made.** Recommendation:
+lowest priority of the four measured pools — its entire ceiling (4.952 ms raw) is ~4x smaller than
+GEMM's +5% (21.6 ms), and unlike GEMM it has no existing machinery to port.
+
+**Still open: the 14.225 ms / 868-instance kernel.** No comptime flag toggles it, so differential
+*flag* builds cannot name it. The method that would: differential **source perturbation** — make a
+codegen-visible change inside one candidate Mojo function at a time and observe which hash moves. Its
+instance count (62 x 14) is identical to the f16 NORM kernel's (62 x 14 - 1), which suggests a paired
+per-sublayer elementwise pass, but that is an inference from a count and is **not** recorded as an
+identification.
+
+### (2) GEMM — NOT ATTEMPTED, DECLARED BEFORE ANY VM MINUTE WAS SPENT ON IT
+
+The brief's task (2) was an in-situ cublasLt algorithm search at the rag4096 + pp1024 shapes, gated
+and bracketed. **It is not reachable in this window and the reason is structural, not a budget
+overrun:** the LTALGO machinery exists **only in the 7B lane** (`session_cuda_p3.mojo`,
+`ALGENTA_7B_PF_LTALGO`, `PF_LTINSITU_B1`, `lt_shapes_tuned` banner field). `session_cuda_gemma3_f16.mojo`
+has **no cublasLt path at all**, so this is a port: shim-bridge entry points, per-shape stage-time
+search, persistence, then G0/G1 gates (~24 min) and an A/B bracket with a closing cell (~35 min). That
+exceeds the cap even before authoring, and starting it would have meant an ungated, unbracketed
+half-measure — worse than not starting. **No VM time was spent on it.** It is ranked #1 by measured
+pool below and is the recommended next window.
+
+### (3) WGMMA HEADROOM RE-DERIVED — AND §7 OF THE SCOPE DOC IS SUPERSEDED
+
+`WGMMA_TMA_SCOPE.md` §10. On the round-15 basis the attention bucket is **38.114 ms** measured
+(v3 24.564 + v2 13.550), so the gap to flashinfer's 21.01 ms is **17.104 ms** — **37% larger** than
+§7's ~12.5 ms, which was computed from round 6's 33.53 ms on a different region basis. The bar needs
+our rag4096 ≤ 373.39 ms, i.e. **save 12.07 ms** from 385.458 (round 13's same-session pair against
+TRT 429.400). At the calibrated transfer ratios: 65% ⇒ 1.1471x, 70% ⇒ 1.1497x, 80% ⇒ **1.1550x**.
+**The transfer ratio required for exactly 1.15x is 70.5% — inside the 65-80% band.**
+
+**So §7's "not the route to the bar" is reversed: wgmma is AT THE EDGE of reach.** Four caveats are
+recorded with it, because the number rests on a conjunction of optimistic assumptions: full flashinfer
+parity is assumed; **the comparator crosses bases** (flashinfer's 21.01 ms is round 6, a different
+region definition and session — the single largest uncertainty, and it should be closed by
+re-measuring flashinfer's attention bucket on the same basis before any window is spent); both
+attention paths must be replaced, since 248 of 434 launches still run v2 under the shape gate; and the
+65-80% band is calibrated on two *isolated kernel* levers, so applying it to a structural rewrite is
+an extrapolation of the band rather than an instance of it.
+
+### REVISED LEVER RANKING — by measured pool, not by campaign momentum
+
+| # | pool | ms | % busy | prize | why this rank |
+|---|---|---|---|---|---|
+| 1 | **GEMM** | 432.694 | 77.84 | **+5% eff = 21.6 ms**, alone clears the 12.07 ms the bar needs | 68.8% of pinned peak; the 7B lane already has the LTALGO pattern to port; comparator is the same library on the same shapes, not a cross-basis number |
+| 2 | **f16 MLP kernel** | 45.687 | 8.22 | unquantified | **Bigger than the entire attention bucket and never examined by any round.** Cheapest unexplored pool in the model |
+| 3 | wgmma (attention) | 38.114 | 6.86 | 17.104 ms ceiling, bar at 70.5% transfer | Largest structural win, but 2 VM windows + 2 CPU passes and all four caveats above |
+| 4 | norm-accum | 11.782 | 2.12 | 4.952 ms raw / 3.2-4.0 transferred | 1.73x its roof, so not exhausted — but ~4x smaller than GEMM's and no machinery to port |
+
+The notable thing is not the ordering, it is that **two of the four largest pools (f16 MLP at 45.687 ms
+and the unattributed 14.225 ms) had never been seen before this round**, because they were hidden
+inside a catch-all that name-based bucketing could not open. That is the argument for identity-based
+bucketing being permanent infrastructure rather than a one-off investigation.
+
+### EVIDENCE AND PROCESS
+
+`window15_g3rag.sqlite` (2879488 B) pulled **before** the stop, so all re-bucketing is now repeatable
+with zero VM time. `mojo_kernel_identity.sh` (differential identity table generator) and
+`rebucket_by_identity.py` (full re-bucket from a trace + table) committed as tooling. Single log per
+window, liveness, no `KILLED_BY_OPERATOR` needed. No kernel code. No gitbook page touched. Ledger
+append-only. **PR-not-merge**; publish decisions remain the owner's — and nothing in this round is
+publishable, because no cell was timed.

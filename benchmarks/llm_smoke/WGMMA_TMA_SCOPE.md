@@ -261,3 +261,78 @@ discovered during C.
 1.133x — the largest remaining single-lever win but **not** the route to the 1.15x bar. Pass 1 has
 made it cheaper to finish and removed the register-file risk, but it has not changed the prize, so
 norm-accum (still unpriced; ~25 min of nsys) remains the better next spend per unit of VM time.
+
+---
+
+## 10. HEADROOM RE-DERIVED ON THE ROUND-15 BASIS — §7's "not the route to the bar" IS SUPERSEDED
+
+Round 15 obtained the first **exactly attributed** bucket census of the shipped default
+(`--from-first-attn` region, 5725 records, **555.876 ms** busy, arm `R9_both` = `3c70880f9fe95910`,
+1410 MHz), with kernel identities recovered by **differential compilation** rather than by name
+substring (see `mojo_kernel_identity.sh` / `rebucket_by_identity.py`). §7's arithmetic used round 6's
+idle-gap basis and a post-GQA2 attention figure of ~30 ms; both are now replaced by measurement.
+
+| pool | ms | % of busy | note |
+|---|---|---|---|
+| GEMM (all `nvjet_*` + `splitKreduce`) | **432.694** | **77.84%** | 484.7 TFLOP/s = **68.8%** of the 1410 MHz-pinned 989 TF/s peak |
+| **f16 MLP kernel** | **45.687** | 8.22% | 434 instances = 62 layers x 7, 105 us each. **Larger than the entire attention bucket and never targeted by any round** |
+| fused attention (v3 24.564 / 186 inst + v2 13.550 / 248 inst) | **38.114** | 6.86% | the wgmma target |
+| unattributed Mojo kernel | 14.225 | 2.56% | 868 instances = 62 x 14; no comptime flag toggles it, identity still open |
+| **f16 NORM** (= norm-accum) | **11.782** | 2.12% | 867 instances = 62 x 14 |
+| ROPE vector | 6.680 | 1.20% | shipped in round 13 |
+| f32->f16 convert (KV16 staging) | 5.867 | 1.06% | **~2x** round 6's ~2-3 ms estimate |
+
+### The wgmma prize, recomputed
+
+* fused attention measured **38.114 ms**; flashinfer comparator **21.01 ms** ⇒ gap **17.104 ms**.
+  §7 said "~12.5 ms between our 33.53 and their 21.01" — the measured gap is **37% larger**.
+* The bar (rag4096 ≥ 1.15x) against round 13's same-session pair (ours 385.458, TRT 429.400) needs
+  our time ≤ **373.39 ms**, i.e. **save 12.07 ms**.
+* At the calibrated transfer ratios: 65% ⇒ 11.12 ms ⇒ **1.1471x**; 70% ⇒ 11.97 ms ⇒ **1.1497x**;
+  80% ⇒ 13.68 ms ⇒ **1.1550x**.
+* **The transfer ratio required to hit exactly 1.15x is 70.5%** — inside the campaign's calibrated
+  **65-80%** band, whose midpoint is above it.
+
+**So §7's conclusion is reversed: wgmma is no longer "clearly short of the bar", it is AT THE EDGE of
+reach.** But the honesty obligations are larger now, not smaller, because the new number rests on a
+conjunction of optimistic assumptions:
+
+1. **Full flashinfer parity is assumed.** The 17.104 ms gap is captured only if the wgmma kernel
+   reaches flashinfer's own 21.01 ms exactly. Anything less scales the prize down directly.
+2. **The comparator crosses bases.** flashinfer's 21.01 ms was measured in round 6 under a different
+   region definition and session. Our 38.114 ms is `--from-first-attn`. If the two buckets do not
+   cover identical work, the gap is wrong in an unquantified direction. **This is the single largest
+   uncertainty in the number and it should be closed before any window is spent** — re-measure
+   flashinfer's attention bucket on the same basis, same session.
+3. **Both attention paths must be replaced.** 248 of the 434 attention launches (13.550 ms) still run
+   v2, because GQA2 is shape-gated to `n_keys >= 2048`. A wgmma kernel that only replaces the v3 path
+   captures at most 24.564 ms of the bucket, and the gap to flashinfer on that subset is not
+   separately known.
+4. **The transfer ratio is calibrated on two levers**, both of which were *isolated kernel* changes
+   measured against a same-configuration control. wgmma is a larger structural change, so 65-80% is an
+   extrapolation of the band rather than an instance of it.
+
+### Revised recommendation, and it is not the one §7 gave
+
+Ranked by measured pool, not by campaign momentum:
+
+1. **GEMM — 432.694 ms, 77.84% of busy, at 68.8% of pinned peak.** +5% efficiency is **21.6 ms**,
+   which alone would clear the 12.07 ms the bar needs. The 7B lane already has the machinery
+   (`ALGENTA_7B_PF_LTALGO`: stage-time cublasLt algorithm search, per-shape, persisted, with
+   `lt_shapes_tuned` reported in the banner); **the gemma-3 lane has no cublasLt path at all**, so
+   this is a port rather than a new invention. Highest prize, existing pattern, and unlike wgmma its
+   comparator is the same library on the same shapes rather than a cross-basis number.
+2. **The f16 MLP kernel — 45.687 ms, 8.22% of busy, never examined by any round.** It is bigger than
+   all of attention and nobody has ever profiled inside it. Cheapest unexplored pool in the model.
+3. **wgmma — 38.114 ms bucket, 17.104 ms ceiling, bar reachable at 70.5% transfer.** Largest
+   single-lever structural win, but 2 VM windows + 2 CPU authoring passes, and it carries all four
+   caveats above. Do it **after** closing caveat 2, not before.
+4. **norm-accum — 11.782 ms measured, 1.73x its 6.83 ms DRAM roof.** Max headroom **4.952 ms** raw,
+   **3.2-4.0 ms** after transfer. It is *not* "nothing to win" (it runs at 58% of roof) and *not*
+   near round 6's ~16.2 ms either (it is 72.7% of it) — it falls between the two pre-registered
+   branches, and its ceiling is ~4x smaller than GEMM's. Lowest priority of the four.
+
+**Bottom line: the bar is reachable, but the route with the best evidence-per-VM-minute is GEMM
+algorithm selection, not wgmma.** wgmma moved from "out of reach" to "at the edge" purely because the
+attention bucket turned out to be measured 37% larger than the basis §7 used — which is itself the
+strongest argument for closing caveat 2 before committing windows to it.
