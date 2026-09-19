@@ -1,7 +1,9 @@
 # CI Architecture v4 — GitHub-hosted, no self-hosted fleet, layered local-first security
 
 Status: implemented (this document describes the shipped state as of the PRs listed in §8,
-not a proposal). Supersedes `ci-architecture-v3.md` in full — see §1.1 for why.
+not a proposal). Supersedes the former `ci-architecture-v3.md` in full — that document has since
+been **deleted** together with the Azure fleet code it described, so §1.1 below is now the only
+record of what it proposed and why it was abandoned.
 Scope: `thyn-ai/algenta` CI/CD and its relationship to the org-wide runner and security rollout
 tracked in `thyn-ai/security-toolchain`.
 
@@ -17,10 +19,11 @@ static analysis, dependency and IaC scanning) sourced from one org-wide package,
 
 ### 1.1 Why this supersedes v3
 
-`ci-architecture-v3.md` proposed a two-plane design (ephemeral GCP linux builders + Tart/Orchard
-macOS VMs) that was itself superseded the same day it was written by an owner addendum moving
-the whole plane to Azure (`RG thyn-ci`, `runs-on: [self-hosted, az-ephemeral]` org-wide). Neither
-design is what runs today. The Azure plane worked but carried real, measured costs this
+The deleted `ci-architecture-v3.md` proposed a two-plane design (ephemeral GCP linux builders +
+Tart/Orchard macOS VMs) that was itself superseded the same day it was written by an owner
+addendum moving the whole plane to Azure (`RG thyn-ci`, `runs-on: [self-hosted, az-ephemeral]`
+org-wide). Neither design is what runs today, and neither document survives in the tree — this
+section is the record. The Azure plane worked but carried real, measured costs this
 architecture removes:
 
 - **Latency.** 2-minute jobs queued 10–81 minutes behind full VM boots — the ephemeral-VM
@@ -51,11 +54,13 @@ removed `az-ci-smoke.yml` and `deploy-az-orchestrator.yml` along with the orches
 targeted — see §9. **Two runner classes is the complete set**, so any `runs-on:` naming a third
 label is a typo, and `.github/actionlint.yaml` no longer allowlists anything that would hide it.
 
-Compare against §12 of v3's cost model (GCP $525–785/mo projected, Azure addendum unpriced but
-measured in practice at $400+/mo): the GitHub-hosted-only model's expected steady state is
-~9–12k standard minutes/month (≈20% of the included quota, $0) plus incidental `thyn-8c`
-minutes for Mojo compiles, against an org Actions spending limit set at $150/month as a hard
-backstop.
+Compare against the cost model v3 carried in its own §12 — GCP $525–785/mo projected, and the
+Azure addendum unpriced but measured in practice at $400+/mo. Those figures are quoted here in
+full because v3 is deleted: the comparison has to survive the document it came from, or the
+number this architecture is judged against becomes unrecoverable. The GitHub-hosted-only model's
+expected steady state is ~9–12k standard minutes/month (≈20% of the included quota, $0) plus
+incidental `thyn-8c` minutes for Mojo compiles, against an org Actions spending limit set at
+$150/month as a hard backstop.
 
 ## 3. Job → runner placement (verified, not proposed)
 
@@ -150,7 +155,7 @@ tracked as outstanding in the toolchain rollout, not something this repo's CI de
 | Baseline measurement | `workflow_dispatch measure_baseline=true` on `main`, for gitleaks/opengrep/osv/trivy | Pending — needs #1007+#1008+this PR merged first; a baseline measured from a laptop is refused by convention (`security/baseline/<tool>.txt` headers require a CI run + commit SHA) |
 | Ratchet flip | `mode: advisory` → `mode: ratchet` in `security.yml` | Pending one clean baseline-measured week |
 
-## 9. Azure decommission
+## 9. Azure decommission (complete — code, cloud and DNS)
 
 ### 9.1 Code level — DONE
 
@@ -174,28 +179,44 @@ registration anywhere in the org — and `az vm list -g thyn-ci` returned **0 VM
 orchestrator box was deleted during the same hour. There is therefore no running consumer of
 anything removed here, and no runner able to execute the two deleted workflows.
 
-### 9.2 Azure resources — NOT done by this wave, still owner-gated
+### 9.2 Azure and org side — DONE, re-verified 2026-09-19T03:17–03:21Z
 
-The resource group `thyn-ci` **still exists** and still holds residue, inventoried at the same
-moment: 1 orphaned NIC, 1 public IP, 1 NSG, 1 VNet, 1 disk, the Compute Gallery with the
-`ci-worker` image and version, the idle `ci-arc-pilot` AKS managed cluster (plus its `MC_*`
-managed RG), the DevCenter project and devcenter, and a `GitHub.Network/networkSettings`.
+**This section replaces an earlier one that said the opposite.** §9.2 originally carried a residue
+inventory (orphaned NIC, public IP, NSG, VNet, disk, the Compute Gallery with the `ci-worker`
+image, the idle `ci-arc-pilot` AKS cluster and its `MC_*` managed RG, the DevCenter project, a
+`GitHub.Network/networkSettings`) and gated deletion on 7 consecutive days of hosted-only CI green.
+The owner executed the destructive steps instead — `thyn-ci` was deleted 2026-09-18 01:09Z, per
+#1025 — so that inventory described resources that no longer existed and the gate had nothing left
+to guard. Both are recorded as superseded rather than quietly dropped, because a reader who finds
+the old text in git history should be able to see that it was overtaken by events, not wrong when
+written.
 
-Deleting any of it is **out of scope for the code wave by design** and remains a separate,
-explicitly owner-confirmed step, gated on 7 consecutive days of hosted-only CI green. Two of the
-original preconditions have changed since this section was first written and are recorded rather
-than silently dropped:
+Re-measured rather than assumed, 2026-09-19T03:17–03:21Z:
 
-1. *"no `az-ephemeral` registrations for 7 consecutive days"* — the count is now 0, but the clock
-   starts from the wave, not from this document; the 7 days still have to elapse.
-2. *"every fleet consumer has merged its hosted-runner migration"* — this repo has. **Other repos
-   in the org are not verified here**, and the gallery image, VNet and NSGs may still be referenced
-   by them. Confirm org-wide before touching the resource group; this repo's tree cannot answer
-   that question.
+| Check | Result |
+|---|---|
+| `az group list` filtered on `thyn` | **no resource group at all** — `thyn-ci` and the `MC_thyn-ci_ci-arc-pilot_centralus` managed RG are both gone |
+| `az resource list` for DevCenter / galleries | **none** — the DevCenter project and devcenter, and the Compute Gallery holding `ci-worker`, are gone |
+| `gh api orgs/thyn-ai/actions/runner-groups` | only `Default` and `mojo-heavy`; **`az-ephemeral-pool` is gone** |
+| `gh api orgs/thyn-ai/actions/variables` | **empty**; `RUNNER_LABELS` is gone |
+| `gh api orgs/thyn-ai/actions/runners` | `total_count: 0` |
+| `dig +short ci-webhook.codna.ai` | **no answer** — the DNS record that fronted the orchestrator's webhook receiver has been removed (`docs.algenta.ai` resolved in the same check, so this is an absent record, not a broken resolver) |
 
-Every step in that teardown is destructive (disk/cluster/gallery/resource-group deletion) and is
-confirmed with the owner individually at execution time; this document records the precondition,
-not a standing authorization to proceed once it is met.
+The Cloudflare row matters and is easy to miss: `infra/cloudflare/webhook.tf` was deleted from this
+repo by #1025, but that module was never applied from a checkout, so no Terraform state ever
+tracked the record — deleting the file could not have removed it. It was still resolving after
+#1025 merged. It does not resolve now, which means somebody removed it in the dashboard; the repo
+gives no way to tell who or when, so the measurement is the only evidence available.
+
+**The 7-day window still has a purpose, but not the one it was written for.** It is no longer a
+precondition for deleting anything, because there is nothing left to delete. It remains a sensible
+observation period for one thing only: confirming that hosted-only CI is stable now that no
+fallback plane exists to absorb a bad week. That is tracked in the PR history, not here.
+
+**Not verified, and not verifiable from this repo:** whether any *other* repository in the org
+still expected the Azure fleet. This tree can only speak for itself. The gallery image and VNet are
+gone, so any such repo is already broken rather than at risk — which is worth knowing if one
+surfaces later, because the fix is a migration, not a restoration.
 
 ## 10. Verification
 
@@ -204,9 +225,17 @@ not a standing authorization to proceed once it is met.
   implicitly, and locally via the pre-commit `verify-toolchain` hook.
 - `thyn-sec actionlint .github/workflows/*.yml` — workflow lint, run standalone in this repo's
   own `.github/actionlint.yaml`-configured step and as part of every toolchain pre-commit/CI run.
-- `grep -rlE "RUNNER_LABELS|az-ephemeral|az-orch" .github` — expect **zero hits**, with no
-  exceptions. Before the decommission wave this allowed two named orchestrator-management
-  workflows; there are none now, so any hit is a regression.
-- `test -e infra/ci -o -e infra/fleet` — expect non-zero. Neither directory should exist.
+- `grep -rlE "RUNNER_LABELS|az-ephemeral|az-orch" .github/workflows` — expect **zero hits**, with
+  no exceptions. Scoped to `workflows/` deliberately: `.github/actionlint.yaml` names both labels
+  in a comment recording their removal, so the unscoped form of this check matches its own
+  explanation and can never return zero. A verification command that always fails gets ignored,
+  and then it is not a verification command. Before the decommission wave this allowed two named
+  orchestrator-management workflows; there are none now, so any hit in a workflow is a regression.
+- `git grep -n "runs-on:" .github/workflows | grep -vE "ubuntu-latest|thyn-8c"` — expect zero
+  hits: every job is GitHub-hosted, and `.github/actionlint.yaml` allows `thyn-8c` as the only
+  custom label, so any other label fails `actionlint`.
+- `test -e infra/ci -o -e infra/fleet -o -e infra/cloudflare/webhook.tf -o -e docs/ci-architecture-v3.md`
+  — expect non-zero. None of the four should exist; this is the one command that proves the whole
+  wave landed rather than part of it.
 - `gh api organizations/thyn-ai/settings/billing/usage` — `Actions Linux` minutes should stay
   under the included quota; larger-runner line items should show only `thyn-8c` job names.
