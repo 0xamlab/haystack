@@ -166,10 +166,10 @@ the dispatch bands) is paid at serve startup on both engines, not per request.
 
 | Engine | Prefill 256 tok/s | Prefill 1024 tok/s | Prefill RAG-4096 tok/s |
 | --- | --- | --- | --- |
-| Algenta (CUDA tensor-core gemma seam, fused windowed flash attention (raw-mma FA2), GQA-packed attention, vectorised RoPE/KV-write, f16-KV twin, pre-staged f16 chain, warm-init staging) | 7,973 | 10,891 | 10,626 |
-| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,166 | 9,247 | 9,539 |
+| Algenta (CUDA tensor-core gemma seam, fused windowed flash attention (raw-mma FA2), GQA-packed attention, vectorised RoPE/KV-write, f16-KV twin, pre-staged f16 chain, warm-init staging) | 8,337 | 10,891 | 10,626 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,194 | 9,247 | 9,539 |
 
-Prefill speedup at 256 tokens: 1.29x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
+Prefill speedup at 256 tokens: 1.35x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
 1.18x vs TensorRT-LLM. Prefill speedup on 4096-token retrieval context: 1.11x vs
 TensorRT-LLM.
 
