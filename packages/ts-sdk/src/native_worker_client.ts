@@ -196,8 +196,22 @@ async function startSession(workerPath: string): Promise<WorkerSession> {
     detached: false,
   });
 
-  const cleanupOnFailure = () => {
+  // The parent's copy of the worker's log descriptor: the child holds its own duplicate, so
+  // this one is needed only until `spawn` returns, and it must be closed exactly once. The
+  // connect step below closes it as soon as the socket is up, and `cleanupOnFailure` used to
+  // close it AGAIN unconditionally -- so every failed handshake threw EBADF out of the cleanup
+  // itself, the worker was never killed, the temp dir was never removed, and the caller saw
+  // `EBADF` instead of the typed error (or, had the descriptor number been reused meanwhile,
+  // an unrelated descriptor would have been closed). One guarded close serves every path.
+  let logFdOpen = true;
+  const closeLogFd = () => {
+    if (!logFdOpen) return;
+    logFdOpen = false;
     fs.closeSync(logFd);
+  };
+
+  const cleanupOnFailure = () => {
+    closeLogFd();
     try {
       if (proc.exitCode === null) proc.kill();
     } catch {
@@ -243,7 +257,7 @@ async function startSession(workerPath: string): Promise<WorkerSession> {
     );
   }
 
-  fs.closeSync(logFd);
+  closeLogFd();
   const remaining = Math.max(100, deadline - Date.now());
   let ready: { frame: Record<string, unknown>; rest: Buffer };
   try {
