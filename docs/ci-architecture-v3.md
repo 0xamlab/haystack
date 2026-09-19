@@ -414,7 +414,7 @@ Already adaptive (path- or blast-radius-gated today):
 | build-runtime.yml | `paths:` filter on the runtime surface |
 | docs-audit.yml | `paths:` filter on docs + generator surfaces |
 | tpm.yml | `paths:` filter on the TPM backend + test |
-| sync-public-sdk.yml | `paths:` filter on the two SDK packages |
+| sync-public-sdk.yml | `paths:` filter on the three mirrored public packages |
 | code-coverage.yml | `paths:` filter on the Python surface |
 | codeql.yml | blast-radius skip/differential/full per language leg |
 
