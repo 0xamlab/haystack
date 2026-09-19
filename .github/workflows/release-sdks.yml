@@ -408,7 +408,10 @@ jobs:
           set -euo pipefail
           KEY_FILE="$RUNNER_TEMP/sdk_release_signing_private.pem"
           printf '%s' "$SDK_RELEASE_SIGNING_PRIVATE_KEY" > "$KEY_FILE"
-          python scripts/sign_sdk_release_authorization.py \
+          # NOT bare `python`: the thyn-sec setup step above prepends its own venv to PATH for
+          # the rest of this job, and that venv has no cryptography. Use the setup-python
+          # interpreter ($pythonLocation), which is what the pip install step above targeted.
+          "$pythonLocation/bin/python" scripts/sign_sdk_release_authorization.py \
             --version "${{ steps.version.outputs.version }}" \
             --sdk-checkout algenta-sdk-checkout \
             --private-key-file "$KEY_FILE" \
@@ -461,7 +464,9 @@ jobs:
           AUTH_COMMIT="$(python3 -c "import json; print(json.load(open('$RUNNER_TEMP/release-authorization.json'))['sdk_commit'])")"
           VERIFY_ROOT="$RUNNER_TEMP/verify-at-sdk-commit"
           git worktree add "$VERIFY_ROOT" "$AUTH_COMMIT"
-          python scripts/verify_release_authorization.py \
+          # NOT bare `python`: thyn-sec's venv shadows PATH (see the sign step above) and the
+          # verifier needs cryptography; $pythonLocation is the interpreter that has it.
+          "$pythonLocation/bin/python" scripts/verify_release_authorization.py \
             --authorization-file "$RUNNER_TEMP/release-authorization.json" \
             --expected-version "$VERSION" \
             --repo-root "$VERIFY_ROOT"
