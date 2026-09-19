@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "1.0.13"
+__version__ = "1.0.14"
 
 _LAZY_EXPORTS = {
     "Runtime": ("algenta.runtime_facade", "Runtime"),
