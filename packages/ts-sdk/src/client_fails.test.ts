@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Tests for DecisionEngineClient: fails.
 // Extracted from client.test.ts during modularization.
 import * as fs from "node:fs";

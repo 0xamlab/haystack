@@ -8,6 +8,32 @@ Python SDK for Algenta public data, query, and simulation APIs.
 pip install algenta-sdk
 ```
 
+## Quickstart
+
+The PyPI package is `algenta-sdk`; the importable module is `decision_engine`.
+
+```python
+from decision_engine import AlgentaClient
+
+client = AlgentaClient()  # reads ALGENTA_API_KEY; defaults to https://api.algenta.ai
+
+datasets = client.list_datasets(search="orders", compact=True)
+summary = client.get_dataset_summary(datasets.datasets[0].dataset_id)
+result = client.query_with_metadata(
+    {
+        "dataset_id": summary.dataset_id,
+        "metric": {"hint": "gross_revenue"},
+        "aggregation": "sum",
+    }
+)
+print(result.data.result)
+```
+
+Self-hosted engine? Pass `base_url="http://localhost:8000"` and the API key
+provisioned by your operator deployment. The `self_hosted` and `air_gapped`
+deployment profiles fail closed and never silently fall back to Algenta's
+cloud.
+
 ## Root Contract Exports
 
 ```python
@@ -195,8 +221,8 @@ It currently publishes quality-gate benchmark classes `B6` checkpoint and
 replay overhead, `B7` MCP tool latency, `B9` RAG retrieval quality and
 latency, and `B10` decision workflow completion latency, plus quality-gate SLO
 budgets `mcp_call_first_party`, `decision_plan_creation`, and `replay`.
-`B10` is currently backed by the Repository Intelligence workflow artifact at
-`build/repository_intelligence_benchmark.json`.
+`B10` is currently backed by the engine's Repository Intelligence workflow
+benchmark.
 
 For the current plan-aligned utility and agent surfaces, the direct client also exposes:
 

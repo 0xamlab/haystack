@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of client.ts — the DecisionEngineClient class. */
 
 /**
@@ -332,8 +333,8 @@ export class DecisionEngineClient {
 export { DecisionEngineClient as AlgentaClient };
 export type { DecisionEngineClientConfig as AlgentaClientConfig };
 
-// Back-compat: historically exported as CodnaClient (#157 rename). Algenta is the engine/SDK;
-// Algenta is a consumer. Keep the old name working so existing integrations don't break.
+// Back-compat alias: the client was historically exported as CodnaClient. Keep the old
+// name working so existing integrations don't break.
 export { DecisionEngineClient as CodnaClient };
 export type { DecisionEngineClientConfig as CodnaClientConfig };
 

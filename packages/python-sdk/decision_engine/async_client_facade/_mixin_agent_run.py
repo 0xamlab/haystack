@@ -1,11 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_AsyncAgentRunMixin for the AsyncDecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/async_client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decision_engine.models_agent_runs import (
+        AgentRunCheckpointListResponseResult,
+        AgentRunCheckpointsResult,
+        AgentRunEventsResult,
+        AgentRunListResult,
+        AgentRunMissionEventListResponseResult,
+        AgentRunMissionEventsResult,
+        AgentRunReplayResult,
+        AgentRunResult,
+        AgentRunStreamEventResult,
+        AgentRunTelemetryListResult,
+        AgentRunTelemetryResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads

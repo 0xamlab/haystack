@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Regression guard for the cross-language query-plane parity semantics
 // (restored after the graduation regression): alias canonicalization, strict
 // aggregation (no silent sum), count-carrying rows, and sha256 plan hashes.

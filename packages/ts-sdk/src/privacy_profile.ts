@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { ALGENTA_OWNED_HOSTS, ALGENTA_OWNED_SUFFIXES, DEFAULT_BASE_URL } from "./contract.js";
 
 function trimTrailingSlashes(value: string): string {

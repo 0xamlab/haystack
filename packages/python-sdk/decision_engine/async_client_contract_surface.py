@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -6,8 +8,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from .async_client_model_surface_common import _request_model
 from .contract_fallback import load_contract_from_openapi_async
-from .exceptions import DecisionEngineError
-from .exceptions import NotFoundError
+from .exceptions import DecisionEngineError, NotFoundError
 from .validation_error_details import build_validation_error_details
 
 if TYPE_CHECKING:

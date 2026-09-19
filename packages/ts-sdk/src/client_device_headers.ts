@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 const DEVICE_ID_HEADER = "X-Algenta-Device-Id";
 const PLATFORM_HEADER = "X-Algenta-Platform";
 const PLATFORM_VERSION_HEADER = "X-Algenta-Platform-Version";

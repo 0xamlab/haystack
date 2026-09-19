@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { resolve as resolvePath } from "node:path";
 
 import type {

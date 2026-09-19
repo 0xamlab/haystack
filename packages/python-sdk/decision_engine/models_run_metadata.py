@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Compatibility wrapper for run metadata SDK model."""
 
 from __future__ import annotations

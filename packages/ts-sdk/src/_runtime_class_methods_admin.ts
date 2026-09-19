@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — recommend/score/batch/compare,
  * jobs, triggers, deployments, account, billing, team, devices, audit, and
  * execution policy wrappers for the Runtime class.

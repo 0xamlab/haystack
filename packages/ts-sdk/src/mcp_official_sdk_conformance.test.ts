@@ -1,44 +1,35 @@
-// Track A3b: the TypeScript equivalent of Track A3's Python conformance suite
-// (tests/test_mcp_official_sdk_e2e.py) -- drives Algenta's REAL production MCP Server with the
-// OFFICIAL @modelcontextprotocol/sdk TypeScript client, never Algenta's own client code and never
-// a raw HTTP status code inspected by hand.
+// SPDX-License-Identifier: Apache-2.0
+// Drives Algenta's REAL production MCP server with the OFFICIAL @modelcontextprotocol/sdk
+// TypeScript client, never Algenta's own client code and never a raw HTTP status code
+// inspected by hand. The TypeScript analogue of the Python SDK's MCP conformance suite.
 //
-// Algenta's MCP server is a Python process (apps/mcp_server + apps/api_server); there is no
-// in-process way to embed it under Node the way Track A3's InMemoryTransport tests embed the
-// real stdio Server directly in the same Python process. So this suite spawns the real server as
-// a subprocess -- tests/_mcp_ts_conformance_server.py, which reuses tests/_mcp_live_server_fixture.py
-// (live_api_server + seed_owner_org_and_key) VERBATIM, the exact same real-stack helper Track A3's
-// own live-HTTP tests already use -- and drives it exclusively over a real loopback socket with the
-// official TS client's StreamableHTTPClientTransport / SSEClientTransport.
+// Algenta's MCP server is a Python process in the closed-source engine; there is no
+// in-process way to embed it under Node. So this suite spawns the real server as a
+// subprocess -- the engine's live-server fixture, which boots the real HTTP stack with a
+// seeded owner org and API key -- and drives it exclusively over a real loopback socket
+// with the official TS client's StreamableHTTPClientTransport / SSEClientTransport.
 //
-// Behavioral matrix ported from Track A3 (see tests/test_mcp_official_sdk_e2e.py for the Python
-// original):
+// Behavioral matrix (mirrors the Python SDK's conformance suite):
 //   - modern discover/list/call over Streamable HTTP, with discovery public and tools/call gated
 //   - the legacy (deprecated) HTTP+SSE initialize handshake still works end to end
 //   - product-edition tool-profile filtering (X-Algenta-Product), enforced on both list AND call
 //   - a downstream auth failure surfaces as a normal (isError-false) tool result, never a raised
-//     transport error -- ported as the HTTP-side analogue of Track A3's stdio "no ambient
-//     credential" case: here, a *present but invalid* bearer clears the ASGI-layer auth challenge
-//     (which only checks for a credential's presence) and fails for real against Postgres-backed
-//     auth, so the resulting MCPAPIError is caught and serialized into the tool result exactly the
-//     way Track A3 proved for the ambient-credential case
+//     transport error -- here, a *present but invalid* bearer clears the ASGI-layer auth
+//     challenge (which only checks for a credential's presence) and fails for real against
+//     the database-backed auth, so the resulting MCPAPIError is caught and serialized into
+//     the tool result
 //
-// Deliberately NOT ported (scope, documented rather than silently dropped):
-//   - two-independent-replica statelessness: Track A3's own version of this
-//     (tests/test_mcp_multi_replica_lb.py) already skips itself in exactly this kind of sandboxed
-//     dev environment -- it needs a private ghcr.io/thyn-ai/codna sidecar image this environment
-//     has no registry credentials for, plus a 3-replica docker-compose + nginx LB stack. Standing
-//     up an equivalent from a vitest file would not be a lighter-weight proof, it would just be a
-//     second copy of the same infra-gated test. A single-process, two-independent-client-sessions
-//     check is included below instead -- it proves the stateless session manager does not leak
-//     state between two official-SDK client connections, which is a real (if narrower) slice of
-//     the same property, not a stand-in for the multi-replica LB proof.
+// Deliberately NOT covered here (scope, documented rather than silently dropped):
+//   - multi-replica statelessness behind a load balancer: that proof needs a containerized
+//     multi-replica stack plus registry and network fixtures an SDK test process cannot
+//     stand up. The single-process, two-independent-client-sessions check below proves the
+//     stateless session manager does not leak state between two official-SDK client
+//     connections -- a real (if narrower) slice of the same property, not a stand-in for
+//     the multi-replica proof.
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -46,18 +37,20 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const LAUNCHER_SCRIPT = path.join(REPO_ROOT, "scripts", "run_repo_python.sh");
-const SERVER_ENTRY = path.join(REPO_ROOT, "tests", "_mcp_ts_conformance_server.py");
-
-// This suite needs the full engine monorepo context around packages/ts-sdk -- scripts/
-// run_repo_python.sh, tests/_mcp_ts_conformance_server.py, the real apps.api_server FastAPI app,
-// a migrated Postgres database, and mojo_env/pixi.toml. That context exists here in
-// thyn-ai/algenta, but sync-public-sdk.yml mirrors ONLY packages/python-sdk, packages/ts-sdk, and
-// examples/ out to the public thyn-ai/algenta-sdk repo -- so in that mirror LAUNCHER_SCRIPT and
-// SERVER_ENTRY simply don't exist. Skip cleanly there instead of failing on ENOENT/timeout, the
-// same self-skip shape tests/test_mcp_multi_replica_lb.py already uses for its own infra gate.
-const HAS_ENGINE_MONOREPO_CONTEXT = existsSync(LAUNCHER_SCRIPT) && existsSync(SERVER_ENTRY);
+// This suite runs only inside the Algenta engine development environment, which provides
+// the live-server launcher and entry point, a migrated database, and the engine's Python
+// dependencies. Point the three variables below at that environment to run it; anywhere
+// else (including a standalone checkout of this repository) they stay unset and the suite
+// skips itself cleanly instead of failing on missing files or timeouts.
+const REPO_ROOT = process.env.ALGENTA_MCP_CONFORMANCE_REPO_ROOT ?? "";
+const LAUNCHER_SCRIPT = process.env.ALGENTA_MCP_CONFORMANCE_LAUNCHER ?? "";
+const SERVER_ENTRY = process.env.ALGENTA_MCP_CONFORMANCE_SERVER_ENTRY ?? "";
+const HAS_ENGINE_DEV_ENVIRONMENT =
+  REPO_ROOT.length > 0 &&
+  LAUNCHER_SCRIPT.length > 0 &&
+  SERVER_ENTRY.length > 0 &&
+  existsSync(LAUNCHER_SCRIPT) &&
+  existsSync(SERVER_ENTRY);
 
 const SERVER_BOOT_TIMEOUT_MS = 90_000;
 const SERVER_STOP_TIMEOUT_MS = 15_000;
@@ -84,20 +77,20 @@ function isReadyPayload(value: unknown): value is ReadyPayload {
   );
 }
 
-/** Spawn the real Algenta MCP server (tests/_mcp_ts_conformance_server.py) and wait for its
- * one-line JSON readiness handshake on stdout. `detached: true` makes the child the leader of its
- * own process group so teardown can signal the whole tree (run_repo_python.sh -> pixi -> python ->
- * the real uvicorn subprocess it boots), not just the immediate child. */
+/** Spawn the real Algenta MCP server via the engine environment's launcher and wait for
+ * its one-line JSON readiness handshake on stdout. `detached: true` makes the child the
+ * leader of its own process group so teardown can signal the whole tree (launcher ->
+ * environment manager -> python -> the real uvicorn subprocess it boots), not just the
+ * immediate child. */
 async function bootLiveServer(): Promise<LiveServer> {
   const child = spawn(LAUNCHER_SCRIPT, [SERVER_ENTRY], {
     cwd: REPO_ROOT,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
     // A direct `python /abs/path/script.py` invocation puts the SCRIPT's own directory on
-    // sys.path, not the repo root or cwd -- so the script's `from tests....` absolute imports
-    // need PYTHONPATH set explicitly (mirrors tests/conftest.py's own `sys.path.insert(0, ...)`
-    // for the same reason, and the PYTHONPATH tests/conftest.py's _build_live_subprocess_env sets
-    // for the uvicorn subprocess it launches in turn).
+    // sys.path, not the repo root or cwd -- so the server entry point's absolute imports
+    // need PYTHONPATH set explicitly, matching what the engine's own live-server fixtures
+    // do for the uvicorn subprocess they launch in turn.
     env: { ...process.env, PYTHONPATH: REPO_ROOT },
   });
 
@@ -215,7 +208,7 @@ async function connectLegacySse(
   return client;
 }
 
-describe.skipIf(!HAS_ENGINE_MONOREPO_CONTEXT)(
+describe.skipIf(!HAS_ENGINE_DEV_ENVIRONMENT)(
   "official @modelcontextprotocol/sdk TypeScript client vs. Algenta's real MCP server",
   () => {
   let server: LiveServer;
@@ -274,10 +267,9 @@ describe.skipIf(!HAS_ENGINE_MONOREPO_CONTEXT)(
     async () => {
       const client = await connectStreamable(server.baseUrl);
       try {
-        // Cross-SDK behavioral difference found while porting this test (documented rather than
-        // assumed): the official PYTHON client decodes the ASGI challenge's embedded JSON-RPC
-        // error body into a proper MCPError with code -32001 (see
-        // tests/test_mcp_official_sdk_e2e.py::test_live_http_official_sdk_call_tool_without_bearer_surfaces_real_mcp_error).
+        // Cross-SDK behavioral difference, documented rather than assumed: the official
+        // PYTHON client decodes the ASGI challenge's embedded JSON-RPC error body into a
+        // proper MCPError with code -32001 (proven by the Python SDK's conformance suite).
         // The official TypeScript client does not: StreamableHTTPClientTransport treats any
         // non-2xx HTTP response as a hard transport failure before it ever parses the body as
         // JSON-RPC, so the thrown StreamableHTTPError's `.code` is the raw HTTP status (401) and
@@ -328,7 +320,7 @@ describe.skipIf(!HAS_ENGINE_MONOREPO_CONTEXT)(
       try {
         const { tools } = await client.listTools();
         const names = new Set(tools.map(tool => tool.name));
-        // Real curated edition (packages/mcp/algenta_mcp/products.py ALGENTA_CODING_TOOLS): well
+        // The codna edition is a curated subset of the engine's tool registry: well
         // under the full registry, and it does include the coding/decision-memory tools.
         expect(tools.length).toBeLessThan(100);
         expect(names.has("list_decisions")).toBe(true);

@@ -1,6 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
-from typing import Any, List, get_origin
+import builtins
+from typing import Any, get_origin
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -42,9 +45,9 @@ class _PrimaryDataQueryApiContractResult(_ContractBaseModel):
 
 
 class _GovernedFilterOperatorsContractResult(_ContractBaseModel):
-    scalar: List[str] = Field(default_factory=_list_factory)
-    list: List[str] = Field(default_factory=_list_factory)
-    nullary: List[str] = Field(default_factory=_list_factory)
+    scalar: builtins.list[str] = Field(default_factory=_list_factory)
+    list: builtins.list[str] = Field(default_factory=_list_factory)
+    nullary: builtins.list[str] = Field(default_factory=_list_factory)
 
 
 class _GovernedFilterTypeBehaviorContractResult(_ContractBaseModel):

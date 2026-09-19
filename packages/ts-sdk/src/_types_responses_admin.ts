@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of types.ts — responses_admin types. */
 
 // Auto-split from types.ts. Cross-file type references use `import type`.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-sub-split of _client_platform_validators_a.ts — second half. */
 /** Auto-split sub-module of client.ts — platform contract validators (part A). */
 

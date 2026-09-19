@@ -1,11 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_ProductDecisionMixin for the DecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decision_engine.models_decision_memory import (
+        DecisionListResult,
+        DecisionLogResult,
+        ExecutionReceiptResult,
+    )
+    from decision_engine.models_products import (
+        ProductAgentRunResult,
+        ProductDecisionResult,
+        ProductForecastResult,
+        ProductOptimizeResult,
+        ProductRetrieveResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads

@@ -1,11 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_AsyncContractCapabilityMixin for the AsyncDecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/async_client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decision_engine.models_capability_plane import (
+        CapabilityAuthorizationCompleteResult,
+        CapabilityAuthorizationStartResult,
+        CapabilityBindingResult,
+        CapabilityBindingTestResult,
+        CapabilityCatalogEntryResult,
+        CapabilityDiscoverResult,
+        CapabilityExecutionResult,
+        CapabilityOutcomeRecordResult,
+        CapabilityProviderResult,
+        CapabilityRoutePlanResult,
+    )
+    from decision_engine.models_contract import PlatformContractResult
+    from decision_engine.models_runtime_manifest import (
+        RuntimeAdminBenchmarksResult,
+        RuntimeAdminModulesResult,
+        RuntimeManifestResult,
+        RuntimeReleaseValidationResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads

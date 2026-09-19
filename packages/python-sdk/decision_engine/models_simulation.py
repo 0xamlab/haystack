@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Lazy compatibility wrapper for simulation-related SDK models."""
 
 from __future__ import annotations

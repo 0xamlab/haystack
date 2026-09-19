@@ -1,0 +1,5 @@
+# pixi environment + lockfile-adjacent artifacts
+.pixi/
+
+# Compiled demo binary (produced by `pixi run build`)
+algenta-mojo-demo

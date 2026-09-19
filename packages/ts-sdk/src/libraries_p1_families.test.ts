@@ -1,6 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,8 +28,8 @@ const executeRuntimeLibraryMock = vi.mocked(executeRuntimeLibrary);
  * renamed, or a function dropped by a signature edit that slid past the inventory's nine-line
  * lookahead all fail here, at the layer that says "reachable from the TypeScript SDK".
  *
- * The functions below are the same twelve executed end to end against a local runtime; their
- * returned values are recorded in the pull request that added this file.
+ * The functions below are the same twelve exercised end to end against a live local
+ * runtime in the engine development environment.
  */
 const P1_FAMILY_ENTRY_POINTS: ReadonlyArray<readonly [string, string, string]> = [
   ["forecasting", "forecasting.point", "ets_ann_forecast"],
@@ -63,19 +62,15 @@ interface RuntimeContract {
   modules: ContractModule[];
 }
 
-const CONTRACT_PATH = resolve(
-  fileURLToPath(new URL(".", import.meta.url)),
-  "../../algenta/algenta/runtime_library_contract.json",
-);
-
-// CONTRACT_PATH points at the proprietary Algenta Engine's full function catalog
-// (packages/algenta, the closed-source runtime/CLI). This file is mirrored into the public
-// thyn-ai/algenta-sdk repo, which deliberately never contains packages/algenta — so there,
-// CONTRACT_PATH never resolves. Skip rather than fail: this checks SDK-to-proprietary-engine
-// reachability, which is only meaningful where both sides exist together (this repo). Nothing
-// about the TypeScript SDK itself is untested by skipping this — see the rest of this file's
-// suite for that.
-const hasContract = existsSync(CONTRACT_PATH);
+// The runtime library contract is the closed-source Algenta engine's generated function
+// catalog; it is not part of this repository. In the engine development environment, point
+// ALGENTA_RUNTIME_LIBRARY_CONTRACT at the generated artifact and this suite verifies every
+// P1 family stays reachable from the TypeScript SDK. Anywhere else the variable is unset
+// and the suite skips rather than fails: SDK-to-engine reachability is only meaningful
+// where both sides exist together, and nothing about the TypeScript SDK itself goes
+// untested by skipping -- see the rest of this file's suite for that.
+const CONTRACT_PATH = process.env.ALGENTA_RUNTIME_LIBRARY_CONTRACT ?? "";
+const hasContract = CONTRACT_PATH.length > 0 && existsSync(CONTRACT_PATH);
 
 function loadContract(): RuntimeContract {
   return JSON.parse(readFileSync(CONTRACT_PATH, "utf8")) as RuntimeContract;

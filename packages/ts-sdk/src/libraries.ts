@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type {
   LibraryExecutionResponse,
   LibraryHealthResponse,
@@ -284,7 +285,7 @@ export class MojoRuntime {
     });
   }
 
-  /** Execute a `Query` plan (`mojo/engine/query/plan.mojo`'s "query_execute" op) --
+  /** Execute a `Query` plan (the engine's "query_execute" op) --
    * joins, filters, aggregates, sorts, window functions -- in one dispatch. Mirrors
    * Python's `Query.run(runtime)`, which calls this same method on its own
    * `MojoRuntime`; a caller normally reaches this via `query.run(runtime)` rather

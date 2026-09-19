@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — internal capability-plane helper
  * methods (adapter normalization, manifest discovery, provider response
  * synthesis) used by the Runtime class.

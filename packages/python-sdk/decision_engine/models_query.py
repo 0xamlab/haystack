@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Compatibility wrapper for query/result SDK models."""
 
 from __future__ import annotations

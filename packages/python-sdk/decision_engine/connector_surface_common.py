@@ -1,9 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
-from typing import Any
+from typing import Any, TypeVar
 
 from .request_common import _strip_none
+
+PageT = TypeVar("PageT")
+ItemT = TypeVar("ItemT")
 
 
 def build_create_connector_payload(
@@ -113,7 +118,7 @@ def normalize_paginated_items_payload(
     raise ValueError(f"{context} must be a JSON array or paginated object.")
 
 
-def iter_page_items[PageT, ItemT](
+def iter_page_items(
     *,
     page: int,
     limit: int,
@@ -136,7 +141,7 @@ def iter_page_items[PageT, ItemT](
         current_page += 1
 
 
-async def iter_page_items_async[PageT, ItemT](
+async def iter_page_items_async(
     *,
     page: int,
     limit: int,

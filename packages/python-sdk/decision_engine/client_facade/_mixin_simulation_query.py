@@ -1,11 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_SimulationQueryMixin for the DecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decision_engine.models_decision_envelope import DecisionEnvelope
+    from decision_engine.models_decision_plan import DecisionPlanResult
+    from decision_engine.models_query import (
+        ExplainResult,
+        QueryBatchResult,
+        QueryResult,
+        QuerySqlReportResult,
+        QueryWithMetadataResult,
+        ResolveResult,
+        VerifyResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads

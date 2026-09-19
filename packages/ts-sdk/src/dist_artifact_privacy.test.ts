@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { createRequire } from "node:module";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Columnar queries on the local runtime — filter, group, sort, top-k, join, window,
- * in one call. Mirrors `packages/algenta/algenta/query.py`'s `Query` builder
+ * in one call. Mirrors the Python SDK's `Query` builder
  * op-for-op, so a plan built here and a plan built in Python for the same
  * computation send the same wire JSON and hash the same `plan_hash`.
  *
@@ -33,8 +34,8 @@
  */
 import type { MojoRuntime } from "./libraries.js";
 
-// Opcodes must match mojo/engine/query/ir.mojo, and this file's own numbers must
-// match packages/algenta/algenta/query.py's exactly — both compile the same IR.
+// Opcodes must match the engine's query IR, and this file's own numbers must
+// match the Python SDK's exactly — both compile the same IR.
 const OP_LITERAL = 0;
 const OP_ADD = 2;
 const OP_SUB = 3;

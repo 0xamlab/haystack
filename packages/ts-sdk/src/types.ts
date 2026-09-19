@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * TypeScript type definitions for the Algenta API.
  *

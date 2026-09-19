@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 const DEVICE_BINDING_TOKEN_HEADER = "X-Algenta-Device-Binding-Token";
 const DEVICE_BINDING_STORE_KEY = "algenta_sdk_device_binding_tokens_v1";
 const processBindingTokens = new Map<string, string>();

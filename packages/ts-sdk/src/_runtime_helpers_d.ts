@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — intent signature, execute plan, validation. */
 
 import type {

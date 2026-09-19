@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — resolve/query/verify entry points
  * and API-path resolve helpers (registration hydration, exact-spec resolve)
  * for the Runtime class.

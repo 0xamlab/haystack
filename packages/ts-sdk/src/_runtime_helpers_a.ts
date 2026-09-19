@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — internal helpers (part A). */
 
 import type {
@@ -252,11 +253,10 @@ function escapeNonAscii(json: string): string {
   );
 }
 
-/** Canonical JSON serialization shared byte-for-byte with the Python SDK
- * (packages/algenta-core/algenta/canonical_json.py). Both SDKs hash plans and
- * intents with sha256 over this exact rendering — plan_hash / intent_signature
- * parity depends on it. Rules: sorted keys, "," / ":" separators, non-ASCII
- * escaped as \uXXXX, numbers as ECMAScript String(number) with -0 normalized
+/** Canonical JSON serialization shared byte-for-byte with the Python SDK. Both
+ * SDKs hash plans and intents with sha256 over this exact rendering — plan_hash /
+ * intent_signature parity depends on it. Rules: sorted keys, "," / ":" separators,
+ * non-ASCII escaped as \uXXXX, numbers as ECMAScript String(number) with -0 normalized
  * to 0, NaN/Infinity rejected, undefined object entries omitted. */
 export function canonicalJson(value: unknown): string {
   if (value === null || value === undefined) {

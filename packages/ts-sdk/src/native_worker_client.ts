@@ -1,26 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * A direct, in-process-spawned connection to the bundled Algenta native runtime worker --
- * the SAME binary and SAME wire protocol `packages/algenta/algenta/native/worker.py`
- * already uses, so a TypeScript caller with that binary available needs no separately
- * started daemon and no gRPC hop at all.
+ * the same binary and the same wire protocol the Python SDK already uses, so a TypeScript
+ * caller with that binary available needs no separately started daemon and no gRPC hop.
  *
- * Wire protocol (mirrors `native/worker.py`'s `_send_frame`/`_recv_frame` exactly):
+ * Wire protocol (byte-for-byte the engine's native worker protocol):
  *   - a Unix domain socket, one connection per worker process
  *   - on connect, the worker sends one frame: {"status":"ready"}
  *   - request/response: [4-byte big-endian uint32 length][UTF-8 JSON payload]
  *   - 64 MiB frame cap, enforced both directions
  *
- * Binary resolution mirrors `apps/runtime/native_worker.py`'s own override chain, using
- * the SAME environment variable names on purpose -- a path that already works for Python
- * on this machine works for TS with zero additional configuration:
+ * Binary resolution mirrors the Python SDK's own override chain, using the SAME environment
+ * variable names on purpose -- a path that already works for Python on this machine works
+ * for TypeScript with zero additional configuration:
  *   ALGENTA_NATIVE_WORKER, then the legacy ALGENTA_RUNTIME_WORKER, then ALGENTA_MOJO_BINARY.
  *
- * What this deliberately does NOT do yet: locate a binary with no environment variable
- * set at all (e.g. via an npm-packaged per-platform binary, mirroring the `algenta-
- * runtime-native` PyPI wheel). That is a packaging/release-pipeline follow-up, not a
- * protocol gap -- this client is complete and correct for any binary path it is given.
- * Until that follow-up ships, `MojoRuntime` falls back to the gRPC daemon transport
- * whenever no override is set, so nothing about existing behavior changes.
+ * What this deliberately does NOT do yet: locate a binary with no environment variable set
+ * at all. Until such packaging exists, `MojoRuntime` falls back to the gRPC daemon
+ * transport whenever no override is set, so nothing about existing behavior changes.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import * as net from "node:net";
@@ -285,7 +282,7 @@ function closeSession(session: WorkerSession): void {
 /** Send one request to the bundled native worker and return its response, spawning and
  * caching the worker process (one per Node process, reused across calls) the same way
  * Python's `_WorkerSession` does. Retries once on a transport failure, closing and
- * discarding the stale session first -- the same discipline `native/worker.py`'s own
+ * discarding the stale session first -- the same discipline the Python SDK's own worker
  * `execute` uses, since a worker that died between calls must not be trusted a second
  * time under the same connection. */
 export async function callNativeWorker(

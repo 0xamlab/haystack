@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """SDK exception hierarchy."""
 
 from typing import Any

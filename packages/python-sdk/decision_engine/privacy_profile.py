@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import os
@@ -120,7 +122,8 @@ def resolve_console_base_url(
         if private_profile_enabled(mapping) and is_algenta_owned_base_url(normalized):
             raise ValueError(
                 f"{component} private profiles cannot target Algenta-owned cloud URLs. "
-                "Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted base_url."
+                "Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a "
+                "self-hosted base_url."
             )
         return normalized
 
@@ -133,7 +136,8 @@ def resolve_console_base_url(
         )
         if not raw_base_url:
             raise ValueError(
-                f"{component} private profiles require an explicit self-hosted dashboard or API base_url. "
+                f"{component} private profiles require an explicit self-hosted dashboard or API "
+                "base_url. "
                 "Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or "
                 "ALGENTA_BASE_URL / DE_BASE_URL / ALGENTA_API_URL."
             )
@@ -141,7 +145,8 @@ def resolve_console_base_url(
         if is_algenta_owned_base_url(normalized):
             raise ValueError(
                 f"{component} private profiles cannot target Algenta-owned cloud URLs. "
-                "Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a self-hosted base_url."
+                "Configure ALGENTA_APP_BASE_URL / APP_BASE_URL / DE_APP_BASE_URL or a "
+                "self-hosted base_url."
             )
         return normalized
 
@@ -181,7 +186,9 @@ def api_key_help_text(
             "Create a key from your self-hosted admin surface or API base URL: "
             f"{console_base_url}"
         )
-    return (
-        "Get a key at: "
-        f"{resolve_api_keys_url(component=component, env=mapping, fallback_base_url=fallback_base_url)}"
+    api_keys_url = resolve_api_keys_url(
+        component=component,
+        env=mapping,
+        fallback_base_url=fallback_base_url,
     )
+    return f"Get a key at: {api_keys_url}"

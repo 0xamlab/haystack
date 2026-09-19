@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Tests for Runtime: keeps.
 // Extracted from runtime.test.ts during modularization.
 import { createHash, createHmac, createSign, generateKeyPairSync } from "node:crypto";

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Synchronous Algenta API client.
 
@@ -30,8 +32,6 @@ from __future__ import annotations
 
 import importlib
 import os
-from collections.abc import Iterator
-from datetime import datetime
 from functools import cache
 from typing import TYPE_CHECKING, Any
 
@@ -49,126 +49,6 @@ if TYPE_CHECKING:
     from types import ModuleType
 
     import httpx
-
-    from .models_account import APIKeyInfo, UsageInfo
-    from .models_agent_runs import (
-        AgentRunCheckpointsResult,
-        AgentRunCheckpointListResponseResult,
-        AgentRunEventsResult,
-        AgentRunListResult,
-        AgentRunMissionEventListResponseResult,
-        AgentRunMissionEventsResult,
-        AgentRunReplayResult,
-        AgentRunResult,
-        AgentRunStreamEventResult,
-        AgentRunTelemetryListResult,
-        AgentRunTelemetryResult,
-    )
-    from .models_control_plane import (
-        AuditLogResult,
-        BillingInfoResult,
-        BillingSessionResult,
-        CreditRefreshResult,
-        MeteringBatchResult,
-        DeviceListResult,
-        DeviceRevokeResult,
-        DistributionListResult,
-        ExecutionPolicyResult,
-        ExecutionPolicySnapshotListResult,
-        MeResult,
-        TemplateListResult,
-        TeamInviteResult,
-        TeamListResult,
-        TeamRemoveResult,
-        TeamRoleUpdateResult,
-    )
-    from .models_decision_memory import (
-        DecisionListResult,
-        DecisionLogResult,
-        ExecutionReceiptResult,
-    )
-    from .models_triggers import (
-        TriggerDeleteResult,
-        TriggerFireResult,
-        TriggerListResult,
-        TriggerPauseResult,
-        TriggerSummaryResult,
-    )
-    from .models_connectors import (
-        ConnectorBrowseResult,
-        ConnectorInfo,
-        ConnectorListResult,
-        ConnectorTestInfo,
-        DatasetConnectResult,
-        DatasetDeleteResult,
-        DatasetDetailResult,
-        DatasetListResult,
-        DatasetSummaryResult,
-    )
-    from .models_repository_intelligence import (
-        RepositoryApplyResult,
-        RepositoryGraphQueryResult,
-        RepositoryDecisionPlanRevisionResult,
-        RepositorySnapshotResult,
-        RepositoryTriageResult,
-    )
-    from .models_contract import PlatformContractResult
-    from .models_capability_plane import (
-        CapabilityAuthorizationCompleteResult,
-        CapabilityAuthorizationStartResult,
-        CapabilityBindingResult,
-        CapabilityBindingTestResult,
-        CapabilityCatalogEntryResult,
-        CapabilityDiscoverResult,
-        CapabilityExecutionResult,
-        CapabilityOutcomeRecordResult,
-        CapabilityProviderResult,
-        CapabilityRoutePlanResult,
-    )
-    from .models_decision_plan import DecisionPlanResult
-    from .models_products import (
-        ProductAgentRunResult,
-        ProductDecisionResult,
-        ProductForecastResult,
-        ProductOptimizeResult,
-        ProductRetrieveResult,
-    )
-    from .models_deployments import (
-        DeploymentCostResult,
-        DeploymentDeleteResult,
-        DeploymentRegionsResult,
-        DeploymentResult,
-    )
-    from .models_llm import (
-        ArtifactBridgeResolveResult,
-        ChatCompletionsResult,
-        ChatCompletionsStreamChunkResult,
-        CountTokensResult,
-        EmbeddingSimilarityResult,
-        EmbeddingsResult,
-        LLMModelListResult,
-        ResponseStreamEventResult,
-        ResponsesResult,
-        RerankResponseResult,
-        TokenizeResult,
-    )
-    from .models_runtime_manifest import (
-        RuntimeAdminBenchmarksResult,
-        RuntimeAdminModulesResult,
-        RuntimeManifestResult,
-        RuntimeReleaseValidationResult,
-    )
-    from .models_decision_envelope import DecisionEnvelope
-    from .models_query import (
-        ExplainResult,
-        QueryBatchResult,
-        QueryResult,
-        QuerySqlReportResult,
-        QueryWithMetadataResult,
-        ResolveResult,
-        SourceRegistrationResult,
-        VerifyResult,
-    )
 
 _httpx: Any | None = None
 _SDK_USER_AGENT = "algenta-python/1.0.4"
@@ -276,18 +156,38 @@ def _trigger_surface_module() -> ModuleType:
 def _capability_plane_surface_module() -> ModuleType:
     return importlib.import_module("decision_engine.client_capability_plane_surface")
 
-from decision_engine.client_facade._mixin_simulation_query import _SimulationQueryMixin  # noqa: E402
-from decision_engine.client_facade._mixin_product_decision import _ProductDecisionMixin  # noqa: E402
-from decision_engine.client_facade._mixin_trigger_source import _TriggerSourceMixin  # noqa: E402
-from decision_engine.client_facade._mixin_llm import _LLMMixin  # noqa: E402
-from decision_engine.client_facade._mixin_contract_capability import _ContractCapabilityMixin  # noqa: E402
+from decision_engine.client_facade._mixin_account_control_plane import (  # noqa: E402
+    _AccountControlPlaneMixin,
+)
 from decision_engine.client_facade._mixin_agent_run import _AgentRunMixin  # noqa: E402
-from decision_engine.client_facade._mixin_connector_repository import _ConnectorRepositoryMixin  # noqa: E402
+from decision_engine.client_facade._mixin_connector_repository import (  # noqa: E402
+    _ConnectorRepositoryMixin,
+)
+from decision_engine.client_facade._mixin_contract_capability import (  # noqa: E402
+    _ContractCapabilityMixin,
+)
 from decision_engine.client_facade._mixin_job_deployment import _JobDeploymentMixin  # noqa: E402
-from decision_engine.client_facade._mixin_account_control_plane import _AccountControlPlaneMixin  # noqa: E402
+from decision_engine.client_facade._mixin_llm import _LLMMixin  # noqa: E402
+from decision_engine.client_facade._mixin_product_decision import (  # noqa: E402
+    _ProductDecisionMixin,
+)
+from decision_engine.client_facade._mixin_simulation_query import (  # noqa: E402
+    _SimulationQueryMixin,
+)
+from decision_engine.client_facade._mixin_trigger_source import _TriggerSourceMixin  # noqa: E402
 
 
-class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _TriggerSourceMixin, _LLMMixin, _ContractCapabilityMixin, _AgentRunMixin, _ConnectorRepositoryMixin, _JobDeploymentMixin, _AccountControlPlaneMixin):
+class DecisionEngineClient(
+    _SimulationQueryMixin,
+    _ProductDecisionMixin,
+    _TriggerSourceMixin,
+    _LLMMixin,
+    _ContractCapabilityMixin,
+    _AgentRunMixin,
+    _ConnectorRepositoryMixin,
+    _JobDeploymentMixin,
+    _AccountControlPlaneMixin,
+):
     """
     Synchronous HTTP client for the Algenta API.
 
@@ -319,7 +219,8 @@ class DecisionEngineClient(_SimulationQueryMixin, _ProductDecisionMixin, _Trigge
         )
         if not resolved_key:
             raise ValueError(
-                "API key required. Pass api_key= or set ALGENTA_API_KEY / DE_API_KEY environment variables.\n"
+                "API key required. Pass api_key= or set ALGENTA_API_KEY / DE_API_KEY "
+                "environment variables.\n"
                 + api_key_help_text(
                     component="DecisionEngineClient",
                     fallback_base_url=resolved_base_url,

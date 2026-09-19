@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — connect/connectMany/registerSource
  * entry points, managed connector hand-off, and import preview methods for
  * the Runtime class.

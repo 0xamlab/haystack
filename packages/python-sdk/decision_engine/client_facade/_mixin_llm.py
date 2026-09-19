@@ -1,11 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_LLMMixin for the DecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decision_engine.models_llm import (
+        ArtifactBridgeResolveResult,
+        ChatCompletionsResult,
+        ChatCompletionsStreamChunkResult,
+        CountTokensResult,
+        EmbeddingSimilarityResult,
+        EmbeddingsResult,
+        LLMModelListResult,
+        RerankResponseResult,
+        ResponsesResult,
+        ResponseStreamEventResult,
+        TokenizeResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads

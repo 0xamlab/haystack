@@ -1,6 +1,6 @@
 {
   "name": "algenta-sdk",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -22,6 +22,7 @@
     "build": "tsc",
     "prepack": "tsc",
     "test": "tsc && vitest run",
+    "test:coverage": "tsc && vitest run --coverage",
     "lint": "tsc --noEmit",
     "lint:biome": "biome check .",
     "lint:biome:fix": "biome check --write ."
@@ -57,6 +58,7 @@
     "@biomejs/biome": "2.5.14",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "typescript": "^5.4.0",
     "vitest": "^4.1.11"
   },

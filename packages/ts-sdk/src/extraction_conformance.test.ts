@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Cross-language extraction conformance: TS side.
  *
  * Locks the shared aligned-column-extraction and typed-field-inference contract
- * against tests/conformance/extraction_vectors.json. The Python SDK asserts the
- * SAME literals (tests/test_extraction_conformance.py), so a pass in both
- * languages proves byte-identical behavior — pairwise/preserve alignment,
- * filter-before-alignment, limit truncation, input_hash, error codes/details,
- * and typed-field inference.
+ * against the shared conformance vectors (conformance/extraction_vectors.json in
+ * this package). The Python SDK asserts the same literals against the same
+ * vectors, so a pass in both languages proves byte-identical behavior —
+ * pairwise/preserve alignment, filter-before-alignment, limit truncation,
+ * input_hash, error codes/details, and typed-field inference.
  *
  * Sources are seeded with a pinned schema_revision/dataset_id from the vectors
  * because connect()-time schema revision derivation is not yet cross-language

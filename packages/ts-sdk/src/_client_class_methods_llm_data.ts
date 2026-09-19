@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of client.ts — LLM, contract/runtime manifest,
  * source registration, connector, repository, and dataset methods for
  * DecisionEngineClient.

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Compatibility wrapper for the async Algenta API client.
 

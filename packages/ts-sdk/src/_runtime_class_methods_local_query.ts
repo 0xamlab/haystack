@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — local-mode license,
  * source-selection, planning, and execution helpers for the Runtime class.
  *

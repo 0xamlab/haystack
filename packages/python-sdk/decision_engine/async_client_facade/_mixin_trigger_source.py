@@ -1,11 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_AsyncTriggerSourceMixin for the AsyncDecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/async_client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decision_engine.models_query import SourceRegistrationResult
+    from decision_engine.models_triggers import (
+        TriggerDeleteResult,
+        TriggerFireResult,
+        TriggerListResult,
+        TriggerPauseResult,
+        TriggerSummaryResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads

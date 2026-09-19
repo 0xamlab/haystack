@@ -1,11 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_ConnectorRepositoryMixin for the DecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decision_engine.models_connectors import (
+        ConnectorBrowseResult,
+        ConnectorInfo,
+        ConnectorListResult,
+        ConnectorTestInfo,
+        DatasetConnectResult,
+        DatasetDeleteResult,
+        DatasetDetailResult,
+        DatasetListResult,
+        DatasetSummaryResult,
+    )
+    from decision_engine.models_decision_envelope import DecisionEnvelope
+    from decision_engine.models_repository_intelligence import (
+        RepositoryApplyResult,
+        RepositoryDecisionPlanRevisionResult,
+        RepositoryGraphQueryResult,
+        RepositoryIntelligenceCapabilitiesResult,
+        RepositorySnapshotResult,
+        RepositoryTriageResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads
@@ -200,7 +223,7 @@ class _ConnectorRepositoryMixin:
 
     def get_repository_intelligence_capabilities(
         self,
-    ) -> "RepositoryIntelligenceCapabilitiesResult":
+    ) -> RepositoryIntelligenceCapabilitiesResult:
         return _repository_surface_module().get_repository_intelligence_capabilities(self)
 
     def get_repository_snapshot(

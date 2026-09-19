@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import json
@@ -11,7 +13,9 @@ if TYPE_CHECKING:
     from .async_client_facade import AsyncDecisionEngineClient
 
 
-def _invalid_stream_error(*, code: str, message: str, details: dict[str, Any]) -> DecisionEngineError:
+def _invalid_stream_error(
+    *, code: str, message: str, details: dict[str, Any]
+) -> DecisionEngineError:
     return DecisionEngineError(
         message,
         response_body={"error": {"code": code, "message": message, "details": details}},

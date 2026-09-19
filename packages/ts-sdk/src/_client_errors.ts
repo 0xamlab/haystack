@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of client.ts — error classes (DecisionEngineError + subclasses). */
 
 /**

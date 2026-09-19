@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Pydantic response models for the Algenta Python SDK."""
 
 from __future__ import annotations
@@ -59,7 +61,10 @@ _LAZY_EXPORTS = {
     "AgentRunListResult": ("decision_engine.models_agent_runs", "AgentRunListResult"),
     "AgentRunEventResult": ("decision_engine.models_agent_runs", "AgentRunEventResult"),
     "AgentRunEventsResult": ("decision_engine.models_agent_runs", "AgentRunEventsResult"),
-    "AgentRunMissionEventResult": ("decision_engine.models_agent_runs", "AgentRunMissionEventResult"),
+    "AgentRunMissionEventResult": (
+        "decision_engine.models_agent_runs",
+        "AgentRunMissionEventResult",
+    ),
     "AgentRunMissionEventListResult": (
         "decision_engine.models_agent_runs",
         "AgentRunMissionEventListResult",
@@ -138,10 +143,16 @@ _LAZY_EXPORTS = {
     "AuditLogEntryResult": ("decision_engine.models_control_plane", "AuditLogEntryResult"),
     "AuditLogResult": ("decision_engine.models_control_plane", "AuditLogResult"),
     "BillingInfoResult": ("decision_engine.models_control_plane", "BillingInfoResult"),
-    "BillingSessionResult": ("decision_engine.models_control_plane", "BillingSessionResult"),
+    "BillingSessionResult": (
+        "decision_engine.models_control_plane",
+        "BillingSessionResult",
+    ),
     "CreditRefreshResult": ("decision_engine.models_control_plane", "CreditRefreshResult"),
     "MeteringBatchResult": ("decision_engine.models_control_plane", "MeteringBatchResult"),
-    "DeviceRegistrationResult": ("decision_engine.models_control_plane", "DeviceRegistrationResult"),
+    "DeviceRegistrationResult": (
+        "decision_engine.models_control_plane",
+        "DeviceRegistrationResult",
+    ),
     "DeviceListEntryResult": ("decision_engine.models_control_plane", "DeviceListEntryResult"),
     "DeviceListResult": ("decision_engine.models_control_plane", "DeviceListResult"),
     "DeviceRevokeResult": ("decision_engine.models_control_plane", "DeviceRevokeResult"),

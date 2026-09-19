@@ -1,6 +1,6 @@
 // Tests for Runtime: misc.
 // Extracted from runtime.test.ts during modularization.
-import { createHash, createHmac, createSign, generateKeyPairSync } from "node:crypto";
+import { createHmac, createSign, generateKeyPairSync } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
@@ -686,15 +686,15 @@ describe("Runtime — misc", () => {
       });
     });
 
-    it("hard-rejects a token signed with the retired HS256 control-plane derivation (regression for the HS256 fix)", () => {
-      // Recreates EXACTLY the old, now-deleted licenseVerificationSecrets() derivation
-      // (sha256Hex(jwtSeed + ":license-signing")) that the TS SDK and the control plane's
-      // dev_hmac signer both used. Proves it is rejected outright even with the "correct"
-      // original secret: alg !== "RS256" is now an unconditional hard reject in
-      // parseStoredLicenseToken, never a fallback-eligible condition gated on
+    it("hard-rejects a token signed with the retired symmetric license scheme (regression)", () => {
+      // Uses the precomputed shared secret of the retired symmetric license scheme as a fixed
+      // test vector (the derivation itself lives in the private engine repo and is
+      // intentionally not reproduced here). Proves the token is rejected outright even with
+      // the historically correct secret: alg !== "RS256" is now an unconditional hard reject
+      // in parseStoredLicenseToken, never a fallback-eligible condition gated on
       // requireLocalLicense() or any other deployment profile.
-      const jwtSeed = "some-real-looking-control-plane-jwt-secret";
-      const secret = createHash("sha256").update(`${jwtSeed}:license-signing`).digest("hex");
+      const retiredSecret =
+        "57b5c258396eca54eb9c4518b90b7be25b69c909abfae42f12352cc355490963";
       const header = base64UrlJson({ alg: "HS256", typ: "JWT" });
       const payload = base64UrlJson({
         api_key_prefix: "de_live_ts_r",
@@ -709,22 +709,23 @@ describe("Runtime — misc", () => {
         iss: "algenta-control-plane",
         sub: "device-license",
       });
-      const signature = createHmac("sha256", secret).update(`${header}.${payload}`).digest("base64url");
+      const signature = createHmac("sha256", retiredSecret).update(`${header}.${payload}`).digest("base64url");
       const forgedToken = `${header}.${payload}.${signature}`;
 
       expect(parseStoredLicenseToken(forgedToken, "de_live_ts_runtime_key")).toBeNull();
     });
 
     it("denies local execution entitlement to a hand-forged HS256 license (malicious/modified-SDK simulation)", async () => {
-      // Simulates a hostile actor (or a maliciously modified SDK fork) that knows the historical
-      // hardcoded dev-stub secret ("algenta-dev-local-v1-not-for-production", still recoverable
-      // from git history or a stale fork) and hand-forges a self-signed "enterprise" license,
-      // planting it straight on the on-disk license path a real SDK reads from -- bypassing
-      // exchangeApiKeyForLicense (the network/control-plane path) entirely, exactly as a hostile
-      // fork calling internals directly could.
+      // Simulates a hostile actor (or a maliciously modified SDK fork) that hand-forges a
+      // self-signed "enterprise" license under the retired symmetric scheme and plants it
+      // straight on the on-disk license path a real SDK reads from -- bypassing
+      // exchangeApiKeyForLicense (the network/control-plane path) entirely, exactly as a
+      // hostile fork calling internals directly could. The forged secret below is a stand-in:
+      // any historical real value lives only in the private engine repo, and the scheme is
+      // rejected on alg alone, so every value exercises the same rejection path.
       const runtimeDir = runtimeTempDir();
       process.env.ALGENTA_RUNTIME_DIR = runtimeDir;
-      const forgedSecret = "algenta-dev-local-v1-not-for-production";
+      const forgedSecret = "synthetic-forged-secret-not-a-real-credential";
       const header = base64UrlJson({ alg: "HS256", typ: "JWT" });
       const payload = base64UrlJson({
         api_key_prefix: "forged",
@@ -736,7 +737,7 @@ describe("Runtime — misc", () => {
         expires_at: 0,
         key_expires_at: 0,
         grace_days: 14,
-        iss: "algenta-dev-local",
+        iss: "forged-synthetic-issuer",
         sub: "device-license",
       });
       const signature = createHmac("sha256", forgedSecret).update(`${header}.${payload}`).digest("base64url");

@@ -1,0 +1,43 @@
+# pixi workspace for the Algenta + Mojo quickstart.
+#
+# Resolves two toolchains into one reproducible environment:
+#   * the Mojo compiler, from Modular's stable conda channel (`max`)
+#   * the signed Algenta native runtime wheel, from PyPI
+#
+# `pixi run demo` compiles main.mojo and runs it against the bundled runtime.
+# See README.md for the full walkthrough.
+
+[workspace]
+name = "algenta-mojo-quickstart"
+version = "0.1.0"
+description = "Call the Algenta native runtime from Mojo, using the signed runtime wheel published on PyPI."
+authors = ["thyn-ai"]
+license = "Apache-2.0"
+channels = ["https://conda.modular.com/max", "https://prefix.dev/conda-forge"]
+# Only platforms with a published algenta-runtime-native wheel are listed:
+# macOS Apple Silicon (macosx_*_arm64) and Linux x86_64 (manylinux_2_35).
+# There is no Windows or Intel-macOS runtime wheel, so those platforms are
+# intentionally absent (the CI workflow detects and reports that case).
+# The macos/glibc pins are the floor for PyPI wheel-tag resolution.
+platforms = [
+  { platform = "osx-arm64", macos = "14.0" },
+  { platform = "linux-64", glibc = "2.35" },
+]
+
+[dependencies]
+# Mojo ships as part of MAX; max-core pins the mojo-compiler package.
+max = "26.6.*"
+# The runtime wheel requires Python >=3.14,<3.15 (it embeds CPython 3.14).
+python = "3.14.*"
+
+[pypi-dependencies]
+# Signed proprietary runtime artifacts (the engine's Mojo kernels). This is a
+# data dependency only — the demo never imports its Python package.
+algenta-runtime-native = ">=1.0.4"
+
+[tasks]
+# Compile the demo once, then run the native binary.
+build = "mojo build -o algenta-mojo-demo main.mojo"
+demo = { cmd = "./algenta-mojo-demo", depends-on = ["build"] }
+# Fast inner loop while editing: compile + run in one step.
+dev = "mojo run main.mojo"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Shared helpers (part a) for client.test.ts sub-modules.
 // Extracted from client.test.ts during modularization.
 import * as fs from "node:fs";

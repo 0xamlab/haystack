@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Async Algenta API client for use with asyncio.
 
@@ -33,8 +35,6 @@ from __future__ import annotations
 
 import importlib
 import os
-from collections.abc import AsyncIterator
-from datetime import datetime
 from functools import cache
 from typing import TYPE_CHECKING, Any
 
@@ -52,126 +52,6 @@ if TYPE_CHECKING:
     from types import ModuleType
 
     import httpx
-
-    from .models_account import APIKeyInfo, UsageInfo
-    from .models_agent_runs import (
-        AgentRunCheckpointsResult,
-        AgentRunCheckpointListResponseResult,
-        AgentRunEventsResult,
-        AgentRunListResult,
-        AgentRunMissionEventListResponseResult,
-        AgentRunMissionEventsResult,
-        AgentRunReplayResult,
-        AgentRunResult,
-        AgentRunStreamEventResult,
-        AgentRunTelemetryListResult,
-        AgentRunTelemetryResult,
-    )
-    from .models_control_plane import (
-        AuditLogResult,
-        BillingInfoResult,
-        BillingSessionResult,
-        CreditRefreshResult,
-        MeteringBatchResult,
-        DeviceListResult,
-        DeviceRevokeResult,
-        DistributionListResult,
-        ExecutionPolicyResult,
-        ExecutionPolicySnapshotListResult,
-        MeResult,
-        TemplateListResult,
-        TeamInviteResult,
-        TeamListResult,
-        TeamRemoveResult,
-        TeamRoleUpdateResult,
-    )
-    from .models_decision_memory import (
-        DecisionListResult,
-        DecisionLogResult,
-        ExecutionReceiptResult,
-    )
-    from .models_triggers import (
-        TriggerDeleteResult,
-        TriggerFireResult,
-        TriggerListResult,
-        TriggerPauseResult,
-        TriggerSummaryResult,
-    )
-    from .models_connectors import (
-        ConnectorBrowseResult,
-        ConnectorInfo,
-        ConnectorListResult,
-        ConnectorTestInfo,
-        DatasetConnectResult,
-        DatasetDeleteResult,
-        DatasetDetailResult,
-        DatasetListResult,
-        DatasetSummaryResult,
-    )
-    from .models_repository_intelligence import (
-        RepositoryApplyResult,
-        RepositoryGraphQueryResult,
-        RepositoryDecisionPlanRevisionResult,
-        RepositorySnapshotResult,
-        RepositoryTriageResult,
-    )
-    from .models_contract import PlatformContractResult
-    from .models_capability_plane import (
-        CapabilityAuthorizationCompleteResult,
-        CapabilityAuthorizationStartResult,
-        CapabilityBindingResult,
-        CapabilityBindingTestResult,
-        CapabilityCatalogEntryResult,
-        CapabilityDiscoverResult,
-        CapabilityExecutionResult,
-        CapabilityOutcomeRecordResult,
-        CapabilityProviderResult,
-        CapabilityRoutePlanResult,
-    )
-    from .models_decision_plan import DecisionPlanResult
-    from .models_products import (
-        ProductAgentRunResult,
-        ProductDecisionResult,
-        ProductForecastResult,
-        ProductOptimizeResult,
-        ProductRetrieveResult,
-    )
-    from .models_deployments import (
-        DeploymentCostResult,
-        DeploymentDeleteResult,
-        DeploymentRegionsResult,
-        DeploymentResult,
-    )
-    from .models_llm import (
-        ArtifactBridgeResolveResult,
-        ChatCompletionsResult,
-        ChatCompletionsStreamChunkResult,
-        CountTokensResult,
-        EmbeddingSimilarityResult,
-        EmbeddingsResult,
-        LLMModelListResult,
-        ResponseStreamEventResult,
-        ResponsesResult,
-        RerankResponseResult,
-        TokenizeResult,
-    )
-    from .models_runtime_manifest import (
-        RuntimeAdminBenchmarksResult,
-        RuntimeAdminModulesResult,
-        RuntimeManifestResult,
-        RuntimeReleaseValidationResult,
-    )
-    from .models_decision_envelope import DecisionEnvelope
-    from .models_query import (
-        ExplainResult,
-        QueryBatchResult,
-        QueryResult,
-        QuerySqlReportResult,
-        QueryWithMetadataResult,
-        ResolveResult,
-        SourceRegistrationResult,
-        VerifyResult,
-    )
 
 _httpx: Any | None = None
 _SDK_USER_AGENT = "algenta-python/1.0.4"
@@ -281,18 +161,42 @@ def _capability_plane_surface_module() -> ModuleType:
 
 
 
-from decision_engine.async_client_facade._mixin_simulation_query import _AsyncSimulationQueryMixin  # noqa: E402
-from decision_engine.async_client_facade._mixin_product_decision import _AsyncProductDecisionMixin  # noqa: E402
-from decision_engine.async_client_facade._mixin_trigger_source import _AsyncTriggerSourceMixin  # noqa: E402
-from decision_engine.async_client_facade._mixin_llm import _AsyncLLMMixin  # noqa: E402
-from decision_engine.async_client_facade._mixin_contract_capability import _AsyncContractCapabilityMixin  # noqa: E402
+from decision_engine.async_client_facade._mixin_account_control_plane import (  # noqa: E402
+    _AsyncAccountControlPlaneMixin,
+)
 from decision_engine.async_client_facade._mixin_agent_run import _AsyncAgentRunMixin  # noqa: E402
-from decision_engine.async_client_facade._mixin_connector_repository import _AsyncConnectorRepositoryMixin  # noqa: E402
-from decision_engine.async_client_facade._mixin_job_deployment import _AsyncJobDeploymentMixin  # noqa: E402
-from decision_engine.async_client_facade._mixin_account_control_plane import _AsyncAccountControlPlaneMixin  # noqa: E402
+from decision_engine.async_client_facade._mixin_connector_repository import (  # noqa: E402
+    _AsyncConnectorRepositoryMixin,
+)
+from decision_engine.async_client_facade._mixin_contract_capability import (  # noqa: E402
+    _AsyncContractCapabilityMixin,
+)
+from decision_engine.async_client_facade._mixin_job_deployment import (  # noqa: E402
+    _AsyncJobDeploymentMixin,
+)
+from decision_engine.async_client_facade._mixin_llm import _AsyncLLMMixin  # noqa: E402
+from decision_engine.async_client_facade._mixin_product_decision import (  # noqa: E402
+    _AsyncProductDecisionMixin,
+)
+from decision_engine.async_client_facade._mixin_simulation_query import (  # noqa: E402
+    _AsyncSimulationQueryMixin,
+)
+from decision_engine.async_client_facade._mixin_trigger_source import (  # noqa: E402
+    _AsyncTriggerSourceMixin,
+)
 
 
-class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisionMixin, _AsyncTriggerSourceMixin, _AsyncLLMMixin, _AsyncContractCapabilityMixin, _AsyncAgentRunMixin, _AsyncConnectorRepositoryMixin, _AsyncJobDeploymentMixin, _AsyncAccountControlPlaneMixin):
+class AsyncDecisionEngineClient(
+    _AsyncSimulationQueryMixin,
+    _AsyncProductDecisionMixin,
+    _AsyncTriggerSourceMixin,
+    _AsyncLLMMixin,
+    _AsyncContractCapabilityMixin,
+    _AsyncAgentRunMixin,
+    _AsyncConnectorRepositoryMixin,
+    _AsyncJobDeploymentMixin,
+    _AsyncAccountControlPlaneMixin,
+):
     """
     Async HTTP client for the Algenta API.
 
@@ -316,7 +220,8 @@ class AsyncDecisionEngineClient(_AsyncSimulationQueryMixin, _AsyncProductDecisio
         )
         if not resolved_key:
             raise ValueError(
-                "API key required. Pass api_key= or set ALGENTA_API_KEY / DE_API_KEY environment variables.\n"
+                "API key required. Pass api_key= or set ALGENTA_API_KEY / DE_API_KEY "
+                "environment variables.\n"
                 + api_key_help_text(
                     component="AsyncDecisionEngineClient",
                     fallback_base_url=resolved_base_url,

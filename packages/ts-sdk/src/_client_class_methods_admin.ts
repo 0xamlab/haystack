@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of client.ts — async jobs, triggers, account,
  * billing, team, devices, audit, execution policy, deployment, health and
  * version methods for DecisionEngineClient.

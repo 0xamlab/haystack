@@ -54,7 +54,6 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     for required in (
         "npm install algenta-sdk",
         "AlgentaClient",
-        "QueryFilterSpec",
         "PRIMARY_DATA_QUERY_CONTRACT.api.contract_endpoint",
         "client.listDatasets",
         "client.getDatasetSummary",
@@ -69,7 +68,7 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
         "Execution ownership remains authoritative",
         "ALGENTA_REPOSITORY_INTELLIGENCE_MODEL=repository.deterministic_local_v1",
         "https://docs.algenta.ai/sdks/typescript",
-        "pnpm --dir packages/ts-sdk build",
+        "npm run build",
     ):
         assert required in readme_text
     for forbidden in (

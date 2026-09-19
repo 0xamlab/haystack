@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./runtime_daemon_client.js", () => ({

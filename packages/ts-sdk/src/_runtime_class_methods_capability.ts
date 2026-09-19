@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — capability plane wrapper and
  * local-mode capability plane implementations for the Runtime class.
  *

@@ -217,8 +217,10 @@ def test_sdk_docs_reference_root_js_build_path() -> None:
     assert "https://docs.algenta.ai/sdks/typescript" in ts_sdk_readme
     assert "https://docs.algenta.ai/sdk/typescript" not in ts_sdk_readme
     assert "https://docs.algenta.ai/direct-api-client" not in ts_sdk_readme
-    assert "pnpm build" in ts_sdk_readme
-    assert "pnpm --dir packages/ts-sdk build" in ts_sdk_readme
+    # The published package README is a standalone npm package (no root workspace);
+    # the monorepo pnpm build path lives in the docs page, not the package README.
+    assert "npm run build" in ts_sdk_readme
+    assert "pnpm --dir packages/ts-sdk build" not in ts_sdk_readme
     assert "ALGENTA_REPOSITORY_INTELLIGENCE_MODEL=repository.deterministic_local_v1" in (
         ts_sdk_readme
     )

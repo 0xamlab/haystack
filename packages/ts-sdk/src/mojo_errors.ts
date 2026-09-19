@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export class MojoRuntimeError extends Error {
   readonly code: string;
   readonly details: Record<string, unknown>;

@@ -1,12 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from .client_control_plane_surface import _coerce_pagination
 from .client_trigger_surface import (
     _validate_register_trigger_payload,
     _validate_trigger_id,
 )
-from .client_control_plane_surface import _coerce_pagination
 from .model_loader import validate_model as _validate_model
 
 if TYPE_CHECKING:

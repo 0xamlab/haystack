@@ -1,0 +1,11 @@
+# Ruff configuration for the Python SDK package.
+#
+# Extends the [tool.ruff] table in pyproject.toml (the single source of truth
+# for the ruleset) with package-local lint allowances.
+extend = "pyproject.toml"
+
+[lint.per-file-ignores]
+# decision_engine/_contract.py is a generated file (see its header: DO NOT
+# EDIT). Its generator emits a small number of over-length lines; suppress
+# E501 for that file only instead of editing generated output by hand.
+"decision_engine/_contract.py" = ["E501"]

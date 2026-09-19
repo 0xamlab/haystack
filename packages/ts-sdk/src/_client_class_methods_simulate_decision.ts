@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of client.ts — simulation, query, decision logging,
  * recommendation, score, batch, and compare methods for DecisionEngineClient.
  *

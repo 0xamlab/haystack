@@ -1,10 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
-
 
 AgentRunStatus = Literal["running", "paused", "requires_approval", "completed", "cancelled"]
 AgentRunAction = Literal["auto", "manual"]

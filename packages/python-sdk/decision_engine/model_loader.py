@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -147,7 +149,10 @@ _MODEL_EXPORTS = {
     "BillingSessionResult": ("decision_engine.models_control_plane", "BillingSessionResult"),
     "CreditRefreshResult": ("decision_engine.models_control_plane", "CreditRefreshResult"),
     "MeteringBatchResult": ("decision_engine.models_control_plane", "MeteringBatchResult"),
-    "DeviceRegistrationResult": ("decision_engine.models_control_plane", "DeviceRegistrationResult"),
+    "DeviceRegistrationResult": (
+        "decision_engine.models_control_plane",
+        "DeviceRegistrationResult",
+    ),
     "DeviceListEntryResult": ("decision_engine.models_control_plane", "DeviceListEntryResult"),
     "DeviceListResult": ("decision_engine.models_control_plane", "DeviceListResult"),
     "DeviceRevokeResult": ("decision_engine.models_control_plane", "DeviceRevokeResult"),

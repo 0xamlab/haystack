@@ -1,11 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """_AsyncAccountControlPlaneMixin for the AsyncDecisionEngineClient class.
 
 Extracted from packages/python-sdk/decision_engine/async_client_facade.py during modularization.
 """
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from decision_engine.models_account import (
+        APIKeyInfo,
+        UsageInfo,
+    )
+    from decision_engine.models_control_plane import (
+        AuditLogResult,
+        BillingInfoResult,
+        BillingSessionResult,
+        CreditRefreshResult,
+        DeviceListResult,
+        DeviceRevokeResult,
+        DistributionListResult,
+        ExecutionPolicyResult,
+        ExecutionPolicySnapshotListResult,
+        MeResult,
+        MeteringBatchResult,
+        TeamInviteResult,
+        TeamListResult,
+        TeamRemoveResult,
+        TeamRoleUpdateResult,
+        TemplateListResult,
+    )
 
 # Lazy facade-routed wrappers for the @cache surface-module loaders.
 # Tests monkey-patch these on the facade module; each call here re-reads

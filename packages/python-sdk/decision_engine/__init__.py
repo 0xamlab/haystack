@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Algenta Python SDK.
 
@@ -32,7 +34,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "1.0.11"
+__version__ = "1.0.12"
 
 _LAZY_EXPORTS = {
     "AlgentaClient": ("decision_engine.client_facade", "AlgentaClient"),
@@ -179,7 +181,10 @@ _LAZY_EXPORTS = {
         "AgentRunTelemetryBatchListResult",
     ),
     "AgentRunTelemetryResult": ("decision_engine.models_agent_runs", "AgentRunTelemetryResult"),
-    "AgentRunTelemetryListResult": ("decision_engine.models_agent_runs", "AgentRunTelemetryListResult"),
+    "AgentRunTelemetryListResult": (
+        "decision_engine.models_agent_runs",
+        "AgentRunTelemetryListResult",
+    ),
     "LLMModelResult": ("decision_engine.models_llm", "LLMModelResult"),
     "LLMModelListResult": ("decision_engine.models_llm", "LLMModelListResult"),
     "ArtifactBridgeResolveResult": ("decision_engine.models_llm", "ArtifactBridgeResolveResult"),
@@ -218,10 +223,16 @@ _LAZY_EXPORTS = {
     "AuditLogEntryResult": ("decision_engine.models_control_plane", "AuditLogEntryResult"),
     "AuditLogResult": ("decision_engine.models_control_plane", "AuditLogResult"),
     "BillingInfoResult": ("decision_engine.models_control_plane", "BillingInfoResult"),
-    "BillingSessionResult": ("decision_engine.models_control_plane", "BillingSessionResult"),
+    "BillingSessionResult": (
+        "decision_engine.models_control_plane",
+        "BillingSessionResult",
+    ),
     "CreditRefreshResult": ("decision_engine.models_control_plane", "CreditRefreshResult"),
     "MeteringBatchResult": ("decision_engine.models_control_plane", "MeteringBatchResult"),
-    "DeviceRegistrationResult": ("decision_engine.models_control_plane", "DeviceRegistrationResult"),
+    "DeviceRegistrationResult": (
+        "decision_engine.models_control_plane",
+        "DeviceRegistrationResult",
+    ),
     "DeviceListEntryResult": ("decision_engine.models_control_plane", "DeviceListEntryResult"),
     "DeviceListResult": ("decision_engine.models_control_plane", "DeviceListResult"),
     "DeviceRevokeResult": ("decision_engine.models_control_plane", "DeviceRevokeResult"),

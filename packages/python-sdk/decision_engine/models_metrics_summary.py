@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Compatibility wrapper for metrics summary SDK model."""
 
 from __future__ import annotations

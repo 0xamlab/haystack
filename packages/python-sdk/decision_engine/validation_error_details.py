@@ -1,10 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import re
 from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
-
 
 _VALIDATION_ERROR_PREFIX = re.compile(r"^(?P<path>[A-Za-z0-9_.\[\]-]+)(?::|\s)(?P<message>.+)$")
 _KNOWN_PYDANTIC_ERROR_PREFIXES = (

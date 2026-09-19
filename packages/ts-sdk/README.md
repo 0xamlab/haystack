@@ -17,34 +17,24 @@ npm install algenta-sdk
 ## Quickstart
 
 ```ts
-import { AlgentaClient, type QueryFilterSpec } from "algenta-sdk";
+import { AlgentaClient } from "algenta-sdk";
 
-const apiKey = process.env.ALGENTA_API_KEY ?? process.env.DE_API_KEY;
-if (!apiKey) {
-  throw new Error("Set ALGENTA_API_KEY or DE_API_KEY before running this example.");
-}
-
-const client = new AlgentaClient({
-  apiKey,
-  baseUrl: "https://api.algenta.ai",
-});
+const client = new AlgentaClient(); // reads ALGENTA_API_KEY; defaults to https://api.algenta.ai
 
 const datasets = await client.listDatasets({ search: "orders", compact: true });
-const dataset = await client.getDatasetSummary(datasets.datasets[0].dataset_id);
-const filter: QueryFilterSpec = {
-  time_filter: "last_year",
-  conditions: [{ dimension_hint: "status", op: "eq", value: "completed" }],
-};
-
+const summary = await client.getDatasetSummary(datasets.datasets[0].dataset_id);
 const result = await client.queryWithMetadata({
-  dataset_id: dataset.dataset_id,
-  filter,
+  dataset_id: summary.dataset_id,
   metric: { hint: "gross_revenue" },
   aggregation: "sum",
 });
-
-console.log(result.data);
+console.log(result.data.result);
 ```
+
+Self-hosted engine? Pass `baseUrl: "http://localhost:8000"` and the API key
+provisioned by your operator deployment. The `self_hosted` and `air_gapped`
+deployment profiles fail closed and never silently fall back to Algenta's
+cloud.
 
 `AlgentaClient` also exposes connectors, exact and batch queries, SQL reports,
 simulations, jobs, triggers, agent runs, decisions, deployment, account controls,
@@ -150,16 +140,16 @@ console.log(PRIMARY_DATA_QUERY_CONTRACT.api.contract_endpoint);
 
 ## Development
 
-From the repository root:
+This package is a standalone npm package (the repository root has no
+workspace), so all commands run from this directory:
 
 ```bash
-pnpm build
-```
-
-Package-only build:
-
-```bash
-pnpm --dir packages/ts-sdk build
+cd packages/ts-sdk
+npm ci
+npm run build        # tsc — emits dist/
+npm test             # tsc && vitest run
+npm run lint         # tsc --noEmit
+npm run lint:biome   # biome check .
 ```
 
 ## Documentation

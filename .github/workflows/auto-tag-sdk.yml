@@ -1,0 +1,87 @@
+name: auto-tag-sdk
+
+# Closes the last manual step of the SDK release chain. When a main-branch push changes the
+# SDK version manifests and the declared version does not have its sdk-vX.Y.Z tag yet, this
+# tags the merge commit with the sync App's token. The app-token tag push then triggers
+# release-sdks.yml — a GITHUB_TOKEN tag push would NOT (GitHub suppresses downstream
+# workflows for events caused by GITHUB_TOKEN).
+#
+# Contract: a version bump in packages/python-sdk/pyproject.toml (kept in lockstep with
+# packages/ts-sdk/package.json by the D2 guard in release-sdks.yml) IS the intent to release.
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/python-sdk/pyproject.toml
+      - packages/ts-sdk/package.json
+
+# contents: read is what actions/checkout needs to clone this PRIVATE repo; the tag push itself
+# uses the sync App's token below, so the workflow token never needs write access.
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    if: github.repository_owner == 'thyn-ai'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Compute the declared SDK version (both manifests must agree)
+        id: v
+        run: |
+          set -euo pipefail
+          PY=$(python3 -c "import tomllib; print(tomllib.load(open('packages/python-sdk/pyproject.toml','rb'))['project']['version'])")
+          TS=$(node -p "require('./packages/ts-sdk/package.json').version")
+          if [ "$PY" != "$TS" ]; then
+            echo "::error::version disagreement: pyproject=$PY package.json=$TS"
+            exit 1
+          fi
+          # The version is interpolated into a tag name and a shell command below: accept only a
+          # PEP 440 / semver-shaped string so a malformed manifest can never become shell text.
+          if ! [[ "$PY" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::unexpected version string in pyproject.toml: '$PY'"
+            exit 1
+          fi
+          echo "version=$PY" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether the tag already exists
+        id: check
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/sdk-v${VERSION}" >/dev/null 2>&1; then
+            echo "exists=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mint the sync App token (engine-repo scope, for the tag push)
+        if: steps.check.outputs.exists == '0'
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.ALGENTA_SDK_SYNC_APP_ID }}
+          private-key: ${{ secrets.ALGENTA_SDK_SYNC_APP_PRIVATE_KEY }}
+          owner: thyn-ai
+          repositories: algenta
+
+      - name: Tag the merge commit for release-sdks.yml
+        if: steps.check.outputs.exists == '0'
+        env:
+          # Both values reach the shell as environment variables, never as interpolated script text,
+          # and the token travels in an HTTP header rather than in a `git push` argument (argv is
+          # visible to every process on the runner for the duration of the push).
+          VERSION: ${{ steps.v.outputs.version }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git config user.name "algenta-sdk-sync[bot]"
+          git config user.email "algenta-sdk-sync[bot]@users.noreply.github.com"
+          git tag -a "sdk-v${VERSION}" -m "auto-tag: SDK version bumped to ${VERSION} on main"
+          auth="$(printf 'x-access-token:%s' "$APP_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" \
+            push "https://github.com/${REPO}.git" "refs/tags/sdk-v${VERSION}"

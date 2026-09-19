@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Auto-split sub-module of runtime.ts — aligned column extraction primitive
  * for the Runtime class (local mode only in v1).
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -81,7 +82,7 @@ describe("native worker client", () => {
     process.env.ALGENTA_NATIVE_WORKER = FIXTURE_PATH;
     const mod = await import("./native_worker_client.js");
     // Both attempts hit the same slow fixture, so this exercises the retry-once
-    // path end to end, not just a single failure -- matching `native/worker.py`'s
+    // path end to end, not just a single failure -- matching the Python SDK worker's
     // own `execute`, which never surfaces attempt 1's raw error directly.
     await expect(
       mod.callNativeWorker({ scenario: "slow" }, 200),
