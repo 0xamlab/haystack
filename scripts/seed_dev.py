@@ -2,11 +2,13 @@
 Development seed script — creates a dev org, user, and API key.
 Run with: make seed (inside the API container) or: python scripts/seed_dev.py
 
-Prints the raw API key to stdout — save it, it won't be shown again.
+Prints the raw API key (and, on first run, the dev user's password) to stdout — save them,
+they won't be shown again. Set SEED_DEV_PASSWORD to choose the dev user's password.
 """
 
 import asyncio
 import os
+import secrets
 import sys
 
 # Ensure project root is on path
@@ -52,7 +54,8 @@ async def seed() -> None:
             # Create dev user
             import bcrypt
 
-            password_hash = bcrypt.hashpw(b"devpassword123", bcrypt.gensalt()).decode()
+            password = os.environ.get("SEED_DEV_PASSWORD") or secrets.token_urlsafe(16)
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             user = User(
                 org_id=org.id,
                 email="dev@example.com",
@@ -64,7 +67,7 @@ async def seed() -> None:
             )
             session.add(user)
             await session.flush()
-            print("✅ Created dev user: dev@example.com / devpassword123")
+            print(f"✅ Created dev user: dev@example.com / {password}  (shown once only)")
 
         # Generate new API key
         raw_key, key_prefix, hashed_key = generate_api_key()

@@ -48,7 +48,8 @@ API_ENV=production
 DATABASE_URL=postgresql+asyncpg://algenta:algenta_secret@postgres:5432/algenta
 DATABASE_URL_SYNC=postgresql://algenta:algenta_secret@postgres:5432/algenta
 REDIS_URL=redis://redis:6379/0
-JWT_SECRET=change-me-use-256-bit-random-value
+# Generate once with `openssl rand -hex 32` and paste the output as the value
+JWT_SECRET=<paste-output-of-openssl-rand-hex-32-here>
 RESULT_STORAGE_ENABLED=true
 ALGENTA_IMAGE_REGISTRY=ghcr.io/thyn-ai/algenta
 ALGENTA_IMAGE_TAG=git-YOUR_RELEASE_TAG

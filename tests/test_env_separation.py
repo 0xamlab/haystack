@@ -6,11 +6,14 @@ defaults (dev + placeholder Stripe + managed/strict off) pass untouched so self-
 
 from __future__ import annotations
 
+import re
 import uuid
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from apps.api_server.config import Settings
 from apps.api_server.services.env_separation import validate_environment_separation
 
 
@@ -60,6 +63,62 @@ def test_defaults_pass(monkeypatch):
     monkeypatch.delenv("ALGENTA_MANAGED_LLM", raising=False)
     monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
     validate_environment_separation(_settings("development", "sk_test_placeholder"))  # no raise
+
+
+# ── Guard 3: the session-JWT secret may not be the shipped placeholder in production ──
+
+
+def _settings_with_jwt(api_env: str, jwt_secret: str):
+    return SimpleNamespace(
+        api_env=api_env, stripe_secret_key="sk_test_placeholder", jwt_secret=jwt_secret
+    )
+
+
+def test_placeholder_jwt_secret_in_production_refuses_to_boot(monkeypatch):
+    monkeypatch.delenv("ALGENTA_MANAGED_LLM", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
+    placeholder = Settings.model_fields["jwt_secret"].default
+    docs_style = (
+        "<paste-output-of-openssl-rand-hex-32-here>",
+        "change-me-in-production",
+        "<set-me>",
+    )
+    for bad in (placeholder, "", "   ", None, *docs_style):
+        with pytest.raises(RuntimeError, match="placeholder"):
+            validate_environment_separation(_settings_with_jwt("production", bad))
+
+
+def test_self_host_doc_jwt_placeholders_are_refused_in_production(monkeypatch):
+    # Whatever JWT_SECRET value the self-hosting guide shows must never boot a production server
+    # verbatim — this pins the docs and the guard to each other so neither can drift alone.
+    monkeypatch.delenv("ALGENTA_MANAGED_LLM", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
+    doc = Path(__file__).resolve().parents[1] / "apps" / "docs" / "docs" / "self-hosting.md"
+    values = re.findall(r"(?m)^JWT_SECRET=(.*)$", doc.read_text(encoding="utf-8"))
+    assert values, "self-hosting.md no longer shows a JWT_SECRET line"
+    for value in values:
+        with pytest.raises(RuntimeError, match="placeholder"):
+            validate_environment_separation(_settings_with_jwt("production", value.strip()))
+
+
+def test_placeholder_jwt_secret_off_production_is_fine(monkeypatch):
+    monkeypatch.delenv("ALGENTA_MANAGED_LLM", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
+    placeholder = Settings.model_fields["jwt_secret"].default
+    for env in ("development", "staging", "test"):
+        validate_environment_separation(_settings_with_jwt(env, placeholder))  # no raise
+
+
+def test_real_jwt_secret_in_production_is_allowed(monkeypatch):
+    monkeypatch.delenv("ALGENTA_MANAGED_LLM", raising=False)
+    monkeypatch.delenv("ALGENTA_REQUIRE_PER_TENANT_KEYS", raising=False)
+    validate_environment_separation(_settings_with_jwt("production", "a" * 64))  # no raise
+
+
+def test_settings_without_jwt_attribute_skip_guard_three():
+    # Only an ABSENT attribute skips the guard (existing partial test doubles); a present-but-None
+    # value is treated as blank and refused — covered above.
+    validate_environment_separation(_settings("production", "sk_live_realkey123"))  # no raise
 
 
 # ── /v1/usage surfaces managed-LLM spend + cap ──────────────────────────────────────
