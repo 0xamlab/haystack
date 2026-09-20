@@ -28,10 +28,11 @@ import subprocess
 import sys
 import time
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path[:0] = [".", HERE, os.path.dirname(os.path.dirname(HERE))]
-from bench_tools import SERVE_DRIVERS, ToolError, popen_tool, tool_path  # noqa: E402
-from enterprise_bench import MIX_SPECS, synthesize_prompt  # noqa: E402
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ".")
+from bench_tools import SERVE_DRIVERS, ToolError, popen_tool, tool_path
+from enterprise_bench import MIX_SPECS, synthesize_prompt
 
 
 def main() -> int:

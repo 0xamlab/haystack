@@ -48,11 +48,11 @@ import threading
 import time
 import urllib.request
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 # bench_tools.py is benchmarks/bench_tools.py in the repository; a standalone copy of this
 # file on the GPU box carries bench_tools.py beside it (still stdlib only).
-sys.path[:0] = [HERE, os.path.dirname(os.path.dirname(HERE))]
-from bench_tools import run_tool, tool_path  # noqa: E402
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from bench_tools import run_tool, tool_path
 
 MODEL_HF = "/home/angel/models/Qwen2.5-7B-Instruct"
 GGUF_Q8 = "/home/angel/models/qwen2.5-7b-instruct-q8_0.gguf"

@@ -38,16 +38,18 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import load
+
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "benchmarks"))
+)
+from bench_tools import ToolError, run_tool, tool_path
+
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-
-import load  # noqa: E402
-
 load.HERE = os.path.join(HERE, "data")
 
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-sys.path.insert(0, os.path.join(REPO, "benchmarks"))
-from bench_tools import ToolError, run_tool, tool_path  # noqa: E402
 
 MOJO_ENV = "/Users/angel/Developer/decision-engine/mojo_env"
 ENGINE = os.path.join(REPO, "mojo", "engine")

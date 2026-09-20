@@ -63,10 +63,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
-sys.path.insert(0, str(ROOT / "benchmarks"))
-from bench_tools import (  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "benchmarks"))
+from bench_tools import (
     ToolError,
     current_python,
     find_tool,
@@ -75,6 +73,8 @@ from bench_tools import (  # noqa: E402
     tool_path,
 )
 
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent.parent
 ENGINE = ROOT / "mojo" / "engine"
 SOURCE = HERE / "graph_betweenness_h2h.mojo"
 REFS = HERE / "graph_betweenness_refs.py"

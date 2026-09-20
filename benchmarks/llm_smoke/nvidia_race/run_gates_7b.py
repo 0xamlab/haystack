@@ -18,9 +18,9 @@ import json
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path[:0] = [str(HERE), str(HERE.parents[1])]  # standalone copy / in-repo benchmarks/
-from bench_tools import ToolError, run_tool, tool_path  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # in-repo benchmarks/
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # a standalone copy beside this file
+from bench_tools import ToolError, run_tool, tool_path
 
 N_TOKENS = 16
 DRIVER_TOOL = "qwen25_7b_p3_graph_cuda"

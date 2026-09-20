@@ -13,6 +13,7 @@ import os
 import stat
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -208,11 +209,14 @@ def test_env_path_is_data_not_a_program(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
 def test_run_tool_refuses_anything_it_did_not_resolve(tmp_path: Path):
     stray = _make_exe(tmp_path, "stray")
-    for bad in (stray, str(stray), Path(sys.executable), "python3"):
+    # Deliberately mixes ``Path`` and ``str``: the chokepoint has to refuse at run time whatever
+    # the static type says, so the candidates are typed ``Any`` rather than narrowed to ``Path``.
+    unresolved: tuple[Any, ...] = (stray, str(stray), Path(sys.executable), "python3")
+    for bad in unresolved:
         with pytest.raises(ToolError, match="launch only executables resolved by bench_tools"):
-            run_tool(bad, "-c", "pass")  # type: ignore[arg-type]
+            run_tool(bad, "-c", "pass")
         with pytest.raises(ToolError):
-            popen_tool(bad, "-c", "pass")  # type: ignore[arg-type]
+            popen_tool(bad, "-c", "pass")
 
 
 def test_current_python_is_launchable_and_unresolved():

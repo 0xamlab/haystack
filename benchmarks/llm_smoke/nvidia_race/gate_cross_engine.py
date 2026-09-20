@@ -35,9 +35,9 @@ import sys
 import time
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path[:0] = [str(HERE), str(HERE.parents[1])]  # standalone copy / in-repo benchmarks/
-from bench_tools import ToolError, popen_tool, run_tool, tool_path  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # in-repo benchmarks/
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # a standalone copy beside this file
+from bench_tools import ToolError, popen_tool, run_tool, tool_path
 
 DRIVER_TOOL = "qwen25_7b_p3_graph_cuda"
 LLAMA_SERVER_TOOL = "llama-server"

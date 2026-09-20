@@ -223,9 +223,9 @@ def _argv(tool: Path, args: tuple[object, ...]) -> list[str]:
 
 def run_tool(tool: Path, *args: object, **kwargs: object) -> subprocess.CompletedProcess:
     """``subprocess.run`` of an executable this module resolved; *args* are data argv elements."""
-    return subprocess.run(_argv(tool, args), **kwargs)  # noqa: S603 - argv[0] from the allowlist
+    return subprocess.run(_argv(tool, args), **kwargs)
 
 
 def popen_tool(tool: Path, *args: object, **kwargs: object) -> subprocess.Popen:
     """``subprocess.Popen`` of an executable this module resolved; *args* are data argv elements."""
-    return subprocess.Popen(_argv(tool, args), **kwargs)  # noqa: S603 - argv[0] from the allowlist
+    return subprocess.Popen(_argv(tool, args), **kwargs)

@@ -46,12 +46,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "scripts" / "timing"))
-sys.path.insert(0, str(ROOT / "benchmarks" / "timing"))
-sys.path.insert(0, str(ROOT / "benchmarks"))
-from bench_tools import current_python, run_tool  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "timing"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "benchmarks" / "timing"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "benchmarks"))
+from bench_tools import current_python, run_tool
 
+ROOT = Path(__file__).resolve().parents[2]
 FROZEN_TEST_SEASON = 2025
 DEV_SEASONS = (2019, 2020, 2021, 2023, 2024)
 DOCS = ROOT / "docs" / "timing"

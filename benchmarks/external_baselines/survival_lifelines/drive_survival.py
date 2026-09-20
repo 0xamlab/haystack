@@ -35,10 +35,8 @@ import sys
 import time
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-REPO = HERE.parents[2]
-sys.path.insert(0, str(REPO / "benchmarks"))
-from bench_tools import (  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "benchmarks"))
+from bench_tools import (
     ToolError,
     env_path,
     run_tool,
@@ -47,6 +45,8 @@ from bench_tools import (  # noqa: E402
     tool_path,
 )
 
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[2]
 MOJO_ENV = REPO / "mojo_env"
 ENGINE = REPO / "mojo" / "engine"
 H2H = HERE / "survival_h2h.mojo"
