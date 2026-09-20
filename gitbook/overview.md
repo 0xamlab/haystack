@@ -1,6 +1,6 @@
 ---
 icon: compass
-description: Algenta is self-hosted AI infrastructure — 6,000+ deterministic functions across 600K+ lines of custom Mojo kernels, reached over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here.
+description: Algenta is compiler-driven, self-hosted AI infrastructure — 6,000+ deterministic functions on custom Mojo kernels, reached over the HTTP API, the Python and TypeScript SDKs, or MCP. Start here.
 cover: .gitbook/assets/brand/algenta-hero.png
 coverY: 0
 layout:

@@ -43,7 +43,7 @@ These endpoints back the deterministic data/runtime surface after service instal
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/v1/sources/register` | Register a source in the Decision Intelligence Layer |
+| `POST` | `/v1/sources/register` | Register a governed data source |
 | `GET` | `/v1/meta/contract` | Fetch the machine-readable Algenta contract |
 | `GET` | `/v1/data` | Discover authorized datasets with deterministic filters |
 | `GET` | `/v1/data/{dataset_id}/summary` | Fetch a low-token dataset selection summary |

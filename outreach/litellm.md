@@ -4,7 +4,7 @@
 
 ## Pitch
 
-> Algenta is a self-hosted governed execution layer for agents. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
+> Algenta is compiler-driven, self-hosted AI infrastructure: modular building blocks for AI applications, compiled into one deterministic runtime. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
 
 For LiteLLM specifically: this is **not** another LLM provider pitch. The integration is a governed MCP execution service that sits behind the MCP Gateway your project already ships — the pitch should center that, not model routing.
 

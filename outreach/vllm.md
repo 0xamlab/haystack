@@ -4,7 +4,7 @@
 
 ## Pitch
 
-> Algenta is a self-hosted governed execution layer for agents. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
+> Algenta is compiler-driven, self-hosted AI infrastructure: modular building blocks for AI applications, compiled into one deterministic runtime. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
 
 For vLLM specifically: no certification language, ever — the ask is a validated-backend integration, not a "vLLM-certified" claim, and the package's own honest capability-gap documentation should be quoted rather than smoothed over.
 

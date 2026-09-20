@@ -1,11 +1,11 @@
 ---
 icon: cloud
-description: Deploy the Algenta decision gateway into your own Azure subscription with a guided Bicep template that keeps the decision and data plane customer-hosted with cloud features off
+description: Deploy the Algenta gateway into your own Azure subscription with a guided Bicep template that keeps the runtime and data plane customer-hosted with cloud features off
 ---
 
 # Deploy the decision gateway to your Azure
 
-This is a **guided** deployment: you run the Algenta decision gateway inside your **own Azure subscription**, so the data plane stays with you and Algenta only supplies the software. A single deployment template (Bicep) stands up the whole gateway in one resource group, and a small parameters file supplies your image reference, database credentials, and secrets.
+This is a **guided** deployment: you run the Algenta gateway inside your **own Azure subscription**, so the data plane stays with you and Algenta only supplies the software. A single deployment template (Bicep) stands up the whole gateway in one resource group, and a small parameters file supplies your image reference, database credentials, and secrets.
 
 It is guided rather than one-click on purpose. A few steps need an operator with Owner or Contributor rights plus an Entra administrator, because tenant policy, Azure resource-provider registration, and Entra admin consent cannot be driven from a template.
 

@@ -4,7 +4,7 @@
 
 ## Pitch
 
-> Algenta is a self-hosted governed execution layer for agents. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
+> Algenta is compiler-driven, self-hosted AI infrastructure: modular building blocks for AI applications, compiled into one deterministic runtime. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
 
 For Vercel specifically: this is a `ToolSet` built directly against the AI SDK's own `createMCPClient()`/`ai` v7 primitives, talking MCP directly (no `algenta-sdk` dependency in this package at all — a deliberate choice, since the package needs no HTTP client beyond MCP itself). The name was chosen deliberately as `@thyn-ai/algenta-tools`, not something that reads as a model provider — Algenta isn't one.
 

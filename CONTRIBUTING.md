@@ -1,4 +1,4 @@
-# Contributing to Algenta Decision Engine
+# Contributing to Algenta
 
 Thank you for your interest in contributing! We follow the open-core model:
 - **Framework, API, portal, SDKs, integrations** — open to contributions

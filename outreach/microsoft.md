@@ -4,7 +4,7 @@
 
 ## Pitch
 
-> Algenta is a self-hosted governed execution layer for agents. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
+> Algenta is compiler-driven, self-hosted AI infrastructure: modular building blocks for AI applications, compiled into one deterministic runtime. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
 
 For Microsoft specifically: this covers two distinct deliverables under one outreach, and the draft should not blur them — Microsoft Agent Framework (MAF) is a real, independently pip-installable SDK integration with no Azure account required; Microsoft Foundry (the hosted platform) is a separate, documentation-only deliverable that has not been exercised against a live Foundry project.
 

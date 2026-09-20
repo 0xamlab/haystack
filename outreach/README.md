@@ -4,7 +4,7 @@
 
 ## What's here
 
-- [`pitch-template.md`](pitch-template.md) — the base pitch (verbatim from the partnership plan) and the rules every customized draft below follows.
+- [`pitch-template.md`](pitch-template.md) — the base pitch (in the canonical Algenta positioning) and the rules every customized draft below follows.
 - One file per ecosystem: [`microsoft.md`](microsoft.md), [`litellm.md`](litellm.md), [`langchain.md`](langchain.md), [`vercel-ai-sdk.md`](vercel-ai-sdk.md), [`n8n.md`](n8n.md), [`haystack.md`](haystack.md), [`llamaindex.md`](llamaindex.md), [`pydantic-ai.md`](pydantic-ai.md), [`ray-serve.md`](ray-serve.md), [`vllm.md`](vllm.md).
 
 ## Read this before sending anything

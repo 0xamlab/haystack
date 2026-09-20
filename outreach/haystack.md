@@ -4,7 +4,7 @@
 
 ## Pitch
 
-> Algenta is a self-hosted governed execution layer for agents. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
+> Algenta is compiler-driven, self-hosted AI infrastructure: modular building blocks for AI applications, compiled into one deterministic runtime. The mature integration surface is MCP, with deterministic simulation, policy gates, approvals, execution receipts, and audit evidence running inside the customer's infrastructure. We have built a runnable integration for your ecosystem and would like to validate the correct contribution and listing path with your team.
 
 For Haystack specifically: this wraps Haystack's own `MCPToolset` rather than reimplementing MCP transport — the value-add is entirely the governance layer `MCPToolset` doesn't express on its own (tool-profile enforcement, approval/denial semantics, receipt typing), which also validates Haystack's own published guidance that more than 20-30 tools handed to a model at once is a real problem their `tool_names=` filtering exists to solve.
 

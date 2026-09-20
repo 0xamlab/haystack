@@ -154,7 +154,7 @@ runtime.execute("json.parser", "json_array_len",
 
 That shape — a `scoring` object with `expected_value`/`downside_risk`, plus a `variables` array —
 isn't invented for this page; it's the literal structure and field names
-`request_parser.mojo` pulls out of an incoming decision-engine request with this same sequence
+`request_parser.mojo` pulls out of an incoming engine request with this same sequence
 (`json_get_object(raw, "scoring")` then `json_get_float(scoring_str, "expected_value", 0.6)` and
 `json_get_float(scoring_str, "downside_risk", 0.4)`; `json_get_array(raw, "variables")` then
 `json_array_len`/`json_array_get` over it).

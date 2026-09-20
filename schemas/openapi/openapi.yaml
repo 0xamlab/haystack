@@ -7884,8 +7884,8 @@ paths:
       summary: Search a knowledge base
       description: "Search documents or a connected data source and get ranked, relevant\
         \ results.\n\nCombines BM25 keyword search, dense vector similarity, and cross-encoder\
-        \ reranking for enterprise-grade accuracy. No setup required \u2014 pass documents\
-        \ inline or connect a data source."
+        \ reranking. No setup required \u2014 pass documents inline or connect a data\
+        \ source."
       operationId: retrieve_v1_retrieve_post
       requestBody:
         content:

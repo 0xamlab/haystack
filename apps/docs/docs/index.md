@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Overview
 
-Algenta is a self-hosted decision and governed data/query runtime you deploy on your infrastructure.
+Algenta is compiler-driven, self-hosted AI infrastructure: modular building blocks for AI applications, compiled into one deterministic runtime that you deploy on your infrastructure.
 
 Start the service with one command, verify the API, and then choose the first live lane that matches the job:
 

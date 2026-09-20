@@ -76,8 +76,8 @@ peak/zero-crossing utilities keyed off a sample rate. `signal.dsp` and `signal.f
 separate two-file package, `mojo/engine/signal/dsp.mojo` and `mojo/engine/signal/filter.mojo`,
 under a shared `mojo/engine/signal/__init__.mojo` that never mentions `signal_processing.mojo` and
 is never mentioned by it. Neither file imports the other's directory; the two families are
-adjacent only in subject matter (both are "basic DSP for the decision engine," per their own
-docstrings) and in the accident of dotted-vs-bare naming, not in code. `signal.dsp` and
+adjacent only in subject matter (both describe themselves, in their own docstrings, as basic
+DSP for the engine) and in the accident of dotted-vs-bare naming, not in code. `signal.dsp` and
 `signal.filter` are documented here for the first time.
 
 ## `retrieval.fuse`: N lanes into a two-rank kernel, folded in pairs

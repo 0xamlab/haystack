@@ -392,9 +392,8 @@ async def optimize(
     summary="Search a knowledge base",
     description=(
         "Search documents or a connected data source and get ranked, relevant results.\n\n"
-        "Combines BM25 keyword search, dense vector similarity, and cross-encoder reranking "
-        "for enterprise-grade accuracy. No setup required — pass documents inline or connect "
-        "a data source."
+        "Combines BM25 keyword search, dense vector similarity, and cross-encoder reranking. "
+        "No setup required — pass documents inline or connect a data source."
     ),
 )
 async def retrieve(

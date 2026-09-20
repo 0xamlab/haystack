@@ -1,6 +1,6 @@
 # Security Policy
 
-Algenta is a self-hosted decision engine. We take the security of the engine,
+Algenta is compiler-driven, self-hosted AI infrastructure. We take the security of the engine,
 its SDKs, and its API/MCP surface seriously and appreciate responsible
 disclosure from the community.
 

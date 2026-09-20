@@ -1,6 +1,6 @@
 ---
 icon: comments
-description: A declarative Microsoft 365 Copilot and Teams agent that connects to your Algenta decision runtime over the Model Context Protocol and turns a conversation into a computed decision
+description: A declarative Microsoft 365 Copilot and Teams agent that connects to your Algenta runtime over the Model Context Protocol and turns a conversation into a computed decision
 ---
 
 # Decision Agent in Copilot & Teams

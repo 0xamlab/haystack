@@ -1,6 +1,6 @@
 ---
 icon: book-bookmark
-description: Every Algenta term in one place — the engine, the surfaces, decisioning, governed data, agentic runs, deployment, and licensing vocabulary, each defined once.
+description: Every Algenta term in one place — the engine, the surfaces, decision planning, governed data, agentic runs, deployment, and licensing vocabulary, each defined once.
 ---
 
 # Glossary
@@ -27,7 +27,7 @@ The canonical vocabulary for Algenta. Each term is defined once here; the rest o
 | **MCP server** (`algenta-mcp`) | A Model Context Protocol bridge that exposes the engine as tools for Cursor, Claude Desktop, and other AI clients. See [MCP server](../sdk/mcp.md). |
 | **CLI** | The `de` terminal client for the Algenta HTTP API. See [CLI reference](../cli.md). |
 
-## Decisioning
+## Decision planning
 
 | Term | Meaning |
 | --- | --- |

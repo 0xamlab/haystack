@@ -5,7 +5,7 @@ description: MCP reference for Algenta's decision tools — simulate, recommend,
 
 # Decision MCP tools
 
-These tools cover Algenta's decisioning lane over MCP: run Monte Carlo simulations, rank options, score and compare scenarios, drive the simplified product helpers, and persist decisions to decision memory so you can close the loop by recording what actually happened. Each tool wraps a single authenticated endpoint under `/v1`.
+These tools cover Algenta's decision planning tools over MCP: run Monte Carlo simulations, rank options, score and compare scenarios, drive the simplified product helpers, and persist decisions to decision memory so you can close the loop by recording what actually happened. Each tool wraps a single authenticated endpoint under `/v1`.
 
 Configure `algenta-mcp` first — see [MCP server](../sdk/mcp.md). For the modeling background, see [Simulation models & distributions](../concepts/simulation-models.md) and [Decision memory](../concepts/decision-memory.md).
 

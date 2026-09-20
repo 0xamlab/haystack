@@ -4,11 +4,11 @@ sidebar_position: 4
 
 # Auto Mode vs Expert Mode
 
-Decision Engine supports two modes. You can switch between them — they use the same engine and return the same response format.
+Algenta supports two modes. You can switch between them — they use the same engine and return the same response format.
 
 ## Auto Mode (Simple)
 
-Designed for speed. Describe your variables with just a range — Decision Engine handles distributions, objective function, and scoring automatically.
+Designed for speed. Describe your variables with just a range — Algenta handles distributions, objective function, and scoring automatically.
 
 **When to use:** Exploratory analysis, quick decisions, non-technical users, most business scenarios.
 

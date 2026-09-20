@@ -7,7 +7,7 @@ description: How Algenta turns enterprise data and operating models into governe
 
 Most analytics tools give you an *answer*. Algenta gives you a *decision* — one you can defend, reproduce, approve, act on, and later measure against what actually happened.
 
-The Algenta Decision Service takes your enterprise data and your operating model (how your business actually trades off cost, risk, capacity, and revenue) and drives them through a governed lifecycle. At every step the numbers are computed by an engine, framed by a language model, and recorded as an immutable, versioned trail. The result is a decision that carries its own evidence, its own assumptions, and its own approval — not a paragraph of confident prose.
+Algenta takes your enterprise data and your operating model (how your business actually trades off cost, risk, capacity, and revenue) and drives them through a governed lifecycle. At every step the numbers are computed by an engine, framed by a language model, and recorded as an immutable, versioned trail. The result is a decision that carries its own evidence, its own assumptions, and its own approval — not a paragraph of confident prose.
 
 {% hint style="info" %}
 The language model **frames and explains**; the engine **computes**. The model never invents numbers — every figure in a recommendation traces back to a deterministic engine result. This separation is what makes an Algenta decision auditable.
@@ -87,7 +87,7 @@ A conversational BI tool answers a question in a chat window. The answer looks a
 
 An Algenta decision is the opposite:
 
-| Conversational BI | Algenta Decision Service |
+| Conversational BI | Algenta |
 |---|---|
 | One-off answer in a chat thread | A versioned decision you can revisit and reproduce |
 | Model may state numbers it inferred | Every number is computed by the engine and traced |
