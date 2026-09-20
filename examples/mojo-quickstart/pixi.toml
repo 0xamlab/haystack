@@ -27,6 +27,8 @@ platforms = [
 [dependencies]
 # Mojo ships as part of MAX; max-core pins the mojo-compiler package.
 max = "26.6.*"
+# Explicit compiler pin: Mojo v1 only.
+mojo = "1.1.*"
 # The runtime wheel requires Python >=3.14,<3.15 (it embeds CPython 3.14).
 python = "3.14.*"
 
