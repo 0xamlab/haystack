@@ -1233,6 +1233,12 @@ jobs:
         # job env).
         run: DOCKER_BUILDKIT=1 docker build --pull --platform linux/amd64 -f infra/docker/Dockerfile.api.prod -t "$SMOKE_IMAGE_TAG" .
 
+      # secret-scanning #14: the finished image must not carry the HS256 dev-licence secret (the
+      # Dockerfile strips the stub; this proves it on the built filesystem). Same gate the push-to-main
+      # build-* jobs run before pushing and the deploy jobs run before Fly.
+      - name: Gate -- the image must not contain the dev-licence secret
+        run: bash scripts/verify_no_dev_secret.sh "$SMOKE_IMAGE_TAG"
+
       - name: Verify bundled Mojo server mode
         run: bash scripts/verify_api_image_mojo_server_mode.sh "$SMOKE_IMAGE_TAG"
 
@@ -1503,6 +1509,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      GATE_IMAGE_TAG: algenta-api-gate:${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -1532,6 +1540,23 @@ jobs:
           tags: |
             type=sha,prefix=git-,format=short
             type=raw,value=latest
+
+      # secret-scanning #14: build to the local daemon first (no push) so the FINISHED image can be
+      # gated on the absence of the HS256 dev-licence secret before anything reaches the registry.
+      # The push step below re-runs the identical build on the same per-run builder (every layer a
+      # cache hit); the deploy jobs gate the pulled image once more before Fly.
+      - name: Build API image (local, for the dev-secret gate)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/docker/Dockerfile.api.prod
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.GATE_IMAGE_TAG }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:api-v2
+
+      - name: Gate -- the API image must not contain the dev-licence secret
+        run: bash scripts/verify_no_dev_secret.sh "$GATE_IMAGE_TAG"
 
       - name: Build and push API image
         id: build-api
@@ -1577,6 +1602,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      GATE_IMAGE_TAG: algenta-worker-gate:${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -1603,6 +1630,23 @@ jobs:
           tags: |
             type=sha,prefix=git-,format=short
             type=raw,value=latest
+
+      # secret-scanning #14: build to the local daemon first (no push) so the FINISHED image can be
+      # gated on the absence of the HS256 dev-licence secret before anything reaches the registry.
+      # The push step below re-runs the identical build on the same per-run builder (every layer a
+      # cache hit); the deploy jobs gate the pulled image once more before Fly.
+      - name: Build Worker image (local, for the dev-secret gate)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/docker/Dockerfile.worker.prod
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.GATE_IMAGE_TAG }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:worker-v2
+
+      - name: Gate -- the Worker image must not contain the dev-licence secret
+        run: bash scripts/verify_no_dev_secret.sh "$GATE_IMAGE_TAG"
 
       - name: Build and push Worker image
         id: build-worker
@@ -1642,6 +1686,7 @@ jobs:
     # `secrets` cannot be used in `if:` conditionals, but `env` (which may read secrets) can.
     env:
       CODNA_TOKEN: ${{ secrets.CODNA_GHCR_READ_TOKEN }}
+      GATE_IMAGE_TAG: algenta-engine-gate:${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -1684,6 +1729,23 @@ jobs:
           tags: |
             type=sha,prefix=git-,format=short
             type=raw,value=latest
+
+      # secret-scanning #14: build to the local daemon first (no push) so the FINISHED image can be
+      # gated on the absence of the HS256 dev-licence secret before anything reaches the registry.
+      # The push step below re-runs the identical build on the same per-run builder (every layer a
+      # cache hit); the deploy jobs gate the pulled image once more before Fly.
+      - name: Build Engine image (local, for the dev-secret gate)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/docker/Dockerfile.engine.prod
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.GATE_IMAGE_TAG }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildcache:engine-v2
+
+      - name: Gate -- the Engine image must not contain the dev-licence secret
+        run: bash scripts/verify_no_dev_secret.sh "$GATE_IMAGE_TAG"
 
       - name: Build and push Engine image
         id: build-engine
@@ -1828,6 +1890,7 @@ jobs:
           # platform) regardless of runner arch, so pin the PULL to the image's platform
           # instead of inheriting the runner's.
           docker pull --platform linux/amd64 "$SRC/api:$TAG"
+          bash scripts/verify_no_dev_secret.sh "$SRC/api:$TAG"
           bash scripts/verify_api_image_mojo_server_mode.sh "$SRC/api:$TAG"
           docker tag  "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push "registry.fly.io/codna-api:$TAG"
@@ -1911,6 +1974,7 @@ jobs:
           TAG="git-$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
           echo "Deploying algenta-control-plane at pinned tag: $TAG"
           docker pull --platform linux/amd64 "$SRC/api:$TAG"
+          bash scripts/verify_no_dev_secret.sh "$SRC/api:$TAG"
           docker tag  "$SRC/api:$TAG" "registry.fly.io/algenta-control-plane:$TAG"
           docker push "registry.fly.io/algenta-control-plane:$TAG"
           flyctl deploy -c fly.control-plane.toml -a algenta-control-plane \

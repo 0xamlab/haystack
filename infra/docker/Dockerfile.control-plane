@@ -29,6 +29,13 @@ COPY --from=builder /install /usr/local
 # apps/api_server/alembic and run via the deploy release_command. No engines/ training/ mojo/.
 COPY apps/ /app/apps/
 COPY scripts/ /app/scripts/
+# Production artifacts must not carry the HS256 dev-licence secret (secret-scanning #14): delete the
+# dev stub, FAIL the build if any copy of the needle survives under /app, then drop the strip tool
+# itself (the one other file that legitimately holds the needle). Same contract as the builder-stage
+# step in Dockerfile.{api,engine,worker}.prod; verified again on the image by
+# scripts/verify_no_dev_secret.sh.
+RUN python /app/scripts/strip_dev_stub.py --package-root /app \
+ && rm /app/scripts/strip_dev_stub.py
 RUN mkdir -p /home/app/.algenta && chown -R app:app /app /home/app
 ENV HOME=/home/app \
     ALGENTA_SERVICE_ROLE=control_plane \

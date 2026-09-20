@@ -43,7 +43,7 @@ HIDDEN_IMPORTS = [
     "apps.privacy_policy",
     "apps.platform_contract_constants",
     "apps.runtime",
-    "apps.runtime._dev_license_stub",
+    # apps.runtime._dev_license_stub is deliberately NOT here -- see EXCLUDES.
     "apps.runtime.capacity",
     "apps.runtime.client",
     "apps.runtime.coordination",
@@ -114,6 +114,12 @@ EXCLUDES = [
     "apps.cli",
     "apps.operator_http",
     "apps.runtime.relay_server",
+    # The HS256 dev-licence secret's ONLY home (secret-scanning #14). A shipped bundle must not
+    # carry it: excluding it makes license.py's guarded import raise ImportError inside the frozen
+    # daemon, so _DEV_SECRET is None and the dev-stub verify/issue paths are unreachable by
+    # construction. scripts/verify_no_dev_secret.py proves the absence on the built tarball
+    # (it opens this daemon's PYZ; a raw byte scan cannot see through the zlib compression).
+    "apps.runtime._dev_license_stub",
     "fastapi",
     "starlette",
     "uvicorn",

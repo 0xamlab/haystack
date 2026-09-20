@@ -240,6 +240,15 @@ A 5-dimension adversarial review (12 confirmed findings) drove these fixes, all 
   and the HS256 dev-stub path is unreachable — the artifact can't contain the forgeable secret
   (defense-in-depth atop the RS256-only runtime guard). The control-plane HS256 path is a separate
   secret and is unaffected.
+- **Shipped-artifact strip + gate** — the production images (`Dockerfile.{api,engine,worker}.prod`,
+  `Dockerfile.control-plane`) run the same strip on their staged build context and then drop the
+  strip tool itself, so neither the stub nor the needle reaches the runtime stage; the managed-runtime
+  bundle EXCLUDES the stub module in [runtime_bundle.spec](../scripts/runtime_bundle.spec). Every
+  built artifact is then proven clean by [scripts/verify_no_dev_secret.py](../scripts/verify_no_dev_secret.py)
+  (`make verify-no-dev-secret IMAGE=…|BUNDLE=…`): a byte scan of the exported image filesystem /
+  bundle tarball plus, for the frozen daemon, its PYZ table of contents and decompressed bytecode.
+  CI runs it on every image before the registry push and again on the pulled image before any Fly
+  rollout, and on the bundle tarball inside the release build.
 - **Air-gap request→portal→response ceremony** — node runs
   [scripts/generate_offline_request.py](../scripts/generate_offline_request.py) (a signed request
   bound to its device-key thumbprint, carrying measured vCPU + host evidence + nonce); the operator

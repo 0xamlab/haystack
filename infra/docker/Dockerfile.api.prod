@@ -38,6 +38,14 @@ RUN test -s /build/context/packages/mcp/algenta_mcp/products.py \
  && test -s /build/context/apps/api_server/main.py \
  || { echo "FATAL: build context/cache corrupted a critical source file (zero-byte)"; exit 1; }
 
+# Production artifacts must not carry the HS256 dev-licence secret (secret-scanning #14). Delete the
+# dev stub from the staged context and FAIL the build if any copy of the needle survives anywhere in
+# it, then drop the strip tool itself -- the one other file that legitimately holds the needle -- so
+# the runtime stage's wholesale COPY of apps/ and scripts/ cannot ship either. The finished image is
+# gated again by scripts/verify_no_dev_secret.sh before any registry push or Fly rollout.
+RUN python3 /build/context/scripts/strip_dev_stub.py --package-root /build/context \
+ && rm /build/context/scripts/strip_dev_stub.py
+
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM python:3.14-slim AS runtime
 

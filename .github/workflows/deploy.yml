@@ -67,6 +67,7 @@ jobs:
           # Architecture-agnostic deploy: images are built linux/amd64 (the Fly target) --
           # pin the pull to the image platform, never inherit the runner's arch.
           docker pull --platform linux/amd64  "$SRC/engine:$TAG"
+          bash scripts/verify_no_dev_secret.sh "$SRC/engine:$TAG"
           docker tag   "$SRC/engine:$TAG" "registry.fly.io/codna-engine:$TAG"
           docker push  "registry.fly.io/codna-engine:$TAG"
           flyctl deploy -c fly.engine.toml -a codna-engine -i "registry.fly.io/codna-engine:$TAG"
@@ -77,6 +78,7 @@ jobs:
         run: |
           set -euo pipefail
           docker pull --platform linux/amd64  "$SRC/api:$TAG"
+          bash scripts/verify_no_dev_secret.sh "$SRC/api:$TAG"
           bash scripts/verify_api_image_mojo_server_mode.sh "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/codna-api:$TAG"
           docker push  "registry.fly.io/codna-api:$TAG"
@@ -90,6 +92,7 @@ jobs:
         run: |
           set -euo pipefail
           docker pull --platform linux/amd64  "$SRC/api:$TAG"
+          bash scripts/verify_no_dev_secret.sh "$SRC/api:$TAG"
           docker tag   "$SRC/api:$TAG" "registry.fly.io/algenta-control-plane:$TAG"
           docker push  "registry.fly.io/algenta-control-plane:$TAG"
           flyctl deploy -c fly.control-plane.toml -a algenta-control-plane -i "registry.fly.io/algenta-control-plane:$TAG"

@@ -174,9 +174,18 @@ production-wheel:
 	cd build/wheel-staging && ALGENTA_LICENSE_RS256_ONLY=1 python3 -m build --wheel 2>/dev/null || \
 		echo "(staging stripped + verified; run 'python -m build --wheel' in build/wheel-staging to produce the wheel)"
 
-## Verify a staged/unpacked package tree contains no HS256 dev secret (CI guard)
+## Verify a BUILT artifact contains no HS256 dev secret (CI guard; secret-scanning #14). Usage:
+##   make verify-no-dev-secret                      # the `make production-wheel` staging tree
+##   make verify-no-dev-secret IMAGE=<image-ref>    # a container image's exported filesystem
+##   make verify-no-dev-secret BUNDLE=<tar.gz>      # a runtime-bundle tarball (incl. the frozen PYZ)
 verify-no-dev-secret:
-	python3 scripts/strip_dev_stub.py --package-root build/wheel-staging
+ifdef IMAGE
+	bash scripts/verify_no_dev_secret.sh "$(IMAGE)"
+else ifdef BUNDLE
+	python3 scripts/verify_no_dev_secret.py --tar "$(BUNDLE)"
+else
+	python3 scripts/verify_no_dev_secret.py --tree build/wheel-staging
+endif
 
 # ─── Testing ───────────────────────────────────────────────────────────────────
 

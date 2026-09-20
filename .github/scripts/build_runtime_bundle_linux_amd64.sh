@@ -69,6 +69,16 @@ python3 scripts/verify_runtime_bundle.py \
   /work/dist/runtime-bundle/algenta-runtime-*-linux-x64.tar.gz \
   --public-key /work/dist/runtime-bundle/bundle-signing-public.pem
 
+# ── Gate: the bundle must not carry the HS256 dev-licence secret (secret-scanning #14) ───────
+# scripts/runtime_bundle.spec EXCLUDES apps.runtime._dev_license_stub; this proves it on the
+# OUTPUT: byte-scans every member and opens the frozen daemon's PYZ (zlib-compressed, so a raw
+# scan alone cannot see into it) to assert the module is absent and no bytecode holds the needle.
+# Runs here, inside the container, because the PYZ check needs the PyInstaller installed above. The
+# glob is QUOTED: the gate resolves it and refuses anything but exactly one match, so neither a
+# zero-match literal nor stale tarballs from an earlier run can change the argument list.
+python3 scripts/verify_no_dev_secret.py \
+  --tar-glob '/work/dist/runtime-bundle/algenta-runtime-*-linux-x64.tar.gz'
+
 # The container ran as root on the mounted runner workspace; hand the produced trees back to
 # the workspace owner so the runner-side steps (the metadata `cp` INTO dist/runtime-bundle and
 # the artifact upload, both as a non-root user) are not locked out by root-owned files.
