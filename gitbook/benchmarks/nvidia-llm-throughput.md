@@ -159,18 +159,21 @@ Same-session re-measurement against TensorRT-LLM 1.2.1 (NVCR release container, 
 backend, bfloat16 weights, Hugging Face checkpoint loaded directly, KV-cache and prefix
 block reuse disabled, CUDA graphs at engine defaults). Engine-internal timings on both
 sides (no HTTP layer); clocks pinned at 1410 MHz; greedy decoding; token counts verified
-server-side; median of 7 runs per engine; rel-IQR <= 0.69% on all cells; greedy
+server-side; median of 8 runs per cell on the Algenta side with the TensorRT-LLM side
+re-served in the same session; min-max spread <= 0.77% on all Algenta cells; greedy
 continuations match the fp32 oracle on both engines (16/16 and 64/64 gates, bit-identical
-repeats). One-time engine initialisation (weight staging and CUDA module priming across
-the dispatch bands) is paid at serve startup on both engines, not per request.
+repeats), and the measured default is certified full-scope against the oracle at 256,
+1024, 550 and 4096 tokens. One-time engine initialisation (weight staging and CUDA module
+priming across the dispatch bands) is paid at serve startup on both engines, not per
+request.
 
 | Engine | Prefill 256 tok/s | Prefill 1024 tok/s | Prefill RAG-4096 tok/s |
 | --- | --- | --- | --- |
-| Algenta (CUDA tensor-core gemma seam, fused windowed flash attention (raw-mma FA2), GQA-packed attention, vectorised RoPE/KV-write, f16-KV twin, pre-staged f16 chain, warm-init staging) | 8,337 | 10,891 | 10,626 |
-| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,194 | 9,247 | 9,539 |
+| Algenta (CUDA tensor-core gemma seam, fused windowed flash attention (raw-mma FA2), GQA-packed attention, vectorised RoPE/KV-write, f16-KV twin, vectorised f16 GeGLU, pre-staged f16 chain, warm-init staging) | 8,781 | 11,512 | 10,626 |
+| TensorRT-LLM 1.2.1 (bfloat16, PyTorch backend) | 6,108 | 9,231 | 9,539 |
 
-Prefill speedup at 256 tokens: 1.35x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
-1.18x vs TensorRT-LLM. Prefill speedup on 4096-token retrieval context: 1.11x vs
+Prefill speedup at 256 tokens: 1.44x vs TensorRT-LLM. Prefill speedup at 1024 tokens:
+1.25x vs TensorRT-LLM. Prefill speedup on 4096-token retrieval context: 1.11x vs
 TensorRT-LLM.
 
 ## Scope
