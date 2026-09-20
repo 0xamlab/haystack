@@ -392,7 +392,20 @@ if [[ "$STAGE" == "all" || "$STAGE" == "smoke" ]]; then
       || echo "NOTE: no GEGLU_V2 banner for $a (EXPECTED for $ARM_A, FATAL for $ARM_B)"
     grep -m1 "^G3 FLAGS:" "$L18"/runs/smoke_*"${a}"_pp1024.out 2>/dev/null | tee -a "$CW_LOGFILE"
   done
-  if ! grep -q "gegluv_armed = true" "$L18"/runs/smoke_*"${ARM_B}"_pp1024.out 2>/dev/null; then
+# MOJO RENDERS `Bool` CAPITALISED, AND THIS PATTERN NEVER KNEW. The banner is printed by
+# `print("... gegluv_armed =", self.d_ff % _G3_GEGLUV_VEC == 0, ...)`, and Mojo renders a Bool as
+# `True`/`False`, so the cells contain `gegluv_armed = True`. Every check in this campaign was
+# written against a lowercase `gegluv_armed = true` and therefore NEVER MATCHED A REAL BANNER --
+# round 19 measured it on the box: 10 occurrences of `gegluv_armed = True` and ZERO of the lowercase
+# spelling across the 11 banked gate cells. The consequence is not a missing assertion but a
+# PERMANENTLY FALSE one: `audit_tc_flags.sh` reported `gegluv_armed: false` for correctly-armed arms,
+# and the runner/chain assertions FATAL on an arm that is in fact live. A safety field that is always
+# false is worse than no field, because it cries wolf until a genuinely declined arm is waved through
+# as the same known bug. It went unnoticed because round 18's windows died earlier for other reasons
+# and its timing was launched by hand after a manual recovery, so the assertion never ran to verdict.
+# Both spellings are accepted: `[Tt]rue` matches what Mojo emits today and keeps working if a future
+# toolchain lowercases it, and a DECLINED arm still fails both, which is the case that must not slip.
+  if ! grep -qE "gegluv_armed = [Tt]rue" "$L18"/runs/smoke_*"${ARM_B}"_pp1024.out 2>/dev/null; then
     log "FATAL: $ARM_B did not report gegluv_armed = true. The shape gate declined and the arm"
     log "       would run the SCALAR twin — any bracket would be a null wearing the lever's name."
     log "       Refusing to spend gate or timing minutes on it."

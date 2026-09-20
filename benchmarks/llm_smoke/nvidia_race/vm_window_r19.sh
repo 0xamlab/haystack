@@ -44,7 +44,10 @@ set -uo pipefail
 VM=${VM:-trtllm-gemma-us-west1-c}
 ZONE=${ZONE:-us-west1-c}
 PROJECT=${PROJECT:-eplanev2}
-CAP_MIN=${CAP_MIN:-90}          # the owner's hard cap on VM-ON time
+CAP_MIN=${CAP_MIN:-90}          # the owner's standing hard cap on VM-ON time. The round-19 RE-SERVE
+                                # window overrides it to 75 via env (owner-authorised), because it
+                                # re-proves a banked gate instead of re-running it; the default stays
+                                # 90 so a future full window is not silently under-capped.
 GRACE_MIN=${GRACE_MIN:-5}       # ... plus grace, for the stop to land
 STOP_MARGIN_S=${STOP_MARGIN_S:-180}   # issue the stop this far BEFORE the deadline
 START_TRIES=${START_TRIES:-2}
@@ -330,7 +333,41 @@ log "launching chain19.sh under setsid+nohup, stdin /dev/null, disowned"
 #   pp1024 bracket, 1 warm + 4 meas per slot + 1 close = 11  ~22 min  ->  64
 #   pp256  bracket, same shape                               ~22 min  ->  86
 #   same-session TRT-LLM re-serve, three cells                ~3 min  ->  89
-# **Both brackets and the re-serve fit inside a 92 min usable horizon, with ~3 min of slack.** The
+# **Both brackets and the re-serve fit inside a 92 min usable horizon, with ~3 min of slack.**
+#
+# ── THE RE-SERVE WINDOW (CAP_MIN=75), WHICH IS WHAT ROUND 19 ACTUALLY RAN SECOND ───────────────
+# Round 19's first window completed the FULL-SCOPE gate -- 11 cells, all four shapes, all_pass=True,
+# 0 divergences, banked at ~/lever19/oracle_gate_R19_def.json with the arms at
+# R19_def e4c6fbe26376f817 / R19_ctl c033fd2982dc6435 -- and then a greedy `.*scope=` in this chain's
+# coverage counter matched `out_of_scope=none`, counted "1 of 4", and refused a gate that had passed.
+# Re-running those 11 cells (~26 min) to re-derive a verdict already on disk would spend a third of a
+# 75-min window, so the re-serve runs SKIP_GATE=1 + SKIP_BUILD=1, which RE-PROVE rather than trust:
+# the coverage evaluator over the banked JSON, the 11 cells still on disk, R19_def's hash == the pinned
+# gated hash (so the certification provably attaches to the binary being timed -- a rebuild would
+# silently detach it, which is round 14's reason a mismatch is FATAL and not a warning), and
+# `gegluv_armed = true` re-read from a banked gate cell. `mojo/` and `scripts/` are byte-identical
+# between the gated commit 5f12d6f5 and the current head, so the pinned binary is exactly what this
+# tree compiles and traceability is intact without a rebuild.
+#   boot + sshd probe + sync + launch                        ~4 min  ->   4
+#   stage: re-runs and RE-PROVES fixture identity against     ~7 min  ->  11
+#          round 6's certified echoes (/tmp + /mnt/ramblob are tmpfs and died with the stop, so
+#          SKIP_STAGE is NOT honoured on a fresh boot)
+#   SKIP_BUILD re-verify (hashes + the runner's binary audit) ~1 min  ->  12
+#   SKIP_GATE  re-verify (evaluator + cells + armed)         ~0 min  ->  12
+#   pp1024 bracket, 1 warm + 4 meas per slot + 1 close = 11  ~22 min  ->  34
+#   pp256  bracket, same shape                               ~22 min  ->  56
+#   same-session TRT-LLM re-serve, three cells                ~3 min  ->  59
+# **~59 min against a 77 min usable horizon (75 + 5 grace, less the 180 s stop margin): ~18 min of
+# contingency**, which is the margin the first window's ~3 min did not have.
+#
+# THE FLIP LICENCE IS BOTH PROMPTS OR NOTHING, and the chain now enforces it mechanically rather than
+# leaving it to a reader: REQUIRED_PROMPTS="pp1024 pp256", a prompt counts only if the runner logged
+# `CELLGROUP <n> complete` AND a closing cell exists on disk (an incomplete bracket is unpublishable,
+# not partial progress), and `FLIP_LICENSED` is written into CHAIN_EXIT. If the governor must drop
+# pp256 for the clock, the answer is a REFUSAL -- because the published pp256 row (1.35x) would then
+# describe a configuration that is no longer the shipped default, and a stale row on a flipped default
+# is a docs-integrity defect, not a rounding nicety. The governor still declines rather than starts a
+# bracket it cannot finish, and the TRT reserve stays protected.
 # slack is thin, so the governor still decides from the clock: it walks pp1024 then pp256, prices
 # n=4 per slot (n_reported=8) then n=3 (n_reported=6, the mission's floor), and **reserves both the
 # 8 min TRT re-serve and the next prompt's minimum viable bracket before starting this one** — the
@@ -353,6 +390,9 @@ gcloud compute ssh "$VM" --project="$PROJECT" --zone="$ZONE" --command \
    SKIP_SMOKE='${SKIP_SMOKE:-1}' CELL_S_RAG='${CELL_S_RAG:-140}' \
    CELL_S_PP1024='${CELL_S_PP1024:-122}' CELL_S_PP256='${CELL_S_PP256:-118}' \
    SKIP_STAGE='${SKIP_STAGE:-}' \
+   SKIP_GATE='${SKIP_GATE:-}' SKIP_BUILD='${SKIP_BUILD:-}' \
+   EXPECT_DEF_SHA='${EXPECT_DEF_SHA:-}' EXPECT_CTL_SHA='${EXPECT_CTL_SHA:-}' \
+   REQUIRED_PROMPTS='${REQUIRED_PROMPTS:-}' \
    setsid nohup bash ~/g3r19/benchmarks/llm_smoke/nvidia_race/chain19.sh \
    </dev/null >~/lever19/chain19.out 2>&1 & disown; sleep 2; \
    echo LAUNCHED pid=\$(pgrep -f chain19.sh | head -1)" >>"$LOCAL_LOG" 2>&1

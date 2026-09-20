@@ -259,7 +259,23 @@ LT_INSITU_FROZEN_PAT="LT INSITU: FROZEN 4"
 # lever-conditional value from it would make every flag-off build reference the twin.
 # `gegluv_armed = false` means the shape gate declined and the arm ran the SCALAR twin — i.e. the
 # cell is a control cell. It cannot be false on gemma-3-27b (`d_ff = 21504 = 8 x 2688`).
-GEGLUV_ARMED_PAT="gegluv_armed = true"
+# MOJO RENDERS `Bool` CAPITALISED, AND THIS PATTERN NEVER KNEW. The banner is printed by
+# `print("... gegluv_armed =", self.d_ff % _G3_GEGLUV_VEC == 0, ...)`, and Mojo renders a Bool as
+# `True`/`False`, so the cells contain `gegluv_armed = True`. Every check in this campaign was
+# written against a lowercase `gegluv_armed = true` and therefore NEVER MATCHED A REAL BANNER --
+# round 19 measured it on the box: 10 occurrences of `gegluv_armed = True` and ZERO of the lowercase
+# spelling across the 11 banked gate cells. The consequence is not a missing assertion but a
+# PERMANENTLY FALSE one: `audit_tc_flags.sh` reported `gegluv_armed: false` for correctly-armed arms,
+# and the runner/chain assertions FATAL on an arm that is in fact live. A safety field that is always
+# false is worse than no field, because it cries wolf until a genuinely declined arm is waved through
+# as the same known bug. It went unnoticed because round 18's windows died earlier for other reasons
+# and its timing was launched by hand after a manual recovery, so the assertion never ran to verdict.
+# Both spellings are accepted: `[Tt]rue` matches what Mojo emits today and keeps working if a future
+# toolchain lowercases it, and a DECLINED arm still fails both, which is the case that must not slip.
+# `has_lit`-style fixed-string tests cannot express a character class, so the two spellings are two
+# patterns and the field is true if EITHER matches.
+GEGLUV_ARMED_PAT="gegluv_armed = True"
+GEGLUV_ARMED_PAT_LC="gegluv_armed = true"
 
 # POSITIVE CONTROLS. A literal every driver of the family carries regardless of flags. If
 # neither is found, the audit is broken (not the binary) and must abort rather than report an
@@ -404,7 +420,7 @@ for bin in "$BIN_DIR"/$pat; do
         # ROUND 18: `gegluv_armed` is the one field whose FALSE value is bad while the flag is
         # present — it means the shape gate declined to the scalar twin, so the cell measured the
         # control kernel while claiming ALGENTA_G3_PF_GEGLU_V2. Recorded per-arm, never assumed.
-        echo "   \"gegluv_armed\": $( [[ "$gegluvline" == *"$GEGLUV_ARMED_PAT"* ]] && echo true || echo false ),"
+        echo "   \"gegluv_armed\": $( { [[ "$gegluvline" == *"$GEGLUV_ARMED_PAT"* ]] || [[ "$gegluvline" == *"$GEGLUV_ARMED_PAT_LC"* ]]; } && echo true || echo false ),"
         echo "   \"gegluv_line\": $( [[ -n "$gegluvline" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$gegluvline" || echo null ),"
         echo "   \"o16_line\": $( [[ -n "$o16line" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16line" || echo null ),"
         echo "   \"o16_decline_line\": $( [[ -n "$o16dec" ]] && python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$o16dec" || echo null ),"

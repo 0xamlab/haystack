@@ -120,6 +120,15 @@ GATE_SPECS=${GATE_SPECS:-"pp256:/tmp/g3pp256/prompt_0000.txt pp1024:/tmp/g3pp102
 PROMPT_PP1024="pp1024:/tmp/g3pp1024/prompt_0000.txt:1"
 PROMPT_PP256="pp256:/tmp/g3pp256/prompt_0000.txt:1"
 PROMPTS_ORDER=${PROMPTS_ORDER:-"$PROMPT_PP1024 $PROMPT_PP256"}
+# REQUIRED_PROMPTS is what the flip is licensed on, and it is BOTH, not "as many as fit". The owner's
+# rule, made explicit before the box was started: the default-flip PR merges only when pp1024 AND pp256
+# cells plus their same-session TRT are in hand alongside the banked full-scope gate and round 18's rag
+# bracket. If the governor must drop pp256 for the clock, this chain STOPS and reports rather than
+# handing back a half-measured flip -- because the published pp256 row (1.35x) would then describe a
+# configuration that is no longer the shipped default, and a stale row on a flipped default is a
+# docs-integrity defect, not a rounding nicety. Dropping pp1024 instead is equally fatal.
+REQUIRED_PROMPTS=${REQUIRED_PROMPTS:-"pp1024 pp256"}
+DONE_PROMPTS=""
 # n candidates per SLOT, in preference order. n_reported = 2 x MEAS_RUNS because both slots are the
 # same binary. The floor is 3 (n=6) — the mission's n>=5 — and the preference is 4 (n=8), which is
 # what round 14 measured the post-#1042 default on.
@@ -154,6 +163,10 @@ fi
 export CW_DEADLINE_EPOCH
 
 mkdir -p "$L19/logs" "$L19/runs" "$L19/clocks"
+# Freshness reference for the TRT JSON copy below: a file older than this chain's own start is a
+# previous window's re-serve and must never be passed off as same-session.
+CHAIN_START_MARK=$L19/.chain_start
+: > "$CHAIN_START_MARK"
 CW_LOGFILE=${CW_LOGFILE:-$L19/round19.log}
 export CW_LOGFILE
 HB=$L19/heartbeat.log
@@ -186,6 +199,11 @@ CHAIN_EXIT=$L19/CHAIN_EXIT
 : > "$CHAIN_EXIT"
 TIMING_COMPLETE=no
 TRT_DONE=no
+# FLIP_LICENSED is the owner's row-integrity rule made mechanical: a flipped default whose pp256 row
+# was never re-measured is a STALE PUBLISHED ROW, i.e. a docs-integrity defect, so "one prompt fit and
+# the other did not" is NOT a partial success -- it is a refusal to flip. Only yes licenses the merge.
+FLIP_LICENSED=no
+RAG_TRT_BASIS=unset
 set_gate "NOT_RUN"
 chain_exit() {
   local rc=$1
@@ -196,6 +214,9 @@ chain_exit() {
     echo "gate_verdict=$GATE_VERDICT"
     echo "timing_complete=$TIMING_COMPLETE"
     echo "trt_reserve_done=$TRT_DONE"
+    echo "flip_licensed=$FLIP_LICENSED"
+    echo "prompts_completed=$DONE_PROMPTS"
+    echo "rag_trt_basis=$RAG_TRT_BASIS"
     echo "measured_cells=$(ls -1 "$L19"/runs/r6*_r[0-9].out 2>/dev/null | wc -l | tr -d ' ')"
     echo "gate_cells=$(ls -1 "$L19"/gate_*/gate_*.out 2>/dev/null | wc -l | tr -d ' ')"
     echo "deadline_epoch=${CW_DEADLINE_EPOCH:-unset}"
@@ -482,9 +503,25 @@ if [[ "${SKIP_GATE:-0}" == "1" ]]; then
     [[ "$dh" == "$EXPECT_DEF_SHA" ]] || { log "  *** the binary is NOT the gated one"; gok=0; }
   fi
   if (( gok == 1 )); then
-    ga=$(grep -rl "gegluv_armed" "$L19/gate_$DEF" 2>/dev/null | head -1)
-    if [[ -n "$ga" ]] && grep -q "gegluv_armed = true" "$ga" 2>/dev/null; then
-      log "  gegluv_armed = true re-read from the banked gate cell $ga"
+# MOJO RENDERS `Bool` CAPITALISED, AND THIS PATTERN NEVER KNEW. The banner is printed by
+# `print("... gegluv_armed =", self.d_ff % _G3_GEGLUV_VEC == 0, ...)`, and Mojo renders a Bool as
+# `True`/`False`, so the cells contain `gegluv_armed = True`. Every check in this campaign was
+# written against a lowercase `gegluv_armed = true` and therefore NEVER MATCHED A REAL BANNER --
+# round 19 measured it on the box: 10 occurrences of `gegluv_armed = True` and ZERO of the lowercase
+# spelling across the 11 banked gate cells. The consequence is not a missing assertion but a
+# PERMANENTLY FALSE one: `audit_tc_flags.sh` reported `gegluv_armed: false` for correctly-armed arms,
+# and the runner/chain assertions FATAL on an arm that is in fact live. A safety field that is always
+# false is worse than no field, because it cries wolf until a genuinely declined arm is waved through
+# as the same known bug. It went unnoticed because round 18's windows died earlier for other reasons
+# and its timing was launched by hand after a manual recovery, so the assertion never ran to verdict.
+# Both spellings are accepted: `[Tt]rue` matches what Mojo emits today and keeps working if a future
+# toolchain lowercases it, and a DECLINED arm still fails both, which is the case that must not slip.
+    # Search ONLY the cell .out files and for the ARMED literal directly: `grep -rl` over the whole
+    # gate dir also walks clocks/ and logs/, and `head -1` then hands back whichever file the
+    # traversal reached first rather than one that can answer the question.
+    ga=$(grep -lE "gegluv_armed = [Tt]rue" "$L19/gate_$DEF"/gate_*.out 2>/dev/null | head -1)
+    if [[ -n "$ga" ]]; then
+      log "  $(grep -ohE "gegluv_armed = [Tt]rue" "$ga" | head -1) re-read from the banked gate cell $ga"
     else
       log "  *** gegluv_armed is not true in the banked gate cells"; gok=0
     fi
@@ -604,7 +641,20 @@ if [[ -z "$ARMED" ]]; then
 fi
 grep -m1 "TCFLAG ALGENTA_G3_PF_GEGLU_V2" "$ARMED" 2>/dev/null | tee -a "$CW_LOGFILE"
 grep -m1 "^G3 FLAGS:" "$ARMED" 2>/dev/null | tee -a "$CW_LOGFILE"
-if ! grep -q "gegluv_armed = true" "$ARMED" 2>/dev/null; then
+# MOJO RENDERS `Bool` CAPITALISED, AND THIS PATTERN NEVER KNEW. The banner is printed by
+# `print("... gegluv_armed =", self.d_ff % _G3_GEGLUV_VEC == 0, ...)`, and Mojo renders a Bool as
+# `True`/`False`, so the cells contain `gegluv_armed = True`. Every check in this campaign was
+# written against a lowercase `gegluv_armed = true` and therefore NEVER MATCHED A REAL BANNER --
+# round 19 measured it on the box: 10 occurrences of `gegluv_armed = True` and ZERO of the lowercase
+# spelling across the 11 banked gate cells. The consequence is not a missing assertion but a
+# PERMANENTLY FALSE one: `audit_tc_flags.sh` reported `gegluv_armed: false` for correctly-armed arms,
+# and the runner/chain assertions FATAL on an arm that is in fact live. A safety field that is always
+# false is worse than no field, because it cries wolf until a genuinely declined arm is waved through
+# as the same known bug. It went unnoticed because round 18's windows died earlier for other reasons
+# and its timing was launched by hand after a manual recovery, so the assertion never ran to verdict.
+# Both spellings are accepted: `[Tt]rue` matches what Mojo emits today and keeps working if a future
+# toolchain lowercases it, and a DECLINED arm still fails both, which is the case that must not slip.
+if ! grep -qE "gegluv_armed = [Tt]rue" "$ARMED" 2>/dev/null; then
   log "FATAL: gegluv_armed is NOT true in $ARMED. The shape gate declined; the arm ran the SCALAR"
   log "       twin. No timing may be taken and no delta may be attributed to this lever."; exit 1
 fi
@@ -651,10 +701,37 @@ for spec in $PROMPTS_ORDER; do
       log "=== timing bracket A=$DEF B=$TWIN prompt=$n MEAS_RUNS=$mr ($nc cells, n=$(( mr * 2 ))) ==="
       log "    armor protocol: $WARM_RUNS warmup + $mr measured per slot + $CLOSE_RUNS closing (A..B..A)"
       (( mr != 7 )) && log "    NOTE: NON-DEFAULT n -- the pooled n and the drift armor must be reported with it"
+      # PROMPTS_ORDER AND MEAS_RUNS_CANDIDATES ARE BOTH PINNED TO THIS ONE PROMPT AND THIS ONE n.
+      # DEFECT, MEASURED IN ROUND 19'S RE-SERVE WINDOW: the runner's timing stage iterates its OWN
+      # `PROMPTS_ORDER` (which this chain exports as BOTH prompts) and re-prices n from its own
+      # `MEAS_RUNS_CANDIDATES`, so passing only `PROMPTS="$spec"` did NOT scope it. The first
+      # invocation therefore ran pp1024 AND pp256 back-to-back (11 cells each) at an n IT chose, and
+      # this chain's per-prompt loop became a second, redundant governor that then "declined" a prompt
+      # the runner had already completed -- which is how `prompts_completed` came to list only pp1024
+      # while 11 pp256 cells with a closing cell sat on disk. Worse, had the clock allowed it, the
+      # second invocation would have re-run pp1024 and overwritten its cells. Two governors over one
+      # budget is not redundancy, it is a disagreement; pinning both knobs makes this chain the only
+      # one that decides, and the runner's own governor then has exactly one candidate to approve.
       run_phase "timing_$n" env STAGE=timing BUILD_ARMS=0 ARM_A="$DEF" ARM_B="$TWIN" ARM_C= \
-        CELLTAG="$CELLTAG" MEAS_RUNS="$mr" WARM_RUNS="$WARM_RUNS" CLOSE_RUNS="$CLOSE_RUNS" \
+        CELLTAG="$CELLTAG" MEAS_RUNS="$mr" MEAS_RUNS_CANDIDATES="$mr" PROMPTS_ORDER="$spec" \
+        WARM_RUNS="$WARM_RUNS" CLOSE_RUNS="$CLOSE_RUNS" \
         PROMPTS="$spec" bash "$RUNNER" || { log "TIMING $n returned non-zero"; }
       picked=1
+      # COMPLETION IS READ FROM THE RUNNER'S OWN MARKER AND FROM A CLOSING CELL ON DISK, not from the
+      # phase's exit code. A group killed mid-bracket leaves cells and no closing cell, and that state
+      # must never be reported as a finished measurement -- the same reason TIMING_COMPLETE keys on
+      # `TIMING DONE` rather than on rc. The closing cell is what makes the armor computable, so a
+      # bracket without one does not count toward the flip licence either.
+      ncell=$(ls -1 "$L19"/runs/r6*"${CELLTAG}"_*_"${n}"_r*.out 2>/dev/null | wc -l | tr -d ' ')
+      nclose=$(ls -1 "$L19"/runs/r6*"${CELLTAG}"_*_"${n}"_close*.out 2>/dev/null | wc -l | tr -d ' ')
+      if grep -q "CELLGROUP $n complete" "$CW_LOGFILE" 2>/dev/null && (( ncell > 0 && nclose > 0 )); then
+        DONE_PROMPTS="$DONE_PROMPTS $n"
+        log "PROMPT $n COMPLETE: $ncell measured cells + $nclose closing cell(s), CELLGROUP closed"
+      else
+        log "*** PROMPT $n INCOMPLETE: $ncell measured cells, $nclose closing cells, CELLGROUP marker"
+        log "    $(grep -c "CELLGROUP $n complete" "$CW_LOGFILE" 2>/dev/null). NOT counted toward the"
+        log "    flip licence -- an incomplete bracket is unpublishable, not partial progress."
+      fi
       break
     fi
     log "    n=$mr DOES NOT FIT (${cost} > $(( have - res )) min free) — trying the next candidate"
@@ -666,6 +743,40 @@ for spec in $PROMPTS_ORDER; do
   fi
   idx=$((idx + 1))
 done
+# ── THE FLIP LICENCE, EVALUATED MECHANICALLY RATHER THAN LEFT TO A READER OF THE LOG ────────────
+# COMPLETION IS READ FROM EVIDENCE, NOT FROM BOOKKEEPING. The loop above records a prompt only if THIS
+# chain invoked the runner for it, which round 19 proved is not the same question: the runner closed
+# pp256's CELLGROUP inside the pp1024 invocation, so the ledger of invocations said "pp256 missing"
+# while 11 pp256 cells with a closing cell sat on disk. A licence verdict that depends on who called
+# whom is a verdict about the harness; the owner's rule is about the DATA. So rescan the window log for
+# every CELLGROUP this session closed and union it with the invocation record, requiring a closing cell
+# on disk for each -- the same two-part test, applied to the evidence rather than to the call graph.
+for rp in $REQUIRED_PROMPTS; do
+  case " $DONE_PROMPTS " in *" $rp "*) continue ;; esac
+  nc=$(ls -1 "$L19"/runs/r6*"${CELLTAG}"_*_"${rp}"_close*.out 2>/dev/null | wc -l | tr -d ' ')
+  nm=$(ls -1 "$L19"/runs/r6*"${CELLTAG}"_*_"${rp}"_r*.out 2>/dev/null | wc -l | tr -d ' ')
+  if grep -q "CELLGROUP $rp complete" "$CW_LOGFILE" 2>/dev/null && (( nc > 0 && nm > 0 )); then
+    DONE_PROMPTS="$DONE_PROMPTS $rp"
+    log "PROMPT $rp COMPLETE BY EVIDENCE: CELLGROUP closed, $nm measured + $nc closing cell(s) on"
+    log "  disk, though this chain's own invocation record did not credit it (see the defect note"
+    log "  above). Counted, because the licence is about the data."
+  fi
+done
+missing=""
+for rp in $REQUIRED_PROMPTS; do
+  case " $DONE_PROMPTS " in *" $rp "*) ;; *) missing="$missing $rp" ;; esac
+done
+if [[ -z "$missing" ]]; then
+  log "REQUIRED PROMPTS COMPLETE:${DONE_PROMPTS} -- pending the same-session TRT re-serve below"
+else
+  log "*** FLIP NOT LICENSED: required prompt(s) NOT completed:${missing} (completed:${DONE_PROMPTS:- none})"
+  log "    The owner's rule is that the default-flip PR merges ONLY when pp1024 AND pp256 cells plus"
+  log "    their same-session TRT are in hand. A flipped default with an un-re-measured published row is"
+  log "    a docs-integrity defect, so this is a REFUSAL and not a partial success. The TRT re-serve"
+  log "    still runs if it is affordable, because a same-session comparator banked against the"
+  log "    completed prompt is reusable evidence and costs ~3 min; but no row moves and no flip lands."
+fi
+
 if grep -q "TIMING DONE" "$CW_LOGFILE" 2>/dev/null; then
   TIMING_COMPLETE=yes
   log "timing_complete=yes — a bracket group closed (TIMING DONE present in the window log)"
@@ -684,9 +795,25 @@ if (( $(affordable_min) < 4 )); then
   log "CONSEQUENCE: no same-session comparator, so NO published row may move on this window's cells"
 else
   run_phase trtllm env GPU="$GPU" bash "$L3/lv3_trtllm.sh" || log "RESERVE_WARN: the re-serve returned non-zero"
-  cp -f "$L3"/runs/trtllm_pp256.json "$L3"/runs/trtllm_pp1024.json \
-        "$L3"/runs/trtllm_rag4096.json "$L19/runs/" 2>/dev/null || true
-  if ls "$L19"/runs/trtllm_*.json >/dev/null 2>&1; then
+  # COPY ONLY JSONs NEWER THAN THIS CHAIN'S OWN START, and say so. `~/lever3/runs/` accumulates every
+  # previous window's re-serve -- round 19 found round 14's files there, dated Sep 19 07:02, i.e. 17
+  # hours stale -- and an unconditional `cp` followed by `ls trtllm_*.json` would have set TRT_DONE=yes
+  # on those and handed the summariser a comparator from another session labelled as this one. The
+  # summariser does print the mtime in its comparator label, so the laundering would have been
+  # VISIBLE rather than silent; this makes it impossible instead.
+  copied=0
+  for c in pp256 pp1024 rag4096; do
+    src="$L3/runs/trtllm_$c.json"
+    [[ -f "$src" ]] || { log "  no trtllm_$c.json from the re-serve"; continue; }
+    if [[ "$src" -nt "$CHAIN_START_MARK" ]]; then
+      cp -f "$src" "$L19/runs/" && copied=$((copied + 1))
+    else
+      log "  REFUSING to copy trtllm_$c.json: mtime $(date -u -r "$src" +%FT%TZ 2>/dev/null) is OLDER"
+      log "    than this chain's start -- it is a previous window's re-serve, not this session's."
+    fi
+  done
+  log "  copied $copied of 3 fresh same-session TRT JSONs into $L19/runs"
+  if (( copied >= 2 )); then
     TRT_DONE=yes
     log "TRT re-serve JSONs copied into $L19/runs — the summariser will read them as SAME-SESSION"
   else
@@ -748,6 +875,38 @@ for cell in ("pp256", "pp1024", "rag4096"):
           % (worst, "within 1%, same-session comparator is sound"
              if worst <= 1.0 else "EXCEEDS 1% — label the ratio CROSS-SESSION and say why"))
 PY
+fi
+
+# ── 8b. THE rag4096 COMPARATOR BASIS, DECIDED AND RECORDED RATHER THAN ASSUMED ─────────────────
+# `lv3_trtllm.sh` serves all three cells from ONE startup, so a fresh rag4096 comparator costs nothing
+# extra once the server is up. Round 18 could not re-serve at all and had to reuse round 13's
+# same-session pair (429.400 ms) for its rag row, which made its 1.1653x headline CROSS-SESSION. The
+# owner's rule for this window: prefer the fresh same-session number UNLESS a single confirmation serve
+# drifts >1% from the basis round 18 used, in which case reuse round 18's pair and SAY SO. Either way
+# the choice is written down, because a ratio whose comparator basis is unstated is not auditable.
+if [[ "$TRT_DONE" == "yes" && -f "$L19/runs/trtllm_rag4096.json" ]]; then
+  # Its own file, NOT an inline heredoc: a heredoc inside `$( )` is unsafe on macOS bash 3.2 (the
+  # owner's standing rule for this campaign), and an inline copy cannot be regression-tested off-box.
+  RAG_TRT_BASIS=$(/usr/bin/python3 "$NR/rag_trt_basis_r19.py" "$L19/runs/trtllm_rag4096.json" 2>&1)
+  log "rag4096 TRT COMPARATOR BASIS: $RAG_TRT_BASIS"
+elif [[ "$TRT_DONE" == "yes" ]]; then
+  RAG_TRT_BASIS="NO rag4096 JSON despite a completed re-serve -> reuse round-18 pair (round 13 same-session 429.400 ms)"
+  log "rag4096 TRT COMPARATOR BASIS: $RAG_TRT_BASIS"
+else
+  RAG_TRT_BASIS="re-serve did not run -> reuse round-18 pair (round 13 same-session 429.400 ms); NO pp256/pp1024 row may move"
+  log "rag4096 TRT COMPARATOR BASIS: $RAG_TRT_BASIS"
+fi
+# The licence also requires the comparator, so fold that in here rather than in two places.
+if [[ -z "$missing" && "$TRT_DONE" != "yes" ]]; then
+  log "*** FLIP NOT LICENSED: both required prompts completed but there is NO same-session comparator,"
+  log "    so no ratio is publishable and no row may move."
+fi
+if [[ -z "$missing" && "$TRT_DONE" == "yes" ]]; then
+  FLIP_LICENSED=yes
+  log "FLIP_LICENSED=yes -- pp1024 AND pp256 cells with closing armor, a same-session TRT comparator,"
+  log "  and the banked full-scope gate are all in hand. The owner's merge precondition is met."
+else
+  log "FLIP_LICENSED=no -- see the refusal(s) above. PR #1072 must stay unmerged."
 fi
 
 # ── 9. SUMMARIES: medians, IQR, the closing-cell drift armor, and the ratios ──────────────────

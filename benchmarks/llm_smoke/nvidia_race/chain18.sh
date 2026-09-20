@@ -249,7 +249,20 @@ if [[ -z "$ARMED" ]]; then
   exit 1
 fi
 grep -m1 "TCFLAG ALGENTA_G3_PF_GEGLU_V2" "$ARMED" 2>/dev/null | tee -a "$CW_LOGFILE"
-if ! grep -q "gegluv_armed = true" "$ARMED" 2>/dev/null; then
+# MOJO RENDERS `Bool` CAPITALISED, AND THIS PATTERN NEVER KNEW. The banner is printed by
+# `print("... gegluv_armed =", self.d_ff % _G3_GEGLUV_VEC == 0, ...)`, and Mojo renders a Bool as
+# `True`/`False`, so the cells contain `gegluv_armed = True`. Every check in this campaign was
+# written against a lowercase `gegluv_armed = true` and therefore NEVER MATCHED A REAL BANNER --
+# round 19 measured it on the box: 10 occurrences of `gegluv_armed = True` and ZERO of the lowercase
+# spelling across the 11 banked gate cells. The consequence is not a missing assertion but a
+# PERMANENTLY FALSE one: `audit_tc_flags.sh` reported `gegluv_armed: false` for correctly-armed arms,
+# and the runner/chain assertions FATAL on an arm that is in fact live. A safety field that is always
+# false is worse than no field, because it cries wolf until a genuinely declined arm is waved through
+# as the same known bug. It went unnoticed because round 18's windows died earlier for other reasons
+# and its timing was launched by hand after a manual recovery, so the assertion never ran to verdict.
+# Both spellings are accepted: `[Tt]rue` matches what Mojo emits today and keeps working if a future
+# toolchain lowercases it, and a DECLINED arm still fails both, which is the case that must not slip.
+if ! grep -qE "gegluv_armed = [Tt]rue" "$ARMED" 2>/dev/null; then
   log "FATAL: gegluv_armed is NOT true in $ARMED. The shape gate declined; the arm ran the scalar"
   log "       twin. No timing may be taken and no delta may be attributed to this lever."
   exit 1
