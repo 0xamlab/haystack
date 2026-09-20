@@ -22265,3 +22265,284 @@ registers and zero spills. What remains in the kernel is 5.56 ms to its own roof
 bandwidth, and the campaign's largest unpriced pool is still GEMM at 432.694 ms / 77.84% of busy with
 algorithm selection closed — which points at wgmma/TMA, whose comparator has now been unfunded for
 three rounds running.
+
+
+## ROUND 19 — gemma-3-27b-it H200: GEGLU_V2 **DEFAULT-ON, FULL-SCOPE CERTIFIED AND MEASURED AT BOTH PUBLISHED SHAPES**. The banked gate is `ALL_PASS` over **all four** round-6 shapes (pp256 16/16 + 64/64 det 2/2, pp1024 16/16 + 64/64 det 2/2, val550 16/16 + 64/64 det 2/2, rag4096 22/22 + EOS-stop; 0 NOT-RUN, 0 prefix divergence, 0 determinism divergence) — the first full-scope gate since round 12 — and the new default measures **pp1024 88.947 ms (n=8) → 1.2471x** and **pp256 29.155 ms (n=8) → 1.4375x** against a **same-session** TensorRT-LLM 1.2.1 re-serve that reproduces the stored column within 1% at all three cells, with drift armor **negative** at both shapes (−0.431% / −0.085%), i.e. the box got *faster* over each bracket so drift cannot have inflated either win. That is **−5.302 ms (−5.626%) at pp1024 and −1.551 ms (−5.051%) at pp256** against round 14's pre-lever default, agreeing with round 18's −5.030% at rag4096 to within 0.6 points at all three shapes. **NINE harness defects found, eight of them inherited**, including a runtime-effect safety field that had been **permanently false since round 18** because Mojo renders `Bool` capitalised; branch `feat/gemma3-gegluv2-flip-r19`, flip PR **#1072** (OPEN, unmerged), 2026-09-19/20
+
+Round 19 had one job in a strict order: **(a)** re-gate round 18's lever at **full** scope, because round
+18's gate ran `ALL_PASS` at `GATE SCOPE = ['pp1024']` and shipping a default certified on one of four
+published shapes ships the gap; then **(b)** measure the lever arm **as the future shipped default** at
+pp256 and pp1024 with a same-session comparator, because a published row may only move on a median
+basis against a same-session TRT with the armor holding. Both are done. What follows records the
+numbers, then the nine defects — because the defects cost more VM time than the measurement did, and
+three of them were **safety fields that had never once evaluated to true**.
+
+### (a) THE FULL-SCOPE GATE — `ALL_PASS`, and re-proved from the cells rather than from the request
+
+Arm `R19_def` (`sha256_16 e4c6fbe26376f817`, 6182864 B), built from `5f12d6f5` with **no** opt-out, i.e.
+the post-flip shipped default. Fixtures **proved identical to round 6's certified gate echoes**
+(`FIXTURE_IDENTITY_OK=True`, reference `~/lever6/gate_R6_kv16_bn32`), GPU1 pinned and verified at
+**1410 MHz**, gate ran 22:06:12Z → 22:29:38Z (11 cells, ~23.5 min):
+
+| prompt | max_new | verdict | determinism |
+|---|---|---|---|
+| pp256 | 16 | **16/16 PASS** | n/a (single run) |
+| pp256 | 64 | **64/64 PASS** | **2/2 bit-identical** |
+| pp1024 | 16 | **16/16 PASS** | n/a (single run) |
+| pp1024 | 64 | **64/64 PASS** | **2/2 bit-identical** |
+| val550 | 16 | **16/16 PASS** | n/a (single run) |
+| val550 | 64 | **64/64 PASS** | **2/2 bit-identical** |
+| rag4096 | 64 | **22/22 + EOS-stop PASS** | n/a (single run) |
+
+`GATE ALL_PASS = True`, `GATE SCOPE = ['pp1024','pp256','rag4096','val550'] (all four)`,
+`out_of_scope_prompts = []`. rag4096's early stop is corroborated rather than self-consistent:
+`n_generated=22 stopped_early=True eos_stop=True oracle_also_eos_there=True`. Banked JSON md5
+`a82f764449d16e97e81b345614587e45`, re-evaluated off-box by `gate_coverage_gemma3_round19.py`:
+`claimed_scope=4 prompts_with_cells=4 cells_ran=7 cells_pass=7 det_repeats=3 out_of_scope=0
+rag_eos_stop=1` → `COVERAGE_OK: request-derived and cell-derived coverage AGREE at 4 of 4`.
+
+**WHY "COUNTED FROM THE CELLS" IS NOT PEDANTRY.** `gate_any.py` writes `"scope": sorted(IN_SCOPE)`
+where `IN_SCOPE` comes from **argv[4] — the request**. So the scope field is a statement of intent, not
+of evidence. What makes `all_pass` trustworthy is that an in-scope prompt with no cells on disk takes
+the `NOT-RUN` branch and forces `allpass = False`; the new audit asserts that entailment **directly**,
+per prompt and per cell, instead of relying on it, and requires request-derived and cell-derived
+coverage to agree at 4 — a disagreement refuses **whichever way it points**. `prove_gate_coverage_r19.sh`
+regression-tests it at zero VM minutes (**PROOF_VERDICT: PASS, 8/8**), including the case that matters:
+`scope` left claiming all four while one shape's cells are marked `ran=False` and `all_pass` left
+`True` → **REFUSED, naming the shape**. A scope-field-trusting audit waves that through.
+
+**THE BINARY AUDIT, ON REAL LINKED ARMS.** `R19_ctl` (`c033fd2982dc6435`, 6167416 B, built with
+`-D ALGENTA_G3_PF_NO_GEGLUV2`) carries **GEGLU_V2 banner literal = 0 → VERIFIED CLEAN**; `R19_def`
+carries **1 → VERIFIED ARMED**; kernel-symbol set **ctl=38 / def=39**, `ADDED b0496694ffefbc3c`
+(`_pf_geglu_rows_f16_vec_kernel`), `REMOVED none`, with the scalar twin `8f4c4e1d2ba54545` present in
+**both** — the VM's toolchain reproducing round 18's CPU differential exactly, in the opposite
+direction, on the flipped source. **This discharges the limit #1042 and round 18 both recorded**: their
+inverted audit rows were demonstrated only on `--emit object` artifacts, and this is the first exercise
+of the inverted case on real linked arms. `TWIN_IDENTICAL=True` for `R19_defB` by hash before any cell.
+
+### (b) THE MEASUREMENT — the new default at both published shapes, same-session comparator
+
+**Design: a *default* bracket, not an A/B bracket.** A published row needs the shipped configuration's
+own median, not a delta — round 18 already resolved the delta at rag4096 with complete rank separation,
+and no row is computed from a delta. So one configuration ran under two labels (`R19_def`, `R19_defB`,
+`cp`'d and hash-asserted), exactly as round 14 did for the post-#1042 default, because
+`run_gemma3_round6_cells.sh` always runs both `ARM_A` and `ARM_B` and would **collide on the cell
+filename** — silently discarding half the samples — given one name twice. Every measured cell therefore
+belongs to the future default, `n` per prompt is 8 (4 per slot), and the A-vs-B spread doubles as a
+run-to-run **reproducibility** measurement. `CELLTAG=_r19`.
+
+**22 cells, and every single one clean: `rc=0` 22/22, `offpin=0` 22/22, `clocks_after=1410MHz` 22/22.**
+1 warmup + 4 measured per slot + 1 closing per prompt; both CELLGROUPs closed (pp1024 00:34:20Z,
+pp256 00:56:26Z), each **with its closing cell**. Cell cadence measured at ~120 s (125/116/125/111/125),
+matching the governor's 122 s estimate, dominated by the driver loading the 101 GB checkpoint in a
+fresh process — which is why pp256 and pp1024 cells cost the same.
+
+| prompt | n (pooled) | median ms | min–max | spread | values |
+|---|---|---|---|---|---|
+| **pp1024** | 8 (4+4) | **88.947** | 88.590–89.149 | **0.630%** | 88.590 88.700 88.897 88.944 88.949 88.956 89.022 89.149 |
+| **pp256** | 8 (4+4) | **29.155** | 28.979–29.201 | **0.768%** | 28.979 29.051 29.136 29.143 29.168 29.193 29.197 29.201 |
+
+| slot | pp1024 median | pp256 median | note |
+|---|---|---|---|
+| `R19_def` (n=4) | 88.950 | 29.195 | same binary |
+| `R19_defB` (n=4) | 88.825 | 29.139 | same binary |
+| A-vs-B | −0.125 ms | −0.056 ms | **NOT-RESOLVED, correctly** — one configuration, so this is reproducibility, not a lever delta |
+
+**DRIFT ARMOR, AND IT IS NEGATIVE AT BOTH SHAPES.** open median → closing cell: pp1024
+**88.950 → 88.564 = −0.383 ms (−0.431%)**; pp256 **29.195 → 29.130 = −0.025 ms (−0.085%)**. Negative
+armor means the box got marginally *faster* across each bracket, so no amount of thermal or session
+drift can have inflated a "we are faster than TRT" claim — the conservative direction, and the opposite
+of the failure mode the armor rule exists to catch.
+
+**SAME-SESSION TENSORRT-LLM 1.2.1 RE-SERVE**, genuinely fresh: `lv3_trtllm.sh` at 00:56:26Z, all three
+JSONs at mtime **2026-09-20T00:59:41Z**, config byte-identical to the stored H200 battery (pytorch
+backend, FLASHINFER, bf16, `enable_block_reuse=false`, `max_input_len/max_seq_len 8192`,
+`max_batch_size 64`, cuda graphs default, `tp_size 1`, GPU1, 1410 MHz, same prompts, same client,
+3 warmup + 7 measured).
+
+| cell | re-served | round-5 stored | delta | within 1% |
+|---|---|---|---|---|
+| pp256 | **41.910 ms** | 41.520 | **+0.939%** | YES |
+| pp1024 | **110.930 ms** | 110.782 | **+0.134%** | YES |
+| rag4096 | **425.779 ms** | 426.766 | **−0.231%** | YES |
+
+All three reproduce on the campaign's own test (the round-5 stored column, which is what
+`summarize_gemma3_round6.py` uses to decide whether to label a comparator CROSS-SESSION). One nuance
+recorded rather than buried: this window's own check compares against **every** banked column and
+reports the worst, and pp256's worst is **+2.902% against round 6's 40.728 ms** — the outlier of the
+four pp256 comparators (41.520 / 40.728 / 41.292 / 41.329), against which round 14 also read higher.
+On the protocol's test pp256 reproduces at +0.939%; on the most conservative cross-column reading it
+does not, and if the owner wants the pp256 row moved on the strictest basis that spread is the reason
+to hesitate. pp1024 (+0.196% worst) and rag4096 (+0.843% worst) are inside 1% on **every** column.
+
+### THE RATIOS — computed, and the row decision is the owner's
+
+| prompt | ours (median, n=8) | same-session TRT | **ratio** | our tok/s | TRT tok/s | published row | movement |
+|---|---|---|---|---|---|---|---|
+| **pp1024** | **88.947 ms** | 110.930 | **1.2471x** | **11,512** | 9,231 | 94.022 ms / 10,891 / 1.1779x | **−5.075 ms, +5.7% tok/s, +0.0692x** |
+| **pp256** | **29.155 ms** | 41.910 | **1.4375x** | **8,781** | 6,108 | 32.108 ms / 7,973 / 1.2931x | **−2.953 ms, +10.1% tok/s, +0.1444x** |
+| rag4096 | *366.216 ms (round 18)* | 425.779 *(this window)* | *(1.1626x)* | — | — | 1.11x | **NOT SAME-SESSION — see below** |
+
+**Both pp1024 and pp256 satisfy every publication condition**: median basis, n=8 ≥ the protocol floor,
+a **same-session** comparator that reproduces the stored column within 1%, armor holding (and negative),
+22/22 cells clean at 1410 MHz with `offpin=0`, and a full-scope oracle gate on the very binary that was
+timed, pinned by hash. **No gitbook page was touched and no row was moved**; that decision is the owner's.
+
+**The lever's own effect size, three ways, and they agree.** Against round 14's measurement of the
+pre-lever default (`R9_both`: pp1024 94.249, pp256 30.706): **−5.302 ms (−5.626%)** at pp1024 and
+**−1.551 ms (−5.051%)** at pp256. Round 18 measured **−19.396 ms (−5.030%)** at rag4096. Three shapes
+spanning 256→4096 prompt tokens, one lever, **−5.03% / −5.05% / −5.63%** — a consistency that is itself
+evidence, because a measurement artifact would not track a single percentage across a 16x range of
+prompt length. It is also what the mechanism predicts: GeGLU is a fixed fraction of per-layer prefill
+work, so its saving should scale with the layer count and be near-independent of shape.
+
+**rag4096 STAYS CROSS-SESSION, and an over-claim about that was caught and corrected.** This window
+re-served rag4096 for free (`lv3_trtllm.sh` serves all three cells from one startup) and the fresh
+**425.779 ms reproduces round 13's 429.400 to −0.843%**, inside the 1% rule. The first cut of
+`rag_trt_basis_r19.py` printed that this "RETIRES round 18's cross-session rag caveat". **It does
+not.** A ratio is same-session only if **both** sides ran in that session; round 19 spent its budget on
+pp1024 and pp256 and ran no rag4096 cells of ours, so the rag row still pairs round 18's 366.216 ms
+(2026-09-19 ~20:00Z) with a comparator from a later session. What the fresh serve establishes is that
+the **comparator is stable across sessions** — evidence about the server, not a licence to relabel the
+pair. Retiring the caveat properly costs one rag4096 bracket in a window that also re-serves. The
+wording now says exactly that. Round 18's rag4096 row therefore stands on its own stated basis
+(1.1653x cross-session / 1.1725x on round 13's same-session pair), unchanged.
+
+### NINE DEFECTS, EIGHT INHERITED, THREE OF THEM SAFETY FIELDS THAT HAD NEVER EVALUATED TO TRUE
+
+The defects cost more VM time than the measurement did, and the pattern is worth stating plainly:
+**every one of them failed in the "nothing happens" direction**, so each looked like an idle window
+rather than a broken harness, and three were *safety* checks that had been dead since the round they
+were written.
+
+| # | defect | inherited from | cost | direction |
+|---|---|---|---|---|
+| 1 | **greedy `.*scope=` matched `out_of_scope=none`**, counting "1 of 4" for a gate that had just listed four → the chain refused a PASSED full-scope gate and exited | round 19 (mine) | **window 1's remaining ~59 VM-min idle** (chain exited 22:29:38Z, stop issued 23:28:23Z) | fail-closed |
+| 2 | **`trap … EXIT` REPLACES, it does not stack** — chain18 registers `chain_exit`, then re-registers `kill $HB_PID` twice, silently un-registering it → **CHAIN_EXIT written empty** on a self-exit | **chain18** | the backstop's `timing_complete=no && alive==0` early stop could never fire, so the idle box in #1 billed to the DEADLINE | fail-open on cost |
+| 3 | **unmasked `driver_ctx8192` in the `pgrep -f` pattern matched the probe's own ssh command line** → `chain_procs` pinned ≥ 1 forever (`chain_procs=1` on every probe 22:37:45Z→23:28:52Z with the chain dead and the GPU at 0%) | **round 18's backstop** | both arms of the idle early-stop disabled at once; only the deadline could stop the box | fail-open on cost |
+| 4 | **heartbeat `phase=` frozen at `init`** — the writer is a subshell, which snapshots variables at fork | **chain18** | the window looked stuck at `init` for 30 min; telling "wedged" from "busy in the gate" needed a direct log read | observability |
+| 5 | **Mojo renders `Bool` CAPITALISED** — every check in the campaign was written against `gegluv_armed = true`; the cells contain `gegluv_armed = True` (**10 occurrences, 0 lowercase** across the 11 gate cells) | **round 18** (audit row + runner smoke + chain18 assertion) | the lever's runtime-effect field reported **`false` for correctly-armed arms since round 18**; in-window it made SKIP_GATE fall through and burn **~15 VM-min** on a redundant gate (23:54:40Z → killed 00:07Z) | **fail-closed but permanently false** |
+| 6 | **two governors over one budget** — the runner's timing stage walks its OWN `PROMPTS_ORDER` and re-prices `n`, so passing `PROMPTS=` did not scope it | round 19 (mine) | `flip_licensed=no` + `prompts_completed= pp1024` while 11 pp256 cells with a closing cell sat on disk; had the clock allowed, the second invocation would have **re-run pp1024 and overwritten its own cells** | wrong verdict |
+| 7 | **unconditional `cp` of `~/lever3/runs/trtllm_*.json`** — that dir accumulates every window's re-serve; round 14's were sitting there dated **Sep 19 07:02, 17 h stale** | round 19 (mine) | a failed re-serve would have set `TRT_DONE=yes` on another session's numbers and labelled them same-session (visible via the summariser's mtime label, but visible ≠ impossible) | basis error |
+| 8 | **my own over-claim** that a fresh rag comparator retires round 18's cross-session caveat | round 19 (mine) | none — caught before the ledger | over-claim |
+| 9 | **artifact tar named `chain18.log`, a file the launch line never created** (the redirect target is `.out`), and **omitted `gate_<arm>/`**, which is not under `runs/` | **round 18** | round 18 collected no chain stdout and **none of its gate cells** — and round 19's primary deliverable *is* the gate | evidence loss |
+
+**#5 deserves its own paragraph, because it is the one that changes how much of the campaign's recorded
+evidence means.** `gegluv_armed` exists for LTALGO's `lt_shapes_tuned = 0` hazard: a flag can reach the
+compiler and then **decline at the shape gate**, so the binary carries the lever's banner while the cell
+actually measured the control kernel. `scripts/audit_tc_flags.sh`'s own comment calls it "the one field
+whose FALSE value is bad while the flag is present". Because the pattern was lowercase and Mojo prints
+`True`, that field was **false for every correctly-armed arm since round 18**, and the runner's smoke
+assertion and chain18's post-gate assertion would **FATAL on an arm that is in fact live**. A safety
+field that is always false is worse than no field: it cries wolf until a genuinely declined arm is waved
+through as the same known bug. It survived unnoticed because round 18's windows died earlier for other
+reasons and its timing was launched **by hand** after a manual recovery, so the assertion never reached
+its verdict. Round 19's SKIP_GATE re-verify was the first time any of them ran to a verdict — and it
+failed on a correctly-armed, hash-matched, fully-gated binary. Fixed at all five executable sites to
+accept **both** spellings (`[Tt]rue` in the greps; two OR'd patterns in the audit script, whose
+`has_lit`-style fixed-string test cannot express a character class), verified in **both directions**
+against a real banner: armed → true, declined → false.
+
+**Fixes are structural wherever a structural fix exists, not better patterns.** #1 became
+`gate_coverage_gemma3_round19.py`: one evaluator computes coverage *and* decides it, returning an exit
+code, so the shell never re-parses a fact another language already knew — re-formatting in one language
+and re-parsing in another is precisely how one fact came to have two contradictory values on adjacent
+log lines. #2 folds the pid kills into a single `_final_exit` trap with `chain_exit` last so it cannot be
+displaced again, unset-safe so an early exit cannot trip `set -u` *inside the trap* and lose CHAIN_EXIT a
+second time. #3 uses the campaign's own bracket mask (`driver_ctx819[2]`), proved on the regex property
+since macOS `pgrep` would not reproduce the Linux behaviour and a test that cannot fail proves nothing:
+unmasked self-matches **1**, masked **0**, masked still matches a real driver **1**. #4 publishes phase
+and gate verdict through files the heartbeat re-reads. #6 pins both governor knobs per invocation. #7
+gates the copy on `-nt .chain_start` per file and names the stale mtime when it refuses.
+
+**All of it proved off-box at zero VM minutes and checked in, so the evidence is reproducible rather
+than a claim**: `prove_gate_coverage_r19.sh` (**PROOF_VERDICT: PASS, 8/8**), `dryrun_backstop_r18.sh`
+re-run after the pattern change (**DRY_RUN_VERDICT: PASS** — backstop pgid 61224 vs controller 61219,
+survived `kill -KILL -- -61219`, drove the stub to TERMINATED with an empty project-wide RUNNING list,
+1 stop call), `flip_validate_gemma3_round19.sh` (**FLIP_VALIDATE_VERDICT: PASS** — six configurations of
+the real driver compiled for sm_90, the audit row exercised on each, and three byte-identity proofs:
+`default == legacy_optin` 981024 B so the legacy opt-in is an exact no-op, `nogegluv2 == both_opts`
+963384 B so the opt-out wins, `nomlp_default == nomlp_and_optout` 962920 B so the flag is inert with
+F16MLP off; differential 38 → 39 = **1 added / 0 removed**, added = `b0496694ffefbc3c`), and new
+`prove_flip_licence_r19.sh`, which re-derives the whole licence from banked artifacts and deliberately
+does **not** trust the chain's verdict field — it prints it, then computes its own.
+
+### THE FLIP LICENCE: the chain said `no`, the data says satisfied, and the difference is defect #6
+
+`CHAIN_EXIT` (non-empty now, which is defect #2's fix confirmed in vivo) records
+`gate_verdict=ALL_PASS_FULL_SCOPE`, `timing_complete=yes`, `trt_reserve_done=yes`, `measured_cells=16`,
+`gate_cells=11`, and **`flip_licensed=no` / `prompts_completed= pp1024`**. That verdict is **wrong**, and
+it is wrong for a reason worth more than the correction: it was derived from the chain's **invocation
+record** rather than from the evidence, and the runner had closed pp256's CELLGROUP inside the pp1024
+invocation. Re-derived from the artifacts by `prove_flip_licence_r19.sh`, which is independent of the
+chain: **FLIP_LICENCE: SATISFIED, rc=0** —
+
+* pp1024 **COMPLETE**: CELLGROUP marker, 8 measured (n ≥ 5), 1 closing cell, 2 warmup
+* pp256 **COMPLETE**: CELLGROUP marker, 8 measured (n ≥ 5), 1 closing cell, 2 warmup
+* 22/22 cells `rc=0`, `offpin=0`, `clocks_after=1410MHz`
+* three **fresh** same-session TRT JSONs, mtime 2026-09-20T00:59:41Z, all reproducing the stored column within 1%
+* the banked gate re-evaluated `COVERAGE_OK` at 4 of 4, on the binary pinned by hash `e4c6fbe26376f817`
+
+So the owner's stated merge precondition — pp1024 **and** pp256 cells plus their same-session TRT
+alongside the banked full-scope gate and round 18's rag bracket — **is met**, with round 18's rag
+bracket supplying the third shape at −19.396 ms (U=0, exact p=0.0079, 24.5x armor). The licence check is
+fixed to read evidence rather than the call graph, because a verdict that depends on who called whom is a
+verdict about the harness, and the rule is about the data. **PR #1072 remains OPEN and unmerged; the
+merge is the owner's.**
+
+### THE RE-SERVE WINDOW'S BUDGET, AND WHY IT WAS SPENT ON CELLS RATHER THAN ON A VERDICT ALREADY ON DISK
+
+Cap **75 min + 5 grace** (owner-authorised), deadline **01:06:01Z** from `lastStartTimestamp`
+23:46:01Z. `SKIP_STAGE` was **not** honoured — `/tmp` and `/mnt/ramblob` are tmpfs and died with the
+stop — so the stage re-ran and **re-proved** fixture identity against round 6's echoes (23:48:10Z →
+23:54:39Z). `SKIP_BUILD=1` and `SKIP_GATE=1` **re-proved rather than trusted**, and both cost ~0 min:
+
+| phase | VM-on | clock |
+|---|---|---|
+| boot + sshd probe (2 probes, the transient the probe exists for) + sync + launch | ~5 min | 23:46:01 → 23:48:10 |
+| stage: fixtures re-proved + 101 GB convert + 1410 MHz pin | 6.5 min | 23:48:10 → 23:54:39 |
+| `build_reverify`: both hashes match the pinned values, runner's binary audit re-run | ~0 min | 23:54:39 → 23:54:40 |
+| `gate_reverify`: **FAILED on defect #5**, fell through to a real gate | **~12 min wasted** | 23:54:40 → killed 00:07 |
+| hot-sync of the fix + relaunch | ~5 min | 00:07 → 00:11:47 |
+| `gate_reverify` (second attempt): `COVERAGE_OK`, `GEGLUV ARMED AT RUNTIME` | **0 min** | 00:11:45 |
+| pp1024 bracket, 11 cells | 22.6 min | 00:11:45 → 00:34:20 |
+| pp256 bracket, 11 cells | 22.1 min | 00:34:20 → 00:56:26 |
+| same-session TRT re-serve, three cells | 3.3 min | 00:56:26 → 00:59:41 |
+| summaries + licence + bitident + `CHAIN19 COMPLETE` | 0 min | 00:59:41 |
+| artifact collection, then stop issued | — | 01:00:02 → 01:00:03 |
+
+**VM-on 74 min 02 s at the stop issue against a 75 + 5 cap**; `TERMINATED` confirmed 01:02:23Z on
+attempt 2, project-wide `status=RUNNING` **EMPTY** at 01:02:25Z, `--discard-local-ssd=false`. The
+re-verify paths are what made this affordable at all: re-proving the banked gate cost **0 min** where
+re-running it costs ~26, which is the difference between a 75-min window that measures both published
+shapes and one that measures neither. And `SKIP_BUILD=1` is a **traceability requirement, not a time
+save** — the certification attaches to a binary by hash, so a rebuild would silently detach the gate
+from whatever got timed; `git diff 5f12d6f5 HEAD -- mojo/ scripts/` is **empty**, so the pinned
+`e4c6fbe26376f817` is exactly what the current head compiles.
+
+Window 1, for the record: `lastStartTimestamp` 21:55:35Z, cap 90 + 5, deadline 23:30:35Z; stage
+21:58:48 → 22:05:17, build 22:05:17 → 22:06:12, **full-scope gate 22:06:12 → 22:29:38 (23.4 min)**,
+false refusal 22:29:38, then idle to the stop margin. Stop issued 23:28:23Z (**VM-on 92 min 56 s**),
+`gcloud` returned 23:30:45Z, `TERMINATED` confirmed 23:31:07Z, RUNNING empty 23:31:09Z.
+
+### WHAT ROUND 19 DID NOT DO, so the entry is not over-read
+
+**No rag4096 cells of ours**, so the rag row stays cross-session on its own stated basis and its caveat
+is *not* retired (§ above). **No control-vs-lever delta at pp256 or pp1024** — the brackets were
+default-vs-default by design, so the ~5% effect size at those two shapes is inferred from the comparison
+with round 14's pre-lever default rather than measured interleaved in one bracket; round 18's
+interleaved delta exists only at rag4096. **flashinfer was NOT re-measured and `WGMMA_TMA_SCOPE.md` §10
+was NOT updated** — a fourth round running, and it stays a dedicated window rather than this window's
+tail, as briefed. **No nsys/ncu autopsy** of the vector twin, so its remaining 5.56 ms to its own roof
+at 55.1% of bandwidth is round 18's number, not a re-measurement. **No published row moved and no
+gitbook page was touched.** The ledger is append-only and this is a single EOF hunk.
+
+**Where the campaign stands.** The bar (rag4096 ≥ 1.15x) was cleared in round 18 and the lever is now
+certified at full scope and measured at both other published shapes, so GEGLU_V2 is **shippable** and
+#1072 is ready on the owner's decision. The largest unpriced pool is unchanged and still GEMM at
+**432.694 ms / 77.84% of busy** at 68.8% of the 1410 MHz-pinned peak, with algorithm selection closed
+and **no cublasLt path in the gemma-3 lane at all** — a port of the 7B lane's `ALGENTA_7B_PF_LTALGO`
+machinery, where +5% efficiency is 21.6 ms against a bar that needs 12.07. wgmma sits behind it at
+38.114 ms with a 17.104 ms ceiling reachable at 70.5% transfer, and its blocker is still §10's caveat 2:
+the flashinfer comparator has now gone unfunded for four rounds, and no wgmma window should be spent
+until it is closed.
