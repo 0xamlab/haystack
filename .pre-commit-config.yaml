@@ -60,7 +60,7 @@ repos:
           - types-redis==4.6.0.20240425 # == mojo_env/pixi.toml
   # thyn-security-toolchain:begin -- managed by thyn-ai/security-toolchain (propagate). Edit args, not rev.
   - repo: https://github.com/thyn-ai/security-toolchain
-    rev: v0.1.13
+    rev: v0.1.14
     hooks:
       - id: gitleaks-staged
       - id: opengrep-changed
