@@ -28,17 +28,15 @@ _EXPECTED_LICENSE = "Apache-2.0"
 _PYPROJECT_PKGS = ("python-sdk", "algenta", "mcp")
 _TS_PKG = "ts-sdk"
 _SDK_PYTHON_CLASSIFIERS = {
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 }
 _RUNTIME_PYTHON_CLASSIFIERS = {"Programming Language :: Python :: 3.14"}
 _PYTHON_CONTRACTS = {
-    "python-sdk": (">=3.10", _SDK_PYTHON_CLASSIFIERS),
+    "python-sdk": (">=3.12", _SDK_PYTHON_CLASSIFIERS),
     "algenta": (">=3.14,<3.15", _RUNTIME_PYTHON_CLASSIFIERS),
-    "mcp": (">=3.10", _SDK_PYTHON_CLASSIFIERS),
+    "mcp": (">=3.12", _SDK_PYTHON_CLASSIFIERS),
 }
 _TRUST_ANCHOR_DER_SHA256 = {
     "algenta_release_pub.pem": "121aaf4a3f298d4ea09a337860a4ef2031c0ec4ef0af645c5bb06a56bc169468",
