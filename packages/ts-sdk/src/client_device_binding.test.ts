@@ -409,17 +409,27 @@ describe("resolveClientDeviceHeaders", () => {
       );
     });
 
-    it("fingerprints the caller-provided id itself when no other source exists", () => {
-      const headers = withoutBuiltinModuleLoader(() =>
-        resolveClientDeviceHeaders(SDK_VERSION, { [DEVICE_ID_HEADER]: "caller-device-0002" }),
-      );
+    it.each([
+      // Node 20 and older have no `navigator` global; Node 21+ do. Pin it either way so
+      // the assertion means the same thing on every supported Node instead of reading the host.
+      ["absent", undefined, undefined],
+      ["present", { platform: "MacIntel" }, "MacIntel"],
+    ])(
+      "fingerprints the caller-provided id itself when no other source exists (navigator %s)",
+      (_label, navigatorStub, expectedPlatform) => {
+        vi.stubGlobal("navigator", navigatorStub);
 
-      expect(headers[DEVICE_ID_HEADER]).toBe("caller-device-0002");
-      expect(headers[HOSTNAME_HASH_HEADER]).toMatch(HEX_16);
-      // No Node identity means the browser platform is the only platform hint left.
-      expect(headers[PLATFORM_HEADER]).toBe(navigator.platform.trim());
-      expect(headers[PLATFORM_VERSION_HEADER]).toBeUndefined();
-    });
+        const headers = withoutBuiltinModuleLoader(() =>
+          resolveClientDeviceHeaders(SDK_VERSION, { [DEVICE_ID_HEADER]: "caller-device-0002" }),
+        );
+
+        expect(headers[DEVICE_ID_HEADER]).toBe("caller-device-0002");
+        expect(headers[HOSTNAME_HASH_HEADER]).toMatch(HEX_16);
+        // No Node identity means the browser platform is the only platform hint left.
+        expect(headers[PLATFORM_HEADER]).toBe(expectedPlatform);
+        expect(headers[PLATFORM_VERSION_HEADER]).toBeUndefined();
+      },
+    );
   });
 
   describe("browser fallback", () => {
@@ -430,11 +440,18 @@ describe("resolveClientDeviceHeaders", () => {
     it("uses a stored browser device id and the navigator platform", () => {
       const storage = fakeLocalStorage({ [DEVICE_ID_STORAGE_KEY]: "browser-device-000000001" });
       vi.stubGlobal("localStorage", storage);
+      // Install our own navigator rather than reading the host's: Node 20 has none and
+      // Node 21+ reports the host platform, neither of which this test is about.
+      vi.stubGlobal("navigator", {
+        platform: "MacIntel",
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AlgentaTest/1.0",
+        language: "en-US",
+      });
 
       const headers = resolveClientDeviceHeaders(SDK_VERSION);
 
       expect(headers[DEVICE_ID_HEADER]).toBe("browser-device-000000001");
-      expect(headers[PLATFORM_HEADER]).toBe(navigator.platform.trim());
+      expect(headers[PLATFORM_HEADER]).toBe("MacIntel");
       expect(headers[HOSTNAME_HASH_HEADER]).toMatch(HEX_16);
       expect(headers[PLATFORM_VERSION_HEADER]).toBeUndefined();
       expect(storage.setItem).not.toHaveBeenCalled();
