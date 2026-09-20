@@ -1,6 +1,6 @@
 # Algenta — ChatGPT Actions
 
-Use the hosted Algenta OpenAPI contract inside ChatGPT Actions.
+Use the Algenta OpenAPI contract inside ChatGPT Actions.
 
 - Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL

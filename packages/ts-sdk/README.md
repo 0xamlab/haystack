@@ -1,7 +1,12 @@
 # algenta-sdk
 
-TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime,
-simulations, governed data, and repository intelligence.
+**TypeScript and JavaScript SDK for [Algenta](https://algenta.ai) — self-hosted building blocks for AI applications.**
+
+Algenta is the deterministic layer developers build on — a compiled library of mathematical and
+operational functions on custom Mojo kernels, with simulation, planning, memory and governance
+built into the runtime. This package is the TypeScript client for its HTTP API and local runtime:
+simulations, governed data, and repository intelligence. The Algenta engine itself is proprietary;
+everything in this package is Apache-2.0.
 
 ## Requirements
 

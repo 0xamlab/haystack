@@ -1,6 +1,12 @@
 # algenta-sdk
 
-Python SDK for Algenta public data, query, and simulation APIs.
+**Python SDK for [Algenta](https://algenta.ai) — self-hosted building blocks for AI applications.**
+
+Algenta is the deterministic layer developers build on — a compiled library of mathematical and
+operational functions on custom Mojo kernels, with simulation, planning, memory and governance
+built into the runtime. This package is the Python client for its public API: governed data
+queries, simulations, decision memory, agent runs with approvals, connectors, and the capability
+plane. The Algenta engine itself is proprietary; everything in this package is Apache-2.0.
 
 ## Install
 

@@ -36,8 +36,9 @@ def test_typescript_package_surface_includes_package_readme_and_registry_metadat
     assert package_json["files"] == ["dist", "proto", "README.md", "LICENSE"]
     assert package_json["homepage"] == "https://docs.algenta.ai/sdks/typescript"
     assert package_json["description"] == (
-        "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, "
-        "simulations, governed data, and repository intelligence"
+        "TypeScript and JavaScript SDK for Algenta — self-hosted building blocks for AI "
+        "applications: the HTTP API, local runtime, simulations, governed data, and "
+        "repository intelligence"
     )
     assert package_json["publishConfig"] == {
         "access": "public",

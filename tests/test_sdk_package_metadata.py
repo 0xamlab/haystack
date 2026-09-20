@@ -95,6 +95,11 @@ def test_public_package_descriptions_use_algenta_branding_and_agent_discovery() 
     for pkg, description in descriptions.items():
         assert "decision engine" not in description.casefold(), pkg
 
+    # The three packages mirrored to thyn-ai/algenta-sdk define Algenta the way algenta.ai does
+    # (Meta.home.title); PyPI and npm show this string as the package summary.
+    for pkg in ("python-sdk", "mcp", _TS_PKG):
+        assert "self-hosted building blocks for AI applications" in descriptions[pkg], pkg
+
     mcp_metadata = _py_meta("mcp")
     assert "Cursor" in mcp_metadata["description"]
     assert "Codex" in mcp_metadata["description"]

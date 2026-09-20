@@ -1,6 +1,6 @@
 # Power Automate — Algenta
 
-Use the Power Automate custom connector to call Algenta's hosted data, query,
+Use the Power Automate custom connector to call Algenta's data, query,
 and simulation surfaces from Microsoft flows.
 
 - Cloud Managed: `https://api.algenta.ai`

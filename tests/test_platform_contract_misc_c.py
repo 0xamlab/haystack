@@ -240,7 +240,11 @@ def test_public_package_and_export_surfaces_use_algenta_branding() -> None:
 
     assert "Python SDK for Algenta" in python_sdk_pyproject
     assert "Algenta Decision Engine" not in python_sdk_pyproject
-    assert "TypeScript and JavaScript SDK for Algenta's HTTP API, local runtime, simulations, governed data, and repository intelligence" in ts_sdk_package
+    assert (
+        "TypeScript and JavaScript SDK for Algenta — self-hosted building blocks for AI "
+        "applications: the HTTP API, local runtime, simulations, governed data, and "
+        "repository intelligence"
+    ) in ts_sdk_package
     assert '"algenta"' in ts_sdk_package
     assert "Algenta SDK errors" in python_sdk_exceptions
     assert "Decision Engine SDK errors" not in python_sdk_exceptions

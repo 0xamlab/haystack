@@ -1,6 +1,6 @@
 # Make (Integromat) Integration — Algenta
 
-Use Make's **HTTP** module to call Algenta's hosted data, query, and simulation surfaces in any scenario.
+Use Make's **HTTP** module to call Algenta's data, query, and simulation surfaces in any scenario.
 
 - Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL

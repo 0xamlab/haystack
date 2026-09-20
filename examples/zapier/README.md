@@ -1,6 +1,6 @@
 # Zapier Integration — Algenta
 
-Use the **Webhooks by Zapier** action to call Algenta's hosted data, query, and simulation surfaces in any Zap.
+Use the **Webhooks by Zapier** action to call Algenta's data, query, and simulation surfaces in any Zap.
 
 - Cloud Managed: `https://api.algenta.ai`
 - `self_hosted` and `air_gapped`: replace the hosted base URL with your self-hosted base URL

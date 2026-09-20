@@ -2,9 +2,13 @@
 
 <!-- mcp-name: io.github.thyn-ai/algenta -->
 
-Model Context Protocol server for the Algenta API. It gives MCP-compatible agents access to
-governed data discovery, exact queries, decisions, simulations, runtime utilities, and account
-operations through the same public API contract used by the Algenta SDKs.
+**Model Context Protocol server for [Algenta](https://algenta.ai) — self-hosted building blocks for AI applications.**
+
+Any MCP-capable agent operates the engine — metered and audited like every other caller. This
+server gives MCP-compatible agents access to governed data discovery, exact queries, decisions,
+simulations, runtime utilities, and account operations through the same public API contract used
+by the Algenta SDKs. The Algenta engine itself is proprietary; everything in this package is
+Apache-2.0.
 
 Full reference: [docs.algenta.ai/sdk/mcp](https://docs.algenta.ai/sdk/mcp)
 
