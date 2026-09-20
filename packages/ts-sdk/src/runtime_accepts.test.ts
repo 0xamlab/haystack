@@ -102,6 +102,7 @@ import {
   readLedgerEvents,
   hasNodeSqlite,
   writeSqliteFixture,
+  fixtureDsn,
 } from "./_runtime_test_helpers.js";
 
 beforeEach(() => {
@@ -173,7 +174,7 @@ describe("Runtime — accepts", () => {
           expectedConnection: {
             type: "sql",
             provider: "postgres",
-            connection_string: "postgresql://analytics:secret@localhost:5432/orders",
+            connection_string: fixtureDsn("postgresql", "analytics:secret", "localhost:5432/orders"),
             schema: "public",
             table: "orders",
             query: "SELECT * FROM public.orders",

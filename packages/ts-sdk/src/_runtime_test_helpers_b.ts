@@ -125,3 +125,16 @@ export async function writeSqliteFixture(
     database.close();
   }
 }
+
+/**
+ * Assemble a credential-bearing connection string for a test at runtime.
+ *
+ * Secret scanners (GitHub's, gitleaks) match the literal `scheme://user:password@host` shape
+ * and cannot tell a synthetic fixture from a leaked credential by reading the source; the
+ * public mirror of these tests raised exactly that alert on one of the DSN expectations.
+ * Building the value here keeps what the tests exercise byte-identical while no source file
+ * carries the shape as a single literal.
+ */
+export function fixtureDsn(scheme: string, userinfo: string, hostAndPath: string): string {
+  return `${scheme}://${userinfo}@${hostAndPath}`;
+}

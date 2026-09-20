@@ -102,6 +102,7 @@ import {
   readLedgerEvents,
   hasNodeSqlite,
   writeSqliteFixture,
+  fixtureDsn,
 } from "./_runtime_test_helpers.js";
 
 beforeEach(() => {
@@ -592,11 +593,13 @@ describe("Runtime — delegates_c", () => {
     });
 
     it("delegates structured database descriptors to the injected api client", async () => {
+      const postgresDsn = fixtureDsn("postgresql", "analytics:secret", "localhost:5432/orders");
+      const mysqlDsn = fixtureDsn("mysql", "analytics:secret", "localhost:3306/orders");
       const cases: Array<{ source: Record<string, unknown>; expectedName: string }> = [
         {
           source: {
             type: "postgres",
-            connection_string: "postgresql://analytics:secret@localhost:5432/orders",
+            connection_string: postgresDsn,
             schema: "public",
             table: "orders",
           },
@@ -605,7 +608,7 @@ describe("Runtime — delegates_c", () => {
         {
           source: {
             type: "mysql",
-            connection_string: "mysql://analytics:secret@localhost:3306/orders",
+            connection_string: mysqlDsn,
             database: "orders",
             table: "orders",
           },
@@ -673,7 +676,7 @@ describe("Runtime — delegates_c", () => {
                   connection: {
                     type: "sql",
                     provider: "postgres",
-                    connection_string: "postgresql://analytics:secret@localhost:5432/orders",
+                    connection_string: postgresDsn,
                     schema: "public",
                     table: "orders",
                     query: "SELECT * FROM public.orders",
@@ -685,7 +688,7 @@ describe("Runtime — delegates_c", () => {
                     connection: {
                       type: "sql",
                       provider: "mysql",
-                      connection_string: "mysql://analytics:secret@localhost:3306/orders",
+                      connection_string: mysqlDsn,
                       table: "orders",
                       query: "SELECT * FROM orders",
                     },

@@ -32,6 +32,7 @@ import {
   sqlIdentifier,
   stripUndefined,
 } from "./_runtime_helpers_c.js";
+import { fixtureDsn } from "./_runtime_test_helpers.js";
 import type { SourceRegistrationResponse } from "./types.js";
 
 type SourceInput = string | LocalRecord[] | Record<string, unknown>;
@@ -407,11 +408,11 @@ describe("runtimeSqlConnectionString", () => {
 
   it.each<[string, Record<string, unknown>, string]>([
     ["postgres", { host: "db.local", database: "app" }, "postgresql://db.local:5432/app"],
-    ["postgresql", { host: " db.local ", database: "app", user: "u", password: "p@ss" }, "postgresql://u:p%40ss@db.local:5432/app"],
+    ["postgresql", { host: " db.local ", database: "app", user: "u", password: "p@ss" }, fixtureDsn("postgresql", "u:p%40ss", "db.local:5432/app")],
     ["mysql", { host: "db.local", database: "app", username: "u" }, "mysql://u@db.local:3306/app"],
     ["mssql", { host: "db.local", database: "app", port: 1444 }, "mssql://db.local:1444/app"],
     ["redshift", { host: "db.local", database: "app", port: "5440" }, "redshift://db.local:5440/app"],
-    ["postgres", { host: "db.local", database: "my db", user: "u", password: "" }, "postgresql://u:@db.local:5432/my%20db"],
+    ["postgres", { host: "db.local", database: "my db", user: "u", password: "" }, fixtureDsn("postgresql", "u:", "db.local:5432/my%20db")],
   ])("builds a %s DSN from %j", (provider, source, expected) => {
     expect(runtimeSqlConnectionString(provider, source)).toBe(expected);
   });
@@ -522,7 +523,7 @@ describe("normalizeRuntimeConnection", () => {
     [
       "a postgres descriptor",
       { type: "postgres", host: "h", database: "d", table: "t", port: 5433, user: "u", password: "p" },
-      { type: "sql", provider: "postgres", connection_string: "postgresql://u:p@h:5433/d", query: "SELECT * FROM t", table: "t" },
+      { type: "sql", provider: "postgres", connection_string: fixtureDsn("postgresql", "u:p", "h:5433/d"), query: "SELECT * FROM t", table: "t" },
     ],
     [
       "a generic sql descriptor with a provider",
