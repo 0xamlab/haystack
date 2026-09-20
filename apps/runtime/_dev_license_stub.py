@@ -12,4 +12,4 @@ from __future__ import annotations
 
 # Self-signed local dev secret (HS256). NEVER used for cloud/production validation. Present only in
 # dev/test builds; stripped from the production wheel.
-DEV_SECRET = "algenta-dev-local-v1-not-for-production"  # noqa: S105
+DEV_SECRET = "dev-local-hC54z_2Fva7Mu5oCc0N6y491J2GJNwsfL0a4Z91c4jg"  # noqa: S105

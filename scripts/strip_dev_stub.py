@@ -19,7 +19,7 @@ from pathlib import Path
 
 # The literal we must guarantee is absent from a production artifact. Kept here (a build tool, never
 # shipped) as the search needle.
-_DEV_SECRET_NEEDLE = "algenta-dev-local-v1-not-for-production"
+_DEV_SECRET_NEEDLE = "dev-local-hC54z_2Fva7Mu5oCc0N6y491J2GJNwsfL0a4Z91c4jg"
 _STUB_RELATIVE = Path("apps/runtime/_dev_license_stub.py")
 
 
