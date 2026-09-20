@@ -481,14 +481,20 @@ def test_control_plane_dockerfile_strips_the_stub_before_dropping_privileges() -
 
 def test_ci_gates_every_image_before_it_is_pushed_and_before_fly() -> None:
     text = (_REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    # push-to-main image builds: local build -> gate -> push, per image
-    for image in ("API", "Worker", "Engine"):
-        local_build = text.index(f"- name: Build {image} image (local, for the dev-secret gate)")
+    # push-to-main image builds: the rootfs is streamed out of buildx into the gate (no daemon
+    # load, no runner disk), then the cached build is pushed
+    for image, slug in (("API", "api"), ("Worker", "worker"), ("Engine", "engine")):
         gate_step = text.index(
-            f"- name: Gate -- the {image} image must not contain the dev-licence secret"
+            f"- name: Gate -- the {image} image rootfs must not contain the dev-licence secret"
         )
         push = text.index(f"- name: Build and push {image} image")
-        assert local_build < gate_step < push, image
+        assert gate_step < push, image
+        step = text[gate_step:push]
+        assert "--output type=tar,dest=- ." in step and "verify_no_dev_secret.py --tar -" in step
+        assert (
+            f"ci-${{{{ github.run_id }}}}-{slug}" in step
+        )  # the same per-run builder the push uses
+        assert "load: true" not in step
     # PR-time smoke: the locally built API image is gated too
     smoke_build = text.index('-f infra/docker/Dockerfile.api.prod -t "$SMOKE_IMAGE_TAG" .')
     smoke_gate = text.index('bash scripts/verify_no_dev_secret.sh "$SMOKE_IMAGE_TAG"')
