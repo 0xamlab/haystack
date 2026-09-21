@@ -243,6 +243,33 @@ print("\n".join(build["host_shared_libraries"]))
   fi
   echo "cuda ABI gate: declared host libraries -> ${EXCLUDE_ARGS[*]}"
   rm -rf /work/mojo_build/abi-probe
+  # ── PATCHELF >= 0.14.5, AND WHY IT IS INSTALLED HERE AND ONLY HERE ───────────────────────────
+  # `auditwheel repair` needs patchelf, and modern auditwheel REFUSES to run against an old one:
+  #   ValueError: patchelf 0.14.3 found. auditwheel repair requires patchelf >= 0.14.5.
+  # ubuntu:22.04's apt patchelf IS 0.14.3, so this gate could never have passed in the bare
+  # container. It is installed into the SAME uv-managed interpreter that runs auditwheel, because
+  # _linux_container_bootstrap.sh prepends that interpreter's bin dir to PATH -- so the PyPI patchelf
+  # shadows /usr/bin/patchelf for this step without removing the apt one the staging script relinks
+  # rpaths with. Scoped to the cuda branch on purpose: the cpu branch above runs only
+  # `auditwheel show`, which does not invoke patchelf at all, and its audit path is unchanged.
+  # `hash -r` clears bash's command cache so the newly installed binary is the one resolved.
+  uv pip install --python /usr/local/bin/python3 --quiet "patchelf>=0.14.5"
+  hash -r
+  echo "patchelf for auditwheel repair: $(patchelf --version 2>&1) at $(command -v patchelf)"
+  # ASSERT THE FLOOR rather than let auditwheel raise a traceback three minutes into a repair: a
+  # version gate that fails in one line at the point of use is diagnosable from the log alone.
+  python3 - <<'PY_PATCHELF_FLOOR'
+import shutil, subprocess, sys
+path = shutil.which("patchelf")
+if not path:
+    sys.exit("FATAL: no patchelf on PATH; auditwheel repair cannot run")
+raw = subprocess.run([path, "--version"], capture_output=True, text=True).stdout.strip()
+digits = "".join(c if c.isdigit() or c == "." else "" for c in raw.split()[-1])
+parts = tuple(int(p) for p in digits.split(".")[:3] if p != "")
+if parts < (0, 14, 5):
+    sys.exit("FATAL: patchelf %s at %s is below auditwheel's 0.14.5 repair floor" % (raw, path))
+print("PATCHELF_OK %s at %s" % (raw, path))
+PY_PATCHELF_FLOOR
   auditwheel repair "${EXCLUDE_ARGS[@]}" -w /work/mojo_build/abi-probe /work/dist-runtime/*.whl
   if ! ls /work/mojo_build/abi-probe/*manylinux_2_35_x86_64.whl >/dev/null 2>&1; then
     echo "::error::the cuda wheel is not manylinux_2_35 once the DECLARED host libraries"
