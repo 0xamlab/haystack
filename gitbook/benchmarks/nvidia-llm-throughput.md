@@ -182,9 +182,10 @@ TensorRT-LLM.
   toolchain; the session derives buffer and grid shapes from the checkpoint's own
   dimensions. TensorRT-LLM comparisons were measured on A100-SXM4-40GB (Qwen2.5-7B) and
   H200 (Gemma-3-27B).
-* The CUDA session is benchmark-verified on the hardware above. The shipped SDK serving path
-  is Metal; the CI CUDA lane is compile-gated (no GPU on the builder). See
-  [GPU support](../engine/gpu-support.md).
+* The CUDA session is measured on the hardware above. Metal is the default serve path in the
+  shipped SDK; the CUDA runtime wheel publishes with the next runtime release, and CI compiles
+  and links the CUDA lane on a builder with no GPU. See
+  [GPU support](../engine/gpu-support.md) and [CUDA backend](../engine/cuda-backend.md).
 
 ## Related
 

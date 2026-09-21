@@ -27,6 +27,7 @@
 * [Metal LLM decode](engine/qwen3-metal-decode.md)
 * [Model support matrix](engine/model-support-matrix.md)
 * [GPU support](engine/gpu-support.md)
+* [CUDA backend](engine/cuda-backend.md)
 
 ## Compute & kernel primitives
 

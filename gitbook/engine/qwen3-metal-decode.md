@@ -34,13 +34,14 @@ The full matrix — every backend, verification status, and requirements — is
 | Backend | Build status | Launch status | Requirements |
 | --- | --- | --- | --- |
 | Metal (Apple Silicon) | Run-verified, ships in the macOS runtime | Run-verified end to end on real hardware | An M-series Mac |
-| CUDA (NVIDIA) | Portable kernel layer run-verified, compile-gated in CI; native LLM session benchmarked | Portable kernels run bit-exact on T4, L4 and A100; a separate CUDA-native resident session is benchmarked on A100/L4 — this Metal entry point is not that session | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver >= 580 |
+| CUDA (NVIDIA) | Portable kernel layer run-verified; native LLM session hardware-verified; CI compiles and links the lane on a builder with no GPU | Portable kernels run bit-exact on T4, L4 and A100; a separate CUDA-native resident session is measured on A100, L4, H100 and H200 — this Metal entry point is not that session | Linux runtime built with `-D ALGENTA_GPU -D ALGENTA_CUDA`, an NVIDIA driver >= 580 |
 | ROCm (AMD) | Compile gate in progress | Not verified | — |
 
 The CUDA lane runs the portable GPU kernels; the Metal batched-dispatch machinery documented on
 this page is gated separately (`ALGENTA_METAL`). The CUDA lane includes a native resident session
-(v2 prefill GEMMs + CUDA-graph decode) benchmarked on A100/L4; the SDK entry point on this page is
-Metal-only. Measured NVIDIA numbers:
+(v2 prefill GEMMs + CUDA-graph decode) measured on A100, L4, H100 and H200; the SDK entry point on
+this page is Metal-only. Install, requirements and entry points for the NVIDIA lane:
+[CUDA backend](cuda-backend.md). Measured NVIDIA numbers:
 [NVIDIA kernel benchmarks](../benchmarks/nvidia-kernel-benchmarks.md) (portable kernels) and
 [NVIDIA LLM throughput](../benchmarks/nvidia-llm-throughput.md) (LLM session).
 
