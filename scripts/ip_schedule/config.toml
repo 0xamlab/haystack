@@ -1,0 +1,588 @@
+# Inputs for the Schedule of Intellectual Property generator (scripts/ip_schedule).
+#
+# Everything measurable is measured by collect.py at run time (git, GitHub, PyPI, npm,
+# WHOIS). This file holds the facts that are not derivable from a repository: who the
+# owner is, which repositories and domains belong to the schedule, the non-revealing
+# trade-secret categories, and the inbound/outbound license positions.
+
+schema_version = 1
+
+# Root-level arrays must sit above the first [table] header, or TOML attaches them to it.
+protection_measures = [
+  "Private GitHub repositories under the thyn-ai organization; single-owner access with two-factor authentication",
+  "Engine distributed only as compiled, signed wheels; Mojo source never leaves the private repository",
+  "Algenta Community License 1.0 prohibits reverse engineering of the engine binary and sub-licensing",
+  "Website Terms of Service assert ownership of software, models, interfaces, workflows, trademarks, logos, and documentation",
+  "Secret scanning, dependency review, and a pinned security toolchain on every repository",
+]
+
+cleanup_items = [
+  "Copyright owner harmonised to Seville AI Technologies, Inc. d/b/a Thyn across LICENSE and NOTICE files (thyn-ai/algenta #1106, codna #615, telys #147, sqai #62, algenta-sdk #107, algenta-integrations #161, mojo-kernels #56, escrypto #23).",
+  "File USPTO trademark applications for Thyn, Algenta, Codna, Telys, and SQAI (word marks; Classes 9 and 42) — none filed at the snapshot date.",
+  "Register copyrights for the Algenta engine and the Codna, Telys, and SQAI applications with the U.S. Copyright Office (Circular 61; redacted trade-secret deposit option).",
+  "Add a copyright/SPDX header to source files; none carry one today.",
+  "decimas.com is held by an unrelated third party; only decimas.ai is owned. Do not list decimas.com.",
+  "Correct the investor deck's code-size slide to this snapshot's commit and figures; the slide's cited commit does not reproduce its numbers and '606 modules' matches no commit.",
+  "Record the clean-room process behind thyn-ai/mojo-kernels' NOTICE claim (engineer attestation and oracle-only use of reference libraries).",
+  "Push or archive the unpushed local Codna IDE backup (~/Developer/codna-ide.bak) so no company code exists only on one machine.",
+  "Refresh stale local clones (codna, sqai, mojo-kernels, escrypto) or count only from origin, as this generator does.",
+  "Commission a designer-produced vector master of the Thyn logo before any USPTO filing; the current SVGs in thyn-ai/thyn-site (thyn-logo-assets/) are traced from a raster and its README says so.",
+  "Reconcile the brand list in content/legal/terms.ts across the sites: thyn-site and sqai-site omit Escrypto.ai while algenta-site, telys-site, codna-site and cohenta-site list all seven brands.",
+]
+
+[issuer]
+legal_name = "Seville AI Technologies, Inc."
+dba = "Thyn"
+owner = "Seville AI Technologies, Inc. d/b/a Thyn"
+jurisdiction = "Delaware, USA"
+address = "445 Park Avenue, 9th Floor, New York, NY 10022, USA"
+website = "https://thyn.ai"
+github_org = "thyn-ai"
+founder_assignment = "Founder-to-company intellectual property assignment on file (date and document reference to be inserted by the company before filing)."
+
+[identity]
+# Every human commit across the estate belongs to one GitHub account (numeric ID 79715912)
+# that has carried several display names. Bots are recognised by pattern.
+human = "Angel Marinov (founder; GitHub account 79715912)"
+human_names = ["angelatgithub", "0xamlab", "Angel Marinov", "Angel"]
+human_emails = [
+  "79715912+angelatgithub@users.noreply.github.com",
+  "79715912+0xamlab@users.noreply.github.com",
+  "angel@eplane.com",
+  "angel@thyn.ai",
+]
+bot_patterns = ['\[bot\]$', '-bot$', '^github-actions', '^dependabot']
+
+[counting]
+# Extension -> language. Only these files count as code; everything else (Markdown, JSON,
+# YAML, images, datasets) is tracked-but-not-code.
+[counting.languages]
+".mojo" = "Mojo"
+".🔥" = "Mojo"
+".py" = "Python"
+".ts" = "TypeScript"
+".tsx" = "TypeScript"
+".js" = "JavaScript"
+".mjs" = "JavaScript"
+".cjs" = "JavaScript"
+".sql" = "SQL"
+".sh" = "Shell"
+".rs" = "Rust"
+".go" = "Go"
+".c" = "C"
+".h" = "C"
+".cpp" = "C++"
+".cu" = "CUDA"
+".metal" = "Metal"
+
+[counting.exclude]
+# Any path component equal to one of these is excluded from authored counts everywhere.
+dirs = ["node_modules", "vendor", "third_party", "fixtures", "testdata", "datasets", "dist", "build", ".pixi", "__pycache__"]
+
+[valuation]
+# Cost-approach inputs for the INTERNAL valuation note only. No COCOMO: KLOC models calibrated
+# on pre-AI projects give absurd effort for a codebase one founder produced in months. The
+# basis is what git measures — the founder's actual production rate on the engine's PRODUCT
+# Mojo (tests, benchmarks, examples, docs, generated files and Apache-2.0 helpers excluded) —
+# and what an equally equipped replacement team would take, priced at market rates.
+loaded_cost_per_person_month_usd = 18000
+loaded_cost_note = "USD 18,000 per person-month (about USD 216,000 loaded per year) for a senior software engineer."
+scarce_skill_loaded_cost_per_person_month_usd = 25000
+scarce_skill_note = "USD 25,000 per person-month (about USD 300,000 loaded) for engineers able to write production Mojo and CUDA/Metal kernels: 2026 US kernel-engineer base pay runs USD 176k-309k, GPU-optimization skills carry a premium of about USD 32k over standard ML roles, and the Mojo pool is small (about 140k developers worldwide by search-engine estimates; roughly 22k on the Modular Discord, about 260 language contributors), so a buyer pays the top of the market and waits to staff."
+# A replacement team that has never seen the design works at a fraction of the founder's measured rate.
+replacement_relative_productivity = [0.5, 0.25]
+replacement_team_size = 3
+hiring_lead_months = 4
+verification_allowance = 0.20
+developer_profit = 0.25
+cost_notes = [
+  "Relative productivity 0.5 and 0.25: a hired team re-deriving the architecture, without the founder's context, is assumed to produce at one half to one quarter of the measured founder rate with the same AI-assisted tooling.",
+  "Verification allowance 20%: re-running the bit-exact differential suites, benchmark oracles and determinism checks that gate every release.",
+  "Developer's profit and entrepreneurial incentive 25%: the standard cost-approach mark-up a rational builder requires over bare cost.",
+  "Hiring lead time 4 months: time to recruit production Mojo/GPU-kernel engineers; it lengthens the schedule and adds recruiting cost but not engineering effort.",
+]
+non_product_dirs = ["tests", "test", "benchmarks", "bench", "examples", "docs", "scripts", "infra", "ci", "fixtures", "training", "hello-world", "schemas", "plans", "outreach", "gitbook", "site", "www"]
+market_comparables = [
+  "Modular (Mojo + MAX) acquired by Qualcomm, June 2026, about USD 3.9B (2.4x its September 2025 valuation) — the only exit of a compiler-driven AI runtime",
+  "vLLM team seeded at about USD 800M and the SGLang spin-out at about USD 400M (2026) — the two serving engines the published benchmarks beat 16.9x and 19.2x",
+  "AI-infrastructure seed rounds: median post-money USD 10–15M; Series A median USD 30–35M (2026 sector benchmarks)",
+]
+
+# ----------------------------------------------------------------------------------------
+# Repositories. role = core (counted, full row) | public (counted, full row) | mention
+# (one-line entry, GitHub metadata only, no counting).
+# ----------------------------------------------------------------------------------------
+
+[[repos]]
+key = "algenta"
+product = "Algenta"
+role = "core"
+org_repo = "thyn-ai/algenta"
+local_path = "~/Developer/decision-engine"
+asset = "Algenta engine, API server, runtime, and client packages"
+license = "Algenta Community License 1.0 at the root; Apache-2.0 for packages/algenta, packages/python-sdk, packages/ts-sdk, packages/mcp"
+description = "Self-hosted building blocks for AI applications: compiled functions for simulation, optimization, forecasting, memory, policy, and execution on custom Mojo kernels, behind one API, Python and TypeScript SDKs, and an MCP server. The Mojo engine source is proprietary."
+exclude_prefixes = ["mojo/tests/libs/", "apps/api_server/simulation_template_catalog_", "benchmarks/python_libs/"]
+generated_note = "Excluded as generated: mojo/tests/libs/ (test files emitted by tests/generate_mojo_tests.py), benchmarks/python_libs/ (auto-generated Python equivalents of the mojo/engine modules, used as benchmark oracles), and apps/api_server/simulation_template_catalog_*.py."
+third_party_prefixes = ["benchmarks/competitors/"]
+third_party = ["benchmarks/competitors/llama_cpp/ — llama.cpp benchmark baseline, MIT (the ggml authors); benchmark oracle only, not shipped"]
+mojo_by_dir = true
+engine_families_prefix = "mojo/engine/"
+contract_json = "packages/algenta/algenta/runtime_library_contract.json"
+sbom_artifact_prefixes = ["engine-supply-chain-", "api-supply-chain-"]
+
+[[repos]]
+key = "codna"
+product = "Codna"
+role = "core"
+org_repo = "thyn-ai/codna"
+local_path = "~/Developer/codna"
+asset = "Codna CLI, GitHub App, webhook service, and IDE"
+license = "Apache-2.0"
+description = "Understand. Fix. Evolve. Codna maps a repository before it spends a token, then reviews pull requests, fixes bugs, and proves which scanner findings are reachable; one command on a developer's machine, in CI, and behind the GitHub App."
+exclude_prefixes = []
+third_party_prefixes = ["agent-core/vendor/"]
+third_party = ["agent-core/vendor/cline/ — vendored Cline SDK fork, Apache-2.0 (upstream commit recorded in its NOTICE); licensed-in, not owned"]
+
+[[repos]]
+key = "telys"
+product = "Telys"
+role = "core"
+org_repo = "thyn-ai/telys"
+local_path = "~/Developer/memory-engine"
+asset = "Telys memory engine, SDKs, and MCP server"
+license = "Apache-2.0"
+description = "Governed, embedded memory engine for AI agents: filtered vector search and temporal truth as a single function call inside the caller's process; on-device, no daemon, zero outbound calls."
+exclude_prefixes = []
+third_party_prefixes = []
+third_party = []
+
+[[repos]]
+key = "sqai"
+product = "SQAI"
+role = "core"
+org_repo = "thyn-ai/sqai"
+local_path = "~/Developer/sqai"
+asset = "SQAI SDKs and CLI"
+license = "Apache-2.0"
+description = "Governed, read-only structured-data tool for AI agents: a question becomes a typed, policy-checked plan run on the pinned runtime, and every answer carries the hashes needed to replay it exactly."
+exclude_prefixes = []
+third_party_prefixes = []
+third_party = []
+
+[[repos]]
+key = "algenta-sdk"
+product = "Algenta"
+role = "public"
+org_repo = "thyn-ai/algenta-sdk"
+local_path = "~/Developer/algenta-sdk"
+asset = "Algenta Python and TypeScript SDKs and MCP package (public mirror of packages/ in thyn-ai/algenta)"
+license = "Apache-2.0"
+description = "Python and TypeScript SDKs, the API contract, and examples for Algenta. The engine is proprietary and separately distributed."
+exclude_prefixes = []
+third_party_prefixes = []
+third_party = []
+
+[[repos]]
+key = "algenta-integrations"
+product = "Algenta"
+role = "public"
+org_repo = "thyn-ai/algenta-integrations"
+local_path = "~/Developer/algenta-integrations"
+asset = "Framework integrations for Algenta"
+license = "Apache-2.0"
+description = "Governed tool profiles, execution receipts, and approvals for LangChain, LlamaIndex, pydantic-ai, Microsoft Agent Framework, Haystack, LiteLLM, Ray Serve, vLLM, the Vercel AI SDK, and n8n, running against a self-hosted Algenta engine."
+exclude_prefixes = []
+third_party_prefixes = []
+third_party = []
+
+[[repos]]
+key = "mojo-kernels"
+product = "Algenta"
+role = "public"
+org_repo = "thyn-ai/mojo-kernels"
+local_path = "~/Developer/mojo-kernels"
+asset = "Clean-room Mojo kernels with Python and TypeScript wrappers"
+license = "Apache-2.0"
+description = "Drop-in Mojo accelerators for popular Python and TypeScript libraries with bit-exact parity and pure-language fallbacks."
+exclude_prefixes = []
+third_party_prefixes = []
+third_party = ["Fuse.js vendored as the fuse-mojo fallback backend (Apache-2.0); VADER lexicon data; phone-number metadata — each attributed in its own NOTICE"]
+
+[[repos]]
+key = "security-toolchain"
+product = "Algenta"
+role = "public"
+org_repo = "thyn-ai/security-toolchain"
+asset = "Pinned, checksum-verified security toolchain (pre-commit hooks and reusable Actions gate)"
+license = "Apache-2.0"
+description = "Gitleaks, Opengrep, OSV-Scanner, Trivy config, and actionlint pinned and verified, as pre-commit hooks and a reusable GitHub Actions gate."
+exclude_prefixes = []
+third_party_prefixes = []
+third_party = []
+
+[[repos]]
+key = "codna-action"
+product = "Codna"
+role = "public"
+org_repo = "thyn-ai/codna-action"
+asset = "GitHub Action for Codna"
+license = "Apache-2.0"
+description = "Runs the same codna command in GitHub Actions: fix a bug and open a pull request, review a pull request, or prove which scanner findings are reachable."
+exclude_prefixes = []
+third_party_prefixes = []
+third_party = []
+
+# One-line mentions (outside the core scope of this schedule).
+[[repos]]
+key = "cohenta"
+product = "Cohenta"
+role = "mention"
+org_repo = "thyn-ai/cohenta"
+asset = "Cohenta campaign runner and publishers"
+license = "no LICENSE file at the time of the snapshot"
+description = "Governed publishing: one goal in, a whole campaign out, with approval before publish."
+
+[[repos]]
+key = "accounts"
+product = "Thyn"
+role = "mention"
+org_repo = "thyn-ai/accounts"
+asset = "accounts.thyn.ai control plane (identity, billing, licensing)"
+license = "no LICENSE file at the time of the snapshot"
+description = "Shared accounts, billing, and license issuance for the Thyn products."
+
+[[repos]]
+key = "decimas"
+product = "Decimas"
+role = "mention"
+org_repo = "thyn-ai/decimas"
+asset = "Decimas (planned)"
+license = "n/a"
+description = "Planned markets product; the repository is an empty placeholder."
+
+[[repos]]
+key = "thyn-site"
+product = "Thyn"
+role = "mention"
+org_repo = "thyn-ai/thyn-site"
+asset = "thyn.ai website"
+license = "no LICENSE file at the time of the snapshot"
+description = "Corporate website and legal terms."
+
+[[repos]]
+key = "algenta-site"
+product = "Algenta"
+role = "mention"
+org_repo = "thyn-ai/algenta-site"
+asset = "algenta.ai website"
+license = "no LICENSE file at the time of the snapshot"
+description = "Product website, pricing, and documentation entry."
+
+[[repos]]
+key = "codna-site"
+product = "Codna"
+role = "mention"
+org_repo = "thyn-ai/codna-site"
+asset = "codna.ai website"
+license = "no LICENSE file at the time of the snapshot"
+description = "Product website and benchmarks."
+
+[[repos]]
+key = "telys-site"
+product = "Telys"
+role = "mention"
+org_repo = "thyn-ai/telys-site"
+asset = "telys.ai website"
+license = "no LICENSE file at the time of the snapshot"
+description = "Product website and pricing."
+
+[[repos]]
+key = "sqai-site"
+product = "SQAI"
+role = "mention"
+org_repo = "thyn-ai/sqai-site"
+asset = "sqai.com website"
+license = "no LICENSE file at the time of the snapshot"
+description = "Product website and documentation."
+
+[[repos]]
+key = "cohenta-site"
+product = "Cohenta"
+role = "mention"
+org_repo = "thyn-ai/cohenta-site"
+asset = "cohenta.ai website"
+license = "no LICENSE file at the time of the snapshot"
+description = "Product website."
+
+# ----------------------------------------------------------------------------------------
+# Domains, packages, marks.
+# ----------------------------------------------------------------------------------------
+
+[[domains]]
+name = "thyn.ai"
+product = "Thyn"
+use = "Corporate site, accounts.thyn.ai, email; verified domain in Microsoft Entra"
+scope = "core"
+
+[[domains]]
+name = "algenta.ai"
+product = "Algenta"
+use = "Product site, docs, API"
+scope = "core"
+
+[[domains]]
+name = "codna.ai"
+product = "Codna"
+use = "Product site"
+scope = "core"
+
+[[domains]]
+name = "telys.ai"
+product = "Telys"
+use = "Product site"
+scope = "core"
+
+[[domains]]
+name = "sqai.com"
+product = "SQAI"
+use = "Product site"
+scope = "core"
+note = "Registered 2004 by a prior holder; acquired on the aftermarket."
+acquired = true
+
+[[domains]]
+name = "cohenta.ai"
+product = "Cohenta"
+use = "Product site"
+scope = "mention"
+
+[[domains]]
+name = "decimas.ai"
+product = "Decimas"
+use = "Reserved for the planned product"
+scope = "mention"
+
+[[packages]]
+name = "algenta"
+registry = "pypi"
+product = "Algenta"
+repo = "thyn-ai/algenta"
+
+[[packages]]
+name = "algenta-sdk"
+registry = "pypi"
+product = "Algenta"
+repo = "thyn-ai/algenta-sdk"
+
+[[packages]]
+name = "codna"
+registry = "pypi"
+product = "Codna"
+repo = "thyn-ai/codna"
+
+[[packages]]
+name = "telys"
+registry = "pypi"
+product = "Telys"
+repo = "thyn-ai/telys"
+
+[[packages]]
+name = "sqai"
+registry = "pypi"
+product = "SQAI"
+repo = "thyn-ai/sqai"
+
+[[packages]]
+name = "@thyn-ai/sqai"
+registry = "npm"
+product = "SQAI"
+repo = "thyn-ai/sqai"
+
+[[distributions]]
+name = "thyn-ai/codna-action"
+kind = "GitHub Action (Marketplace-style, public repository)"
+product = "Codna"
+repo = "thyn-ai/codna-action"
+
+[[distributions]]
+name = "Codna GitHub App"
+kind = "GitHub App (installable; reviews, fixes, checks)"
+product = "Codna"
+repo = "thyn-ai/codna"
+
+[[distributions]]
+name = "algenta-runtime-native-* wheels"
+kind = "Signed native runtime wheels built in CI (linux x86_64, cuda) and shipped to licensees"
+product = "Algenta"
+repo = "thyn-ai/algenta"
+
+[[marks]]
+mark = "Thyn"
+kind = "word mark and logo"
+goods = "Software and SaaS for AI application infrastructure (Nice Classes 9 and 42)"
+domains = ["thyn.ai"]
+repos = ["thyn-site"]
+packages = []
+logo_assets = "thyn-ai/thyn-site (logo assets directory)"
+scope = "core"
+
+[[marks]]
+mark = "Algenta"
+kind = "word mark and logo"
+goods = "Downloadable and self-hosted software: AI application runtime, SDKs, MCP server (Classes 9 and 42)"
+domains = ["algenta.ai"]
+repos = ["algenta", "algenta-site"]
+packages = ["algenta", "algenta-sdk"]
+logo_assets = "thyn-ai/algenta-site (public/)"
+scope = "core"
+
+[[marks]]
+mark = "Codna"
+kind = "word mark and logo"
+goods = "Downloadable software and hosted service for code review and repair (Classes 9 and 42)"
+domains = ["codna.ai"]
+repos = ["codna", "codna-site"]
+packages = ["codna"]
+logo_assets = "thyn-ai/codna-site (public/)"
+scope = "core"
+
+[[marks]]
+mark = "Telys"
+kind = "word mark and logo"
+goods = "Downloadable software: embedded memory and retrieval engine for AI agents (Class 9)"
+domains = ["telys.ai"]
+repos = ["telys", "telys-site"]
+packages = ["telys"]
+logo_assets = "thyn-ai/telys-site (public/)"
+scope = "core"
+
+[[marks]]
+mark = "SQAI"
+kind = "word mark and logo"
+goods = "Downloadable software: governed structured-data access for AI agents (Classes 9 and 42)"
+domains = ["sqai.com"]
+repos = ["sqai", "sqai-site"]
+packages = ["sqai", "@thyn-ai/sqai"]
+logo_assets = "thyn-ai/sqai-site (public/)"
+scope = "core"
+
+[[marks]]
+mark = "Cohenta"
+kind = "word mark and logo"
+goods = "Software for governed campaign publishing (Classes 9 and 42)"
+domains = ["cohenta.ai"]
+repos = ["cohenta", "cohenta-site"]
+packages = []
+logo_assets = "thyn-ai/cohenta-site (public/)"
+scope = "mention"
+
+[[marks]]
+mark = "Decimas"
+kind = "word mark and logo (planned product)"
+goods = "Reserved"
+domains = ["decimas.ai"]
+repos = ["decimas"]
+packages = []
+logo_assets = "Decimas logo package (design files held by the company)"
+scope = "mention"
+
+# ----------------------------------------------------------------------------------------
+# Trade secrets and know-how: categories only, nothing that discloses the secret itself.
+# ----------------------------------------------------------------------------------------
+
+[[trade_secrets]]
+category = "Mojo engine source"
+description = "The proprietary source of the compiled kernel library under mojo/engine/ (families listed in the sub-table), including the numerical hot paths behind the published functions."
+held_in = "thyn-ai/algenta (private); shipped only as compiled, signed binaries"
+
+[[trade_secrets]]
+category = "Dispatch and compilation architecture"
+description = "How the runtime selects, compiles, and races kernels across CPU, Metal, and CUDA backends, including the accelerator ahead-of-time paths and the determinism guarantees."
+held_in = "thyn-ai/algenta (private)"
+
+[[trade_secrets]]
+category = "Benchmark harness, oracles, and calibration data"
+description = "The scripted, ground-truth-scored benchmark corpus and timing methodology re-measured every release."
+held_in = "thyn-ai/algenta (private); results published, harness internals not"
+
+[[trade_secrets]]
+category = "Licensing and activation design"
+description = "Offline license verification, key issuance, device and compute-unit accounting, and anti-fleet-abuse enforcement."
+held_in = "thyn-ai/algenta and thyn-ai/accounts (private)"
+
+[[trade_secrets]]
+category = "Evidence and replay record format"
+description = "The content-hashed, versioned decision-record structure and the replay protocol under pinned inputs, seed, and engine version."
+held_in = "thyn-ai/algenta (private); documented externally at the interface level only"
+
+[[trade_secrets]]
+category = "Codna repository mapping"
+description = "How Codna maps a repository before spending tokens, anchors reviews to changed code, and proves reachability of scanner findings."
+held_in = "thyn-ai/codna (private repository; Apache-2.0 source distributed in packages)"
+
+[[trade_secrets]]
+category = "Telys index format and retrieval path"
+description = "The on-device index layout, filtered vector search, and temporal-truth model."
+held_in = "thyn-ai/telys (private repository; Apache-2.0 source distributed in packages)"
+
+[[trade_secrets]]
+category = "SQAI planning and policy checks"
+description = "How a question becomes a typed, policy-checked plan pinned to a runtime with replay hashes."
+held_in = "thyn-ai/sqai (private repository; Apache-2.0 source distributed in packages)"
+
+
+# ----------------------------------------------------------------------------------------
+# License positions.
+# ----------------------------------------------------------------------------------------
+
+[[inbound_licenses]]
+licensor = "Modular (acquired by Qualcomm, 2026)"
+subject = "Mojo compiler and MAX toolchain used to build the engine; Mojo standard library (Apache-2.0 with LLVM exceptions)"
+terms = "Modular Community License / Mojo SDK terms for the toolchain; permissive for the standard library"
+materiality = "Material: the engine is written in Mojo. Toolchain availability and terms are a disclosed dependency."
+
+[[inbound_licenses]]
+licensor = "Cline contributors"
+subject = "Cline SDK fork vendored under codna/agent-core/vendor/cline/"
+terms = "Apache-2.0 (LICENSE and NOTICE retained; modifications listed in the vendored NOTICE)"
+materiality = "Material to Codna's agent loop; permissive, attribution preserved."
+
+[[inbound_licenses]]
+licensor = "Eclipse Foundation and Theia contributors"
+subject = "Eclipse Theia platform packages (@theia/*) on which the Codna IDE application is built"
+terms = "EPL-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0 (dual-licensed; the Company relies on EPL-2.0, a weak copyleft license that applies to modifications of Theia itself, not to the Company's separate code)"
+materiality = "Material to the Codna IDE distribution only; the CLI, GitHub App, and webhook service do not depend on it."
+
+[[inbound_licenses]]
+licensor = "Open-source component authors"
+subject = "Third-party libraries listed per repository in the components tab"
+terms = "Permissive licenses (MIT, BSD, Apache-2.0, ISC, PSF) unless flagged"
+materiality = "Routine; copyleft components, if any, are flagged in the components tab."
+
+[[inbound_licenses]]
+licensor = "LLM providers (customer-selected)"
+subject = "Model APIs called by Codna and Cohenta with the customer's own keys"
+terms = "Each provider's API terms, accepted by the customer"
+materiality = "No provider license is required by the company to ship; customers bring their own keys."
+
+[[outbound_licenses]]
+subject = "Algenta engine and runtime"
+terms = "Algenta Community License 1.0 (source-available root license; engine binary under separate binary terms; no reverse engineering; no sub-licensing) plus commercial tiers: Community USD 0 (1 device, 1 worker), Pro USD 99 per device per month (5 workers), Team USD 499 per device per month (20 workers, 15 seats), Server USD 600 per compute unit per month (1 CU = 4 vCPU; air-gapped activation, lapse degrades to Community)"
+where = "LICENSE, docs/pricing-algenta.md, docs/SERVER_LICENSING.md, gitbook/licensing.md, algenta.ai/pricing"
+
+[[outbound_licenses]]
+subject = "Algenta client packages (algenta, algenta-sdk, ts-sdk, mcp), integrations, mojo-kernels, security-toolchain, codna-action"
+terms = "Apache License, Version 2.0; no contributor license agreement (inbound = outbound under GitHub Terms of Service §D.6)"
+where = "LICENSE and NOTICE in each public repository"
+
+[[outbound_licenses]]
+subject = "Codna, Telys, SQAI source and published packages"
+terms = "Apache License, Version 2.0 for the distributed source and packages; hosted and licensed tiers sold through accounts.thyn.ai"
+where = "LICENSE and NOTICE in each repository; PyPI and npm metadata"
+
+[[outbound_licenses]]
+subject = "Websites and hosted services"
+terms = "Terms and Conditions of Seville AI Technologies, Inc. d/b/a Thyn (AAA arbitration; ownership of all software, models, interfaces, workflows, trademarks, logos, and documentation reserved)"
+where = "content/legal/terms.ts in each site repository"
+

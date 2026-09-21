@@ -16,7 +16,7 @@
         test-go-live-connectivity test-go-live-connectivity-tier2 test-go-live-connectivity-tier3 test-go-live-full \
         test-csv-generic test-csv-regression test-csv-all bench-csv-corpus bench-csv-corpus-full \
         bench-dist-accuracy bench-real-data test-mojo-engines test-mojo-malformed \
-        gen-mojo-tests gen-mojo-tests-check inventory-refresh inventory-check \
+        gen-mojo-tests gen-mojo-tests-check inventory-refresh inventory-check ip-schedule ip-schedule-pdf \
         verify-dispatch-compiles bench-runtime-batch bench-runtime-pipeline \
         bench-runtime-session bench-optimization bench-optimization-tier2
 .PHONY: capability-check capability-baseline sdk-audit-check sdk-audit-sweep build-audit-worker
@@ -716,6 +716,21 @@ inventory-check:
 	$(REPO_PYTHON) scripts/generate_algenta_capability_manifest.py --check
 	$(REPO_PYTHON) scripts/docs/gen_runtime_library_reference.py --check
 	$(MAKE) capability-check
+
+## Build the dated Schedule of Intellectual Property (snapshot.json + xlsx + md) under
+## ~/Documents/thyn-ip-inventory/<date>/ (override with IP_OUT=...). See scripts/ip_schedule/README.md.
+ip-schedule:
+	@IP_DIR="$${IP_OUT:-$$HOME/Documents/thyn-ip-inventory/$$(date +%Y-%m-%d)}"; \
+	echo "ip-schedule -> $$IP_DIR"; \
+	$(REPO_PYTHON) scripts/ip_schedule/collect.py --out "$$IP_DIR/snapshot.json" && \
+	$(REPO_PYTHON) scripts/ip_schedule/render.py --snapshot "$$IP_DIR/snapshot.json" && \
+	$(REPO_PYTHON) scripts/ip_schedule/narrative.py --snapshot "$$IP_DIR/snapshot.json"
+
+## Optional: PDF renditions of the IP schedule and its documents (needs a Python with
+## reportlab + openpyxl; not part of the repo environment). Uses the same dated folder.
+ip-schedule-pdf:
+	@IP_DIR="$${IP_OUT:-$$HOME/Documents/thyn-ip-inventory/$$(date +%Y-%m-%d)}"; \
+	$${IP_PDF_PYTHON:-python3} scripts/ip_schedule/pdf.py --dir "$$IP_DIR"
 
 ## Prove the generated dispatch COMPILES for the structs that can only be built
 ## via default-construct + field assignment. This is the gate that was missing:
