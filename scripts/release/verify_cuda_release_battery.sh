@@ -67,6 +67,34 @@ VM_LAST_START=${VM_LAST_START:-unknown}
 # rather than inherited so the scope this window certified is in this window's log.
 GATE_SPECS=${GATE_SPECS:-"pp256:/tmp/g3pp256/prompt_0000.txt pp1024:/tmp/g3pp1024/prompt_0000.txt val550:/tmp/g3race500/prompt_0000.txt rag4096:/tmp/g3rag/rag4096.txt"}
 PY314=${PY314:-}
+# ── ENGINE-SHAPED KNOBS, ALL FORWARDED BY THE CONTROLLER ───────────────────────────────────────
+# The defaults above are the gemma3-27b campaign's. Every one of these is an ENGINE or SKU fact that
+# a different bundled engine changes, and before they were knobs at all the battery could only ever
+# certify gemma: the oracle directory and the eos ids were hardcoded inside gate_any.py, the
+# certified-shape list inside gate_coverage_gemma3_round19.py, and the clock pin inside
+# cell_watchdog.sh. They are read here and passed on explicitly, because an env var that has to cross
+# a process boundary must be NAMED at that boundary -- the rule this battery's own launch comment
+# records round 18 paying for.
+ORACLE_DIR=${ORACLE_DIR:-}
+ORACLE_LABEL=${ORACLE_LABEL:-}
+EOS_TOKENS=${EOS_TOKENS:-106,1}
+GATE_COVERAGE_PROMPTS=${GATE_COVERAGE_PROMPTS:-$GATE_PROMPTS}
+GATE_COVERAGE_SINGLE_RUN=${GATE_COVERAGE_SINGLE_RUN:-rag4096}
+CW_PIN_MHZ=${CW_PIN_MHZ:-1410}
+STAGE_SCRIPT=${STAGE_SCRIPT:-chain7stage.sh}
+# A stage that does not emit FIXTURE_IDENTITY_OK must not be demanded of. The gemma stage proves its
+# fixtures identical to round 6's certified echoes; another engine's lane has no such banked echoes,
+# and grepping for a marker the stage never writes is a guaranteed refusal dressed up as a gate.
+STAGE_NEEDS_FIXTURE_IDENTITY=${STAGE_NEEDS_FIXTURE_IDENTITY:-1}
+CELL_MIN=${CELL_MIN:-2}
+# The serve-entry live launch. This is the evidence that a user can actually START the shipped
+# engine, which an oracle gate over `algenta.inference.decode` does not by itself prove: decode()
+# drives the worker directly, while `algenta serve` additionally resolves the bundled engine binary,
+# runs the startup gate and answers over the CLI. Empty SERVE_MODEL skips the phase and the verdict
+# records that it was skipped rather than implying it happened.
+SERVE_MODEL=${SERVE_MODEL:-}
+SERVE_PROMPT=${SERVE_PROMPT:-}
+SERVE_MAX_NEW_TOKENS=${SERVE_MAX_NEW_TOKENS:-16}
 
 NR="$SRC_TREE/benchmarks/llm_smoke/nvidia_race"
 L3="$NR/vm_harness/lever3"
@@ -101,6 +129,13 @@ export GATE_SPECS GATE_PROMPTS CENSUS VERDICT BATTERY_EXIT PHASE_FILE HB NR L3
 # Assigned further down, but marked for export here: `export NAME` before an assignment still exports
 # the value it later gets, and the gate/conform evaluators below read these out of the environment.
 export GATE_JSON CONFORM_JSON
+# Same rule for the engine-shaped knobs: gate_any.py reads ORACLE_DIR/EOS_TOKENS,
+# gate_coverage_gemma3_round19.py reads GATE_COVERAGE_PROMPTS/GATE_COVERAGE_SINGLE_RUN, and
+# cell_watchdog.sh reads CW_PIN_MHZ -- all out of the environment, so an un-exported assignment here
+# would silently leave each of them on its gemma default while the log claimed otherwise.
+export ORACLE_DIR ORACLE_LABEL EOS_TOKENS GATE_COVERAGE_PROMPTS GATE_COVERAGE_SINGLE_RUN
+export CW_PIN_MHZ STAGE_SCRIPT STAGE_NEEDS_FIXTURE_IDENTITY
+export SERVE_JSON
 
 ts() { date -u +%FT%TZ; }
 log() { echo "[$(ts)] $*" | tee -a "$LOGFILE"; }
@@ -321,14 +356,40 @@ run_phase load bash -c '
 # chain7stage.sh is REUSED VERBATIM, not reimplemented: it is the script that proves fixture identity
 # against round 6's certified gate echoes and refuses to proceed off-pin, and a release gate that
 # hand-rolled its own staging would be a gate nobody could compare with the campaign's cells.
-budget_or_die 10 stage
-STAGE_SRC="$SRC_TREE" L7="$WORK" GPU="$GPU" CKPT="$CKPT" \
-  run_phase stage bash "$NR/chain7stage.sh" || { log "STAGE FAILED — nothing may be measured"; finish 15; }
-grep -q "STAGE_OK" "$WORK/chain7stage.log" 2>/dev/null || {
-  log "FATAL: no STAGE_OK in the stage log"; finish 15; }
-grep -q "FIXTURE_IDENTITY_OK=True" "$WORK/chain7stage.log" 2>/dev/null || {
-  log "FATAL: fixtures were not proven identical to round 6's certified echoes"; finish 15; }
-log "STAGE_OK + FIXTURE_IDENTITY_OK=True: fixtures, checkpoint and the 1410 MHz pin all proven"
+# WHICH stage script runs is a knob, because "the campaign's cells" are per-engine: chain7stage.sh is
+# gemma3-27b end to end (it tokenises with ~/models/gemma-3-27b-it, requires the four /tmp/g3*
+# fixtures, proves identity against round 6's GEMMA echoes, and converts gemma at weights_dtype=f32).
+# Running it for a Qwen2.5-7B wheel would abort at "FIXTURE MISSING /tmp/g3pp256/prompt_0000.txt"
+# having already paid for the boot. Another engine supplies its own stage via STAGE_SCRIPT; the
+# contract it must satisfy is the same -- print STAGE_OK, leave the converted checkpoint at $CKPT,
+# and leave the GPU pinned -- and STAGE_NEEDS_FIXTURE_IDENTITY says whether it also owes the
+# round-6-style identity marker.
+STAGE_LOG="$WORK/stage.log"
+STAGE_BUDGET_MIN=${STAGE_BUDGET_MIN:-10}
+budget_or_die "$STAGE_BUDGET_MIN" stage
+log "stage script = $NR/$STAGE_SCRIPT (needs_fixture_identity=$STAGE_NEEDS_FIXTURE_IDENTITY)"
+[ -f "$NR/$STAGE_SCRIPT" ] || {
+  log "FATAL: no stage script at $NR/$STAGE_SCRIPT — the synced tree does not carry it"; finish 15; }
+STAGE_SRC="$SRC_TREE" L7="$WORK" GPU="$GPU" CKPT="$CKPT" HF_CKPT="$HF_CKPT" LOG="$STAGE_LOG" \
+  CW_PIN_MHZ="$CW_PIN_MHZ" GATE_SPECS="$GATE_SPECS" ORACLE_DIR="$ORACLE_DIR" \
+  EOS_TOKENS="$EOS_TOKENS" PY314="$PY314" \
+  run_phase stage bash "$NR/$STAGE_SCRIPT" \
+  || { log "STAGE FAILED — nothing may be measured"; finish 15; }
+grep -q "STAGE_OK" "$STAGE_LOG" 2>/dev/null || {
+  log "FATAL: no STAGE_OK in the stage log ($STAGE_LOG)"; finish 15; }
+if [ "$STAGE_NEEDS_FIXTURE_IDENTITY" = "1" ]; then
+  grep -q "FIXTURE_IDENTITY_OK=True" "$STAGE_LOG" 2>/dev/null || {
+    log "FATAL: fixtures were not proven identical to the certified echoes"; finish 15; }
+  log "STAGE_OK + FIXTURE_IDENTITY_OK=True: fixtures, checkpoint and the pin all proven"
+else
+  # RECORDED, NOT SILENT. Skipping the identity proof weakens the gate in a specific, nameable way:
+  # the fixtures are the ones this stage generated, not ones proven byte-identical to a banked
+  # certified set. A verdict that did not say so would overstate what was certified.
+  log "STAGE_OK. NOTE: this stage owes NO fixture-identity marker (STAGE_NEEDS_FIXTURE_IDENTITY=0),"
+  log "      so the fixtures are the ones it generated, NOT proven identical to banked certified"
+  log "      echoes. Recorded in the verdict; the oracle gate below still binds every token."
+fi
+log "clock pin for this window: ${CW_PIN_MHZ} MHz (zero off-pin tolerance)"
 
 # ── 4. THE GATE CELLS, ONE PER PROCESS, EACH WITH ITS OWN CLOCK DISCIPLINE ────────────────────
 # cell_watchdog.sh is sourced rather than copied: cw_cell is what samples clocks at 1 Hz around a
@@ -406,17 +467,20 @@ for label in $LABELS; do
     log "CELL $label wrote no JSON token line — treating as a failure"; finish 17; }
   # ZERO OFF-PIN TOLERANCE, PER CELL, CHECKED AS THE WINDOW GOES rather than at the end: a cell that
   # ran off-pin is not comparable with the certified echoes, and discovering that after 11 cells
-  # would waste the window instead of one cell.
-  offpin=$(awk '{print $2}' "$CLK/clocks_$label.csv" 2>/dev/null | grep -vc '^1410$' || true)
+  # would waste the window instead of one cell. The pin is CW_PIN_MHZ, not a literal 1410: this check
+  # and cell_watchdog's own off-pin count must agree on the number, or one of them refuses a window
+  # the other called clean.
+  offpin=$(awk '{print $2}' "$CLK/clocks_$label.csv" 2>/dev/null | grep -vc "^${CW_PIN_MHZ}\$" || true)
   after=$(nvidia-smi -i "$GPU" --query-gpu=clocks.current.sm --format=csv,noheader,nounits 2>/dev/null)
-  log "CELL $label DISCIPLINE clocks_after=${after}MHz offpin=${offpin:-?}"
-  if [ "${offpin:-1}" != "0" ] || [ "${after:-0}" != "1410" ]; then
-    log "*** CLOCK DISCIPLINE BROKEN on $label (clocks_after=$after offpin=$offpin). REFUSING:"
-    log "    a cell taken off the 1410 MHz pin is not comparable with the certified echoes."
+  log "CELL $label DISCIPLINE clocks_after=${after}MHz offpin=${offpin:-?} want=${CW_PIN_MHZ}MHz"
+  if [ "${offpin:-1}" != "0" ] || [ "${after:-0}" != "$CW_PIN_MHZ" ]; then
+    log "*** CLOCK DISCIPLINE BROKEN on $label (clocks_after=$after offpin=$offpin want=$CW_PIN_MHZ)."
+    log "    REFUSING: a cell taken off the ${CW_PIN_MHZ} MHz pin is not comparable with the"
+    log "    certified echoes."
     finish 18
   fi
 done
-log "ALL $N_LABELS CELLS RAN, each rc=0, each at 1410 MHz with offpin=0"
+log "ALL $N_LABELS CELLS RAN, each rc=0, each at ${CW_PIN_MHZ} MHz with offpin=0"
 
 # ── 5. THE GATE VERDICT, FROM THE CAMPAIGN'S OWN EVALUATORS ───────────────────────────────────
 # gate_any.py compares every emitted token against the cache-free fp32 oracle prefix, requires the
@@ -466,12 +530,103 @@ if [ "$conform_rc" = "2" ] || [ "$conform_rc" = "1" ]; then
   finish 21
 fi
 
-# ── 7. EMIT THE VERDICT ───────────────────────────────────────────────────────────────────────
+# ── 7. THE SERVE ENTRY, LIVE-LAUNCHED ─────────────────────────────────────────────────────────
+# WHY THIS PHASE EXISTS AT ALL. Everything above drives the wheel's worker through
+# `algenta.inference.decode` -- a Python call into the shipped path. That proves the wheel's binaries
+# COMPUTE. It does not prove a user can START them: `algenta serve --backend cuda` additionally has
+# to resolve the bundled engine binary out of the installed package, run the startup gate against
+# this host's facts, spawn the engine, and answer over the CLI with tokens. A wheel that passes every
+# oracle cell and then cannot be launched by its own advertised entry point is not a shippable wheel,
+# and before this phase the battery would have certified exactly that.
+# The launch is NOT given --engine-binary: the whole claim under test is that the resolver finds the
+# engine that came out of THIS wheel. Overriding it would prove the file runs, not that it is found.
+SERVE_JSON="$WORK/serve_launch.json"
+SERVE_TXT="$WORK/serve_launch.txt"
+budget_or_die 3 serve
+if [ -z "$SERVE_MODEL" ]; then
+  # SKIPPED IS RECORDED AS SKIPPED. A verdict that simply omitted the serve launch would read as
+  # "launched, nothing to report"; an explicit skipped marker with the reason is the only honest form.
+  log "SERVE LAUNCH SKIPPED: SERVE_MODEL is empty. The verdict records serve_launch.status=skipped."
+  log "  This window therefore did NOT prove the shipped entry point starts. Set SERVE_MODEL to the"
+  log "  HF snapshot dir (and optionally SERVE_PROMPT) to make the launch part of the gate."
+  "$PY314" -c '
+import json, os
+json.dump({"status": "skipped", "reason": "SERVE_MODEL empty", "rc": None, "tokens": None},
+          open(os.path.join(os.environ["WORK"], "serve_launch.json"), "w"), indent=2)
+' || log "WARNING: could not write the serve-skip marker"
+else
+  # The prompt: SERVE_PROMPT as text if given, else the FIRST gate fixture's token ids, so the serve
+  # launch generates from exactly the bytes the oracle gate certified rather than from a prompt this
+  # phase invented. --prompt-token-ids also skips the tokenizer, which removes a dependency from the
+  # one phase whose job is to prove the engine starts.
+  SERVE_IDS=""
+  for spec in $GATE_SPECS; do
+    f="${spec##*:}"
+    if [ -f "$f" ]; then SERVE_IDS=$(head -1 "$f" | tr -d ' \n'); break; fi
+  done
+  run_phase serve bash -c '
+    set -uo pipefail
+    export PYTHONPATH="$SITE:$SRC_TREE/packages/algenta"
+    export ALGENTA_NATIVE_WORKER="$SITE/algenta_runtime_native/algenta-runtime-worker"
+    export ALGENTA_RUNTIME_WORKER="$SITE/algenta_runtime_native/algenta-runtime-worker"
+    export ALGENTA_RUNTIME_FALLBACK_MODE=deny
+    export CUDA_VISIBLE_DEVICES="$GPU"
+    ARGS=(serve --backend cuda --model "$SERVE_MODEL" --converted-dir "$CKPT"
+          --max-new-tokens "$SERVE_MAX_NEW_TOKENS" --json)
+    if [ -n "${SERVE_PROMPT:-}" ]; then
+      ARGS+=(--prompt "$SERVE_PROMPT")
+    elif [ -n "${SERVE_IDS:-}" ]; then
+      ARGS+=(--prompt-token-ids "$SERVE_IDS")
+    else
+      echo "SERVE_LAUNCH_FAILED: neither SERVE_PROMPT nor a readable fixture in GATE_SPECS"
+      exit 2
+    fi
+    echo "cmd: python -m algenta.cli ${ARGS[*]}" | tee "$SERVE_TXT"
+    # `python -m algenta.cli`, NOT the `algenta` console script: the wheel is unpacked with the
+    # stdlib zipfile (no pip, no index on this box), so no console_script was ever installed. The
+    # module path is the same entry point pyproject declares (`algenta = "algenta.cli:main"`).
+    "$PY314" -m algenta.cli "${ARGS[@]}" >"$SERVE_JSON" 2>>"$SERVE_TXT"
+    rc=$?
+    echo "serve_rc=$rc" | tee -a "$SERVE_TXT"
+    exit $rc
+  '
+  serve_rc=$?
+  log "serve launch rc=$serve_rc (0=launched and generated, 2=TYPED REFUSAL, 1=error)"
+  if [ "$serve_rc" != "0" ]; then
+    log "*** THE SHIPPED ENTRY POINT DID NOT LAUNCH on a host whose wheel just passed the oracle"
+    log "    gate. Those two facts contradict each other; refusing to issue a verdict."
+    log "    stderr: $(tail -5 "$SERVE_TXT" 2>/dev/null)"
+    finish 23
+  fi
+  # rc=0 is necessary but NOT sufficient: a launch that produced zero tokens is not a launch. The
+  # claim this phase makes is "the entry point served tokens", so the tokens are checked.
+  SERVE_TOKENS=$("$PY314" -c '
+import json, os, sys
+try:
+    d = json.load(open(os.path.join(os.environ["WORK"], "serve_launch.json"), encoding="utf-8"))
+except Exception as exc:
+    print("UNPARSEABLE:%s" % exc); raise SystemExit(0)
+toks = d.get("tokens") or (d.get("generation") or {}).get("tokens") or []
+ids = d.get("token_ids") or (d.get("generation") or {}).get("token_ids") or []
+print(len(toks) or len(ids))
+' 2>/dev/null || echo "?")
+  log "SERVE_LAUNCH_OK: rc=0, tokens=$SERVE_TOKENS, backend=cuda, engine resolved from the wheel"
+  case "$SERVE_TOKENS" in
+    ''|0|'?'|UNPARSEABLE*)
+      log "*** the serve entry exited 0 but produced no tokens — that is not a launch"; finish 23 ;;
+  esac
+fi
+
+# ── 8. EMIT THE VERDICT ───────────────────────────────────────────────────────────────────────
 budget_or_die 1 verdict
 run_phase verdict env WORK="$WORK" VERDICT="$VERDICT" CENSUS="$CENSUS" GATE_JSON="$GATE_JSON" \
   CONFORM_JSON="$CONFORM_JSON" CLK="$CLK" RUNS="$RUNS" GPU="$GPU" WHEEL_PATH="$WHEEL_PATH" \
   VM_NAME="$VM_NAME" VM_ZONE="$VM_ZONE" VM_PROJECT="$VM_PROJECT" VM_LAST_START="$VM_LAST_START" \
   SRC_TREE="$SRC_TREE" GATE_PROMPTS="$GATE_PROMPTS" CW_DEADLINE_EPOCH="$CW_DEADLINE_EPOCH" \
+  CW_PIN_MHZ="$CW_PIN_MHZ" SERVE_JSON="$SERVE_JSON" STAGE_SCRIPT="$STAGE_SCRIPT" \
+  STAGE_NEEDS_FIXTURE_IDENTITY="$STAGE_NEEDS_FIXTURE_IDENTITY" STAGE_LOG="$STAGE_LOG" \
+  GATE_SPECS="$GATE_SPECS" EOS_TOKENS="$EOS_TOKENS" ORACLE_DIR="$ORACLE_DIR" \
+  CKPT="$CKPT" HF_CKPT="$HF_CKPT" \
   "$PY314" -c '
 import glob, json, os, subprocess
 from datetime import datetime, timezone
@@ -498,19 +653,35 @@ except Exception:
 
 # Per-cell clock discipline, read from the 1 Hz samplers cell_watchdog wrote, so the verdict carries
 # the EVIDENCE and not a claim: clocks_before/after, sample count, and off-pin count per cell.
+# THE PIN COMES FROM THE ENVIRONMENT, and the samples are compared as INTEGERS. They were compared
+# as strings, which is a masked defect: min(["1410","990"]) is "1410" because "1" < "9", so a clock
+# that sagged to 990 MHz would have been reported as clock_min_mhz=1410 -- the drift invisible in the
+# very field a reader would check it in. `offpin` happened to catch it, but a verdict whose min/max
+# fields lie is not a verdict worth re-checking.
+PIN_MHZ = str(os.environ.get("CW_PIN_MHZ", "1410"))
 cells = []
 for path in sorted(glob.glob(os.path.join(os.environ["CLK"], "clocks_gate_*.csv"))):
     label = os.path.basename(path)[len("clocks_"):-len(".csv")]
     samples = [ln.split() for ln in open(path, encoding="utf-8", errors="replace") if ln.strip()]
-    clocks = [s[1].rstrip(",") for s in samples if len(s) > 1]
-    offpin = sum(1 for c in clocks if c != "1410")
+    raw = [s[1].rstrip(",") for s in samples if len(s) > 1]
+    numeric = []
+    for value in raw:
+        try:
+            numeric.append(int(value))
+        except ValueError:
+            pass
+    offpin = sum(1 for c in numeric if str(c) != PIN_MHZ)
     cells.append({
         "label": label,
-        "clock_samples": len(clocks),
-        "clock_min_mhz": min(clocks) if clocks else None,
-        "clock_max_mhz": max(clocks) if clocks else None,
+        "clock_samples": len(raw),
+        "clock_samples_numeric": len(numeric),
+        "clock_min_mhz": min(numeric) if numeric else None,
+        "clock_max_mhz": max(numeric) if numeric else None,
+        "clocks_first_mhz": numeric[0] if numeric else None,
+        "clocks_last_mhz": numeric[-1] if numeric else None,
+        "pinned_mhz": int(PIN_MHZ),
         "offpin": offpin,
-        "offpin_zero": offpin == 0 and bool(clocks),
+        "offpin_zero": offpin == 0 and bool(numeric),
     })
 
 driver = ""
@@ -540,18 +711,46 @@ try:
 except Exception:
     pins = {}
 
+# THE SCOPE STATEMENT NAMES THE GPU THAT WAS ACTUALLY USED. It used to assert "ONE H200 box at
+# 1410 MHz" as a literal, which is a false claim on any other SKU -- and the purpose of a given
+# window may well be to certify a wheel on a cheaper, different GPU. A scope statement is the part of
+# a verdict a reader trusts most, so it is composed from the measured gpu_name and the pin ordered.
+# (No apostrophes anywhere inside this embedded python body: it is delimited by single quotes, so one
+# would close the shell string early and turn the rest of the python into shell syntax errors.)
+serve_report = read_json(os.environ.get("SERVE_JSON", ""), {}) or {}
+serve_status = serve_report.get("status")
+if serve_status is None:
+    serve_status = "launched" if serve_report else "not_run"
+scope_bits = [
+    "Certifies that THIS wheel launched and passed the oracle gate on ONE %s box"
+    % (gpu_name or "GPU"),
+    "at %s MHz with offpin=0 on every cell" % PIN_MHZ,
+    "gate scope [%s] against the oracle at %s"
+    % (os.environ.get("GATE_PROMPTS", "?"), os.environ.get("ORACLE_DIR") or "<evaluator default>"),
+    "serve entry live-launch: %s" % serve_status,
+]
+SCOPE_STATEMENT = (
+    ", ".join(scope_bits)
+    + ", and answered the conformance table for the cuda backend. It is not a benchmark win, not a "
+      "multi-hardware or multi-driver certification, and not a claim about any other host."
+)
+
+# Read defensively: the stage log is written by a different script and may be absent if the stage died
+# before creating it, and a verdict emitter that raises turns a completed battery into no verdict.
+fixture_identity_proven = False
+try:
+    with open(os.environ.get("STAGE_LOG", ""), encoding="utf-8", errors="replace") as fh:
+        fixture_identity_proven = "FIXTURE_IDENTITY_OK=True" in fh.read()
+except Exception:
+    fixture_identity_proven = False
+
 verdict = {
     "schema_version": 1,
     "verdict": "pass",
     "rc": 0,
     "issued_utc": now,
     "issuer": "scripts/release/verify_cuda_release.sh + verify_cuda_release_battery.sh",
-    "scope_statement": (
-        "Certifies that THIS wheel launched and passed the campaign full-scope oracle gate on ONE "
-        "H200 box at 1410 MHz with offpin=0 on every cell, and answered the conformance table for "
-        "the cuda backend. It is not a benchmark win, not a multi-hardware or multi-driver "
-        "certification, and not a claim about any other host."
-    ),
+    "scope_statement": SCOPE_STATEMENT,
     "timestamps": {
         "started_utc": os.environ.get("BATTERY_START"),
         "finished_utc": now,
@@ -586,13 +785,39 @@ verdict = {
         "last_start_timestamp": os.environ["VM_LAST_START"],
     },
     "clocks": {
-        "pinned_mhz": 1410,
+        "pinned_mhz": int(PIN_MHZ),
         "offpin_total": sum(c["offpin"] for c in cells),
         "cells": cells,
         "clocks_source": "remeasured_per_cell_by_cell_watchdog",
     },
+    # THE SERVE ENTRY, AS ITS OWN TOP-LEVEL CLAIM. Kept out of `gates` on purpose: an oracle gate over
+    # decode() and a live launch of `algenta serve` are different claims about different code paths,
+    # and folding one into the other would let a skipped launch hide inside a passed gate.
+    "serve_launch": {
+        "status": serve_status,
+        "reason": serve_report.get("reason"),
+        "requested_backend": "cuda",
+        "max_new_tokens": os.environ.get("SERVE_MAX_NEW_TOKENS"),
+        "model": serve_report.get("model") or os.environ.get("SERVE_MODEL") or None,
+        "engine_resolved_from_wheel": serve_status == "launched",
+        "report": serve_report,
+    },
+    "stage": {
+        "script": os.environ.get("STAGE_SCRIPT"),
+        "needs_fixture_identity": os.environ.get("STAGE_NEEDS_FIXTURE_IDENTITY") == "1",
+        "fixture_identity_proven": fixture_identity_proven,
+        "gate_specs": os.environ.get("GATE_SPECS"),
+        "converted_checkpoint": os.environ.get("CKPT"),
+        "hf_checkpoint": os.environ.get("HF_CKPT"),
+        "eos_tokens": os.environ.get("EOS_TOKENS"),
+        "oracle_dir": os.environ.get("ORACLE_DIR") or None,
+    },
     "gates": {
-        "kind": "fresh_full_scope_oracle_gate_on_the_wheel",
+        # "full scope" is a claim about the EVALUATOR scope list, not a property of every gate. It is
+        # derived from the coverage evaluator prompt set, so a reduced-scope window cannot describe
+        # itself as full-scope by inheriting a string literal.
+        "kind": "fresh_oracle_gate_on_the_wheel[scope=%s]"
+                % os.environ.get("GATE_COVERAGE_PROMPTS", os.environ.get("GATE_PROMPTS", "?")),
         "all_pass": gate.get("all_pass"),
         "scope": gate.get("scope"),
         "out_of_scope_prompts": gate.get("out_of_scope_prompts"),
