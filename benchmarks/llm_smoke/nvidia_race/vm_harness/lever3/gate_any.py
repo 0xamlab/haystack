@@ -36,15 +36,44 @@ EOS = tuple(
 ORACLE_LABEL = os.environ.get(
     "ORACLE_LABEL", "cache-free fp32 transformers (~/adj/oracle3)"
 )
-PLAN = {
-    "pp256":   [(16, ["gate_pp256_maxnew16"]),
-                (64, ["gate_pp256_maxnew64", "gate_pp256_maxnew64_rep2"])],
-    "pp1024":  [(16, ["gate_pp1024_maxnew16"]),
-                (64, ["gate_pp1024_maxnew64", "gate_pp1024_maxnew64_rep2"])],
-    "val550":  [(16, ["gate_val550_maxnew16"]),
-                (64, ["gate_val550_maxnew64", "gate_val550_maxnew64_rep2"])],
-    "rag4096": [(64, ["gate_rag4096_maxnew64"])],
-}
+# ── THE PLAN IS DERIVED FROM THE ENGINE'S SHAPE LIST, NOT BAKED IN ──────────────────────────────
+# PLAN used to be a literal of gemma's four shapes. Enumerating a shape the engine under test does
+# not have is not harmless: gate_any.py records every PLAN entry outside the requested scope in
+# `out_of_scope_prompts`, so a Qwen2.5-7B gate (which has no `val550` -- the 7B lane's fifth shape
+# is five short chat prompts, not a 550-token sonnet) emitted `out_of_scope_prompts: ["val550"]`,
+# and the coverage evaluator refused the window for a prompt that does not exist in its lane. The
+# refusal was correct given its input and wrong about the world.
+#
+# Both lists come from the SAME two env vars the coverage evaluator reads, so the two evaluators
+# cannot disagree about what the shapes are -- two independently-maintained lists that must match is
+# how a coverage check starts passing (or refusing) for the wrong reason.
+#   GATE_COVERAGE_PROMPTS      every shape this engine's lane has (default: gemma's four)
+#   GATE_COVERAGE_SINGLE_RUN   shapes certified at maxnew64 with NO determinism repeat (rag4096's
+#                              64-cell is a single run in the banked gemma certification)
+# Label spellings match wheel_gate_cells.py's _schedule exactly, or the gate reports NOT-RUN for
+# cells that ran. With no env set, the derived PLAN is byte-for-byte the old literal.
+_PLAN_PROMPTS = tuple(
+    p.strip()
+    for p in os.environ.get(
+        "GATE_COVERAGE_PROMPTS", "pp256,pp1024,val550,rag4096"
+    ).split(",")
+    if p.strip()
+)
+_SINGLE_RUN = frozenset(
+    p.strip()
+    for p in os.environ.get("GATE_COVERAGE_SINGLE_RUN", "rag4096").split(",")
+    if p.strip()
+)
+
+
+def _plan_for(name):
+    if name in _SINGLE_RUN:
+        return [(64, [f"gate_{name}_maxnew64"])]
+    return [(16, [f"gate_{name}_maxnew16"]),
+            (64, [f"gate_{name}_maxnew64", f"gate_{name}_maxnew64_rep2"])]
+
+
+PLAN = {name: _plan_for(name) for name in _PLAN_PROMPTS}
 
 # ── SCOPE, AND WHY A REDUCED GATE MUST NOT READ AS A FAILED ONE ───────────────────────────────
 # `PLAN` above enumerates all four prompts, and `all_pass` used to be False whenever any of them

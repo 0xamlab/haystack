@@ -70,6 +70,13 @@ EOS_TOKENS = tuple(
     for tok in os.environ.get("EOS_TOKENS", "106,1").replace(" ", "").split(",")
     if tok
 )
+# Shapes certified at maxnew64 with no determinism repeat. Shared with gate_any.py's PLAN and the
+# coverage evaluator's expected-repeat count so all three schedulers agree by construction.
+SINGLE_RUN_SHAPES = frozenset(
+    name.strip()
+    for name in os.environ.get("GATE_COVERAGE_SINGLE_RUN", "rag4096").split(",")
+    if name.strip()
+)
 
 
 def _sha256_16(path: Path) -> str:
@@ -101,9 +108,12 @@ def _schedule(specs: list[str]) -> list[tuple[str, str, Path, int]]:
         fixture_path = Path(fixture)
         if not fixture_path.is_file():
             raise SystemExit(f"fixture missing for {name}: {fixture_path}")
-        # rag4096 has no 16-token cell: round 6 certified that shape at 64 only, and gate_any.py's
-        # PLAN encodes exactly that. Inventing a 16-cell would add a cell no oracle row compares.
-        widths = (64,) if name == "rag4096" else (16, 64)
+        # Shapes with no 16-token cell come from GATE_COVERAGE_SINGLE_RUN -- the SAME env var
+        # gate_any.py builds its PLAN from and the coverage evaluator derives its expected repeat
+        # count from. It used to be the literal `name == "rag4096"` here, which is a gemma round-6
+        # fact: three schedulers that each hardcode it differently is how cells get run that no
+        # oracle row compares, or expected that were never scheduled.
+        widths = (64,) if name in SINGLE_RUN_SHAPES else (16, 64)
         for width in widths:
             out.append((name, f"gate_{name}_maxnew{width}", fixture_path, width))
             if width == 64:

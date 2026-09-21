@@ -135,7 +135,7 @@ export GATE_JSON CONFORM_JSON
 # would silently leave each of them on its gemma default while the log claimed otherwise.
 export ORACLE_DIR ORACLE_LABEL EOS_TOKENS GATE_COVERAGE_PROMPTS GATE_COVERAGE_SINGLE_RUN
 export CW_PIN_MHZ STAGE_SCRIPT STAGE_NEEDS_FIXTURE_IDENTITY
-export SERVE_JSON
+export SERVE_JSON SERVE_MODEL SERVE_PROMPT SERVE_MAX_NEW_TOKENS
 
 ts() { date -u +%FT%TZ; }
 log() { echo "[$(ts)] $*" | tee -a "$LOGFILE"; }
@@ -542,6 +542,12 @@ fi
 # engine that came out of THIS wheel. Overriding it would prove the file runs, not that it is found.
 SERVE_JSON="$WORK/serve_launch.json"
 SERVE_TXT="$WORK/serve_launch.txt"
+# EXPORTED, and this is not optional: the launch below runs in a `bash -c` CHILD, which reads these
+# out of the environment. SERVE_JSON was already exported at the top of this file, but SERVE_TXT and
+# SERVE_IDS are assigned here -- unexported, the child would `tee` to an empty path and take the
+# "neither SERVE_PROMPT nor a readable fixture" branch, failing a launch that was correctly set up.
+# This is precisely the defect this battery's own header records round 18 paying for.
+export SERVE_TXT SERVE_IDS
 budget_or_die 3 serve
 if [ -z "$SERVE_MODEL" ]; then
   # SKIPPED IS RECORDED AS SKIPPED. A verdict that simply omitted the serve launch would read as

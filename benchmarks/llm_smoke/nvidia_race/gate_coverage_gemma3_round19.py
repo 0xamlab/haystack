@@ -149,8 +149,18 @@ def evaluate(path):
     if claimed != sorted(PROMPTS):
         problems.append("REQUESTED scope %s != the certified shapes %s"
                         % (claimed, sorted(PROMPTS)))
-    if oos:
-        problems.append("out_of_scope_prompts not empty: %s" % oos)
+    # ONLY A SHAPE THIS LANE HAS CAN BE A COVERAGE HOLE. gate_any.py records every PLAN entry
+    # outside the requested scope in out_of_scope_prompts, so that list can legitimately name a shape
+    # the caller never claimed and this engine does not have. Refusing on `if oos` alone is what
+    # blocked the 7B gate: it emitted ["val550"] and the window was refused for a prompt that does
+    # not exist in the Qwen2.5-7B lane. A reduced scope over shapes that DO exist is still refused,
+    # by the `claimed != sorted(PROMPTS)` check just above -- that is the guard this one was doubling
+    # up on, and it is the one that is actually about coverage.
+    oos_in_lane = [p for p in oos if p in PROMPTS]
+    oos_other_lane = [p for p in oos if p not in PROMPTS]
+    if oos_in_lane:
+        problems.append("out_of_scope_prompts names shapes this gate WAS asked to certify: %s"
+                        % oos_in_lane)
     if sorted(with_cells) != sorted(PROMPTS):
         problems.append("CELL-derived coverage %s != all %d certified shapes"
                         % (sorted(with_cells), len(PROMPTS)))
@@ -168,9 +178,13 @@ def evaluate(path):
         problems.append("no cell either ran to its full requested width or stopped on an "
                         "oracle-corroborated EOS")
 
+    # Shapes from another lane are REPORTED, never refused and never silently dropped: a reader can
+    # see that the evaluator's PLAN and the caller's scope disagreed about which engine this was.
     summary = ("claimed_scope=%d prompts_with_cells=%d cells_ran=%d cells_pass=%d det_repeats=%d "
-               "out_of_scope=%d eos_evidence=%d requested=[%s] cell_covered=[%s] eos_by=%s"
-               % (len(claimed), len(with_cells), ran, passed, det_repeats, len(oos), int(eos_ok),
+               "out_of_scope_in_lane=%d out_of_scope_other_lane=%s eos_evidence=%d "
+               "requested=[%s] cell_covered=[%s] eos_by=%s"
+               % (len(claimed), len(with_cells), ran, passed, det_repeats, len(oos_in_lane),
+                  oos_other_lane or "[]", int(eos_ok),
                   ",".join(claimed), ",".join(sorted(with_cells)),
                   json.dumps(eos_by, sort_keys=True)))
     return summary, problems
@@ -189,7 +203,11 @@ def main():
     if problems:
         print("COVERAGE_REFUSAL: " + " | ".join(problems))
         return 1
-    print("COVERAGE_OK: request-derived and cell-derived coverage AGREE at 4 of 4")
+    # The count is the caller's shape list, not a literal 4: this line lands in the battery log and in
+    # a release window's evidence, and a 3-shape Qwen2.5-7B gate that printed "AGREE at 4 of 4" would
+    # be asserting a certification it did not make.
+    print("COVERAGE_OK: request-derived and cell-derived coverage AGREE at %d of %d [%s]"
+          % (len(PROMPTS), len(PROMPTS), ",".join(sorted(PROMPTS))))
     return 0
 
 
