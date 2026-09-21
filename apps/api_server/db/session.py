@@ -114,6 +114,14 @@ AsyncReadSessionLocal = async_sessionmaker(
 
 # ─── FastAPI dependencies ─────────────────────────────────────────────────────
 
+# ROLLBACK is the normal end of most transactions here, not a failure signal: pool_pre_ping on the
+# asyncpg dialect pings by starting and rolling back an EMPTY transaction on every pool checkout
+# (sqlalchemy/dialects/postgresql/asyncpg.py::_async_ping), and a session that only SELECTs and is
+# closed without commit (get_read_db, health_ready's SELECT 1, the services' own AsyncSessionLocal()
+# reads) rolls back on close -- so pg_stat_database.xact_rollback running at ~20 % of xact_commit on
+# codna-pg (109,790 vs 435,909 on 2026-09-21; 20 readiness GETs = 20 SELECT 1 + 40 ROLLBACK, every
+# statement elevel 0) is expected. Real failures show up in pg_stat_monitor.elevel/sqlcode, not here.
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Read/write session — use for INSERT, UPDATE, DELETE."""

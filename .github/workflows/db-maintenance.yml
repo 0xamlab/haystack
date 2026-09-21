@@ -1,0 +1,120 @@
+# Nightly hygiene for codna-api's production Postgres (Fly Managed Postgres `codna-pg`).
+#
+# Today it runs one job: purge expired short-lived SERVICE keys from `api_keys`
+# (scripts/purge_expired_service_keys.py; contract in apps/api_server/services/api_key_retention.py).
+# codna-webhook mints one 2 h `is_service` key per bridge call and nothing pruned them: 28,367 rows /
+# 15 MB / 83 % of all user data on 2026-09-21, growing ~1,131 a day.
+#
+# HOW IT REACHES THE DATABASE -- the same way `alembic upgrade head` does on every deploy: inside an
+# ephemeral Machine of the app's currently deployed image (`fly console -C`, the interactive twin of
+# fly.api.toml's release_command), where DATABASE_URL is codna-api's own Fly secret. The only
+# credential this workflow holds is FLY_API_TOKEN, the one deploy.yml/ci.yml already use. No
+# database URL, password or host is ever a GitHub secret, input or log line.
+#
+# A scheduled run EXECUTES (deletes in 5,000-row batches). A manual dispatch defaults to DRY-RUN
+# (count only) so the number can be read before anyone deletes; pick mode=execute to delete.
+# The script prints exactly one JSON report line on success and nothing on failure; the step
+# requires that line, so a Machine that never ran the script cannot pass as green.
+name: db-maintenance
+
+on:
+  schedule:
+    # Daily, off-minute per org convention; after the 04:00-06:00Z codna-webhook traffic peak.
+    - cron: "37 6 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (count only, default) or execute (delete in batches)"
+        type: choice
+        default: dry-run
+        options:
+          - dry-run
+          - execute
+      retention_days:
+        description: "Only service keys expired for longer than this many days are deleted"
+        default: "7"
+      batch_size:
+        description: "Rows per DELETE statement"
+        default: "5000"
+
+permissions:
+  contents: read
+
+# Never two purges at once; a queued second run just waits (cancelling a half-done batch loop is
+# harmless, but there is nothing to gain from it either).
+concurrency:
+  group: db-maintenance-codna-api
+  cancel-in-progress: false
+
+jobs:
+  purge-expired-service-keys:
+    name: Purge expired short-lived service keys (codna-api)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install flyctl (pinned release, checksum-verified)
+        # This job's token can run commands inside a production Machine, so flyctl is a pinned
+        # GitHub release verified against its published sha256 -- not `curl … | sh`. Bump the
+        # version and the hash TOGETHER: the hash is the Linux_x86_64 line of
+        # https://github.com/superfly/flyctl/releases/download/v<version>/flyctl_<version>_checksums.txt
+        # (0.4.104: cross-checked on 2026-09-21 by downloading the tarball independently). The
+        # comparison is a plain string equality on the computed digest, so a malformed or
+        # mis-set hash can only ever FAIL the step, never pass it.
+        env:
+          FLYCTL_VERSION: "0.4.104"
+          FLYCTL_SHA256: "4023d2a4f5e76198197f80bde74271184b200b9034bb16d799acba373714bfbc"
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/fly/bin"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/flyctl.tar.gz" \
+            "https://github.com/superfly/flyctl/releases/download/v${FLYCTL_VERSION}/flyctl_${FLYCTL_VERSION}_Linux_x86_64.tar.gz"
+          actual="$(sha256sum "$RUNNER_TEMP/flyctl.tar.gz" | awk '{print $1}')"
+          if [ "$actual" != "$FLYCTL_SHA256" ]; then
+            echo "::error::flyctl ${FLYCTL_VERSION} tarball sha256 mismatch: got ${actual}, pinned ${FLYCTL_SHA256}"
+            exit 1
+          fi
+          tar -xzf "$RUNNER_TEMP/flyctl.tar.gz" -C "$RUNNER_TEMP/fly/bin" flyctl
+          echo "$RUNNER_TEMP/fly/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/fly/bin/flyctl" version
+
+      - name: Run the purge inside an ephemeral codna-api Machine
+        env:
+          MODE: ${{ github.event_name == 'schedule' && 'execute' || inputs.mode }}
+          RETENTION_DAYS: ${{ github.event_name == 'schedule' && '7' || inputs.retention_days }}
+          BATCH_SIZE: ${{ github.event_name == 'schedule' && '5000' || inputs.batch_size }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            dry-run) EXECUTE="" ;;
+            execute) EXECUTE="--execute" ;;
+            *) echo "::error::mode must be dry-run or execute, got '$MODE'"; exit 2 ;;
+          esac
+          [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]] || { echo "::error::retention_days must be a non-negative integer"; exit 2; }
+          [[ "$BATCH_SIZE" =~ ^[1-9][0-9]*$ ]] || { echo "::error::batch_size must be a positive integer"; exit 2; }
+          echo "mode=$MODE retention_days=$RETENTION_DAYS batch_size=$BATCH_SIZE"
+
+          # The console Machine gets fly.api.toml's [env] plus the app's secrets (DATABASE_URL),
+          # runs `sleep inf` instead of the image CMD (no uvicorn, no Mojo pool), takes no traffic
+          # and is destroyed when the session ends. A small VM: the script is SQLAlchemy + asyncpg.
+          REPORT="$(flyctl console -a codna-api -c fly.api.toml \
+            --vm-size shared-cpu-1x --vm-memory 1024 \
+            -C "cd /app && python -m scripts.purge_expired_service_keys --retention-days $RETENTION_DAYS --batch-size $BATCH_SIZE $EXECUTE" \
+            2>&1 | tee /dev/stderr | tr -d '\r' | grep -E '^\{"batch_size":.*"purge_expired_service_keys": "ok".*\}$' || true)"
+          if [ -z "$REPORT" ]; then
+            echo "::error::the purge script produced no report line -- treating the run as FAILED"
+            exit 1
+          fi
+          echo "report=$REPORT" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Purge expired short-lived service keys (codna-api)"
+            echo '```json'
+            echo "$REPORT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
