@@ -1,0 +1,220 @@
+# Build, package and publish Algenta kernel families to the Hugging Face Kernels Hub (thyn-ai).
+#
+# Legs (plan v3, Stage 6): Linux x86-64 on the org's thyn-8c runner inside ubuntu:22.04 (the runtime's
+# glibc 2.35 floor), Linux arm64 on GitHub's native ubuntu-24.04-arm runner, macOS arm64 on a macOS 15
+# runner for CPU variants and on macOS 26 (Xcode 26 + Metal toolchain) for the Metal variants of the
+# LLM family. `assemble` generates the Hub repositories from the staged closures, runs the package
+# tests, runs the crash-hunting gate (every function, one contract-valid call, on every variant a
+# hosted runner can load) and signs every metadata.json keylessly (sigstore, workflow OIDC identity).
+# `publish` uploads to branch v1 + main only after those gates, behind the `hf-kernels-publish`
+# environment (owner approval, plan checkpoint L1) and the HF_TOKEN secret (fine-grained, write on
+# thyn-ai kernel repos).
+name: hf-kernels
+
+on:
+  workflow_dispatch:
+    inputs:
+      families:
+        description: "space-separated family names from scripts/hf_kernel_filters.json (default: every planned family)"
+        default: ""
+      publish:
+        description: "publish to the Hub (requires environment approval)"
+        type: boolean
+        default: false
+  push:
+    tags: ["hf-kernels-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hf-kernels-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  families:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.pick.outputs.list }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - id: pick
+        env:
+          FAMILIES_INPUT: ${{ inputs.families }}  # never expanded inline in the shell
+        run: |
+          if [ -n "$FAMILIES_INPUT" ]; then
+            printf 'list=%s\n' "$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1].split()))' "$FAMILIES_INPUT")" >> "$GITHUB_OUTPUT"
+          else
+            printf 'list=%s\n' "$(python3 -c 'import json; f=json.load(open("scripts/hf_kernel_filters.json"))["filters"]; print(json.dumps([k for k,v in f.items() if v["status"]=="planned"]))')" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-cpu:
+    needs: families
+    strategy:
+      fail-fast: false
+      matrix:
+        family: ${{ fromJson(needs.families.outputs.list) }}
+        leg:
+          - { name: linux-x86_64, runs-on: thyn-8c, container: "ubuntu:22.04" }
+          - { name: linux-aarch64, runs-on: ubuntu-24.04-arm, container: "ubuntu:22.04" }
+          - { name: darwin-aarch64, runs-on: macos-15, container: "" }
+    runs-on: ${{ matrix.leg.runs-on }}
+    container: ${{ matrix.leg.container }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - name: Toolchain (pixi-pinned Mojo)
+        uses: prefix-dev/setup-pixi@ba3bb36eb2066252b2363392b7739741bb777659 # v0.8.10
+        with:
+          manifest-path: mojo_env/pixi.toml
+          cache: true
+      - name: Build family (CPU)
+        run: |
+          set -euo pipefail
+          if [ "$(uname -s)" = "Linux" ]; then apt-get update -q && apt-get install -y -q --no-install-recommends clang binutils patchelf python3 git ca-certificates; fi
+          python3 scripts/build_hf_kernel_family.py --family "${{ matrix.family }}" --out "build_out/${{ matrix.family }}/cpu"
+      - name: Record artifact identity
+        run: |
+          uname -m; python3 -c "import json;print(json.load(open('build_out/${{ matrix.family }}/cpu/_native/manifest.json'))['platform'])"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-${{ matrix.family }}-cpu-${{ matrix.leg.name }}
+          path: build_out/${{ matrix.family }}/cpu/_native
+          if-no-files-found: error
+
+  build-metal:
+    needs: families
+    if: contains(fromJson(needs.families.outputs.list), 'algenta-llm')
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: prefix-dev/setup-pixi@ba3bb36eb2066252b2363392b7739741bb777659 # v0.8.10
+        with:
+          manifest-path: mojo_env/pixi.toml
+          cache: true
+      - name: Metal toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.0.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -downloadComponent MetalToolchain || true
+          xcrun -sdk macosx --find metal
+      - name: Build algenta-llm (Metal)
+        run: python3 scripts/build_hf_kernel_family.py --family algenta-llm --backend metal --out build_out/algenta-llm/metal
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-algenta-llm-metal-darwin-aarch64
+          path: build_out/algenta-llm/metal/_native
+          if-no-files-found: error
+
+  assemble:
+    needs: [families, build-cpu, build-metal]
+    if: always() && needs.build-cpu.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: natives
+      - name: Generate Hub repositories
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet "kernels>=0.17.1,<0.18" "huggingface_hub>=1.10" sigstore pytest
+          for fam in $(python3 -c 'import json,sys; print(" ".join(json.loads(sys.argv[1])))' '${{ needs.families.outputs.list }}'); do
+            args=""
+            for d in natives/native-"$fam"-cpu-*; do
+              plat=$(python3 -c "import json;print(json.load(open('$d/manifest.json'))['platform'])")
+              args="$args --native cpu=$d"
+            done
+            if [ -d "natives/native-$fam-metal-darwin-aarch64" ]; then args="$args --native metal=natives/native-$fam-metal-darwin-aarch64"; fi
+            python3 scripts/generate_hf_kernel_package.py --family "$fam" $args --out "hub/$fam"
+            HF_KERNEL_REPO_DIR="hub/$fam" PYTHONPATH=.:packages/algenta python3 -m pytest tests/test_hf_kernel_package.py -q -p no:cacheprovider --noconftest
+            # Crash-hunting gate: every function survives one contract-valid call (the variant this runner can load).
+            for v in hub/"$fam"/build/*-cpu-x86_64-linux; do
+              if [ -d "$v" ]; then mkdir -p smoke && python3 scripts/hf_kernels/family_smoke.py --variant "$v" --out "smoke/$fam-linux-x86_64.json"; break; fi
+            done
+          done
+      - name: Sign metadata (sigstore, keyless)
+        run: |
+          set -euo pipefail
+          for m in hub/*/build/*/metadata.json; do
+            python3 -m sigstore sign --bundle "$m.sigstore" --overwrite "$m"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hub-repositories
+          path: hub
+
+  smoke-darwin:
+    # The same crash-hunting gate on the macOS variants, on the OS floor each one claims.
+    needs: [families, assemble]
+    strategy:
+      fail-fast: false
+      matrix:
+        leg:
+          - { runs-on: macos-15, variant: torch214-cpu-aarch64-darwin }
+          - { runs-on: macos-26, variant: torch214-metal-aarch64-darwin }
+    runs-on: ${{ matrix.leg.runs-on }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: hub-repositories
+          path: hub
+      - name: Every function survives one contract-valid call
+        env:
+          FAMILIES_JSON: ${{ needs.families.outputs.list }}
+          VARIANT: ${{ matrix.leg.variant }}
+        run: |
+          set -euo pipefail
+          # Every family in this run must ship this variant when its filter-table backends include the
+          # variant's backend; a missing variant fails the gate instead of skipping it.
+          backend=$(printf '%s' "$VARIANT" | cut -d- -f2)
+          mapfile -t required < <(BACKEND="$backend" python3 -c 'import json,os; f=json.load(open("scripts/hf_kernel_filters.json"))["filters"]; fams=json.loads(os.environ["FAMILIES_JSON"]); print("\n".join(k for k in fams if os.environ["BACKEND"] in f[k].get("backends", [])))')
+          ran=0
+          if [ "${#required[@]}" -gt 0 ]; then
+            for fam in "${required[@]}"; do
+              v="hub/$fam/build/$VARIANT"
+              if [ ! -d "$v" ]; then echo "::error::$fam ships $backend but $v is missing from the assembled repositories"; exit 1; fi
+              python3 scripts/hf_kernels/family_smoke.py --variant "$v"
+              ran=$((ran + 1))
+            done
+          fi
+          echo "smoke gate: $ran famil(ies) on $VARIANT"
+
+  publish:
+    needs: [assemble, smoke-darwin]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: hf-kernels-publish
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: hub-repositories
+          path: hub
+      - name: Publish to the Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet "huggingface_hub>=1.10"
+          for fam in hub/*; do
+            python3 scripts/hf_kernels/publish_hub.py --repo "thyn-ai/$(basename "$fam")" --dir "$fam" --version 1
+          done

@@ -40,6 +40,7 @@
 #import <IOKit/IOKitLib.h>
 #include <mach-o/dyld.h>
 #include <mach-o/getsect.h>
+#include <dlfcn.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -143,7 +144,17 @@ int64_t algenta_open_session(void) {
             return algenta_fail(@"newCommandQueue returned nil");
         }
 
-        const struct mach_header *mh = _dyld_get_image_header(0);
+        /* The metallibs live in the __TEXT,__const of the image that contains THIS code: the worker
+         * executable when the shim is linked into it, or an in-process shared library (the HF
+         * kernel build) when it is linked there. Image 0 is only right for the executable case, so
+         * resolve the containing image through dladdr on one of our own symbols instead. */
+        Dl_info shim_info;
+        const struct mach_header *mh = NULL;
+        if (dladdr((const void *)&algenta_open_session, &shim_info) != 0 && shim_info.dli_fbase) {
+            mh = (const struct mach_header *)shim_info.dli_fbase;
+        } else {
+            mh = _dyld_get_image_header(0);
+        }
         unsigned long sect_size = 0;
         const uint8_t *sect = getsectiondata(
             (const struct mach_header_64 *)mh, "__TEXT", "__const", &sect_size);

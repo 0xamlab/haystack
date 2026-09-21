@@ -56,7 +56,11 @@ CATEGORY_RULES: list[tuple[str, list[str]]] = [
         "Statistics & probability",
         [
             "distribution",
-            "stat",
+            # "stat" alone also matched "state", "estate" and "electrostatics";
+            # these spellings keep the statistics modules and nothing else.
+            "stats",
+            "stat_",
+            "statistic",
             "bayes",
             "probab",
             "hypothesis",

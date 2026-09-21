@@ -248,6 +248,7 @@
 * [Drive a governed decision](guides/governed-decisions.md)
 * [Renewal Capacity Allocation pack](guides/renewal-capacity-allocation.md)
 * [Simulate a scenario](guides/simulate.md)
+* [Kernels on Hugging Face](guides/kernels-on-hugging-face.md)
 * [Run a what-if sweep](guides/what-if.md)
 * [Recommend, score & compare](guides/recommend-and-score.md)
 * [Query governed data](guides/governed-query.md)

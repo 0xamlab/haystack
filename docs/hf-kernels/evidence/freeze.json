@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "provisional": false,
+  "note": "Freeze taken on the branch rebased onto origin/main after PR #1110 (docs: CUDA backend page + GPU support alignment) merged; public GPU claims and this record share this baseline.",
+  "taken_at": "2026-09-21T17:16:32+00:00",
+  "algenta_commit": "2ab8a10631dd5c1a64cf4e2b9a02cce69196b13b",
+  "algenta_branch": "feat/hf-kernels-stage1",
+  "algenta_worktree_dirty_tracked": false,
+  "mojo_version": "Mojo 1.0.0 (ed45d567)",
+  "mojo_env_pixi_lock_sha256": "af6a7387f60d40995fd1b56bd5dd515cea0001ff3eee293d2ce5e39e56dd2bf0",
+  "mojo_env_python": "Python 3.14.6",
+  "kernels_pinned": {
+    "version": "0.17.1",
+    "tag": "v0.17.1",
+    "note": "stable tag; list-form trust_remote_code allowlist implemented in hf_hub.py:_check_trust_remote_code; `kernels check` is _check_moved -> kernel-builder check-builds/check-abi"
+  },
+  "kernels_tested_versions": [],
+  "huggingface_hub_min": "1.10.0 (kernel repo type)",
+  "host": {
+    "os": "macOS 26.6.2",
+    "kernel": "25.6.0",
+    "arch": "arm64",
+    "xcode_select": "/Library/Developer/CommandLineTools"
+  },
+  "hf_org": {
+    "name": "thyn-ai",
+    "kernel_publisher_access": "granted 2026-09-21 (email)",
+    "trustedKernelPublisher": false,
+    "numKernels": 0
+  },
+  "published_runtime_wheels": {
+    "algenta-runtime-native": "1.0.5",
+    "tags": [
+      "macosx_26_0_arm64 (worker minos 26.0 from build host; Modular dylibs + libpython3.14 minos 11.0)",
+      "manylinux_2_35_x86_64"
+    ]
+  },
+  "pending_dependencies": [
+    "HF_TOKEN CI secret",
+    "L1 redistribution approval before any proprietary upload"
+  ],
+  "pr_1110_merge_commit": "2ab8a10631dd5c1a64cf4e2b9a02cce69196b13b"
+}

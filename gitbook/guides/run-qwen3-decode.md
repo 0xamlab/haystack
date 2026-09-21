@@ -45,8 +45,8 @@ Scope: Qwen3-0.6B-Base on Apple Silicon with Metal. Read [Requirements](#require
 * Greedy decode only. Every generated token is the argmax at that step. There is no sampling, no
   temperature, no top-p/top-k, and no beam search.
 * One call, start to finish. A single call prefills the prompt and decodes to `max_new_tokens` or
-  an end-of-text token. There is no session to open once and step token-by-token across separate
-  calls.
+  an end-of-text token. A step-by-step session is available through the Hub kernel; see
+  [Kernels on Hugging Face](kernels-on-hugging-face.md).
 * Every call converts the checkpoint first. The checkpoint's BF16 weights are converted into the
   kernel's own flat format on every call by default, which takes time before decoding starts.
 * Token ids in, not raw text. Tokenize with the checkpoint's own tokenizer — either

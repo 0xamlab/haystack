@@ -140,28 +140,24 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Statistics & probability
 
-21 modules.
+17 modules.
 
 | Module | Functions |
 | --- | --- |
 | `ab_testing` | 10 |
 | `bayesian` | 10 |
-| `degradation_state` | 13 |
 | `distribution_fit` | 10 |
 | `distributions` | 25 |
-| `electrostatics` | 10 |
 | `forecasting.interval` | 3 |
 | `hypothesis` | 6 |
 | `interval` | 13 |
 | `ml.naive_bayes` | 8 |
 | `probability` | 11 |
-| `real_estate` | 12 |
 | `regression` | 8 |
 | `regression_tree` | 8 |
 | `sampling` | 6 |
 | `scipy_stats_ops` | 10 |
 | `stat_tests` | 11 |
-| `stateful_runtime` | 10 |
 | `stats` | 14 |
 | `stats_bootstrap` | 10 |
 | `timeseries_stats` | 9 |
@@ -272,7 +268,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## Bits, numbers & time
 
-7 modules.
+8 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -282,6 +278,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `discrete_event.calendar` | 4 |
 | `number_theory` | 12 |
 | `sentiment` | 10 |
+| `stateful_runtime` | 10 |
 | `time_zone` | 10 |
 
 ## Geometry & spatial
@@ -339,7 +336,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 
 ## General & domain modules
 
-419 modules.
+422 modules.
 
 | Module | Functions |
 | --- | --- |
@@ -421,6 +418,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `data.dataframe` | 1 |
 | `database` | 9 |
 | `decision_analysis` | 10 |
+| `degradation_state` | 13 |
 | `dendrochronology` | 10 |
 | `dendrology` | 12 |
 | `dentistry` | 12 |
@@ -447,6 +445,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `election` | 8 |
 | `electrical` | 14 |
 | `electrochemistry` | 10 |
+| `electrostatics` | 10 |
 | `elevator` | 12 |
 | `encoding` | 7 |
 | `encryption_modes` | 12 |
@@ -649,6 +648,7 @@ A few of the most-used domains, with example modules. **Computer vision** — `i
 | `radar` | 12 |
 | `radiometry` | 10 |
 | `random_utils` | 7 |
+| `real_estate` | 12 |
 | `recommender` | 9 |
 | `refrigeration` | 12 |
 | `regex_engine` | 9 |
