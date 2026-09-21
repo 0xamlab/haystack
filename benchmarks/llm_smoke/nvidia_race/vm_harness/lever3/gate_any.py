@@ -13,17 +13,67 @@ from pathlib import Path
 RUNS = Path(sys.argv[1])
 OUT = Path(sys.argv[2])
 ARM = sys.argv[3] if len(sys.argv) > 3 else "unknown"
-ORC = Path("/home/angel/adj/oracle3")
-EOS = (106, 1)
-PLAN = {
-    "pp256":   [(16, ["gate_pp256_maxnew16"]),
-                (64, ["gate_pp256_maxnew64", "gate_pp256_maxnew64_rep2"])],
-    "pp1024":  [(16, ["gate_pp1024_maxnew16"]),
-                (64, ["gate_pp1024_maxnew64", "gate_pp1024_maxnew64_rep2"])],
-    "val550":  [(16, ["gate_val550_maxnew16"]),
-                (64, ["gate_val550_maxnew64", "gate_val550_maxnew64_rep2"])],
-    "rag4096": [(64, ["gate_rag4096_maxnew64"])],
-}
+
+# ── ORACLE DIR AND EOS ARE ENGINE FACTS, NOT CONSTANTS OF THIS FILE ────────────────────────────
+# Both used to be hardcoded to the gemma3-27b lane's values, which silently made this evaluator
+# unusable for any other engine: ORC pointed at a directory of GEMMA oracle JSON, and a gate run
+# against a Qwen2.5-7B wheel would have compared 7B tokens to gemma ids and reported a numerics
+# failure that was really a wiring failure. Worse, `ORACLE_DIR` was already exposed as an env knob
+# by run_gemma3_round5_cells.sh / round6 — but this file IGNORED it, so setting it did nothing.
+# Now both are read from the environment, with the gemma values kept as the defaults so every
+# existing caller is byte-for-byte unchanged.
+#   ORACLE_DIR  directory holding one `<prompt>.json` per shape, each `{"generated": [<ids>...]}`
+#   EOS_TOKENS  comma-separated token ids that make an early stop admissible (gemma 106/1 =
+#               <end_of_turn>/<eos>; Qwen2.5 = 151645). An EOS set from the WRONG tokenizer would
+#               admit or reject early stops for the wrong reason, so it travels with the oracle.
+ORC = Path(os.environ.get("ORACLE_DIR", "/home/angel/adj/oracle3"))
+EOS = tuple(
+    int(t) for t in os.environ.get("EOS_TOKENS", "106,1").replace(" ", "").split(",") if t
+)
+# Recorded in the emitted JSON so a reader can tell WHICH oracle certified these tokens: the
+# provenance of a gate is part of its result, and a verdict that named no oracle could not be
+# compared with the campaign's banked cells.
+ORACLE_LABEL = os.environ.get(
+    "ORACLE_LABEL", "cache-free fp32 transformers (~/adj/oracle3)"
+)
+# ── THE PLAN IS DERIVED FROM THE ENGINE'S SHAPE LIST, NOT BAKED IN ──────────────────────────────
+# PLAN used to be a literal of gemma's four shapes. Enumerating a shape the engine under test does
+# not have is not harmless: gate_any.py records every PLAN entry outside the requested scope in
+# `out_of_scope_prompts`, so a Qwen2.5-7B gate (which has no `val550` -- the 7B lane's fifth shape
+# is five short chat prompts, not a 550-token sonnet) emitted `out_of_scope_prompts: ["val550"]`,
+# and the coverage evaluator refused the window for a prompt that does not exist in its lane. The
+# refusal was correct given its input and wrong about the world.
+#
+# Both lists come from the SAME two env vars the coverage evaluator reads, so the two evaluators
+# cannot disagree about what the shapes are -- two independently-maintained lists that must match is
+# how a coverage check starts passing (or refusing) for the wrong reason.
+#   GATE_COVERAGE_PROMPTS      every shape this engine's lane has (default: gemma's four)
+#   GATE_COVERAGE_SINGLE_RUN   shapes certified at maxnew64 with NO determinism repeat (rag4096's
+#                              64-cell is a single run in the banked gemma certification)
+# Label spellings match wheel_gate_cells.py's _schedule exactly, or the gate reports NOT-RUN for
+# cells that ran. With no env set, the derived PLAN is byte-for-byte the old literal.
+_PLAN_PROMPTS = tuple(
+    p.strip()
+    for p in os.environ.get(
+        "GATE_COVERAGE_PROMPTS", "pp256,pp1024,val550,rag4096"
+    ).split(",")
+    if p.strip()
+)
+_SINGLE_RUN = frozenset(
+    p.strip()
+    for p in os.environ.get("GATE_COVERAGE_SINGLE_RUN", "rag4096").split(",")
+    if p.strip()
+)
+
+
+def _plan_for(name):
+    if name in _SINGLE_RUN:
+        return [(64, [f"gate_{name}_maxnew64"])]
+    return [(16, [f"gate_{name}_maxnew16"]),
+            (64, [f"gate_{name}_maxnew64", f"gate_{name}_maxnew64_rep2"])]
+
+
+PLAN = {name: _plan_for(name) for name in _PLAN_PROMPTS}
 
 # ── SCOPE, AND WHY A REDUCED GATE MUST NOT READ AS A FAILED ONE ───────────────────────────────
 # `PLAN` above enumerates all four prompts, and `all_pass` used to be False whenever any of them
@@ -65,7 +115,12 @@ def last(path):
 
 
 out = {"gate": f"oracle gate on {ARM}", "arm": ARM,
-       "oracle": "cache-free fp32 transformers (~/adj/oracle3)",
+       "oracle": ORACLE_LABEL,
+       # Provenance, recorded rather than implied: WHICH directory of oracle JSON and WHICH eos set
+       # decided this verdict. Without these two fields a reader cannot tell a gemma gate from a 7B
+       # gate, and "all_pass: true" against the wrong oracle is indistinguishable from the real thing.
+       "oracle_dir": str(ORC),
+       "eos_tokens": list(EOS),
        "scope": sorted(IN_SCOPE), "out_of_scope_prompts": OUT_OF_SCOPE,
        "cells": {}, "all_pass": None}
 rows, allpass = [], True

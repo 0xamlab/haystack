@@ -77,6 +77,53 @@ LOCAL_LOG=${LOCAL_LOG:-/private/tmp/cuda_release_verify/window.log}
 WHEEL=""
 DRY_RUN=${DRY_RUN:-0}
 
+# ── EVERY KNOB THE BATTERY READS IS DECLARED HERE, ONCE, IN THE CONTROLLER ─────────────────────
+# Declaring them at the top rather than inline on the launch line is what makes the launch line
+# auditable: this file's own header warns that "an env var that has to survive four process
+# boundaries must be named at each one", and the first-run defect this block fixes is exactly that
+# warning ignored -- GATE_SPECS was settable locally, was never named on the ssh line, and so the
+# battery silently ran the gemma /tmp/g3* fixtures no matter what the operator asked for. A knob
+# that cannot cross the boundary is not a knob; it is a hardcoded default with extra steps.
+# Defaults are the gemma3-27b campaign's, unchanged, so an invocation with no env is byte-for-byte
+# the old behaviour.
+GATE_PROMPTS=${GATE_PROMPTS:-pp256,pp1024,val550,rag4096}
+GATE_SPECS=${GATE_SPECS:-"pp256:/tmp/g3pp256/prompt_0000.txt pp1024:/tmp/g3pp1024/prompt_0000.txt val550:/tmp/g3race500/prompt_0000.txt rag4096:/tmp/g3rag/rag4096.txt"}
+# WHICH oracle directory and WHICH eos ids decide the gate. These travel together because an eos set
+# from the wrong tokenizer admits or rejects early stops for the wrong reason. gemma: 106,1.
+# Qwen2.5-7B-Instruct: 151645.
+ORACLE_DIR=${ORACLE_DIR:-}
+ORACLE_LABEL=${ORACLE_LABEL:-}
+EOS_TOKENS=${EOS_TOKENS:-106,1}
+# The coverage evaluator refuses unless the gate's claimed scope equals this set. It must be the
+# same scope as GATE_PROMPTS or the two evaluators disagree about what was requested -- which is
+# precisely the condition the coverage evaluator exists to catch, so deriving it from GATE_PROMPTS
+# by default is the only safe default.
+GATE_COVERAGE_PROMPTS=${GATE_COVERAGE_PROMPTS:-$GATE_PROMPTS}
+GATE_COVERAGE_SINGLE_RUN=${GATE_COVERAGE_SINGLE_RUN:-rag4096}
+# The clock pin, in MHz. A SKU that clamps `nvidia-smi -lgc` to a different value would otherwise
+# have every 1 Hz sample counted off-pin and the window refused for being perfectly pinned.
+CW_PIN_MHZ=${CW_PIN_MHZ:-1410}
+# WHICH stage script prepares the box, and whether it owes a fixture-identity proof. The gemma
+# stage proves fixtures identical to round 6's certified echoes; another engine's lane has no such
+# banked echoes, so demanding the marker of a stage that does not emit it is a guaranteed refusal.
+STAGE_SCRIPT=${STAGE_SCRIPT:-chain7stage.sh}
+STAGE_NEEDS_FIXTURE_IDENTITY=${STAGE_NEEDS_FIXTURE_IDENTITY:-1}
+CELL_MIN=${CELL_MIN:-2}
+CW_TIMEOUT_S=${CW_TIMEOUT_S:-900}
+# The serve-entry live launch: `algenta serve --backend cuda` against the wheel's own engine. Empty
+# SERVE_MODEL skips the phase and the verdict records that it was skipped -- a launch-unverified
+# wheel must say so rather than imply it was launched.
+SERVE_MODEL=${SERVE_MODEL:-}
+SERVE_PROMPT=${SERVE_PROMPT:-}
+SERVE_MAX_NEW_TOKENS=${SERVE_MAX_NEW_TOKENS:-16}
+# IAP TUNNELLING. Some boxes in this project have NO external IP at all (algenta-ent-h100 is
+# internal-only at 10.128.0.96) and answer ssh ONLY through `--tunnel-through-iap`. Without the flag
+# every probe/ssh/scp here fails as a connection error, the sync phase reads it as SYNC FAILED, and
+# the window closes having measured nothing -- but having already paid for the boot. Set SSH_IAP=1.
+SSH_IAP=${SSH_IAP:-0}
+IAP_FLAG=""
+[ "$SSH_IAP" = "1" ] && IAP_FLAG="--tunnel-through-iap"
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --wheel) WHEEL="$2"; shift 2 ;;
@@ -101,7 +148,15 @@ fi
 : > "$LOCAL_LOG"
 ts() { date -u +%FT%TZ; }
 log() { echo "[$(ts)] $*" | tee -a "$LOCAL_LOG"; }
-gc() { gcloud compute "$@" --project="$PROJECT" --zone="$ZONE"; }
+# IAP_FLAG is deliberately an UNQUOTED single-token string, not an array: this script runs under
+# `set -u` and macOS ships bash 3.2, where "${arr[@]}" on an empty array is an unbound-variable
+# error. Empty expands to nothing, set expands to exactly one word.
+gc() {
+  case "$1" in
+    ssh|scp) gcloud compute "$@" --project="$PROJECT" --zone="$ZONE" $IAP_FLAG ;;
+    *)       gcloud compute "$@" --project="$PROJECT" --zone="$ZONE" ;;
+  esac
+}
 
 # ── SSHD READINESS, AND WHY `status=RUNNING` IS NOT ENOUGH ────────────────────────────────────
 # GCE's RUNNING means the hypervisor scheduled the guest, not that the guest's ssh is accepting
@@ -113,8 +168,11 @@ gc() { gcloud compute "$@" --project="$PROJECT" --zone="$ZONE"; }
 ssh_ready() {
   i=1
   while [ "$i" -le "$SSH_TRIES" ]; do
-    if gcloud compute ssh "$VM" --project="$PROJECT" --zone="$ZONE" \
-         --command 'echo READY' >/dev/null 2>&1; then
+    # Through gc, NOT a bare `gcloud compute ssh`: this was the one call site that bypassed the
+    # wrapper, so on an IAP-only box the readiness probe would fail while every other ssh in the
+    # script had the tunnel flag -- and the failure would read as "sshd never came up" rather than
+    # "this controller cannot route to that box at all".
+    if gc ssh "$VM" --command 'echo READY' >/dev/null 2>&1; then
       log "sshd READY on probe $i/$SSH_TRIES"
       return 0
     fi
@@ -382,12 +440,28 @@ log "TREE_OK + GATE_ANY_OK confirmed; synced_head=$BRANCH@$HEAD"
 # one: round 18 caught a bug where an `export` of a variable the ssh line never set exported NOTHING
 # and the runner silently fell back to its own default.
 log "launching verify_cuda_release_battery.sh under setsid+nohup, stdin /dev/null, disowned"
+# WHAT IS BEING FORWARDED IS LOGGED BEFORE IT IS FORWARDED. A window whose log does not name the
+# gate scope, the fixture specs, the oracle and the pin cannot be audited afterwards: the whole
+# point of a release verdict is that a reader can tell what was certified, and "whatever the
+# defaults were" is not an answer.
+log "forwarding: GATE_PROMPTS=[$GATE_PROMPTS] coverage=[$GATE_COVERAGE_PROMPTS]"
+log "forwarding: GATE_SPECS=[$GATE_SPECS]"
+log "forwarding: ORACLE_DIR=[$ORACLE_DIR] EOS_TOKENS=[$EOS_TOKENS] CW_PIN_MHZ=$CW_PIN_MHZ"
+log "forwarding: STAGE_SCRIPT=$STAGE_SCRIPT needs_fixture_identity=$STAGE_NEEDS_FIXTURE_IDENTITY"
+log "forwarding: CELL_MIN=$CELL_MIN CW_TIMEOUT_S=$CW_TIMEOUT_S SERVE_MODEL=[$SERVE_MODEL]"
 gc ssh "$VM" --command \
   "CW_DEADLINE_EPOCH=$DEADLINE CAP_MIN=$CAP_MIN GRACE_MIN=$GRACE_MIN SAFETY_S=$STOP_MARGIN_S \
    GPU=$GPU WORK=$WORK SRC_TREE=\$HOME/$REMOTE_DIR WHEEL_PATH=\$HOME/$REMOTE_DIR.whl \
    EXPECT_WHEEL_SHA=$LOCAL_WHEEL_SHA EXPECT_WHEEL_BYTES=$LOCAL_WHEEL_BYTES \
    VM_NAME=$VM VM_ZONE=$ZONE VM_PROJECT=$PROJECT VM_LAST_START='$lst' \
-   GATE_PROMPTS='${GATE_PROMPTS:-pp256,pp1024,val550,rag4096}' \
+   GATE_PROMPTS='$GATE_PROMPTS' GATE_SPECS='$GATE_SPECS' \
+   ORACLE_DIR='$ORACLE_DIR' ORACLE_LABEL='$ORACLE_LABEL' EOS_TOKENS='$EOS_TOKENS' \
+   GATE_COVERAGE_PROMPTS='$GATE_COVERAGE_PROMPTS' \
+   GATE_COVERAGE_SINGLE_RUN='$GATE_COVERAGE_SINGLE_RUN' CW_PIN_MHZ='$CW_PIN_MHZ' \
+   STAGE_SCRIPT='$STAGE_SCRIPT' STAGE_NEEDS_FIXTURE_IDENTITY='$STAGE_NEEDS_FIXTURE_IDENTITY' \
+   CELL_MIN='$CELL_MIN' CW_TIMEOUT_S='$CW_TIMEOUT_S' \
+   SERVE_MODEL='$SERVE_MODEL' SERVE_PROMPT='$SERVE_PROMPT' \
+   SERVE_MAX_NEW_TOKENS='$SERVE_MAX_NEW_TOKENS' \
    CKPT='${CKPT:-/mnt/ramblob/g3conv27b}' HF_CKPT='${HF_CKPT:-\$HOME/gemma3-27b}' \
    PY314='${PY314:-}' \
    setsid nohup bash \$HOME/$REMOTE_DIR/scripts/release/verify_cuda_release_battery.sh \
@@ -422,9 +496,16 @@ done
 ART=${ART:-/private/tmp/cuda_release_verify/artifacts}
 mkdir -p "$ART"
 log "collecting artifacts -> $ART"
+# serve_launch.json IS A DELIVERABLE, so it is collected: the serve phase proves the shipped entry
+# point starts, and a verdict claiming serve_launch=launched whose evidence stayed on a stopped VM is
+# a claim without its proof. stage.log and the oracle dir are collected for the same reason -- they
+# are what makes the fixture/oracle provenance auditable after the box is gone. `2>/dev/null` on the
+# tar keeps a missing optional member from failing the whole collection.
 gc ssh "$VM" --command "cd $WORK && tar czf /tmp/crv_art.tgz battery.log heartbeat.log BATTERY_EXIT \
    PHASE clocks runs cuda-release-verdict.json gate_cuda_release.json conformance_cuda.json \
-   wheel-census.json gpuless_load.txt CHAIN_EXIT 2>/dev/null; ls -l /tmp/crv_art.tgz" \
+   wheel-census.json gpuless_load.txt CHAIN_EXIT \
+   serve_launch.json serve_launch.txt stage.log battery.out wheel.sha256 binaries.sha256 \
+   oracle7b 2>/dev/null; ls -l /tmp/crv_art.tgz" \
    >>"$LOCAL_LOG" 2>&1
 gc scp "$VM:/tmp/crv_art.tgz" "$ART/crv_art.tgz" --project="$PROJECT" --zone="$ZONE" \
   >>"$LOCAL_LOG" 2>&1 && (cd "$ART" && tar xzf crv_art.tgz 2>/dev/null && log "artifacts extracted") \
@@ -441,24 +522,43 @@ gc scp "$VM:/tmp/crv_art.tgz" "$ART/crv_art.tgz" --project="$PROJECT" --zone="$Z
 #   (d) the battery's own artifact says the clock discipline held (every cell 1410 MHz, offpin=0).
 VERDICT_OK=0
 if [ -f "$ART/cuda-release-verdict.json" ]; then
-  VERDICT_OK=$(ART="$ART" LOCAL_WHEEL_SHA="$LOCAL_WHEEL_SHA" python3 -c '
+  # PIN_MHZ IS THIS CONTROLLER'S OWN EXPECTATION, not the verdict's self-report. Checking a verdict
+  # against a number the verdict itself supplied would pass for any pin at all, including a pin the
+  # operator never asked for -- the "guard that passes for the wrong reason" this file's header warns
+  # about. The battery reports its pin; the controller decides whether that pin was the one ordered.
+  VERDICT_OK=$(ART="$ART" LOCAL_WHEEL_SHA="$LOCAL_WHEEL_SHA" PIN_MHZ="$CW_PIN_MHZ" python3 -c '
 import json, os
 d = json.load(open(os.path.join(os.environ["ART"], "cuda-release-verdict.json"), encoding="utf-8"))
 want = os.environ["LOCAL_WHEEL_SHA"]
 got = (d.get("wheel") or {}).get("sha256") or d.get("wheel_sha256")
+pin = str(os.environ["PIN_MHZ"])
 clocks = d.get("clocks") or {}
 cells = clocks.get("cells") or []
-bad_clock = [c for c in cells if str(c.get("clocks_after")) != str(clocks.get("pinned_mhz", 1410))]
-bad_offpin = [c for c in cells if int(c.get("offpin", 1) or 0) != 0]
+# THE FIELDS THAT ACTUALLY EXIST. This check used to read `clocks_after` per cell -- a key the
+# battery never writes (it writes clock_samples/clock_min_mhz/clock_max_mhz/offpin/offpin_zero) --
+# so `str(None) != "1410"` held for EVERY cell, bad_clock was never empty, and VERDICT_OK was 0 no
+# matter what the window achieved. A perfect battery would still have closed with rc=10 and
+# "WINDOW CLOSED WITH NO VERDICT", i.e. the leg could never publish anything. Checking min AND max
+# against the pin is both correct and strictly stronger: it says the GPU held the pin for the whole
+# cell, not merely that it read the pin once at the end.
+bad_clock = [c for c in cells
+             if str(c.get("clock_min_mhz")) != pin or str(c.get("clock_max_mhz")) != pin]
+bad_offpin = [c for c in cells
+              if int(c.get("offpin", 1) or 0) != 0 or c.get("offpin_zero") is not True]
 ok = (d.get("verdict") == "pass" and d.get("rc") == 0 and got == want
       and bool(cells) and not bad_clock and not bad_offpin
+      and str(clocks.get("pinned_mhz")) == pin
       and (d.get("gates") or {}).get("all_pass") is True)
 print("1" if ok else "0")
 if not ok:
     print("  verdict=%r rc=%r gates.all_pass=%r" % (d.get("verdict"), d.get("rc"),
           (d.get("gates") or {}).get("all_pass")))
     print("  wheel_sha256 verdict=%s local=%s match=%s" % (got, want, got == want))
-    print("  cells=%d off-clock=%d off-pin=%d" % (len(cells), len(bad_clock), len(bad_offpin)))
+    print("  pin requested=%s reported=%s cells=%d off-clock=%d off-pin=%d"
+          % (pin, clocks.get("pinned_mhz"), len(cells), len(bad_clock), len(bad_offpin)))
+    for c in bad_clock[:4]:
+        print("    off-clock cell %r min=%r max=%r" % (c.get("label"),
+              c.get("clock_min_mhz"), c.get("clock_max_mhz")))
 ')
   log "verdict re-check: VERDICT_OK=$VERDICT_OK"
 else

@@ -17,6 +17,13 @@
 # misread as a crashed/demoted arm. A watchdog makes that state explicit in the log instead of
 # leaving an ambiguous truncated artifact.
 CW_TIMEOUT_S=${CW_TIMEOUT_S:-600}
+# THE PIN IS A GPU-SKU FACT. 1410 MHz is what the campaign pinned on H200 and on A100-SXM4-40GB;
+# another SKU may not honour that exact request (`nvidia-smi -lgc` clamps to the supported range),
+# and a watchdog that hardcodes the number would then count EVERY sample as off-pin and refuse a
+# window that was in fact perfectly pinned. Callers that pin a different clock set CW_PIN_MHZ and
+# the drift check, the re-pin and the off-pin count all follow it. Default unchanged for the
+# campaign's own boxes.
+CW_PIN_MHZ=${CW_PIN_MHZ:-1410}
 
 cw_init() { CW_RUNS=$1; CW_LOGS=$2; CW_CLK=$3; CW_GPU=${4:-1}; }
 
@@ -27,9 +34,10 @@ cw_smi_raw() { nvidia-smi --query-gpu=clocks.current.sm --format=csv,noheader,no
 
 cw_ensure_clocks() {
   local c; c=$(cw_smi_raw)
-  if [[ "$c" != "1410" ]]; then
-    cw_log "CLOCK_DRIFT ($c MHz) -> re-pinning"
-    sudo -n nvidia-smi -pm 1 >/dev/null 2>&1; sudo -n nvidia-smi -lgc 1410 >/dev/null 2>&1
+  if [[ "$c" != "$CW_PIN_MHZ" ]]; then
+    cw_log "CLOCK_DRIFT ($c MHz, want $CW_PIN_MHZ) -> re-pinning"
+    sudo -n nvidia-smi -pm 1 >/dev/null 2>&1
+    sudo -n nvidia-smi -lgc "$CW_PIN_MHZ" >/dev/null 2>&1
     sleep 2; c=$(cw_smi_raw)
   fi
   echo "$c"
@@ -64,7 +72,7 @@ cw_cell() { # $1=label ; rest=command
   kill "$sampler" 2>/dev/null; wait "$sampler" 2>/dev/null
   after=$(cw_ensure_clocks)
   nsamp=$(wc -l < "$CW_CLK/clocks_${label}.csv" 2>/dev/null || echo 0)
-  nonpin=$(awk '{print $2}' "$CW_CLK/clocks_${label}.csv" 2>/dev/null | grep -vc '^1410$' || true)
+  nonpin=$(awk '{print $2}' "$CW_CLK/clocks_${label}.csv" 2>/dev/null | grep -vc "^${CW_PIN_MHZ}$" || true)
   cw_log "CELL $label END rc=$rc clocks_after=${after}MHz samples=$nsamp offpin=$nonpin smi=[$(cw_ck)]"
   return $rc
 }

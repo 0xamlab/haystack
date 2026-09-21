@@ -56,10 +56,31 @@ but was asked for fewer means the harness and the evaluator disagree about what 
 is also not something to time on.
 """
 import json
+import os
 import sys
 
-PROMPTS = ("pp256", "pp1024", "val550", "rag4096")
-EXPECTED_DET_REPEATS = 3   # pp256/pp1024/val550 at maxnew64; rag4096's 64-cell is a single run
+# ── THE SCOPE IS AN INPUT, NOT A PROPERTY OF THIS FILE ─────────────────────────────────────────
+# PROMPTS used to be the gemma3-27b lane's four shapes, hardcoded, and this evaluator REFUSES when
+# the gate's claimed scope differs from it (`claimed != sorted(PROMPTS)`). That is the right
+# behaviour for a gemma gate and a hard blocker for any other engine: a Qwen2.5-7B wheel has no
+# `val550` shape at all (the 7B column's fifth shape is five short chat prompts, not a 550-token
+# sonnet), so a legitimately full-scope 7B gate would have been refused for missing a prompt that
+# does not exist in its lane. Overridable, gemma defaults preserved.
+PROMPTS = tuple(
+    p.strip()
+    for p in os.environ.get("GATE_COVERAGE_PROMPTS", "pp256,pp1024,val550,rag4096").split(",")
+    if p.strip()
+)
+# Shapes certified at maxnew64 WITHOUT a determinism repeat. Derived into EXPECTED_DET_REPEATS
+# rather than hand-maintained beside PROMPTS: two independently-edited constants that must agree
+# are how a coverage check starts passing for the wrong reason, and this file exists to be the
+# check that counts FROM THE CELLS.
+SINGLE_RUN_PROMPTS = frozenset(
+    p.strip()
+    for p in os.environ.get("GATE_COVERAGE_SINGLE_RUN", "rag4096").split(",")
+    if p.strip()
+)
+EXPECTED_DET_REPEATS = len([p for p in PROMPTS if p not in SINGLE_RUN_PROMPTS])
 
 
 def evaluate(path):
@@ -71,6 +92,11 @@ def evaluate(path):
     with_cells, problems = [], []
     ran = passed = det_repeats = det_bad = 0
     eos_ok = False
+    # WHICH prompt supplied the EOS evidence, and HOW: recorded in the summary line so a reader can
+    # see whether the gate rested on a corroborated early stop or on a full-width run. `eos_ok`
+    # alone is a boolean about a gate, not about a shape.
+    eos_by = {}
+    eos_uncorroborated = []
 
     for p in PROMPTS:
         c = cells.get(p) or {}
@@ -95,17 +121,49 @@ def evaluate(path):
                 det_bad += 1
             elif b.get("determinism_pass") is True:
                 det_repeats += 1
-            if p == "rag4096" and b.get("eos_stop") is True and b.get("oracle_also_eos_there") is True:
+            # THE EOS CHECK, AND WHY IT IS "CORROBORATED **OR** RAN FULL LENGTH". It used to read
+            # `p == "rag4096" and eos_stop and oracle_also_eos_there`, with `not eos_ok` a hard
+            # refusal — i.e. an early stop was REQUIRED of every gate. That is right for gemma
+            # round 19 (rag4096 stopped at 22/22 and the oracle held EOS at the same index, which
+            # is what made it corroborated rather than merely self-consistent) and WRONG in general:
+            # a cell that runs to its full requested width has every token compared against the
+            # oracle prefix, which is strictly STRONGER evidence than a 22-token early stop. Under
+            # the old rule a Qwen2.5-7B rag4096 cell that generated all 64 tokens was refused for
+            # not stopping — a false refusal that reads as a numerics failure. What must never pass
+            # is the case the rule exists for: an early stop the oracle does NOT corroborate.
+            # Keyed per CELL, not per prompt: a prompt has both a maxnew16 and a maxnew64 block and
+            # they can legitimately differ (the 16-token cell runs full width while the 64-token one
+            # stops early). Overwriting a single per-prompt slot would hide which cell proved what.
+            _key = "%s/maxnew%s" % (p, b.get("requested"))
+            if b.get("eos_stop") is True and b.get("oracle_also_eos_there") is True:
                 eos_ok = True
+                eos_by[_key] = "corroborated_eos_stop"
+            elif b.get("eos_stop") is not True and b.get("requested") == b.get("n_generated"):
+                eos_ok = True
+                eos_by[_key] = "ran_full_width"
+            elif b.get("eos_stop") is True and b.get("oracle_also_eos_there") is not True:
+                eos_uncorroborated.append(_key)
 
     if not d.get("all_pass"):
         problems.append("all_pass is not True")
     if claimed != sorted(PROMPTS):
-        problems.append("REQUESTED scope %s != the four round-6 shapes" % claimed)
-    if oos:
-        problems.append("out_of_scope_prompts not empty: %s" % oos)
+        problems.append("REQUESTED scope %s != the certified shapes %s"
+                        % (claimed, sorted(PROMPTS)))
+    # ONLY A SHAPE THIS LANE HAS CAN BE A COVERAGE HOLE. gate_any.py records every PLAN entry
+    # outside the requested scope in out_of_scope_prompts, so that list can legitimately name a shape
+    # the caller never claimed and this engine does not have. Refusing on `if oos` alone is what
+    # blocked the 7B gate: it emitted ["val550"] and the window was refused for a prompt that does
+    # not exist in the Qwen2.5-7B lane. A reduced scope over shapes that DO exist is still refused,
+    # by the `claimed != sorted(PROMPTS)` check just above -- that is the guard this one was doubling
+    # up on, and it is the one that is actually about coverage.
+    oos_in_lane = [p for p in oos if p in PROMPTS]
+    oos_other_lane = [p for p in oos if p not in PROMPTS]
+    if oos_in_lane:
+        problems.append("out_of_scope_prompts names shapes this gate WAS asked to certify: %s"
+                        % oos_in_lane)
     if sorted(with_cells) != sorted(PROMPTS):
-        problems.append("CELL-derived coverage %s != all four" % sorted(with_cells))
+        problems.append("CELL-derived coverage %s != all %d certified shapes"
+                        % (sorted(with_cells), len(PROMPTS)))
     if ran != passed:
         problems.append("%d of %d evaluated cells did not pass" % (ran - passed, ran))
     if det_bad:
@@ -113,13 +171,22 @@ def evaluate(path):
     if det_repeats != EXPECTED_DET_REPEATS:
         problems.append("expected %d bit-identical det repeats, found %d"
                         % (EXPECTED_DET_REPEATS, det_repeats))
+    if eos_uncorroborated:
+        problems.append("UNCORROBORATED early stop (the oracle does not hold EOS at that index): %s"
+                        % sorted(set(eos_uncorroborated)))
     if not eos_ok:
-        problems.append("rag4096 EOS-stop not corroborated by the oracle at the same index")
+        problems.append("no cell either ran to its full requested width or stopped on an "
+                        "oracle-corroborated EOS")
 
+    # Shapes from another lane are REPORTED, never refused and never silently dropped: a reader can
+    # see that the evaluator's PLAN and the caller's scope disagreed about which engine this was.
     summary = ("claimed_scope=%d prompts_with_cells=%d cells_ran=%d cells_pass=%d det_repeats=%d "
-               "out_of_scope=%d rag_eos_stop=%d requested=[%s] cell_covered=[%s]"
-               % (len(claimed), len(with_cells), ran, passed, det_repeats, len(oos), int(eos_ok),
-                  ",".join(claimed), ",".join(sorted(with_cells))))
+               "out_of_scope_in_lane=%d out_of_scope_other_lane=%s eos_evidence=%d "
+               "requested=[%s] cell_covered=[%s] eos_by=%s"
+               % (len(claimed), len(with_cells), ran, passed, det_repeats, len(oos_in_lane),
+                  oos_other_lane or "[]", int(eos_ok),
+                  ",".join(claimed), ",".join(sorted(with_cells)),
+                  json.dumps(eos_by, sort_keys=True)))
     return summary, problems
 
 
@@ -136,7 +203,11 @@ def main():
     if problems:
         print("COVERAGE_REFUSAL: " + " | ".join(problems))
         return 1
-    print("COVERAGE_OK: request-derived and cell-derived coverage AGREE at 4 of 4")
+    # The count is the caller's shape list, not a literal 4: this line lands in the battery log and in
+    # a release window's evidence, and a 3-shape Qwen2.5-7B gate that printed "AGREE at 4 of 4" would
+    # be asserting a certification it did not make.
+    print("COVERAGE_OK: request-derived and cell-derived coverage AGREE at %d of %d [%s]"
+          % (len(PROMPTS), len(PROMPTS), ",".join(sorted(PROMPTS))))
     return 0
 
 
