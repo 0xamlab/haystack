@@ -14,6 +14,18 @@ on:
         default: "false"
         type: choice
         options: ["false", "true"]
+      verdict_tag:
+        # The CUDA RELEASE-VERIFY leg (see publish-pypi below). A run-verified CUDA wheel joins the
+        # publish set only when a GitHub Release carries `cuda-release-verdict.json` naming that
+        # exact wheel's sha256; this input says which release to read it from, so an operator can
+        # re-dispatch a publish against a verdict without waiting on a version bump. Empty (the
+        # default) derives the tag from the version actually being published -- `runtime-v<version>`,
+        # the same convention this workflow's tag trigger uses. It cannot weaken the gate: wherever
+        # the verdict comes from, it still has to name the sha256 of the wheel THIS run built.
+        description: "Release tag holding cuda-release-verdict.json (default: runtime-v<version>)"
+        required: false
+        default: ""
+        type: string
   push:
     # Fully automated releases: any update to main that touches the runtime surface
     # rebuilds and publishes on its own — no manual triggers and no approval gates (the
@@ -91,9 +103,15 @@ jobs:
     # (libMGPRT) ships inside linux-64 max-core, both already in the lock. This job proves on
     # every run that the CUDA lane still compiles and links. Launching the result needs an
     # NVIDIA driver >= 580 plus real hardware, which GitHub-hosted runners do not have — so this
-    # job is deliberately NOT in clean-machine-contract's or publish-pypi's `needs`, and its
-    # wheel is a compile-gate artifact, not a shippable one (publish-pypi downloads release
-    # artifacts by explicit name below, so this wheel can never reach PyPI by accident).
+    # job stays the no-GPU CI FLOOR and its wheel is not shippable on the strength of a compile:
+    # it reaches PyPI only through the release-verify gate in publish-pypi below, on a verdict
+    # produced on real hardware. It is deliberately NOT in clean-machine-contract's `needs` (the
+    # contract verifies the SHIPPED CPU-variant wheel, and must not start depending on the CUDA
+    # lane), and it IS in publish-pypi's `needs` for ORDERING ONLY — that job tolerates this one
+    # failing or being skipped, so a CUDA compile break delays a release by nothing and blocks it
+    # never. The ordering is not optional: publish-pypi downloads this job's artifact by name, and
+    # without it in `needs` the publish would routinely run ~30 min before the artifact exists,
+    # making "verdict matches the wheel" undecidable and the include arm dead code.
     # Serialized AFTER build-linux: `thyn-8c` allows at most 2 concurrent jobs org-wide, and
     # the gate is not on the publish critical path, so it must not hold a second billed slot
     # while the shippable wheel is still building.
@@ -157,9 +175,14 @@ jobs:
 
   publish-pypi:
     name: publish Algenta Python packages to PyPI
-    needs: clean-machine-contract
-    if: github.event_name == 'push' || inputs.publish == 'true'
-    # Publishing is platform-independent: two artifact downloads + one twine upload.
+    # `build-linux-cuda` is here for ORDERING ONLY, and the `if:` below is what keeps it from
+    # becoming a blocker: this job runs when the clean-machine contract succeeded, whatever the
+    # CUDA compile gate did. See that job's comment for why the ordering is required at all.
+    needs: [clean-machine-contract, build-linux-cuda]
+    if: >-
+      (github.event_name == 'push' || inputs.publish == 'true') && !cancelled() &&
+      needs.clean-machine-contract.result == 'success'
+    # Publishing is platform-independent: artifact downloads + one twine upload.
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -169,9 +192,9 @@ jobs:
       # compile-gate job above uploads algenta-runtime-native-linux-x86_64-cuda, whose wheel
       # carries the SAME filename as the shipped linux wheel (same package, same platform tag —
       # only the compiled shards inside differ). A glob download merged with `merge-multiple`
-      # would non-deterministically overwrite one with the other inside dist-pypi, and the CUDA
-      # wheel is launch-unverified: it must never reach PyPI. Compile-gate artifacts stay out of
-      # the publish set by construction.
+      # would non-deterministically overwrite one with the other inside dist-pypi. So the CUDA
+      # wheel lands in its OWN directory and only the release-verify gate below may promote it
+      # into dist-pypi — by construction, an unverified CUDA wheel can never reach PyPI.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: algenta-runtime-native-linux-x86_64
@@ -180,15 +203,87 @@ jobs:
         with:
           name: algenta-package
           path: dist-pypi
+      # The CUDA candidate, in a directory of its own. Both knobs are fail-open ON PURPOSE: this
+      # artifact is optional, so a run where the compile gate failed, was skipped, or simply has
+      # not uploaded yet must still publish the shipped wheels. `continue-on-error` covers the
+      # artifact-not-found case, which `if-no-files-found` alone does not.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          name: algenta-runtime-native-linux-x86_64-cuda
+          path: dist-pypi-cuda
+          if-no-files-found: ignore
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
+      # ── THE CUDA RELEASE-VERIFY GATE ──────────────────────────────────────────────────────
+      # WHY IT EXISTS. The public contract advertises 199 engine kernels, 142 of them CUDA
+      # (packages/algenta/algenta/runtime_library_contract.json, rendered to
+      # gitbook/engine/kernel-inventory.md), but until this gate existed no user could run a single
+      # one of them: the run-verified serve path is Metal, CI has no GPU anywhere, and this job
+      # downloaded release artifacts by explicit name, which structurally excluded the CUDA wheel.
+      # The advertised surface and the shippable surface had drifted apart. This step closes the
+      # gap WITHOUT putting a GPU in CI: the CUDA wheel joins the publish set only when a
+      # `cuda-release-verdict.json` attached to the release carries a `wheel_sha256` equal to the
+      # sha256 of the wheel THIS run built, and that verdict is produced on real hardware by
+      # scripts/release/verify_cuda_release.sh — the campaign's standing oracle gates (16/16 and
+      # 64/64 greedy against the cache-free fp32 oracle, 2/2 bit-identical determinism repeats, the
+      # rag4096 EOS-stop corroborated by the reference), at clocks pinned 1410 MHz with offpin=0 on
+      # every cell, plus the conformance CLI battery for the cuda backend.
+      #
+      # WHAT IT DOES NOT CLAIM. A verdict certifies that THIS wheel's binaries launched on ONE
+      # H200 box, passed those oracle gates under the recorded clocks, and answered the
+      # conformance table for the cuda backend. It is NOT a benchmark win, NOT a multi-hardware or
+      # multi-driver certification, and NOT a claim about hosts without an NVIDIA driver (the CUDA
+      # wheel bundles libMGPRT.so, whose DT_NEEDED closure is fully bundled — libcuda.so.1 and
+      # libnvidia-ml.so.1 are dlopen'd, not linked — so it loads GPU-less, but a GPU-less *decode*
+      # is expected to refuse, and only the battery's own gpuless_load cell would prove how).
+      # Absent or mismatched verdict => the release publishes exactly what it publishes today,
+      # with a notice. This step can decline; it cannot fail a release.
+      - name: CUDA release-verify gate (does the run-verified wheel join this publish?)
+        id: cuda-gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERDICT_TAG_INPUT: ${{ inputs.verdict_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist-pypi-cuda verdict
+          # The tag to read the verdict from: the explicit dispatch input, else `runtime-v<version>`
+          # for the version ACTUALLY IN THE PUBLISH SET — read from the wheel filename rather than
+          # from pyproject.toml, because the filename is what is about to be uploaded.
+          VERSION=""
+          for w in dist-pypi/algenta_runtime_native-*.whl; do
+            [ -e "$w" ] || continue
+            base=${w##*/}
+            VERSION=${base#algenta_runtime_native-}
+            VERSION=${VERSION%%-*}
+            break
+          done
+          TAG="${VERDICT_TAG_INPUT:-runtime-v${VERSION}}"
+          echo "runtime-native version='${VERSION:-<none>}' verdict release tag='${TAG}'"
+          VERDICT=""
+          if [ -n "$VERSION" ] && gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+               --pattern cuda-release-verdict.json --dir verdict --clobber; then
+            [ -f verdict/cuda-release-verdict.json ] && VERDICT=verdict/cuda-release-verdict.json
+          else
+            echo "no cuda-release-verdict.json downloadable from release '$TAG'"
+          fi
+          GATE_ARGS=(--cuda-dir dist-pypi-cuda --publish-dir dist-pypi
+                     --same-name-collision replace
+                     --json cuda-publish-gate-decision.json)
+          [ -n "$VERDICT" ] && GATE_ARGS+=(--verdict "$VERDICT")
+          # Exits 0 on every exclude AND on include; only a publish set left indeterminate exits
+          # non-zero, which is the one thing worth stopping a release for.
+          python3 scripts/release/cuda_publish_gate.py "${GATE_ARGS[@]}"
       - name: Publish Python packages
         # Native twine rather than the pypa publish action: Twine 7 accepts core packaging
         # metadata 2.5, which hatchling >=1.32 emits for algenta-runtime-native; older Twine
         # rejected it ("Invalid distribution metadata: '2.5' is not a valid metadata version"),
         # failing every release since 2026-08-12. tests/test_sdk_package_metadata.py counts the
         # twine skip-existing idempotence flag below, so do not swap the action back in silently.
+        # dist-pypi/* stays a top-level glob: the gate moves a displaced wheel OUTSIDE this
+        # directory (to dist-pypi-displaced/) rather than into a subdirectory of it, so the upload
+        # can never be handed a directory or two files with one filename.
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

@@ -1,0 +1,483 @@
+#!/bin/bash
+# verify_cuda_release.sh — RUN THIS ON THE LOCAL MAC. The CUDA RELEASE-VERIFY window controller: it
+# owns the cap, it owns the stop, and it owns the refusal. It turns a CUDA wheel that CI only
+# COMPILED into a wheel that has been RUN-VERIFIED on real hardware, by running the campaign's
+# standing gates against the wheel's own binaries and emitting `cuda-release-verdict.json`.
+#
+# WHY IT IS AN OPERATOR SCRIPT AND NOT A CI JOB. CI has no GPU anywhere, and the wheel it builds is
+# launch-unverified by construction (see `.github/workflows/build-runtime.yml`'s build-linux-cuda
+# comment). This script is the missing leg: a human or an agent runs it during an authorised VM
+# window, and `publish-pypi`'s release-verify gate then decides from the verdict it produced. The
+# controller/battery split mirrors the campaign's own (vm_window_r19.sh + chain19.sh): the cap is
+# VM-ON time measured from `lastStartTimestamp`, which includes ~4 min of boot+ssh that no in-VM
+# script can observe, so the deadline has to be computed HERE and pushed in — and the stop has to be
+# issued from here too, because a VM that is busy measuring cannot be relied on to stop itself.
+#
+# WHAT IT CERTIFIES, AND WHAT IT DOES NOT. A verdict from this script says: THIS wheel's binaries
+# launched on ONE H200 box, passed the full-scope oracle gate (G0 16/16 at pp256/pp1024/val550, G1
+# 64/64 with 2/2 bit-identical determinism repeats, rag4096 22/22 + an EOS-stop corroborated by the
+# reference) at clocks pinned 1410 MHz with offpin=0 on every cell, and answered the conformance CLI
+# for the cuda backend. It is NOT a benchmark win, NOT a multi-hardware or multi-driver
+# certification, and NOT a claim about any other host.
+#
+# THE ONE THING IT MEASURES THAT THE RACE NEVER DID: the gates run against the WHEEL, not against a
+# race arm. The campaign's cells are driven by `gemma3_batched_cuda` binaries built on the VM; those
+# are a different program from the shipped runtime (a single linked driver vs 27 bounded workers
+# built from mojo/engine/main.mojo, --mcpu x86-64-v3, stripped, signed). Certifying a race arm says
+# nothing about what a user installs — which is exactly the gap between the advertised kernel
+# inventory and the shippable surface. So this battery installs the wheel, points
+# ALGENTA_NATIVE_WORKER at the binary that came out of it, and drives the SHIPPED path
+# (`algenta.inference.decode`) through `scripts/release/wheel_gate_cells.py`.
+#
+# REFUSALS (rc != 0, and NO verdict is written or copied): any gate cell failing, any clock or offpin
+# deviation, any conformance refusal that is not a typed out-of-table refusal, and any wheel-hash
+# mismatch — checked TWICE, before the start (local) and after the scp (on the box), because a
+# verdict must name the bytes that were actually tested.
+#
+# PHASES
+#   preflight  every LOCAL precondition, while the VM is still TERMINATED and costs nothing: the
+#              wheel exists and hashes, the worktree is clean and pushed, gcloud is on PATH. A local
+#              refusal must never cost VM-on minutes (round 18 booted the box and then died on an
+#              untracked `mojo_env/.pixi` symlink, burning the boot).
+#   start      gcloud compute instances start, up to START_TRIES; TWO CONSECUTIVE SPOT STOCKOUTS
+#              abort rather than burn retries against a zone with no capacity (the owner's rule).
+#   sync       tar+scp the tree subset the battery needs, then the wheel separately, then RE-HASH the
+#              wheel on the box and refuse on mismatch.
+#   arm        the independent stop backstop, in its own session, BEFORE anything else can fail.
+#   launch     the battery under `setsid nohup ... </dev/null & disown`. THE CHANNEL MUST NOT BE
+#              INHERITED: round 17 lost 2 x 300 s to ssh calls hanging client-side because a
+#              backgrounded remote process held the channel open.
+#   watch      poll the heartbeat file, so liveness is observable without holding a channel open.
+#   collect    verdict + cells + clocks, BEFORE the stop (/tmp and /mnt/ramblob are tmpfs).
+#   stop       retried until the instance reports TERMINATED, then the project-wide RUNNING check.
+#              ALWAYS issued: on success, on failure, on timeout, and on Ctrl-C (trap).
+#
+# Usage:
+#   bash scripts/release/verify_cuda_release.sh --wheel /path/to/algenta_runtime_native-*.whl
+#   DRY_RUN=1 bash scripts/release/verify_cuda_release.sh --wheel <whl>   # plan + deadline, touch nothing
+set -uo pipefail
+
+VM=${VM:-trtllm-gemma-us-west1-c}
+ZONE=${ZONE:-us-west1-c}
+PROJECT=${PROJECT:-eplanev2}
+REPO=${REPO:-thyn-ai/algenta}   # only ever printed, in the "what to do with the verdict" hint
+GPU=${GPU:-1}
+CAP_MIN=${CAP_MIN:-60}          # the owner's standing hard cap on VM-ON time. The battery budget at
+                                # the bottom of verify_cuda_release_battery.sh is priced against this.
+GRACE_MIN=${GRACE_MIN:-5}       # ... plus grace, for the stop to land
+STOP_MARGIN_S=${STOP_MARGIN_S:-180}   # issue the stop this far BEFORE the deadline
+START_TRIES=${START_TRIES:-2}
+POLL_S=${POLL_S:-60}
+SSH_TRIES=${SSH_TRIES:-10}
+SSH_WAIT_S=${SSH_WAIT_S:-30}
+WT=${WT:-$(cd "$(dirname "$0")/../.." && pwd)}
+REMOTE_DIR=${REMOTE_DIR:-cuda_rel_verify}
+WORK=${WORK:-/home/angel/cuda_rel_verify_work}
+LOCAL_LOG=${LOCAL_LOG:-/private/tmp/cuda_release_verify/window.log}
+WHEEL=""
+DRY_RUN=${DRY_RUN:-0}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --wheel) WHEEL="$2"; shift 2 ;;
+    --vm) VM="$2"; shift 2 ;;
+    --zone) ZONE="$2"; shift 2 ;;
+    --project) PROJECT="$2"; shift 2 ;;
+    --gpu) GPU="$2"; shift 2 ;;
+    --cap-min) CAP_MIN="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) sed -n '2,60p' "$0"; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; exit 8 ;;
+  esac
+done
+
+# TRUNCATE, DO NOT APPEND ACROSS RUNS: several gates below are `grep -q <marker> "$LOCAL_LOG"`, and a
+# marker left over from an earlier attempt would satisfy them falsely — the same class of defect as a
+# guard that passes for the wrong reason. The previous log is preserved alongside, timestamped.
+mkdir -p "$(dirname "$LOCAL_LOG")"
+if [ -f "$LOCAL_LOG" ]; then
+  mv "$LOCAL_LOG" "$(echo "$LOCAL_LOG" | sed 's/\.log$//').$(date -u +%Y%m%dT%H%M%SZ).log"
+fi
+: > "$LOCAL_LOG"
+ts() { date -u +%FT%TZ; }
+log() { echo "[$(ts)] $*" | tee -a "$LOCAL_LOG"; }
+gc() { gcloud compute "$@" --project="$PROJECT" --zone="$ZONE"; }
+
+# ── SSHD READINESS, AND WHY `status=RUNNING` IS NOT ENOUGH ────────────────────────────────────
+# GCE's RUNNING means the hypervisor scheduled the guest, not that the guest's ssh is accepting
+# connections; on a spot 8xH200 with a large boot disk that gap is routinely a minute or more, and
+# round 18's third boot died on exactly that (`4003 failed to connect to port 22` read as SYNC
+# FAILED, tearing down a window 4 min in over a fault a 30 s wait would have cleared). So every
+# ssh/scp goes through a CHEAP readiness probe first, because a probe that costs a minute is not a
+# probe and blindly retrying the expensive operation is what burns the cap.
+ssh_ready() {
+  i=1
+  while [ "$i" -le "$SSH_TRIES" ]; do
+    if gcloud compute ssh "$VM" --project="$PROJECT" --zone="$ZONE" \
+         --command 'echo READY' >/dev/null 2>&1; then
+      log "sshd READY on probe $i/$SSH_TRIES"
+      return 0
+    fi
+    log "sshd not ready (probe $i/$SSH_TRIES) — waiting ${SSH_WAIT_S}s before the next"
+    sleep "$SSH_WAIT_S"
+    i=$((i + 1))
+  done
+  log "FATAL: sshd never became ready after $SSH_TRIES probes"
+  return 1
+}
+
+STARTED=0
+# THE STOP IS RETRIED UNTIL THE INSTANCE REPORTS TERMINATED, AND THIS IS NOT PEDANTRY. `gcloud
+# compute instances stop` can return "Instance has in progress persistent disk IO and cannot be
+# suspended/stopped at this time" seconds after a boot; round 18 logged that error, printed "stop:
+# returned", and EXITED — leaving a spot H200 RUNNING with nothing owning it. A stop that reports
+# failure is a stop that has not happened.
+STOP_TRIES=${STOP_TRIES:-8}
+STOP_WAIT_S=${STOP_WAIT_S:-20}
+stop_vm() {
+  st=UNKNOWN
+  i=1
+  while [ "$i" -le "$STOP_TRIES" ]; do
+    st=$(gc instances describe "$VM" --format='value(status)' 2>/dev/null || echo UNKNOWN)
+    if [ "$st" = "TERMINATED" ]; then
+      log "stop: TERMINATED confirmed on attempt $i"
+      break
+    fi
+    log "stop: attempt $i/$STOP_TRIES (status=$st) --discard-local-ssd=false"
+    gc instances stop "$VM" --discard-local-ssd=false >>"$LOCAL_LOG" 2>&1
+    log "stop: gcloud returned at $(ts)"
+    sleep "$STOP_WAIT_S"
+    i=$((i + 1))
+  done
+  st=$(gc instances describe "$VM" --format='value(status)' 2>/dev/null || echo UNKNOWN)
+  if [ "$st" = "TERMINATED" ]; then
+    log "VERIFY instance status = TERMINATED  TERMINATED_OK"
+  else
+    log "VERIFY instance status = $st  *** NOT_TERMINATED — STOP MANUALLY NOW: ***"
+    log "  gcloud compute instances stop $VM --project=$PROJECT --zone=$ZONE --discard-local-ssd=false"
+  fi
+  run=$(gcloud compute instances list --project="$PROJECT" --filter='status=RUNNING' \
+        --format='value(name,zone,status)' 2>/dev/null)
+  if [ -z "$run" ]; then
+    log "VERIFY project-wide status=RUNNING is EMPTY — no VM left running"
+  else
+    log "VERIFY project-wide status=RUNNING is NOT EMPTY:"
+    echo "$run" | while read -r l; do log "    STILL RUNNING: $l"; done
+  fi
+  [ "$st" = "TERMINATED" ]
+}
+trap 'log "TRAP: interrupted — stopping the VM before exiting"; if [ "$STARTED" = "1" ]; then stop_vm; fi; exit 130' INT TERM
+
+# ── 0. PRE-FLIGHT, BEFORE THE INSTANCE IS STARTED ─────────────────────────────────────────────
+log "pre-flight: local conditions only, the VM is still TERMINATED and costs nothing"
+[ -n "$WHEEL" ] || { log "PRE-FLIGHT FAILED: --wheel <path-to-cuda-wheel> is required"; exit 8; }
+[ -f "$WHEEL" ] || { log "PRE-FLIGHT FAILED: no wheel at $WHEEL"; exit 8; }
+case "$WHEEL" in
+  *algenta_runtime_native-*.whl) ;;
+  *) log "PRE-FLIGHT FAILED: $WHEEL is not an algenta_runtime_native wheel"; exit 8 ;;
+esac
+command -v gcloud >/dev/null 2>&1 || { log "PRE-FLIGHT FAILED: gcloud not on PATH"; exit 8; }
+command -v python3 >/dev/null 2>&1 || { log "PRE-FLIGHT FAILED: python3 not on PATH"; exit 8; }
+# THE LOCAL WHEEL HASH, COMPUTED BEFORE ANYTHING IS STARTED. This is the value the verdict must
+# name, and the value publish-pypi's gate later recomputes from the artifact CI built — so a verdict
+# can only ever certify the bytes it was made from. Hashing here (not on the box) also means a
+# mismatch caused by the transfer is detectable rather than invisible.
+LOCAL_WHEEL_SHA=$(python3 -c 'import hashlib,sys
+h = hashlib.sha256()
+with open(sys.argv[1], "rb") as fh:
+    for chunk in iter(lambda: fh.read(1048576), b""):
+        h.update(chunk)
+print(h.hexdigest())' "$WHEEL") || { log "PRE-FLIGHT FAILED: could not hash $WHEEL"; exit 8; }
+LOCAL_WHEEL_BYTES=$(python3 -c 'import os,sys;print(os.path.getsize(sys.argv[1]))' "$WHEEL")
+log "wheel: $(basename "$WHEEL") sha256=$LOCAL_WHEEL_SHA bytes=$LOCAL_WHEEL_BYTES"
+
+# The tree that gets synced must be clean and PUSHED: the measured binaries have to be traceable to a
+# commit that exists upstream. The one path this must not trip on is `mojo_env/.pixi`, a documented
+# never-commit local symlink (round 19's first window died on it 5 s after the instance came up).
+DIRTY=$(cd "$WT" && git status --porcelain 2>/dev/null | grep -v '^?? mojo_env/\.pixi$' || true)
+if [ -n "$DIRTY" ]; then
+  log "PRE-FLIGHT FAILED: $WT is dirty — commit or stash first. Dirty paths:"
+  echo "$DIRTY" | head -20 | tee -a "$LOCAL_LOG"
+  exit 8
+fi
+BRANCH=$(cd "$WT" && git rev-parse --abbrev-ref HEAD)
+HEAD=$(cd "$WT" && git rev-parse --short HEAD)
+(cd "$WT" && git fetch --quiet origin "$BRANCH" 2>/dev/null || true)
+if ! (cd "$WT" && git rev-parse --quiet --verify "origin/$BRANCH" >/dev/null); then
+  log "PRE-FLIGHT FAILED: origin/$BRANCH does not exist — push the branch first"; exit 8
+fi
+REMOTE_HEAD=$(cd "$WT" && git rev-parse "origin/$BRANCH")
+if [ "$(cd "$WT" && git rev-parse HEAD)" != "$REMOTE_HEAD" ]; then
+  log "PRE-FLIGHT FAILED: HEAD ($HEAD) != origin/$BRANCH — push first so the synced tree matches"
+  log "  a commit that exists upstream (a verdict must be traceable to a commit)."
+  exit 8
+fi
+log "PREFLIGHT OK: $BRANCH @ $HEAD is clean (modulo the never-committed mojo_env/.pixi) and pushed"
+grep -q "PREFLIGHT OK" "$LOCAL_LOG" || { log "PRE-FLIGHT FAILED (no marker)"; exit 8; }
+
+if [ "$DRY_RUN" = "1" ]; then
+  log "DRY_RUN: would start $VM, sync $BRANCH@$HEAD + the wheel, launch the battery, watch,"
+  log "          collect cuda-release-verdict.json, then stop. Touching nothing."
+  log "DRY_RUN: cap ${CAP_MIN}m + ${GRACE_MIN}m grace, stop margin ${STOP_MARGIN_S}s."
+  exit 0
+fi
+
+# ── 1. START ──────────────────────────────────────────────────────────────────────────────────
+st=$(gc instances describe "$VM" --format='value(status)' 2>/dev/null || echo UNKNOWN)
+log "instance $VM status=$st zone=$ZONE project=$PROJECT cap=${CAP_MIN}m grace=${GRACE_MIN}m"
+if [ "$st" != "RUNNING" ]; then
+  tries=0; stockouts=0
+  while [ "$tries" -lt "$START_TRIES" ]; do
+    tries=$((tries + 1))
+    log "start attempt $tries/$START_TRIES"
+    out=$(gc instances start "$VM" 2>&1); rc=$?
+    if [ "$rc" = "0" ]; then stockouts=0; break; fi
+    echo "$out" | tail -6 | tee -a "$LOCAL_LOG"
+    if echo "$out" | grep -qiE "ZONE_RESOURCE_POOL_EMPTY|stockout|insufficient|capacity"; then
+      stockouts=$((stockouts + 1))
+      log "SPOT STOCKOUT ($stockouts consecutive) in $ZONE"
+      if [ "$stockouts" -ge 2 ]; then
+        log "TWO CONSECUTIVE STOCKOUTS — stopping and waiting, per the owner's rule. No further"
+        log "  retries this session. Candidate zones: us-west1-c (current), asia-south1-b,"
+        log "  asia-south2-c. The VM is left TERMINATED."
+        exit 4
+      fi
+      sleep 90
+    else
+      log "start failed for a NON-capacity reason; not retrying blindly"; exit 3
+    fi
+  done
+fi
+STARTED=1
+lst=""
+i=1
+while [ "$i" -le 40 ]; do
+  lst=$(gc instances describe "$VM" --format='value(lastStartTimestamp)' 2>/dev/null || echo "")
+  st=$(gc instances describe "$VM" --format='value(status)' 2>/dev/null || echo UNKNOWN)
+  [ "$st" = "RUNNING" ] && [ -n "$lst" ] && break
+  sleep 15
+  i=$((i + 1))
+done
+log "lastStartTimestamp = $lst  status=$st"
+[ -z "$lst" ] && { log "FATAL: no lastStartTimestamp — cannot compute the cap. Stopping."; stop_vm; exit 5; }
+# PARSE THE OFFSET, DO NOT ASSUME IT. gcloud reports `lastStartTimestamp` in the INSTANCE's zone
+# (-07:00 for us-west1); `date -j -f` on macOS would interpret it in the HOST's zone and land three
+# hours early, putting the hard deadline in the past. Python's fromisoformat handles the offset on
+# every host. `python3 -c`, NOT a heredoc inside `$( )` — bash 3.2 on macOS mishandles that
+# combination — so the python below contains no single quotes.
+LST_EPOCH=$(python3 -c 'import sys
+from datetime import datetime
+s = sys.argv[1].strip()
+if s.endswith("Z"):
+    s = s[:-1] + "+00:00"
+print(int(datetime.fromisoformat(s).timestamp()))' "$lst" 2>/dev/null)
+case "${LST_EPOCH:-}" in
+  ''|*[!0-9]*) LST_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "${lst:0:19}${lst: -6}" +%s 2>/dev/null \
+                || date -d "$lst" +%s 2>/dev/null || echo 0) ;;
+esac
+case "${LST_EPOCH:-}" in ''|*[!0-9]*) LST_EPOCH=0 ;; esac
+if [ "$LST_EPOCH" = "0" ]; then
+  log "FATAL: could not parse lastStartTimestamp '$lst'. Stopping rather than run uncapped."
+  stop_vm; exit 5
+fi
+now_e=$(date +%s)
+if [ "$LST_EPOCH" -gt $((now_e + 60)) ]; then
+  log "FATAL: parsed lastStartTimestamp is in the FUTURE — the offset was mis-parsed. Stopping."
+  stop_vm; exit 5
+fi
+if [ $((now_e - LST_EPOCH)) -gt 21600 ]; then
+  log "FATAL: parsed lastStartTimestamp is $(( (now_e - LST_EPOCH) / 60 )) min old, which is not"
+  log "       this start. Refusing; stopping."; stop_vm; exit 5
+fi
+DEADLINE=$(( LST_EPOCH + (CAP_MIN + GRACE_MIN) * 60 ))
+log "VM-ON cap ${CAP_MIN}m + ${GRACE_MIN}m grace => HARD DEADLINE $(date -u -r "$DEADLINE" +%FT%TZ)"
+log "already elapsed since start: $(( ($(date +%s) - LST_EPOCH) / 60 )) min"
+
+# ── 1b. ARM THE INDEPENDENT STOP BACKSTOP, BEFORE ANYTHING ELSE CAN FAIL ──────────────────────
+# A SECOND owner of the stop, in its own session, sharing no process group with this controller: the
+# controller's own trap and retry loop are necessary but NOT sufficient, because they die with the
+# controller (round 18 was group-killed three times, and on the first of those the EXIT trap was
+# mid-`stop_vm` when the follow-up SIGKILL landed, after GCE had already refused the stop).
+# REUSED, NOT REWRITTEN: `vm_stop_backstop_r18.sh` keeps its round-18 name because it is the same
+# script round 18 paid for in three group-kills, and its liveness pattern is round-agnostic. What
+# this window supplies is LEVER_DIR (so it reads CHAIN_EXIT from the right place) and LOG.
+BACKSTOP_LOG=${BACKSTOP_LOG:-/private/tmp/cuda_release_verify/backstop.log}
+if [ "${BACKSTOP:-1}" = "1" ]; then
+  NRDIR="$WT/benchmarks/llm_smoke/nvidia_race"
+  LOG="$BACKSTOP_LOG" GCLOUD=gcloud VM="$VM" ZONE="$ZONE" PROJECT="$PROJECT" GPU="$GPU" \
+    LEVER_DIR="$WORK" \
+    python3 -c 'import os,sys; os.setsid(); os.execv("/bin/bash",["bash"]+sys.argv[1:])' \
+    "$NRDIR/vm_stop_backstop_r18.sh" --deadline "$DEADLINE" --poll "${BACKSTOP_POLL:-60}" \
+      --idle-grace "${BACKSTOP_IDLE_GRACE:-300}" --max-min "$(( CAP_MIN + GRACE_MIN + 30 ))" \
+    >>"$LOCAL_LOG" 2>&1 &
+  BACKSTOP_PID=$!
+  sleep 3
+  if ps -p "$BACKSTOP_PID" >/dev/null 2>&1; then
+    log "backstop ARMED pid=$BACKSTOP_PID pgid=$(ps -o pgid= -p "$BACKSTOP_PID" | tr -d ' ')" \
+        "log=$BACKSTOP_LOG (own session: a group-kill of THIS controller cannot reach it)"
+  else
+    log "WARNING: the backstop did not stay up. This controller is then the ONLY owner of the stop."
+  fi
+fi
+
+# ── 2. SYNC: the tree subset the battery needs, then the wheel, then RE-HASH the wheel ─────────
+# The box has NO github egress (measured round 6 — a clone times out on github.com:443), so the tree
+# is tar'd here and scp'd over. COPYFILE_DISABLE stops macOS writing ._ AppleDouble sidecars into the
+# tar, which otherwise land in the VM tree as junk.
+TGZ=/tmp/cuda_release_verify_tree.tgz
+rm -f "$TGZ"
+log "sync: taring $BRANCH@$HEAD"
+( cd "$WT" && COPYFILE_DISABLE=1 tar czf "$TGZ" \
+    --exclude __pycache__ --exclude .pixi --exclude .git \
+    benchmarks/llm_smoke/nvidia_race packages/algenta scripts mojo_env/pixi.toml ) || {
+  log "SYNC FAILED: could not tar the tree"; stop_vm; exit 6; }
+log "sync: tree tarball $(python3 -c 'import os,sys;print(os.path.getsize(sys.argv[1]))' "$TGZ") bytes"
+SYNC_TRIES=${SYNC_TRIES:-3}
+synced=0
+i=1
+while [ "$i" -le "$SYNC_TRIES" ]; do
+  log "sync attempt $i/$SYNC_TRIES (sshd probe first)"
+  if ssh_ready; then
+    if gc scp "$TGZ" "angel@$VM:$REMOTE_DIR.tgz" >>"$LOCAL_LOG" 2>&1 && \
+       gc scp "$WHEEL" "angel@$VM:$REMOTE_DIR.whl" >>"$LOCAL_LOG" 2>&1; then
+      synced=1; break
+    fi
+  fi
+  log "sync attempt $i FAILED — re-probing before the next"
+  sleep "$SSH_WAIT_S"
+  i=$((i + 1))
+done
+if [ "$synced" != "1" ]; then
+  log "SYNC FAILED after $SYNC_TRIES attempts — stopping; nothing was measured"; stop_vm; exit 6
+fi
+log "SYNC_DONE: tree + wheel transferred"
+
+# THE WHEEL HASH IS RE-CHECKED ON THE BOX, AND A MISMATCH IS FATAL RATHER THAN A WARNING. The verdict
+# names the bytes that were tested; if the transfer corrupted or truncated the wheel, everything
+# downstream would certify a file that is not the file CI built and not the file anyone publishes.
+ssh_ready || { log "sshd lost after sync — stopping"; stop_vm; exit 7; }
+# `sha256sum`, not a python one-liner over ssh: the campaign already hashes arms this way
+# (chain19.sh's build_reverify), it is one process on the box, and it has no quoting surface to get
+# wrong across four process boundaries.
+REMOTE_WHEEL_SHA=$(gc ssh "$VM" --command \
+  "sha256sum \$HOME/$REMOTE_DIR.whl 2>/dev/null | cut -d' ' -f1" 2>>"$LOCAL_LOG" | tail -1)
+log "remote wheel sha256=$REMOTE_WHEEL_SHA"
+if [ "$REMOTE_WHEEL_SHA" != "$LOCAL_WHEEL_SHA" ]; then
+  log "*** WHEEL HASH MISMATCH after transfer: local=$LOCAL_WHEEL_SHA remote=$REMOTE_WHEEL_SHA"
+  log "    REFUSING to run a battery whose verdict could not name the bytes it tested. Stopping."
+  stop_vm; exit 9
+fi
+log "WHEEL_HASH_OK: the box holds the exact bytes this window will certify"
+gc ssh "$VM" --command "rm -rf ~/$REMOTE_DIR && mkdir -p ~/$REMOTE_DIR $WORK/runs $WORK/logs \
+  $WORK/clocks $WORK/site-packages && tar xzf ~/$REMOTE_DIR.tgz -C ~/$REMOTE_DIR && \
+  ls ~/$REMOTE_DIR/scripts/release/verify_cuda_release_battery.sh >/dev/null && echo TREE_OK && \
+  ls ~/$REMOTE_DIR/benchmarks/llm_smoke/nvidia_race/vm_harness/lever3/gate_any.py >/dev/null && \
+  echo GATE_ANY_OK && echo '$BRANCH $HEAD' > ~/$REMOTE_DIR/.synced_head" >>"$LOCAL_LOG" 2>&1
+grep -q "GATE_ANY_OK" "$LOCAL_LOG" || { log "SYNC FAILED: the gate harness did not land"; stop_vm; exit 6; }
+log "TREE_OK + GATE_ANY_OK confirmed; synced_head=$BRANCH@$HEAD"
+
+# ── 3. LAUNCH (channel must NOT be inherited) ─────────────────────────────────────────────────
+# EVERY GOVERNOR KNOB IS PASSED ON THIS LINE, EXPLICITLY. An env var that has to survive four process
+# boundaries (Mac shell -> gcloud ssh -> remote shell -> battery -> cell driver) must be named at each
+# one: round 18 caught a bug where an `export` of a variable the ssh line never set exported NOTHING
+# and the runner silently fell back to its own default.
+log "launching verify_cuda_release_battery.sh under setsid+nohup, stdin /dev/null, disowned"
+gc ssh "$VM" --command \
+  "CW_DEADLINE_EPOCH=$DEADLINE CAP_MIN=$CAP_MIN GRACE_MIN=$GRACE_MIN SAFETY_S=$STOP_MARGIN_S \
+   GPU=$GPU WORK=$WORK SRC_TREE=\$HOME/$REMOTE_DIR WHEEL_PATH=\$HOME/$REMOTE_DIR.whl \
+   EXPECT_WHEEL_SHA=$LOCAL_WHEEL_SHA EXPECT_WHEEL_BYTES=$LOCAL_WHEEL_BYTES \
+   VM_NAME=$VM VM_ZONE=$ZONE VM_PROJECT=$PROJECT VM_LAST_START='$lst' \
+   GATE_PROMPTS='${GATE_PROMPTS:-pp256,pp1024,val550,rag4096}' \
+   CKPT='${CKPT:-/mnt/ramblob/g3conv27b}' HF_CKPT='${HF_CKPT:-\$HOME/gemma3-27b}' \
+   PY314='${PY314:-}' \
+   setsid nohup bash \$HOME/$REMOTE_DIR/scripts/release/verify_cuda_release_battery.sh \
+   </dev/null >$WORK/battery.out 2>&1 & disown; sleep 2; \
+   echo LAUNCHED pid=\$(pgrep -f verify_cuda_release_batter[y] | head -1)" >>"$LOCAL_LOG" 2>&1
+grep -q "LAUNCHED" "$LOCAL_LOG" || { log "no LAUNCHED marker — stopping"; stop_vm; exit 7; }
+log "$(grep -m1 LAUNCHED "$LOCAL_LOG")"
+
+# ── 4. WATCH ──────────────────────────────────────────────────────────────────────────────────
+# Liveness comes from the heartbeat file the battery writes, not from holding an ssh session open: a
+# watch that depends on the channel is the failure mode that cost round 17 five minutes twice.
+last_hb=""
+while true; do
+  now=$(date +%s)
+  hb=$(gc ssh "$VM" --command "tail -2 $WORK/heartbeat.log 2>/dev/null; echo ---; \
+       cat $WORK/PHASE 2>/dev/null; echo ---; cat $WORK/BATTERY_EXIT 2>/dev/null; echo ---; \
+       grep -m1 'GATE ALL_PASS' $WORK/battery.log 2>/dev/null; echo ---; \
+       grep -m1 'BATTERY COMPLETE' $WORK/battery.log 2>/dev/null" 2>/dev/null | tr '\n' '|')
+  [ "$hb" != "$last_hb" ] && log "hb: $hb"
+  last_hb="$hb"
+  case "$hb" in *"BATTERY COMPLETE"*) log "battery reports COMPLETE"; break ;; esac
+  case "$hb" in *"BATTERY_FAILED"*) log "battery reports FAILED — collecting the evidence, then stopping"; break ;; esac
+  if [ $((now + STOP_MARGIN_S)) -ge "$DEADLINE" ]; then
+    log "DEADLINE APPROACHING (stop margin ${STOP_MARGIN_S}s) — stopping the window now"; break
+  fi
+  sleep "$POLL_S"
+done
+
+# ── 5. COLLECT, THEN STOP ─────────────────────────────────────────────────────────────────────
+# Pull the artifacts BEFORE the stop: /tmp and /mnt/ramblob are tmpfs and die with it, and having the
+# window's evidence locally means it can be audited without another billable start.
+ART=${ART:-/private/tmp/cuda_release_verify/artifacts}
+mkdir -p "$ART"
+log "collecting artifacts -> $ART"
+gc ssh "$VM" --command "cd $WORK && tar czf /tmp/crv_art.tgz battery.log heartbeat.log BATTERY_EXIT \
+   PHASE clocks runs cuda-release-verdict.json gate_cuda_release.json conformance_cuda.json \
+   wheel-census.json gpuless_load.txt CHAIN_EXIT 2>/dev/null; ls -l /tmp/crv_art.tgz" \
+   >>"$LOCAL_LOG" 2>&1
+gc scp "$VM:/tmp/crv_art.tgz" "$ART/crv_art.tgz" --project="$PROJECT" --zone="$ZONE" \
+  >>"$LOCAL_LOG" 2>&1 && (cd "$ART" && tar xzf crv_art.tgz 2>/dev/null && log "artifacts extracted") \
+  || log "WARNING: artifact collection incomplete — $WORK still holds them on the boot disk"
+
+# ── 6. THE REFUSAL GATE: NO VERDICT UNLESS EVERYTHING THE VERDICT CLAIMS ACTUALLY HAPPENED ─────
+# Checked HERE rather than trusted from the battery's own exit code, because the controller is the
+# party that hands a verdict to a publish pipeline and "the remote script said it was fine" is not
+# evidence. Four independent conditions, any of which withholds the verdict:
+#   (a) a verdict file came home at all;
+#   (b) it says pass with rc=0;
+#   (c) its wheel_sha256 equals the hash computed LOCALLY before the start — the mismatch case the
+#       whole design exists to catch, re-checked at the end rather than only at the transfer;
+#   (d) the battery's own artifact says the clock discipline held (every cell 1410 MHz, offpin=0).
+VERDICT_OK=0
+if [ -f "$ART/cuda-release-verdict.json" ]; then
+  VERDICT_OK=$(ART="$ART" LOCAL_WHEEL_SHA="$LOCAL_WHEEL_SHA" python3 -c '
+import json, os
+d = json.load(open(os.path.join(os.environ["ART"], "cuda-release-verdict.json"), encoding="utf-8"))
+want = os.environ["LOCAL_WHEEL_SHA"]
+got = (d.get("wheel") or {}).get("sha256") or d.get("wheel_sha256")
+clocks = d.get("clocks") or {}
+cells = clocks.get("cells") or []
+bad_clock = [c for c in cells if str(c.get("clocks_after")) != str(clocks.get("pinned_mhz", 1410))]
+bad_offpin = [c for c in cells if int(c.get("offpin", 1) or 0) != 0]
+ok = (d.get("verdict") == "pass" and d.get("rc") == 0 and got == want
+      and bool(cells) and not bad_clock and not bad_offpin
+      and (d.get("gates") or {}).get("all_pass") is True)
+print("1" if ok else "0")
+if not ok:
+    print("  verdict=%r rc=%r gates.all_pass=%r" % (d.get("verdict"), d.get("rc"),
+          (d.get("gates") or {}).get("all_pass")))
+    print("  wheel_sha256 verdict=%s local=%s match=%s" % (got, want, got == want))
+    print("  cells=%d off-clock=%d off-pin=%d" % (len(cells), len(bad_clock), len(bad_offpin)))
+')
+  log "verdict re-check: VERDICT_OK=$VERDICT_OK"
+else
+  log "NO VERDICT FILE came home — the battery refused or was killed mid-window"
+fi
+
+stop_vm
+
+if [ "$VERDICT_OK" != "1" ]; then
+  log "WINDOW CLOSED WITH NO VERDICT. Nothing may be published from this window."
+  log "  evidence: $ART   log: $LOCAL_LOG"
+  log "  rc=10 (gate failure, clock/offpin deviation, wheel-hash mismatch, or an unfinished battery)"
+  exit 10
+fi
+log "WINDOW CLOSED. cuda-release-verdict.json -> $ART/cuda-release-verdict.json"
+log "  wheel sha256 = $LOCAL_WHEEL_SHA ($LOCAL_WHEEL_BYTES bytes)"
+log "  Local log: $LOCAL_LOG   Artifacts: $ART"
+log "NEXT: attach the verdict to the release publish-pypi reads (tag runtime-v<version>):"
+log "  gh release upload runtime-v<version> --repo $REPO $ART/cuda-release-verdict.json"
+log "then publish (the gate re-hashes the wheel and compares it to this verdict):"
+log "  gh workflow run build-runtime.yml --repo $REPO -f publish=true -f verdict_tag=runtime-v<version>"
+exit 0
