@@ -437,7 +437,10 @@ _SESSION_LOCK = threading.Lock()
 _SESSIONS: dict[Path, _WorkerSession] = {}
 _CACHE_LOCK = threading.RLock()
 _SHARD_MAP_CACHE: dict[Path, tuple[int, int, _RuntimeShardMap]] = {}
-_VERIFIED_RUNTIME_DIRS: set[Path] = set()
+# Verified artifact dir -> the manifest whose signature verified for it. A dict, not a set, because
+# a caller that needs a fact the manifest states (its `build_variant`, its `engine` block) must read
+# that fact from bytes that are ALREADY trusted rather than re-reading the file and re-trusting it.
+_VERIFIED_RUNTIME_DIRS: dict[Path, dict] = {}
 
 
 def _repo_root() -> Path:
@@ -529,15 +532,22 @@ def _candidate_paths(
     return tuple(candidates)
 
 
-def _verify_bundled_worker(path: Path) -> None:
+def _verify_bundled_worker(path: Path) -> dict:
+    """Verify one bundled worker's whole artifact directory; return the signed manifest.
+
+    Every artifact the manifest lists is hashed, so a directory that verifies is a directory whose
+    bundled CUDA engine binary — when the manifest declares one — is exactly the bytes the release
+    key signed. Callers that only need the pass/fail ignore the return value.
+    """
     artifact_dir = path.parent
     shard_map = _load_shard_map(artifact_dir)
     if path.name not in shard_map.workers:
         raise verify.VerificationError("selected runtime worker is not present in the shard map")
     resolved_artifact_dir = artifact_dir.resolve()
     with _CACHE_LOCK:
-        if resolved_artifact_dir in _VERIFIED_RUNTIME_DIRS:
-            return
+        cached = _VERIFIED_RUNTIME_DIRS.get(resolved_artifact_dir)
+    if cached is not None:
+        return cached
     manifest_path = artifact_dir / MANIFEST_NAME
     sig_path = artifact_dir / MANIFEST_SIG_NAME
     if not (manifest_path.exists() and sig_path.exists()):
@@ -578,7 +588,8 @@ def _verify_bundled_worker(path: Path) -> None:
             "runtime shard artifacts missing from signed manifest: " + ", ".join(missing_names)
         )
     with _CACHE_LOCK:
-        _VERIFIED_RUNTIME_DIRS.add(resolved_artifact_dir)
+        _VERIFIED_RUNTIME_DIRS[resolved_artifact_dir] = manifest
+    return manifest
 
 
 def _ensure_executable(path: Path) -> None:
@@ -687,9 +698,7 @@ def ensure_ready(
     _session_for(resolution).ensure_ready(timeout)
 
 
-def handshake(
-    *, module_name: str | None = None, require_verified: bool = False
-) -> dict[str, Any]:
+def handshake(*, module_name: str | None = None, require_verified: bool = False) -> dict[str, Any]:
     """What the worker that owns `module_name` (the default worker if omitted) declared about
     itself in its startup handshake -- e.g. `resident_max_d_model`, this specific binary's
     compiled decode-session staging ceiling. Starts the worker if it is not already running

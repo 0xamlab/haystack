@@ -29,6 +29,28 @@ difference is contained so the gate and the CLI never have to reason about it:
 Resolution order is declared, not incidental, and ends beside the bundled runtime
 artifact so that packaging the CUDA engine into the runtime wheel (a separate
 workstream) makes it resolvable with no edit here.
+
+The bundled step is the ONE step that consults the signed runtime manifest, and
+it does so because the wheel is the only place where "a binary with this name
+exists" is not by itself sufficient evidence. The runtime wheel ships in two
+build variants whose workers are otherwise indistinguishable — same file names,
+same directory layout, same wheel filename — so the manifest's `build_variant`
+is the only machine-readable statement of which accelerator tier the binaries
+inside were compiled for. A bundled engine is therefore admitted only when ALL of
+these hold, and every decline is recorded in ``searched`` with its reason:
+
+1. the directory is one the SDK marks as a signed bundled runtime (a dev
+   directory such as the repo's ``mojo_build/`` has no manifest to consult and
+   keeps resolving on presence alone, like ``$BENCH_BIN_DIR`` and ``$PATH`` do);
+2. that directory's manifest signature verifies and every artifact it lists
+   hashes — which covers the engine binary itself, since it is listed;
+3. the manifest says ``build_variant == "cuda"``; and
+4. this host is cuda-capable by the gate's own predicate
+   (``gating.host_refusals("cuda", facts)`` is empty).
+
+An operator's explicit ``--engine-binary`` / ``$ALGENTA_CUDA_ENGINE`` still wins
+outright and is never subjected to 2-4: naming a binary IS the operator taking
+responsibility for it, and it is the escape hatch on a host whose probe is wrong.
 """
 
 from __future__ import annotations
@@ -41,6 +63,7 @@ from pathlib import Path
 from typing import Any
 
 __all__ = [
+    "CUDA_BUILD_VARIANT",
     "CUDA_ENGINE_BINARY_NAME",
     "CUDA_ENGINE_ENV_VARS",
     "ENGINE_OUTPUT_REFUSALS",
@@ -54,6 +77,17 @@ __all__ = [
 ]
 
 CUDA_ENGINE_BINARY_NAME = "conform_generate_cuda"
+
+# The `build_variant` value a signed runtime manifest must carry before this
+# module will launch the engine binary bundled beside it. Written by
+# scripts/generate_runtime_bundle_manifest.py, which is the only generator of
+# that field, and checked by tests/test_runtime_bundle_manifest_variant.py.
+CUDA_BUILD_VARIANT = "cuda"
+
+# The manifest's own file name, per algenta.native.worker.MANIFEST_NAME. Spelled
+# out here so this module's refusal text can name the file an operator has to
+# look at without importing the SDK's private constant.
+_BUNDLED_MANIFEST_NAME = "manifest.json"
 
 # Operator overrides, most explicit first. `ALGENTA_CONFORM_CUDA_DRIVER` is the
 # name `scripts/algenta_conform.py` and `scripts/algenta_bench.py` already use for
@@ -110,13 +144,20 @@ class EngineResolution:
         }
 
 
-def _bundled_artifact_dirs() -> list[Path]:
+def _bundled_artifact_dirs() -> list[tuple[Path, bool]]:
     """The directories the SDK's own runtime resolution would accept an artifact from.
 
     Reused rather than re-derived so the CUDA engine is looked for in exactly the
     places a packaged runtime lands, including beside the bundled worker.
+
+    Each entry carries the SDK's own ``must_verify`` flag for that candidate: True
+    only for the packaged runtime directory, whose artifacts are covered by a
+    signed manifest. That flag — not the presence of a manifest file — is what
+    decides whether the bundled step demands signature verification, so a
+    developer's ``mojo_build/`` keeps working on presence alone and an attacker who
+    can drop a ``manifest.json`` into a dev directory gains nothing by it.
     """
-    dirs: list[Path] = []
+    dirs: list[tuple[Path, bool]] = []
     try:
         from algenta.native import worker as _worker
 
@@ -126,10 +167,19 @@ def _bundled_artifact_dirs() -> list[Path]:
         # of the chain (env overrides, $BENCH_BIN_DIR, $PATH) still runs, and an
         # unresolved binary becomes a typed refusal naming the whole chain.
         return dirs
-    for _source, path, _must_verify, _error in candidates:
+    seen: list[Path] = []
+    for _source, path, must_verify, _error in candidates:
         parent = Path(path).parent
-        if parent not in dirs:
-            dirs.append(parent)
+        if parent in seen:
+            # The same directory can be a candidate twice (an operator's
+            # ALGENTA_NATIVE_WORKER pointing into the packaged runtime). The signed
+            # reading wins: it is the stricter one, so de-duplicating the other way
+            # would let an unsigned candidate admit an engine a manifest declined.
+            index = seen.index(parent)
+            dirs[index] = (parent, dirs[index][1] or bool(must_verify))
+            continue
+        seen.append(parent)
+        dirs.append((parent, bool(must_verify)))
     return dirs
 
 
@@ -137,16 +187,110 @@ def _executable(path: Path) -> bool:
     return path.is_file() and os.access(path, os.X_OK)
 
 
+def _cuda_host_refusal_codes(host: Any, platform: str | None = None) -> tuple[str, ...]:
+    """The gate's OWN verdict on whether this host can run the cuda backend.
+
+    Reused rather than re-derived: ``gating.host_refusals`` already encodes the
+    platform allowlist and the minimum driver floor declared once in
+    ``model_capabilities.BACKEND_HOST_REQUIREMENTS``, and the gate has already run
+    it by the time a serve reaches the engine stage. An empty tuple is the
+    predicate "this host is cuda-capable".
+
+    ``platform`` is injectable for exactly the reason ``gate_serve`` takes one: the
+    predicate has to be exercisable on a machine that is not the machine it
+    describes, and a test that monkeypatches ``sys.platform`` is a test that lies
+    about the host it ran on.
+    """
+    from algenta.serve.gating import host_refusals
+
+    return tuple(refusal.code for refusal in host_refusals("cuda", host, platform=platform))
+
+
+def _admit_bundled_engine(
+    artifact_dir: Path,
+    *,
+    signed: bool,
+    host: Any = None,
+    host_probe: Any = None,
+    platform: str | None = None,
+) -> tuple[Path | None, str]:
+    """Decide whether ``artifact_dir``'s bundled engine may be launched.
+
+    Returns ``(path_or_None, note)``; ``note`` is always suitable for the
+    resolution's ``searched`` chain, on both the accept and the decline path, so a
+    refusal says WHY the bundled engine was passed over rather than only that it
+    was. Never raises: a bundled runtime this module cannot make sense of is one
+    more declined candidate, not a crash in the middle of a gate.
+    """
+    candidate = artifact_dir / CUDA_ENGINE_BINARY_NAME
+    if not signed:
+        # A development directory (the repo's mojo_build/, an operator's
+        # ALGENTA_NATIVE_WORKER parent) has no signed manifest to consult, so
+        # presence + the executable bit is the evidence here — the same evidence
+        # the $BENCH_BIN_DIR and $PATH steps already accept.
+        if _executable(candidate):
+            return candidate, str(candidate)
+        return None, str(candidate)
+
+    if not (artifact_dir / _BUNDLED_MANIFEST_NAME).is_file():
+        return None, f"{candidate} (no signed {_BUNDLED_MANIFEST_NAME} beside it)"
+
+    try:
+        from algenta.native import worker as _worker
+
+        # Verifies the manifest signature against the embedded release trust anchor
+        # AND hashes every artifact it lists — the engine included, because the
+        # build stages it into the same signed directory.
+        manifest = _worker._verify_bundled_worker(artifact_dir / _worker.WORKER_BASENAME)
+    except Exception as exc:  # noqa: BLE001 - a failed verification is a decline, not a crash
+        return None, (
+            f"{candidate} (the signed runtime beside it failed integrity verification: "
+            f"{type(exc).__name__})"
+        )
+
+    variant = manifest.get("build_variant") if isinstance(manifest, dict) else None
+    if variant != CUDA_BUILD_VARIANT:
+        return None, (
+            f"{candidate} (its signed {_BUNDLED_MANIFEST_NAME} says "
+            f"build_variant={variant!r}, not {CUDA_BUILD_VARIANT!r})"
+        )
+    if not _executable(candidate):
+        return None, (
+            f"{candidate} (declared by a {CUDA_BUILD_VARIANT} runtime manifest but "
+            "absent or not executable)"
+        )
+
+    facts = host
+    if facts is None:
+        probe = host_probe
+        if probe is None:
+            from algenta.serve.gating import probe_nvidia_host as probe  # noqa: PLC0415
+        try:
+            facts = probe()
+        except Exception as exc:  # noqa: BLE001 - an unusable probe is a decline, not a crash
+            return None, f"{candidate} (the NVIDIA host probe raised {type(exc).__name__})"
+    blocking = _cuda_host_refusal_codes(facts, platform)
+    if blocking:
+        return None, (f"{candidate} (this host is not cuda-capable: {', '.join(blocking)})")
+    return candidate, str(candidate)
+
+
 def resolve_engine(
     backend: str,
     *,
     override: str | os.PathLike[str] | None = None,
     environ: os._Environ[str] | dict[str, str] | None = None,
+    host: Any = None,
+    host_probe: Any = None,
+    platform: str | None = None,
 ) -> EngineResolution:
     """Resolve the engine binary for `backend`. Never raises, never guesses.
 
     ``environ`` is injectable so the resolution chain is testable without mutating
-    the process environment.
+    the process environment. ``host`` / ``host_probe`` / ``platform`` are the same
+    idea for the one step that consults host facts: ``plan_serve`` already probed
+    the host for the gate, so it hands those facts in and nothing shells out to
+    ``nvidia-smi`` twice; ``host_probe`` replaces the probe itself, for a test.
     """
     env = os.environ if environ is None else environ
     if backend == "metal":
@@ -182,11 +326,17 @@ def resolve_engine(
         if _executable(candidate):
             return EngineResolution(candidate, f"${_BIN_DIR_ENV_VAR}")
 
-    for artifact_dir in _bundled_artifact_dirs():
-        candidate = artifact_dir / CUDA_ENGINE_BINARY_NAME
-        searched.append(str(candidate))
-        if _executable(candidate):
-            return EngineResolution(candidate, "bundled runtime")
+    for artifact_dir, signed in _bundled_artifact_dirs():
+        admitted, note = _admit_bundled_engine(
+            artifact_dir,
+            signed=signed,
+            host=host,
+            host_probe=host_probe,
+            platform=platform,
+        )
+        searched.append(note)
+        if admitted is not None:
+            return EngineResolution(admitted, "bundled runtime")
 
     searched.append(f"$PATH/{CUDA_ENGINE_BINARY_NAME}")
     found = shutil.which(CUDA_ENGINE_BINARY_NAME)
@@ -219,6 +369,9 @@ def engine_refusals(
     override: str | os.PathLike[str] | None = None,
     environ: os._Environ[str] | dict[str, str] | None = None,
     resolution: EngineResolution | None = None,
+    host: Any = None,
+    host_probe: Any = None,
+    platform: str | None = None,
 ) -> list[Any]:
     """The engine-stage refusals for `backend`, in the gate's own vocabulary.
 
@@ -231,7 +384,14 @@ def engine_refusals(
     resolved = (
         resolution
         if resolution is not None
-        else resolve_engine(backend, override=override, environ=environ)
+        else resolve_engine(
+            backend,
+            override=override,
+            environ=environ,
+            host=host,
+            host_probe=host_probe,
+            platform=platform,
+        )
     )
     if resolved.path is None:
         if backend == "cuda":
@@ -254,7 +414,10 @@ def engine_refusals(
                         "build it with the CUDA lane recipe (-D ALGENTA_GPU -D ALGENTA_CUDA "
                         "--target-accelerator sm_NN) from "
                         "benchmarks/llm_smoke/conform_generate_cuda.mojo, or install a runtime "
-                        "wheel that packages it"
+                        "wheel that packages it. A wheel that DOES package it is admitted only "
+                        f"when its signed {_BUNDLED_MANIFEST_NAME} says "
+                        f"build_variant='{CUDA_BUILD_VARIANT}' and this host is cuda-capable; "
+                        "the searched chain above names which of the two declined it."
                     ),
                 )
             ]
@@ -292,6 +455,9 @@ class _EngineStage:
 
     Carries the operator's override and environment so the gate resolves the SAME
     binary the launch will, instead of resolving twice and risking two answers.
+    It carries the host facts for the same reason: the gate has usually already
+    probed the NVIDIA host by the time it asks this stage for refusals, and the
+    bundled-engine step is the one place resolution consults host facts.
     """
 
     def __init__(
@@ -299,9 +465,15 @@ class _EngineStage:
         *,
         override: str | os.PathLike[str] | None = None,
         environ: os._Environ[str] | dict[str, str] | None = None,
+        host: Any = None,
+        host_probe: Any = None,
+        platform: str | None = None,
     ) -> None:
         self.override = override
         self.environ = environ
+        self.host = host
+        self.host_probe = host_probe
+        self.platform = platform
         self._cache: dict[str, tuple[EngineResolution, list[Any]]] = {}
 
     def resolve(self, backend: str) -> EngineResolution:
@@ -311,7 +483,14 @@ class _EngineStage:
         cached = self._cache.get(backend)
         if cached is not None:
             return cached
-        resolution = resolve_engine(backend, override=self.override, environ=self.environ)
+        resolution = resolve_engine(
+            backend,
+            override=self.override,
+            environ=self.environ,
+            host=self.host,
+            host_probe=self.host_probe,
+            platform=self.platform,
+        )
         result = (resolution, engine_refusals(backend, resolution=resolution))
         self._cache[backend] = result
         return result
@@ -324,9 +503,18 @@ def engine_stage(
     *,
     override: str | os.PathLike[str] | None = None,
     environ: os._Environ[str] | dict[str, str] | None = None,
+    host: Any = None,
+    host_probe: Any = None,
+    platform: str | None = None,
 ) -> _EngineStage:
     """Build the injectable engine-stage object for `gating.gate_serve`."""
-    return _EngineStage(override=override, environ=environ)
+    return _EngineStage(
+        override=override,
+        environ=environ,
+        host=host,
+        host_probe=host_probe,
+        platform=platform,
+    )
 
 
 @dataclass(frozen=True)

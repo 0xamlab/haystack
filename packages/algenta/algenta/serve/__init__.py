@@ -345,7 +345,14 @@ def plan_serve(
     which is what a grammar-level caller wants; the gate still runs in full.
     """
     _validate_request(request)
-    stage = engine_stage(override=request.engine_binary, environ=environ)
+    # `host` is handed to the engine stage as well as to the gate: admitting the
+    # engine binary BUNDLED IN THE WHEEL is the one resolution step that consults
+    # host facts (it requires a signed manifest declaring build_variant='cuda' AND
+    # a cuda-capable host), and the gate has usually already probed. Passing the
+    # same facts in means one probe per serve, not two that could disagree.
+    stage = engine_stage(
+        override=request.engine_binary, environ=environ, host=host, platform=platform
+    )
     gate = gate_serve(
         request.backend,
         model=request.model,

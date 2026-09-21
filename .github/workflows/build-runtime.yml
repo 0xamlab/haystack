@@ -49,7 +49,11 @@ on:
       # to them IS a change to the runtime pipeline.
       - ".github/scripts/_linux_container_bootstrap.sh"
       - ".github/scripts/build_runtime_linux_amd64.sh"
+      - ".github/scripts/build_cuda_engine_linux_amd64.sh"
       - ".github/scripts/clean_machine_contract_linux_amd64.sh"
+      # The signed manifest's generator: it defines the build_variant / engine schema the serve
+      # resolver reads, so a change to it is a change to the runtime pipeline.
+      - "scripts/generate_runtime_bundle_manifest.py"
 
 permissions:
   contents: read
@@ -120,6 +124,48 @@ jobs:
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      # ── THE CUDA ENGINE COMPILE GATE ────────────────────────────────────────────────────────
+      # WHY THIS STEP EXISTS. The wheel this job builds ships only the 643 public JSON-callable
+      # `modules` shards. Every racing kernel is a private leading-underscore symbol (the #854
+      # directive), and `discover_runtime_library_modules(executable_only=True)` drops all 20
+      # kernel-bearing residentk modules because a module with no public executable function has
+      # nothing to dispatch. Measured, not inferred: the 42 MB cuda wheel from run 35476584628
+      # contains exactly ONE device kernel and ZERO of the 142 declared CUDA race kernels — no
+      # `_pf_*`, no `_g3_*`, no `_tc_*`, no `.nv_fatbin`/`__nv_relfatbin` section in any of its 35
+      # ELFs. So publishing that wheel gives a user NONE of the certified kernels, and re-pinning a
+      # shard hash cannot fix it: it would certify a runtime that provably contains none of them.
+      #
+      # The fix is to ship the kernels inside a LINKED EXECUTABLE instead of inside a module: this
+      # step compiles `benchmarks/llm_smoke/nvidia_race/tc_shim.cu` for sm_90a with a CPU-only nvcc
+      # (a cross-compiler needs no device) and builds
+      # `benchmarks/llm_smoke/conform_generate_cuda.mojo` — the fact-driven generate path on
+      # residentk.session_cuda, and the binary class `algenta serve --backend cuda` already resolves
+      # (#1112) — at the round-19 CERTIFIED default configuration (BASE + R5 + R6 comptime defines,
+      # GEGLU_V2 default-ON since #1072 so no opt-out is passed, LTALGO default-OFF so no opt-in is
+      # passed and the shim stays the stock flavour). The next step bundles that binary into the
+      # wheel's signed artifact directory, where the serve resolver already looks for it, so an
+      # operator needs NO --engine-binary flag and a user needs no Mojo toolchain.
+      #
+      # WHAT IT PROVES AND WHAT IT DOES NOT. This is a COMPILE AND LINK gate on a GPU-less runner:
+      # it proves the certified configuration still builds, that the shim's tc_shim_* entry points
+      # are really in the object, and that the result is a loadable ELF (a GPU-less usage-path smoke
+      # that exits 2). It does NOT prove the engine generates a single correct token — that is the
+      # October battery's job (scripts/release/verify_cuda_release.sh), which is why this lane stays
+      # out of clean-machine-contract's `needs` and the cuda wheel still reaches PyPI only through
+      # the release-verify gate below.
+      #
+      # COST: a minimal CUDA toolkit install (cuda-nvcc + cuda-cudart-dev + libcublas-dev, not the
+      # ~2 GB cuda-toolkit meta-package), one nvcc compile of a 5,045-line translation unit, and one
+      # Mojo build. Expected +8 to +15 min on a job that measured 30 min. It runs in its own
+      # container because it needs an apt toolchain the runtime build does not; /work is mounted for
+      # both, so the pixi environment the first run installs is a fast no-op for the second.
+      - name: Compile the CUDA engine bundle (CPU-only nvcc, no GPU)
+        run: |
+          docker pull --platform linux/amd64 ubuntu:22.04
+          docker run --rm --platform linux/amd64 \
+            --user root \
+            -v "$GITHUB_WORKSPACE:/work" -w /work \
+            ubuntu:22.04 bash .github/scripts/build_cuda_engine_linux_amd64.sh
       - name: Build linux CUDA runtime in an amd64 container
         env:
           ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
