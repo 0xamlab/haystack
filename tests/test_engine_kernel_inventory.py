@@ -4,8 +4,10 @@ The racing kernels are private (leading underscore) pointer-based CUDA/Metal fun
 they are NOT JSON-callable runtime libraries; their public surface is the inventory this
 file pins down. Three invariants matter:
 
-1. STABILITY — the current tree publishes a known surface (floors + named entries), and the
-   payload is deterministic.
+1. STABILITY — the current tree publishes a known surface (floors + named entries), the
+   payload is deterministic, and the two artifacts that publish it — the shipped contract
+   and the GitBook inventory page — agree with discovery. Counts are DERIVED, never pinned:
+   a kernel landing must not require editing this file.
 2. ADAPTIVITY — a newly added kernel-shaped function in a scanned package flows into the
    inventory with the right backend/family/role WITHOUT any hand-maintained list (the PR
    #850 gemma3 add-ons must appear the day they merge).
@@ -15,7 +17,10 @@ file pins down. Three invariants matter:
 
 from __future__ import annotations
 
+import json
+import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -36,6 +41,42 @@ from scripts.generate_engine_kernel_floor import grow_floor, load_floor  # noqa:
 # these deliberately after `make inventory-refresh`, never lower them.
 KERNEL_MODULE_FLOOR = 19
 KERNEL_COUNT_FLOOR = 137
+
+# The two artifacts the discovered surface is published through. Both are GENERATED from
+# discovery, so nothing about them is pinned here — they are read and compared:
+#   contract  <- scripts/generate_algenta_runtime_contract.py  (gate: `make inventory-check`)
+#   page      <- scripts/docs/gen_kernel_inventory.py          (gate: `make docs-check`)
+CONTRACT_PATH = _REPO_ROOT / "packages" / "algenta" / "algenta" / "runtime_library_contract.json"
+INVENTORY_PAGE = _REPO_ROOT / "gitbook" / "engine" / "kernel-inventory.md"
+
+# A "Surface at a glance" data row: | <Backend title> | <count> | ... |. The header row's
+# second cell is not a number and the separator row has no cells, so only data rows match.
+_GLANCE_ROW = re.compile(r"^\| *([^|]+?) *\| *(\d+) *\|", re.MULTILINE)
+
+
+def _published_contract_kernels() -> dict:
+    """The ``engine_kernels`` section of the shipped SDK-facing contract."""
+    payload = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    return payload["engine_kernels"]
+
+
+def _published_page_backend_counts() -> dict[str, int]:
+    """Per-backend counts exactly as the published inventory page advertises them.
+
+    Parsed from the page a user reads rather than from the generator that wrote it, so a
+    generator change cannot make the page and the tree agree by construction. The backend
+    is the title's first word ("CUDA (NVIDIA)", "Metal (Apple Silicon)", "Portable (CPU)"),
+    which also covers a backend gen_kernel_inventory has no title for.
+    """
+    text = INVENTORY_PAGE.read_text(encoding="utf-8")
+    assert "## Surface at a glance" in text, f"{INVENTORY_PAGE} has no glance table"
+    glance = text.split("## Surface at a glance", 1)[1].split("\n## ", 1)[0]
+    counts: dict[str, int] = {}
+    for title, count in _GLANCE_ROW.findall(glance):
+        counts[title.strip().split()[0].lower()] = int(count)
+    assert counts, f"no backend rows parsed out of {INVENTORY_PAGE}"
+    return counts
+
 
 _CUDA_CAPABILITY_BLOCK = '''"""
 {module_doc}
@@ -94,7 +135,42 @@ def test_real_tree_publishes_the_racing_kernels() -> None:
     assert sum(module["kernel_count"] for module in payload["modules"]) == payload[
         "kernel_count"
     ]
-    assert payload["backend_counts"] == {"cuda": 80, "metal": 57}
+
+    # ── DERIVED per-backend surface — floors and equalities, never a pinned count ──
+    # The engine tree is the source of truth, so the per-backend numbers are computed from
+    # the kernels just discovered: a kernel landing changes them WITHOUT anyone editing this
+    # file. (This assertion used to pin `{"cuda": 80, "metal": 57}`; the CUDA lane then grew
+    # to 142 across race rounds 4-19 and the pin went red — invisible, because no CI leg runs
+    # this file. Same rule the sibling gates follow: "floors, not fixtures".)
+    discovered_counts = dict(Counter(kernel["backend"] for kernel in payload["kernels"]))
+    assert payload["backend_counts"] == discovered_counts
+    # Every published backend actually publishes kernels — a backend emptying out is the
+    # visibility loss the floors exist to stop.
+    assert discovered_counts and all(count > 0 for count in discovered_counts.values())
+
+    # The shipped SDK-facing contract is generated from this same discovery
+    # (`make inventory-refresh`, gated by `make inventory-check`), so it must agree
+    # kernel-for-kernel — anything else is a contract that was not regenerated.
+    contract = _published_contract_kernels()
+    assert contract["kernel_count"] == payload["kernel_count"], "run: make inventory-refresh"
+    assert contract["module_count"] == payload["module_count"], "run: make inventory-refresh"
+    assert contract["backend_counts"] == discovered_counts, "run: make inventory-refresh"
+    assert {(kernel["module"], kernel["name"]) for kernel in contract["kernels"]} == {
+        (kernel["module"], kernel["name"]) for kernel in payload["kernels"]
+    }, "run: make inventory-refresh"
+
+    # The published GitBook page is generated from the contract
+    # (scripts/docs/gen_kernel_inventory.py, gated by `make docs-check`), so what it
+    # advertises must be what the tree ships — counted per backend and named per kernel.
+    assert _published_page_backend_counts() == discovered_counts, "run: make docs-gen"
+    page = INVENTORY_PAGE.read_text(encoding="utf-8")
+    unpublished = sorted(
+        kernel["name"] for kernel in payload["kernels"] if f"| `{kernel['name']}` |" not in page
+    )
+    assert not unpublished, (
+        f"{len(unpublished)} discovered kernel(s) missing from "
+        f"gitbook/engine/kernel-inventory.md (e.g. {unpublished[:5]}) — run: make docs-gen"
+    )
 
     by_key = {
         (kernel["module"], kernel["name"]): kernel for kernel in payload["kernels"]
