@@ -13,6 +13,11 @@ done
 log "2/8 region default = $FLY_REGION (set per-machine at deploy)"
 
 log "3/8 Fly Managed Postgres ($CODNA_API_APP, $CODNA_ENGINE_APP)"
+# codna-pg is the PRODUCTION database of codna-api and codna-engine (api_keys, users, organizations,
+# subscriptions, usage, audit, device grants). Because DATABASE_URL is set as a plain secret rather than
+# through `fly mpg attach`, `fly mpg list` shows it with "<no attached apps>" -- that column is NOT
+# evidence that the cluster is unused. Never delete or downsize it from a console listing; compare the
+# apps' DATABASE_URL secret digests and inspect the data first (2026-09-21, after a near-miss).
 if fly_app_exists "${PG_APP:-codna-pg}"; then
   log "  pg ${PG_APP:-codna-pg} exists"
 else
