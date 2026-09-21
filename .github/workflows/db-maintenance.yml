@@ -103,9 +103,13 @@ jobs:
           # The console Machine gets fly.api.toml's [env] plus the app's secrets (DATABASE_URL),
           # runs `sleep inf` instead of the image CMD (no uvicorn, no Mojo pool), takes no traffic
           # and is destroyed when the session ends. A small VM: the script is SQLAlchemy + asyncpg.
+          # Fly's ssh daemon execs the -C string directly, with NO shell (`cd /app && …` fails with
+          # `exec: "cd": executable file not found`, seen live on the first dry-run), so the
+          # command is handed to /bin/sh explicitly. RETENTION_DAYS / BATCH_SIZE are validated
+          # integers and EXECUTE is either empty or the literal --execute, so the expansion is safe.
           REPORT="$(flyctl console -a codna-api -c fly.api.toml \
             --vm-size shared-cpu-1x --vm-memory 1024 \
-            -C "cd /app && python -m scripts.purge_expired_service_keys --retention-days $RETENTION_DAYS --batch-size $BATCH_SIZE $EXECUTE" \
+            -C "/bin/sh -c 'cd /app && python -m scripts.purge_expired_service_keys --retention-days $RETENTION_DAYS --batch-size $BATCH_SIZE $EXECUTE'" \
             2>&1 | tee /dev/stderr | tr -d '\r' | grep -E '^\{"batch_size":.*"purge_expired_service_keys": "ok".*\}$' || true)"
           if [ -z "$REPORT" ]; then
             echo "::error::the purge script produced no report line -- treating the run as FAILED"
