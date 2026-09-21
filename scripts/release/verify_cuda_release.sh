@@ -496,9 +496,16 @@ done
 ART=${ART:-/private/tmp/cuda_release_verify/artifacts}
 mkdir -p "$ART"
 log "collecting artifacts -> $ART"
+# serve_launch.json IS A DELIVERABLE, so it is collected: the serve phase proves the shipped entry
+# point starts, and a verdict claiming serve_launch=launched whose evidence stayed on a stopped VM is
+# a claim without its proof. stage.log and the oracle dir are collected for the same reason -- they
+# are what makes the fixture/oracle provenance auditable after the box is gone. `2>/dev/null` on the
+# tar keeps a missing optional member from failing the whole collection.
 gc ssh "$VM" --command "cd $WORK && tar czf /tmp/crv_art.tgz battery.log heartbeat.log BATTERY_EXIT \
    PHASE clocks runs cuda-release-verdict.json gate_cuda_release.json conformance_cuda.json \
-   wheel-census.json gpuless_load.txt CHAIN_EXIT 2>/dev/null; ls -l /tmp/crv_art.tgz" \
+   wheel-census.json gpuless_load.txt CHAIN_EXIT \
+   serve_launch.json serve_launch.txt stage.log battery.out wheel.sha256 binaries.sha256 \
+   oracle7b 2>/dev/null; ls -l /tmp/crv_art.tgz" \
    >>"$LOCAL_LOG" 2>&1
 gc scp "$VM:/tmp/crv_art.tgz" "$ART/crv_art.tgz" --project="$PROJECT" --zone="$ZONE" \
   >>"$LOCAL_LOG" 2>&1 && (cd "$ART" && tar xzf crv_art.tgz 2>/dev/null && log "artifacts extracted") \
