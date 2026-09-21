@@ -540,6 +540,15 @@ fi
 # and before this phase the battery would have certified exactly that.
 # The launch is NOT given --engine-binary: the whole claim under test is that the resolver finds the
 # engine that came out of THIS wheel. Overriding it would prove the file runs, not that it is found.
+#
+# WHAT THIS PHASE DOES *NOT* PROVE, stated so the verdict cannot be over-read. This is a LAUNCH
+# proof, not a token-identity gate: it requires rc=0 and a non-zero token count, and it records the
+# tokens, but it does not compare them against the oracle. Nor is it redundant with the cells above:
+# the cells drive `algenta.inference.decode` through the wheel's generic `algenta-runtime-worker`,
+# while this drives the BUNDLED certified engine that `algenta serve --backend cuda` resolves -- two
+# different binaries out of the same wheel. Comparing the serve path's tokens to the oracle is the
+# obvious next strengthening; it is not done here because the `--json` report's token field is not
+# yet pinned by a test, and a gate that guesses its own input schema refuses good windows.
 SERVE_JSON="$WORK/serve_launch.json"
 SERVE_TXT="$WORK/serve_launch.txt"
 # EXPORTED, and this is not optional: the launch below runs in a `bash -c` CHILD, which reads these
