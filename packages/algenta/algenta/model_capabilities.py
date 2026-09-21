@@ -53,6 +53,7 @@ __all__ = [
     "KERNEL_PATH_CAPABILITIES",
     "STRUCTURAL_FACT_RANGES",
     "BACKEND_FACT_RANGES",
+    "BACKEND_HOST_REQUIREMENTS",
     "STAGING_TIERS",
     "POWER_OF_TWO_HEAD_DIMS",
     "extract_facts_from_config",
@@ -129,6 +130,44 @@ BACKEND_FACT_RANGES: dict[str, dict[str, Any]] = {
         "attention_bias": (0, 1),
         "staging_tiers": STAGING_TIERS,
         "families": ("qwen3_llama", "gemma3"),
+    },
+}
+
+# Per-hardware-family HOST requirements: the deployment facts a backend needs on
+# the machine, judged BEFORE any model fact is considered. Declared here, beside
+# the model fact ranges, so the whole support boundary lives in ONE table that
+# the conform CLI, the converter and `algenta serve`'s startup gate all read.
+# The alternative -- a driver floor written as prose in one caller and as a
+# literal in another -- is how a gate quietly stops matching the published
+# requirements, and a refusal that names the wrong floor is worse than no
+# refusal at all.
+#
+#   platforms                 the sys.platform prefixes the backend's binaries are
+#                             built for. Metal is Darwin-only and the CUDA lane is
+#                             Linux-only, each refused on the other's platform by
+#                             scripts/build_mojo_binary.sh at BUILD time; this is
+#                             the same fact, declared for the launch gate.
+#   min_driver_version        the accelerator driver floor as a (major, minor)
+#                             tuple, or None where the platform has no driver
+#                             floor to declare. CUDA's is 580: the published
+#                             requirement (gitbook/engine/gpu-support.md,
+#                             "validated at 580.173.02 and 595.71.05") and
+#                             scripts/build_mojo_binary.sh's runtime-deployment
+#                             note state the same number.
+#   min_compute_capability    the compute-capability floor as (major, minor). The
+#                             pinned toolchain (mojo 1.0.0 / MAX 26.5.0) rejects
+#                             sm_70 at compile time, so Turing (7.5) is the floor
+#                             of the range the CUDA binaries are built for.
+BACKEND_HOST_REQUIREMENTS: dict[str, dict[str, Any]] = {
+    "metal": {
+        "platforms": ("darwin",),
+        "min_driver_version": None,
+        "min_compute_capability": None,
+    },
+    "cuda": {
+        "platforms": ("linux",),
+        "min_driver_version": (580, 0),
+        "min_compute_capability": (7, 5),
     },
 }
 

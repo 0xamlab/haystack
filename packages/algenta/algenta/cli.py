@@ -17,6 +17,14 @@ Usage:
   algenta runtime modules        # list bundled runtime libraries
   algenta runtime functions NAME # list functions for one library
   algenta runtime execute NAME FUNCTION --args-json '{}'
+  algenta serve --model DIR --prompt "..."       # serve on the detected backend
+  algenta serve --backend cuda --model DIR --prompt-file p.txt --json
+  algenta serve --backend cuda --model DIR --prompt "..." --dry-run
+  algenta serve --backends       # published backends + their declared host requirements
+
+`algenta serve` is gated, never opportunistic: an explicit `--backend` that this
+host cannot satisfy exits 2 with a typed refusal (the conformance system's own
+vocabulary) instead of quietly serving on a different backend.
 
 Cloud Managed path: `algenta upgrade` shows the hosted console flow. In
 `self_hosted` and `air_gapped`, use the API key provisioned by your
@@ -561,6 +569,20 @@ def cmd_mcp(args: list[str]) -> None:
     sys.exit(int(mcp_main() or 0))
 
 
+def cmd_serve(args: list[str]) -> None:
+    """`algenta serve` — serve one prompt on an explicitly gated engine backend.
+
+    Lazy-imported like every other command here: importing `algenta.cli` must not
+    drag the capability table, the tokenizer or the native worker onto the path of
+    an `algenta version`. The exit codes are the conformance CLI's (documented in
+    `algenta.serve.cli`), so an operator's wrapper branches identically on
+    `algenta serve` and on `scripts/algenta_conform.py`.
+    """
+    from algenta.serve.cli import main as serve_main
+
+    sys.exit(serve_main(args))
+
+
 def main() -> None:
     args = sys.argv[1:]
     cmd = args[0] if args else "help"
@@ -602,6 +624,8 @@ def main() -> None:
         cmd_whoami()
     elif cmd == "mcp":
         cmd_mcp(args[1:])
+    elif cmd == "serve":
+        cmd_serve(args[1:])
     else:
         print(
             runtime_banner(
@@ -610,6 +634,7 @@ def main() -> None:
                     "Primary path: algenta demo",
                     "Brandable import preview: algenta import <file.csv> --name orders",
                     "Deterministic local runtime: Runtime.resolve() -> Runtime.query()",
+                    "Engine serving: algenta serve --model <ckpt> --prompt '...' [--backend cuda]",
                     "Secondary tools remain available: map, query, simulate, benchmark",
                 ],
             )

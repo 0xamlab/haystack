@@ -662,6 +662,20 @@ _LAZY_EXPORTS = {
     "engine_kernel_backends": ("algenta.runtime_library_contract", "engine_kernel_backends"),
     "engine_kernel_inventory": ("algenta.runtime_library_contract", "engine_kernel_inventory"),
     "engine_kernels": ("algenta.runtime_library_contract", "engine_kernels"),
+    # ── `algenta serve`: one gated entry point onto the engine, on either published backend.
+    # Appended, never reordered. Lazy like the rest — importing `algenta` probes no accelerator,
+    # shells out to no nvidia-smi and reads no checkpoint until plan_serve()/serve() is called.
+    # NOTE: there is deliberately NO top-level "serve" export. `algenta.serve` is the SUBPACKAGE,
+    # and a lazy attribute of the same name would be cached over the submodule attribute the
+    # import machinery sets, so `import algenta.serve.gating` would resolve `algenta.serve` to a
+    # function and fail. Call it as `from algenta.serve import serve` — the same shape as
+    # `from algenta.inference import decode`.
+    "ServeError": ("algenta.serve", "ServeError"),
+    "ServeOutcome": ("algenta.serve", "ServeOutcome"),
+    "ServePlan": ("algenta.serve", "ServePlan"),
+    "ServeRequest": ("algenta.serve", "ServeRequest"),
+    "plan_serve": ("algenta.serve", "plan_serve"),
+    "serve_backends": ("algenta.serve", "serve_backends"),
 }
 
 _CONTRACT_EXPORT_NAMES = tuple(
