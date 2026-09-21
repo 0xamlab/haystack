@@ -20,7 +20,7 @@ def _resolve_version() -> str:
         return _FALLBACK_VERSION
 
 
-_FALLBACK_VERSION: Final[str] = "1.0.20"
+_FALLBACK_VERSION: Final[str] = "1.0.21"
 VERSION: Final[str] = _resolve_version()
 # Public default API base URL (same value the SDK uses); only used when nothing is configured and
 # cloud is not disabled.

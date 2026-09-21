@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algenta-mcp"
-version = "1.0.20"
+version = "1.0.21"
 description = "Algenta MCP server for Cursor, Codex, and other Model Context Protocol clients. Any MCP-capable agent operates the engine — self-hosted building blocks for AI applications — metered and audited like every other caller."
 readme = "README.md"
 requires-python = ">=3.12"
