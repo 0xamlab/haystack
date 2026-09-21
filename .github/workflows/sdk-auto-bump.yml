@@ -9,7 +9,8 @@ name: sdk-auto-bump
 #
 # Level: patch, unless the merged pull request carried a `release:minor` / `release:major` label;
 # `release:none` skips the bump (docs-only refactors, etc.). Tests/docs-only changes under packages/
-# never bump. A push that itself changed the version manifests (a hand bump) is left to auto-tag.
+# never bump. A push that itself moved the `version` field (a hand bump) is left to auto-tag; a push
+# that only edited other manifest fields (description, tool config) is an ordinary source change.
 #
 # Pushing to main needs the rulesets to let the sync App through: it is a bypass actor
 # (Integration 4614082, mode always) on the repo ruleset and on the org "codna review" ruleset --
@@ -69,9 +70,19 @@ jobs:
               "chore(release): SDK "*) noop "HEAD is this workflow's own bump commit" ;;
             esac
             changed="$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || git show --name-only --format= "$AFTER")"
-            if printf '%s\n' "$changed" | grep -qxE 'packages/(python-sdk|algenta|mcp)/pyproject.toml|packages/ts-sdk/package.json'; then
-              noop "this push changed the version manifests itself (a hand bump); auto-tag-sdk owns it"
-            fi
+            # A hand bump is a push that MOVED `version` -- scripts/sdk_version_changed.py compares the
+            # parsed values at both revisions -- not a push that merely touched a manifest. Classifying
+            # by file name treated #1089 (only `description`) and #1100 (only `[tool.ruff]
+            # target-version`) as hand bumps, so neither released. Exit 2 (a revision that does not
+            # resolve) fails the job instead of guessing either way.
+            base="$BEFORE"
+            git rev-parse -q --verify "${base}^{commit}" >/dev/null 2>&1 || base="${AFTER}~1"
+            rc=0; python3 scripts/sdk_version_changed.py "$base" "$AFTER" || rc=$?
+            case "$rc" in
+              0) noop "this push moved the SDK version itself (a hand bump); auto-tag-sdk owns it" ;;
+              1) ;;
+              *) echo "::error::sdk_version_changed.py could not compare ${base}..${AFTER} (rc=$rc)"; exit "$rc" ;;
+            esac
             source_changes="$(printf '%s\n' "$changed" \
               | grep -E '^(packages/(python-sdk|ts-sdk|mcp|algenta)/|server\.json$)' \
               | grep -vE '(^|/)(tests?|__tests__|test-fixtures|fixtures)/|\.md$|\.test\.(ts|js|mjs)$|_test\.py$|^packages/ts-sdk/package-lock\.json$|^packages/mcp/(Dockerfile|\.dockerignore|requirements[^/]*\.(in|txt))$' || true)"
