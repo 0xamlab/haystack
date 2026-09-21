@@ -1,0 +1,11 @@
+Algenta
+Copyright (c) 2026 Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai)
+
+This product includes software developed by Seville AI Technologies, Inc. d/b/a Thyn
+(https://thyn.ai).
+
+This repository is licensed under the Algenta Community License, Version 1.0
+(see ./LICENSE). The Mojo engine source under mojo/ is proprietary and is not
+licensed for redistribution. The client packages under packages/ (algenta,
+python-sdk, ts-sdk, mcp) are licensed under the Apache License, Version 2.0;
+see the LICENSE file in each package.

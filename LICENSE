@@ -1,7 +1,7 @@
 Algenta Community License (ACL)
 Version 1.0 — March 2026
 
-Copyright (c) 2026 Algenta
+Copyright (c) 2026 Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai)
 
 TERMS AND CONDITIONS
 
@@ -52,9 +52,9 @@ The Mojo source code for the engine is proprietary and not covered by this licen
 
 6. CONTRIBUTIONS
 
-Contributions to this Software are welcome. By submitting a contribution, you agree to
-the Algenta Contributor License Agreement (CLA) at https://algenta.ai/cla.
-Contributed code is licensed back to Algenta under this same license.
+Contributions to this Software are welcome. There is no separate Contributor License
+Agreement: by submitting a contribution you license it to Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai)
+under this same license (inbound = outbound), consistent with GitHub Terms of Service §D.6.
 
 7. CLOUD SERVICE
 
@@ -65,7 +65,7 @@ Use of the hosted service is governed by the Algenta Terms of Service, not this 
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL ALGENTA, INC. BE LIABLE FOR ANY CLAIM,
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL SEVILLE AI TECHNOLOGIES, INC. BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
 
 9. ATTRIBUTION

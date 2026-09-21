@@ -95,14 +95,12 @@ refactor(sdk): simplify retry logic
 
 ---
 
-## Contributor License Agreement
+## Contributions and licensing
 
-By submitting a PR, you agree that your contribution is licensed under the
-[Algenta Community License](./LICENSE) and you grant Algenta a perpetual,
-worldwide, irrevocable license to use your contribution in both open-source
-and commercial versions of this software.
-
-If your organization requires a CLA on file, contact: cla@algenta.ai
+There is no Contributor License Agreement. Contributions are inbound = outbound:
+by submitting a pull request you license your contribution to Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai)
+under the [Algenta Community License](./LICENSE) that covers this repository, consistent
+with GitHub Terms of Service §D.6.
 
 ---
 
