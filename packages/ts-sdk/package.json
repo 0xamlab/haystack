@@ -1,6 +1,6 @@
 {
   "name": "algenta-sdk",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "TypeScript and JavaScript SDK for Algenta — self-hosted building blocks for AI applications: the HTTP API, local runtime, simulations, governed data, and repository intelligence",
   "main": "dist/index.js",
   "module": "dist/index.js",

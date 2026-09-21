@@ -34,7 +34,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-__version__ = "1.0.18"
+__version__ = "1.0.19"
 
 _LAZY_EXPORTS = {
     "AlgentaClient": ("decision_engine.client_facade", "AlgentaClient"),
