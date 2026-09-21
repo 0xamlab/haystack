@@ -57,7 +57,19 @@ from pathlib import Path
 # gate_any.py's PLAN, restated as the cell schedule. Kept in step by hand rather than imported:
 # gate_any.py lives in the race harness and reads its plan from module scope, and importing it here
 # would execute it. The names below MUST match its labels or the gate reports NOT-RUN.
-EOS_TOKENS = (106, 1)
+#
+# EOS IS A TOKENIZER FACT, NOT A CONSTANT OF THIS FILE. 106/1 are gemma3's <end_of_turn>/<eos>;
+# Qwen2.5-7B-Instruct's eos is 151645. Hardcoding gemma's pair here made `eos_stop` permanently
+# False for any other engine — and `eos_stop` is exactly the field
+# gate_coverage_gemma3_round19.py reads to decide whether an early stop was CORROBORATED by the
+# oracle or merely self-consistent. A 7B wheel that stopped on its own eos would therefore have
+# been refused for a reason that had nothing to do with its numerics. Overridable by EOS_TOKENS,
+# with gemma's pair kept as the default so existing callers are unchanged.
+EOS_TOKENS = tuple(
+    int(tok)
+    for tok in os.environ.get("EOS_TOKENS", "106,1").replace(" ", "").split(",")
+    if tok
+)
 
 
 def _sha256_16(path: Path) -> str:

@@ -172,6 +172,16 @@ fi
 MOJO_DEFINES=()
 for define in "${DEFINES[@]}"; do MOJO_DEFINES+=(-D "$define"); done
 ENGINE_BIN="$OUT_DIR/$ENGINE_NAME"
+# THE RPATH, PASSED THE WAY `ld` SPELLS IT AND NOT THE WAY A COMPILER DRIVER SPELLS IT.
+# `-Xlinker X` hands X to the linker VERBATIM, so this used to read
+# `-Xlinker "-Wl,-rpath,$ORIGIN"` -- and `-Wl,` is gcc/clang's prefix for "forward the rest to the
+# linker", which is meaningless once you are ALREADY talking to the linker. GNU ld rejected it with
+# `unrecognized option '-Wl,-rpath,$ORIGIN'`, the engine failed to link, and the whole cuda compile
+# gate (and therefore every cuda wheel) was red on main. `-Wl,-rpath,$ORIGIN` expands to exactly the
+# two linker arguments used below, so this is the intended flag, correctly spelled. It went uncaught
+# because build-runtime.yml has no `pull_request` trigger: the PR that added this step never ran it.
+# NOTE the comment lives OUTSIDE the command on purpose: a `#` inside a backslash-continued argument
+# list ends the logical line, which would silently drop every flag after it.
 (
   cd /work/mojo_env && pixi run mojo build \
     "${MOJO_DEFINES[@]}" \
@@ -182,7 +192,8 @@ ENGINE_BIN="$OUT_DIR/$ENGINE_NAME"
     -Xlinker "$SHIM_OBJ" \
     -Xlinker "$CUDA_LIBDIR/libcublas.so" \
     -Xlinker "$CUDA_LIBDIR/libcudart.so" \
-    -Xlinker "-Wl,-rpath,\$ORIGIN" \
+    -Xlinker "-rpath" \
+    -Xlinker "\$ORIGIN" \
     -Xlinker -ldl
 )
 if [ ! -x "$ENGINE_BIN" ]; then

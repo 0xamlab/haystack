@@ -13,8 +13,29 @@ from pathlib import Path
 RUNS = Path(sys.argv[1])
 OUT = Path(sys.argv[2])
 ARM = sys.argv[3] if len(sys.argv) > 3 else "unknown"
-ORC = Path("/home/angel/adj/oracle3")
-EOS = (106, 1)
+
+# ── ORACLE DIR AND EOS ARE ENGINE FACTS, NOT CONSTANTS OF THIS FILE ────────────────────────────
+# Both used to be hardcoded to the gemma3-27b lane's values, which silently made this evaluator
+# unusable for any other engine: ORC pointed at a directory of GEMMA oracle JSON, and a gate run
+# against a Qwen2.5-7B wheel would have compared 7B tokens to gemma ids and reported a numerics
+# failure that was really a wiring failure. Worse, `ORACLE_DIR` was already exposed as an env knob
+# by run_gemma3_round5_cells.sh / round6 — but this file IGNORED it, so setting it did nothing.
+# Now both are read from the environment, with the gemma values kept as the defaults so every
+# existing caller is byte-for-byte unchanged.
+#   ORACLE_DIR  directory holding one `<prompt>.json` per shape, each `{"generated": [<ids>...]}`
+#   EOS_TOKENS  comma-separated token ids that make an early stop admissible (gemma 106/1 =
+#               <end_of_turn>/<eos>; Qwen2.5 = 151645). An EOS set from the WRONG tokenizer would
+#               admit or reject early stops for the wrong reason, so it travels with the oracle.
+ORC = Path(os.environ.get("ORACLE_DIR", "/home/angel/adj/oracle3"))
+EOS = tuple(
+    int(t) for t in os.environ.get("EOS_TOKENS", "106,1").replace(" ", "").split(",") if t
+)
+# Recorded in the emitted JSON so a reader can tell WHICH oracle certified these tokens: the
+# provenance of a gate is part of its result, and a verdict that named no oracle could not be
+# compared with the campaign's banked cells.
+ORACLE_LABEL = os.environ.get(
+    "ORACLE_LABEL", "cache-free fp32 transformers (~/adj/oracle3)"
+)
 PLAN = {
     "pp256":   [(16, ["gate_pp256_maxnew16"]),
                 (64, ["gate_pp256_maxnew64", "gate_pp256_maxnew64_rep2"])],
@@ -65,7 +86,12 @@ def last(path):
 
 
 out = {"gate": f"oracle gate on {ARM}", "arm": ARM,
-       "oracle": "cache-free fp32 transformers (~/adj/oracle3)",
+       "oracle": ORACLE_LABEL,
+       # Provenance, recorded rather than implied: WHICH directory of oracle JSON and WHICH eos set
+       # decided this verdict. Without these two fields a reader cannot tell a gemma gate from a 7B
+       # gate, and "all_pass: true" against the wrong oracle is indistinguishable from the real thing.
+       "oracle_dir": str(ORC),
+       "eos_tokens": list(EOS),
        "scope": sorted(IN_SCOPE), "out_of_scope_prompts": OUT_OF_SCOPE,
        "cells": {}, "all_pass": None}
 rows, allpass = [], True
