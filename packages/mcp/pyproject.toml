@@ -24,15 +24,15 @@ classifiers = [
 # protocol lib + an ASGI stack for Streamable HTTP. NO monorepo (apps.*) dependency.
 dependencies = [
     "algenta-sdk>=1.0.0",
-    "mcp==2.0.0",
-    # mcp==2.0.0's own new dependency (a distinct successor package to httpx; non-conflicting with
+    "mcp==2.2.0",
+    # mcp==2.2.0's own new dependency (a distinct successor package to httpx; non-conflicting with
     # the httpx pin below). mcp-types==2.0.0 resolves transitively via mcp's own hard pin.
     "httpx2>=2.5.0",
-    "fastapi==0.133.1",
-    "starlette==1.3.1",
-    "uvicorn==0.51.0",
+    "fastapi==0.141.1",
+    "starlette==1.6.0",
+    "uvicorn==0.53.0",
     "httpx>=0.28.0",
-    # mcp==2.0.0 requires pydantic>=2.12.0 (was >=2.7.2 under mcp==1.28.1).
+    # mcp==2.2.0 requires pydantic>=2.12.0 (was >=2.7.2 under mcp==1.28.1).
     "pydantic>=2.12.0",
     "structlog>=24.0.0",
 ]
