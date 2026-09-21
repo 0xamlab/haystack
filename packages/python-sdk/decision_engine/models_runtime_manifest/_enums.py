@@ -6,7 +6,7 @@ Extracted from packages/python-sdk/decision_engine/models_runtime_manifest.py du
 """
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 __all__ = [
@@ -67,7 +67,7 @@ __all__ = [
 
 
 
-class RuntimeMaturityResult(str, Enum):
+class RuntimeMaturityResult(StrEnum):
     experimental = "experimental"
     benchmarked = "benchmarked"
     parity_tested = "parity_tested"
@@ -76,7 +76,7 @@ class RuntimeMaturityResult(str, Enum):
     deprecated = "deprecated"
 
 
-class RuntimeSideEffectClassResult(str, Enum):
+class RuntimeSideEffectClassResult(StrEnum):
     read_only = "read_only"
     write_scoped = "write_scoped"
     write_external = "write_external"
@@ -84,36 +84,36 @@ class RuntimeSideEffectClassResult(str, Enum):
     network_external = "network_external"
 
 
-class RuntimeRiskLevelResult(str, Enum):
+class RuntimeRiskLevelResult(StrEnum):
     low = "low"
     medium = "medium"
     high = "high"
     critical = "critical"
 
 
-class RuntimeReplayabilityResult(str, Enum):
+class RuntimeReplayabilityResult(StrEnum):
     deterministic = "deterministic"
     artifact_backed = "artifact_backed"
     non_replayable = "non_replayable"
 
 
-class RuntimeSupportedChannelResult(str, Enum):
+class RuntimeSupportedChannelResult(StrEnum):
     python_sdk = "python_sdk"
     typescript_sdk = "typescript_sdk"
     cli = "cli"
     mcp = "mcp"
 
 
-class RuntimeAuxiliaryChannelResult(str, Enum):
+class RuntimeAuxiliaryChannelResult(StrEnum):
     bundled_worker = "bundled_worker"
     runtime_local = "runtime_local"
 
 
-class RuntimeFeatureFlagChannelResult(str, Enum):
+class RuntimeFeatureFlagChannelResult(StrEnum):
     http_api_feature_flag = "http_api_feature_flag"
 
 
-class RuntimeDeploymentModeResult(str, Enum):
+class RuntimeDeploymentModeResult(StrEnum):
     saas = "saas"
     vpc = "vpc"
     self_hosted = "self_hosted"
@@ -122,7 +122,7 @@ class RuntimeDeploymentModeResult(str, Enum):
     local_dev_daemon = "local_dev_daemon"
 
 
-class RuntimeLayerResult(str, Enum):
+class RuntimeLayerResult(StrEnum):
     mojo_llm_runtime_core = "mojo_llm_runtime_core"
     python_compatibility_ring = "python_compatibility_ring"
     llm_api_provider_layer = "llm_api_provider_layer"
@@ -131,7 +131,7 @@ class RuntimeLayerResult(str, Enum):
     enterprise_control_plane = "enterprise_control_plane"
 
 
-class RuntimeModuleIdResult(str, Enum):
+class RuntimeModuleIdResult(StrEnum):
     bpe_tokenizer = "bpe_tokenizer"
     text_tokenizer = "text.tokenizer"
     embeddings = "embeddings"
@@ -156,47 +156,47 @@ class RuntimeModuleIdResult(str, Enum):
     generation_loop = "generation_loop"
 
 
-class RuntimeCompiledEngineResult(str, Enum):
+class RuntimeCompiledEngineResult(StrEnum):
     mojo = "mojo"
     python_fallback = "python_fallback"
 
 
-class RuntimeKernelPromotionStatusResult(str, Enum):
+class RuntimeKernelPromotionStatusResult(StrEnum):
     candidate = "candidate"
     shipping = "shipping"
 
 
-class RuntimeBenchmarkDiscoveryRuleResult(str, Enum):
+class RuntimeBenchmarkDiscoveryRuleResult(StrEnum):
     shipping_llm_rollout_only = (
         "Only the 22-module, 209-function LLM rollout is treated as the shipping runtime contract."
     )
 
 
-class RuntimeNonShippingRuleResult(str, Enum):
+class RuntimeNonShippingRuleResult(StrEnum):
     broader_mojo_inventory_not_advertised = (
         "The broader Mojo inventory remains a benchmark and discovery lane only; "
         "modules are not advertised on the runtime surface unless listed in this manifest."
     )
 
 
-class RuntimePublicEndpointResult(str, Enum):
+class RuntimePublicEndpointResult(StrEnum):
     meta_contract = "/v1/meta/contract"
     runtime_manifest = "/v1/runtime/manifest"
 
 
-class RuntimeAdminEndpointResult(str, Enum):
+class RuntimeAdminEndpointResult(StrEnum):
     runtime_modules = "/v1/admin/runtime/modules"
     runtime_benchmarks = "/v1/admin/runtime/benchmarks"
     runtime_validation = "/v1/admin/runtime/validation"
 
 
-class RuntimeFeatureFlagEndpointResult(str, Enum):
+class RuntimeFeatureFlagEndpointResult(StrEnum):
     libraries = "/v1/libraries"
     libraries_health = "/v1/libraries/health"
     libraries_execute = "/v1/libraries/execute"
 
 
-class RuntimeExecutionTransitionResult(str, Enum):
+class RuntimeExecutionTransitionResult(StrEnum):
     model_call_started = "model_call_started"
     model_token_emitted = "model_token_emitted"
     tool_call_requested = "tool_call_requested"
@@ -210,7 +210,7 @@ class RuntimeExecutionTransitionResult(str, Enum):
     failure_emitted = "failure_emitted"
 
 
-class RuntimeReleaseConditionResult(str, Enum):
+class RuntimeReleaseConditionResult(StrEnum):
     manifest_listed = "manifest-listed"
     proof_backed = "proof-backed"
     policy_covered = "policy-covered"
@@ -218,7 +218,7 @@ class RuntimeReleaseConditionResult(str, Enum):
     deployment_mode_validated = "deployment-mode validated"
 
 
-class RuntimeFailureCodeResult(str, Enum):
+class RuntimeFailureCodeResult(StrEnum):
     provider_timeout = "provider_timeout"
     runtime_compile_error = "runtime_compile_error"
     mcp_tool_denied = "mcp_tool_denied"
@@ -237,7 +237,7 @@ class RuntimeFailureCodeResult(str, Enum):
     checkpoint_state_overflow = "checkpoint_state_overflow"
 
 
-class RuntimeBenchmarkClassCodeResult(str, Enum):
+class RuntimeBenchmarkClassCodeResult(StrEnum):
     microkernel_latency = "B1"
     end_to_end_llm_serving_latency = "B2"
     streaming_ttft = "B3"
@@ -250,7 +250,7 @@ class RuntimeBenchmarkClassCodeResult(str, Enum):
     decision_workflow_completion_latency = "B10"
 
 
-class RuntimeSchedulerPolicyResult(str, Enum):
+class RuntimeSchedulerPolicyResult(StrEnum):
     fifo = "FIFO"
     priority_queue = "priority_queue"
     deadline_aware = "deadline_aware"
@@ -262,7 +262,7 @@ class RuntimeSchedulerPolicyResult(str, Enum):
     policy_constrained = "policy_constrained"
 
 
-class RuntimeSchedulerMinimizeObjectiveResult(str, Enum):
+class RuntimeSchedulerMinimizeObjectiveResult(StrEnum):
     tail_latency = "tail latency"
     memory_waste = "memory waste"
     context_switch_overhead = "context-switch overhead"
@@ -270,7 +270,7 @@ class RuntimeSchedulerMinimizeObjectiveResult(str, Enum):
     starvation = "starvation"
 
 
-class RuntimeSchedulerMaximizeObjectiveResult(str, Enum):
+class RuntimeSchedulerMaximizeObjectiveResult(StrEnum):
     gpu_or_cpu_utilization = "GPU or CPU utilization"
     kv_cache_reuse = "KV cache reuse"
     batching_efficiency = "batching efficiency"
@@ -278,7 +278,7 @@ class RuntimeSchedulerMaximizeObjectiveResult(str, Enum):
     fairness = "fairness"
 
 
-class RuntimeSchedulerInvariantResult(str, Enum):
+class RuntimeSchedulerInvariantResult(StrEnum):
     no_request_starves_indefinitely = "No request starves indefinitely."
     high_priority_requests_cannot_violate_tenant_quota = (
         "High-priority requests cannot violate tenant quota."
@@ -291,7 +291,7 @@ class RuntimeSchedulerInvariantResult(str, Enum):
     )
 
 
-class RuntimeReleaseGateIdResult(str, Enum):
+class RuntimeReleaseGateIdResult(StrEnum):
     gate_a = "A"
     gate_b = "B"
     gate_c = "C"
@@ -301,7 +301,7 @@ class RuntimeReleaseGateIdResult(str, Enum):
     gate_g = "G"
 
 
-class RuntimeInvariantNameResult(str, Enum):
+class RuntimeInvariantNameResult(StrEnum):
     manifest_truth = "Manifest Truth"
     replay_determinism = "Replay Determinism"
     policy_monotonicity = "Policy Monotonicity"
@@ -310,7 +310,7 @@ class RuntimeInvariantNameResult(str, Enum):
     tenant_non_interference = "Tenant Non-Interference"
 
 
-class RuntimeExecutionStateFieldResult(str, Enum):
+class RuntimeExecutionStateFieldResult(StrEnum):
     request = "request"
     tenant = "tenant"
     workspace = "workspace"
@@ -324,7 +324,7 @@ class RuntimeExecutionStateFieldResult(str, Enum):
     decision_state = "decision_state"
 
 
-class RuntimeExecutionValidityRuleResult(str, Enum):
+class RuntimeExecutionValidityRuleResult(StrEnum):
     schema_valid = "schema-valid"
     policy_valid = "policy-valid"
     ordered = "ordered"
@@ -332,7 +332,7 @@ class RuntimeExecutionValidityRuleResult(str, Enum):
     audit_visible = "audit-visible"
 
 
-class RuntimeLineageNodeFieldResult(str, Enum):
+class RuntimeLineageNodeFieldResult(StrEnum):
     node_id = "node_id"
     artifact_type = "artifact_type"
     content_hash = "content_hash"
@@ -345,7 +345,7 @@ class RuntimeLineageNodeFieldResult(str, Enum):
     schema_snapshot_id = "schema_snapshot_id"
 
 
-class RuntimeExternalNondeterminismSourceResult(str, Enum):
+class RuntimeExternalNondeterminismSourceResult(StrEnum):
     provider_responses = "provider responses"
     mcp_tool_responses = "MCP tool responses"
     database_snapshots = "database snapshots"
@@ -354,7 +354,7 @@ class RuntimeExternalNondeterminismSourceResult(str, Enum):
     external_api_outputs = "external API outputs"
 
 
-class RuntimeNondeterminismArtifactResult(str, Enum):
+class RuntimeNondeterminismArtifactResult(StrEnum):
     provider_response_record = "provider response record"
     tool_or_mcp_response_record = "tool or MCP response record"
     data_snapshot_reference_or_query_result_hash = (
@@ -365,7 +365,7 @@ class RuntimeNondeterminismArtifactResult(str, Enum):
     backend_or_version_identifier = "backend or version identifier"
 
 
-class RuntimeArtifactLineageStepResult(str, Enum):
+class RuntimeArtifactLineageStepResult(StrEnum):
     input = "input"
     policy_snapshot = "policy snapshot"
     schema_snapshot = "schema snapshot"
@@ -379,7 +379,7 @@ class RuntimeArtifactLineageStepResult(str, Enum):
     evaluation_result = "evaluation result"
 
 
-class RuntimeCapabilityFieldResult(str, Enum):
+class RuntimeCapabilityFieldResult(StrEnum):
     tool_name = "tool_name"
     input_schema = "input_schema"
     output_schema = "output_schema"
@@ -390,7 +390,7 @@ class RuntimeCapabilityFieldResult(str, Enum):
     approval_required = "approval_required"
 
 
-class RuntimeCapabilityRuleResult(str, Enum):
+class RuntimeCapabilityRuleResult(StrEnum):
     mcp_tools_are_untrusted_by_default = "MCP tools are untrusted by default."
     no_tool_may_execute_without_a_capability_record = (
         "No tool may execute without a capability record."
@@ -400,7 +400,7 @@ class RuntimeCapabilityRuleResult(str, Enum):
     )
 
 
-class RuntimeSLOBudgetNameResult(str, Enum):
+class RuntimeSLOBudgetNameResult(StrEnum):
     runtime_manifest_load = "runtime_manifest_load"
     ttft = "ttft"
     end_to_end_turn = "end_to_end_turn"
@@ -410,7 +410,7 @@ class RuntimeSLOBudgetNameResult(str, Enum):
     replay = "replay"
 
 
-class RuntimeSLOBudgetAppliesToResult(str, Enum):
+class RuntimeSLOBudgetAppliesToResult(StrEnum):
     first_party_runtime_manifest_route = "first-party runtime manifest route"
     first_party_native_llm_serving_path = "first-party native LLM serving path"
     agent_runtime_checkpoint_persistence = "agent runtime checkpoint persistence"
@@ -419,7 +419,7 @@ class RuntimeSLOBudgetAppliesToResult(str, Enum):
     runs_up_to_1000_events = "runs up to 1000 events"
 
 
-class RuntimeMemoryRegionResult(str, Enum):
+class RuntimeMemoryRegionResult(StrEnum):
     model_weights = "model weights"
     kv_cache_pages = "KV cache pages"
     prompt_token_buffer = "prompt token buffer"
@@ -430,7 +430,7 @@ class RuntimeMemoryRegionResult(str, Enum):
     tenant_local_cache = "tenant-local cache"
 
 
-class RuntimeMemoryRuleResult(str, Enum):
+class RuntimeMemoryRuleResult(StrEnum):
     kv_pages_are_tenant_scoped = "KV pages are tenant-scoped."
     evicted_cache_pages_must_be_zeroed_or_isolation_proven_before_reuse = (
         "Evicted cache pages must be zeroed or isolation-proven before reuse."
@@ -444,7 +444,7 @@ class RuntimeMemoryRuleResult(str, Enum):
     )
 
 
-class RuntimeProofObligationResult(str, Enum):
+class RuntimeProofObligationResult(StrEnum):
     numerical_parity = "numerical parity"
     deterministic_kernels = "deterministic kernels"
     latency_memory_bounds = "latency and memory bounds"
@@ -469,7 +469,7 @@ class RuntimeProofObligationResult(str, Enum):
     metering_correctness = "metering correctness"
 
 
-class RuntimeBenchmarkMetricResult(str, Enum):
+class RuntimeBenchmarkMetricResult(StrEnum):
     p50 = "p50"
     p90 = "p90"
     p95 = "p95"
@@ -487,7 +487,7 @@ class RuntimeBenchmarkMetricResult(str, Enum):
     cost_per_successful_run = "cost_per_successful_run"
 
 
-class RuntimeBenchmarkBaselineResult(str, Enum):
+class RuntimeBenchmarkBaselineResult(StrEnum):
     python_reference = "Python reference"
     pytorch_or_transformers_path = "PyTorch or Transformers path"
     vllm_openai_compatible_backend = "vLLM OpenAI-compatible backend"
@@ -497,7 +497,7 @@ class RuntimeBenchmarkBaselineResult(str, Enum):
     algenta_mojo_native_path = "Algenta Mojo-native path"
 
 
-class RuntimeEvaluationMethodResult(str, Enum):
+class RuntimeEvaluationMethodResult(StrEnum):
     bootstrap_confidence_intervals = "bootstrap confidence intervals"
     paired_model_comparisons = "paired model comparisons"
     regression_tests = "regression tests"
@@ -508,7 +508,7 @@ class RuntimeEvaluationMethodResult(str, Enum):
     sensitivity_analysis = "sensitivity analysis"
 
 
-class RuntimeReleaseBlockerResult(str, Enum):
+class RuntimeReleaseBlockerResult(StrEnum):
     replay_success_regression = "replay success regression"
     policy_violation_increase = "policy violation increase"
     p95_budget_violation = "p95 budget violation"
@@ -517,7 +517,7 @@ class RuntimeReleaseBlockerResult(str, Enum):
     decision_plan_validity_drop = "decision-plan validity drop"
 
 
-class RuntimeEvaluationDimensionResult(str, Enum):
+class RuntimeEvaluationDimensionResult(StrEnum):
     answer_correctness = "answer correctness"
     tool_call_correctness = "tool-call correctness"
     schema_correctness = "schema correctness"
@@ -530,7 +530,7 @@ class RuntimeEvaluationDimensionResult(str, Enum):
     latency_quality_frontier = "latency-quality frontier"
 
 
-class RuntimeThreatClassResult(str, Enum):
+class RuntimeThreatClassResult(StrEnum):
     prompt_injection = "prompt injection"
     tool_injection = "tool injection"
     mcp_abuse = "MCP abuse"
@@ -546,7 +546,7 @@ class RuntimeThreatClassResult(str, Enum):
     quota_bypass = "quota bypass"
 
 
-class RuntimeThreatControlResult(str, Enum):
+class RuntimeThreatControlResult(StrEnum):
     tool_allowlists = "tool allowlists"
     argument_validation = "argument validation"
     result_sanitization = "result sanitization"
@@ -562,11 +562,11 @@ class RuntimeThreatControlResult(str, Enum):
     runtime_attestation = "runtime attestation"
 
 
-class RuntimeThreatRuleResult(str, Enum):
+class RuntimeThreatRuleResult(StrEnum):
     mcp_tools_are_untrusted_by_default = "MCP tools are untrusted by default."
 
 
-class RuntimeReleaseArtifactResult(str, Enum):
+class RuntimeReleaseArtifactResult(StrEnum):
     signed_runtime_manifest = "signed runtime manifest"
     module_maturity_table = "module maturity table"
     benchmark_report = "benchmark report"
@@ -578,18 +578,18 @@ class RuntimeReleaseArtifactResult(str, Enum):
     known_limitations = "known limitations"
 
 
-class RuntimeArtifactKindResult(str, Enum):
+class RuntimeArtifactKindResult(StrEnum):
     proof_bundle = "proof_bundle"
     parity_benchmark = "parity_benchmark"
     compiled_runtime_benchmark = "compiled_runtime_benchmark"
     compiled_mojo_binary = "compiled_mojo_binary"
 
 
-class RuntimeSignatureAlgorithmResult(str, Enum):
+class RuntimeSignatureAlgorithmResult(StrEnum):
     hmac_sha256 = "hmac-sha256"
 
 
-class RuntimeSignatureScopeResult(str, Enum):
+class RuntimeSignatureScopeResult(StrEnum):
     control_plane_hmac_v1 = "control_plane_hmac_v1"
 
 

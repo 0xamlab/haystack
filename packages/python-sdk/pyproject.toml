@@ -51,10 +51,9 @@ include = ["decision_engine*"]
 # own CI first (never from a laptop), which needs thyn-ai/algenta-sdk#29 merged before it can run.
 [tool.ruff]
 line-length = 100
-# Deliberately pinned below requires-python (>=3.12): at "py312" ruff 0.16.x flags 54 UP042/UP047
-# rewrites in this package (`class X(str, Enum)` -> `StrEnum`, PEP 695 generics), all "unsafe"
-# fixes that change `str()`/`format()` of enum members. Raise this in its own modernization PR.
-target-version = "py310"
+# Matches requires-python (>=3.12) above: the package is linted for the interpreters it
+# actually supports, so ruff's pyupgrade rules may assume StrEnum and PEP 695 generics.
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [
