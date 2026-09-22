@@ -1361,6 +1361,74 @@
       "contradicts": [
         "HF-WHEELS-001 (status 'delete = owner decision' — now executed; superseded)"
       ]
+    },
+    {
+      "id": "REPUBLISH-003",
+      "question": "Were all 19 families and the umbrella republished from the capped final-source builds, with the uncapped history removed?",
+      "claim": "algenta-llm x86_64 rebuilt with patchelf 0.19.1 from main 508e4d8b7 (CUDA-LOAD-001) and republished v1=516a8ad9 / main squashed; umbrella re-pinned v1=b7baf6c6 / main=ef05f020, one commit each; every other family unchanged. Yes. Each family: generated from the final macOS/Linux/CUDA natives, passed family_smoke and the API-versioning gate against its previously published v1 (0 removed, 0 changed), uploaded to v1 and main with stale build/** deleted, then super_squash_history on both branches — one commit each. Umbrella regenerated with kernel-depends pinned to the post-squash v1 shas and squashed. Release record regenerated from the published tree.",
+      "kind": "measurement",
+      "source": "scripts/hf_kernels/republish_capped.py (republish_report.json); huggingface_hub live state",
+      "result": "thyn-ai/algenta-llm: a01e2b23 -> 516a8ad9 (v1 1 commit, main 1, private=False); thyn-ai/algenta: b450a8a3 -> b7baf6c6 (v1 1 commit, main 1, private=False)",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "accepted-constraint",
+      "capability_scope": "all 20 repositories",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "eng",
+      "accessed": "2026-09-22",
+      "contradicts": []
+    },
+    {
+      "id": "GPU-SPACE-DRIVER-001",
+      "question": "Does a Hugging Face l4x1 Space meet the algenta-llm CUDA floor (driver >= 580, sm_75/80/89/90) natively?",
+      "claim": "Yes. Private probe Space thyn-ai/algenta-gpu-probe (Docker, nvidia/cuda:12.8.1-runtime-ubuntu24.04, uv Python 3.14, torch 2.9.1+cu128, kernels 0.17.1) on l4x1: nvidia-smi 580.178.04 (NVRM open kernel module, 2026-09-17 build), cuDriverGetVersion 13000, NVIDIA L4 compute capability 8.9, 23,034 MiB; the driver floor is met without the cuda-compat-13-0 forward-compat package. get_kernel('thyn-ai/algenta-llm', version=1, backend='cuda', trust_remote_code=<20 repos>) resolves torch29-cxx11-cu128-x86_64-linux and kernels' arch check passes. Two platform gotchas recorded: the base image's NVIDIA_REQUIRE_CUDA driver-branch list rejects 580 unless NVIDIA_DISABLE_REQUIRE=1 is set, and request_space_hardware on a PAUSED Space needs restart_space.",
+      "kind": "observed-behaviour",
+      "source": "scratchpad/gpu-probe/{Dockerfile,probe.py,run_probe.py}; results/probe_result_run6_held.json, probe_result_run7_held.json, probe_result_run8_elf.json (steps.driver, steps.gpu.kernel_info); runs 1-9 on 2026-09-22, ~4.8 billed minutes (~$0.06); Space paused on cpu-basic afterwards",
+      "result": "driver 580.178.04 / CUDA 13.0 driver API / sm_89 / 23 GB; variant torch29-cxx11-cu128-x86_64-linux resolved; arch_check passed",
+      "confidence": "high",
+      "impact": "P1",
+      "outcome_class": "informational",
+      "capability_scope": "Linux x86_64 CUDA sm_89 (HF l4x1)",
+      "required_before": "gpu_stage_public",
+      "status": "pass",
+      "owner": "maintainer",
+      "accessed": "2026-09-22",
+      "contradicts": ""
+    },
+    {
+      "id": "CUDA-LOAD-001",
+      "question": "Do the published algenta-llm x86_64 libraries (CPU and CUDA) load on a real Linux/amd64 host?",
+      "claim": "NO for every x86_64 algenta-llm library published in v1 up to 2026-09-22: libalgenta_algenta_llm.so (CPU) and libalgenta_algenta_llm.sm_{75,80,89,90}.so (identical blobs in every cu* variant dir) each carry a zero-size PT_LOAD whose file offset and virtual address are not congruent modulo the 4 KiB page (0x20198c/0x203000; 0x255ce4/0x257000). glibc refuses them: 'ELF load command address/offset not page-aligned' — reproduced on the HF L4 host (probe run 8) and in docker --platform linux/amd64 python:3.12-slim via ctypes.CDLL. All 37 other published Linux family libraries (incl. algenta-llm aarch64 and the Modular runtime libraries) are aligned. Root cause: ubuntu:22.04 apt patchelf 0.14.3 used by the retag step (--set-soname/--replace-needed/--set-rpath $ORIGIN) in scripts/hf_kernels/linux_container_build.sh; the pre-publish linux-cap5 artifacts are already misaligned. Why it was missed: the Linux gates ran under Docker Desktop on the Mac, which runs arm64 containers, so no x86_64 build had ever been dlopen'd on x86_64 Linux; CUDA-EXEC-001 relied on the runtime battery, not on the Hub artifacts. Fix: PR #1141 (508e4d8b7) pins patchelf 0.19.1.0 (PyPI wheel) in the container, hard-gates PT_LOAD alignment after retag and after strip (scripts/hf_kernels/elf_check.py; SystemExit, no assert), runs the check in republish_capped.py and the build-hf-kernels assemble job; also fixed the 'ldd --version | head -1' SIGPIPE-141 under pipefail that made earlier container failures silent. Rebuilt libraries (hfk-out/linux-cap6, then the clean-provenance linux-cap7 from 508e4d8b7): 6/6 page-congruent PT_LOADs, elf_check 0 misaligned, real dlopen on linux/amd64 glibc 2.41 with algenta_runtime_version()==1 for the CPU and all four CUDA libraries, family_smoke on the regenerated torch214-cxx11-cpu-x86_64-linux variant under emulated amd64 with torch 2.14: 52 modules / 357 functions / 0 crashes / 0 hangs. Republished as REPUBLISH-003: algenta-llm v1=516a8ad9 (one commit), umbrella v1=b7baf6c6; the published x86_64 libraries downloaded anonymously pass elf_check (17 ELF / 0 misaligned) and dlopen on linux/amd64 glibc 2.41 with algenta_runtime_version()==1 for CPU and sm_75/80/89/90.",
+      "kind": "observed-behaviour",
+      "source": "scratchpad/gpu-probe/results/probe_result_run8_elf.json (steps.gpu.kernel_info.native_error); local ELF program-header scan of every published Linux family library (70 checked, 33 misaligned = the algenta-llm x86_64 set); docker run --platform linux/amd64 python:3.12-slim ctypes.CDLL; PR #1141; hfk-out/linux-cap6_hubcheck/{hubcheck.txt,cap6-verify.txt}",
+      "result": "published: 5 distinct x86_64 algenta-llm libraries unloadable on Linux/amd64; rebuilt: 0 misaligned, dlopen OK, smoke 357/0; gate added",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "capability-exclusion",
+      "capability_scope": "Linux x86_64 CPU + CUDA sm_75/80/89/90 for algenta-llm (v1 as published 2026-09-21/22)",
+      "required_before": "ga_promotion",
+      "status": "fixed-and-republished",
+      "owner": "maintainer",
+      "accessed": "2026-09-22",
+      "contradicts": "CUDA-EXEC-001 (the HF-path CUDA artifacts were not run-qualified; the runtime battery evidence does not cover the Hub libraries' loadability)"
+    },
+    {
+      "id": "SPACES-RETIRE-001",
+      "question": "Were the three folded Spaces (for-llm-agents, governed-tool-calls, llm-modules) retired into static redirect stubs without dead links or a timed redirect?",
+      "claim": "Yes. deploy-spaces run 35750231203 (main 6c4829336) uploaded the static stubs; the Hub switched all three to sdk: static (RUNNING at the uploaded shas). Each stub serves 200 on <subdomain>.static.hf.space with title 'Moved to Algenta', a canonical link to its flagship destination, a >= 44 px primary button, the old-tab -> new-home table, its stylesheet, and no <meta http-equiv=\"refresh\"> (axe rates a timed refresh critical). A 'Moved to thyn-ai/algenta' Community post was created on each and other open threads were closed with the link. The verifier initially checked the wrong host (<subdomain>.hf.space, 404 for static Spaces) — fixed in PR #1140 and the deploy re-dispatched so Deployment records exist.",
+      "kind": "observed-behaviour",
+      "source": "deploy-spaces workflow_dispatch (dry_run=false) run 35750231203; apps/spaces/tools/verify_remote.py --space <name> (all checks passed x3 after #1140); anonymous GET of https://thyn-ai-algenta-<name>.static.hf.space/ and /style.css; HfApi.space_info sdk/stage; create_discussion + change_discussion_status; observations 2026-09-22T16:03:20+00:00: for-llm-agents: 200, style.css 200, title 'Moved to Algenta', canonical https://huggingface.co/spaces/thyn-ai/algenta (expected https://huggingface.co/spaces/thyn-ai/algenta: ok), meta-refresh 0 | governed-tool-calls: 200, style.css 200, title 'Moved to Algenta', canonical https://huggingface.co/spaces/thyn-ai/algenta?tab=gov (expected https://huggingface.co/spaces/thyn-ai/algenta?tab=gov: ok), meta-refresh 0 | llm-modules: 200, style.css 200, title 'Moved to Algenta', canonical https://huggingface.co/spaces/thyn-ai/algenta?tab=llm (expected https://huggingface.co/spaces/thyn-ai/algenta?tab=llm: ok), meta-refresh 0 | corrected pipeline: deploy-spaces run 35752989650 (main 059b8f079, after #1140) completed/success for all three; GitHub Deployment records task=deploy:<space> ref 059b8f079 written 2026-09-22T16:21-16:23Z (environment hf-spaces-deploy); Community 'Moved to thyn-ai/algenta' posts: discussions/1 on each retired Space",
+      "result": "3/3 stubs live and verified by the corrected pipeline (run 35752989650 success, 3 Deployment records); 0 meta refresh; canonical destinations match the manifest",
+      "confidence": "high",
+      "impact": "P1",
+      "outcome_class": "informational",
+      "capability_scope": "hub-org",
+      "required_before": "spaces_public",
+      "status": "pass",
+      "owner": "maintainer",
+      "accessed": "2026-09-22",
+      "contradicts": ""
     }
   ]
 }

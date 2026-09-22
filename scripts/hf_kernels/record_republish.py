@@ -171,7 +171,12 @@ cap["publication_state"] = {
     "uncapped_revisions": "removed: super_squash_history on v1 and main of every repository (1 commit each, verified live "
     + today
     + ")",
-    "capped_v1_shas": {r: api.repo_info(r, repo_type="kernel", revision="v1").sha for r in repos},
+    # Every published repo, not only the ones in this run's report: a partial --families republish must
+    # not shrink the manifest (REPUBLISH-003 caught this via tests/spaces/test_playground.py).
+    "capped_v1_shas": {
+        r: api.repo_info(r, repo_type="kernel", revision="v1").sha
+        for r in sorted({*repos, *(f"thyn-ai/{f}" for f in cap["families"]), "thyn-ai/algenta"})
+    },
 }
 json.dump(cap, open(cp, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 print("capabilities.json publication_state updated")

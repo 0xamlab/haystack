@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "purpose": "Release capability manifest for the Algenta Hugging Face kernel repositories (plan v3). Every release gate evaluates exactly this file.",
-  "status": "DRAFT — awaiting owner approval (L1/L2). Nothing here is claimed as approved.",
-  "approved_by": null,
+  "status": "APPROVED — ACL 1.1 + GA support scope merged in PR #1131 and rolled out to all 20 repos on 2026-09-22 (LEGAL-L1-003, LEGAL-L2-001, REPUBLISH-002); this manifest is the released capability set",
+  "approved_by": "owner (thyn-ai), 2026-09-22",
   "approved_at": null,
   "source_commit": "2cee5905168d9bc4643fc395984b79c26ebb3cc0",
   "generated": "2026-09-21",
@@ -179,8 +179,8 @@
   ],
   "licensing_status": {
     "L1_redistribution_approval": "OPEN — not yet granted (LEGAL-L1-001); artifacts are PRIVATE on the Hub until granted",
-    "L2_ga_wording": "OPEN",
-    "LICENSE_wording": "OPEN (LEGAL-L1-003: ACL 1.0 still names the Decision Engine and mojo_build/simulate, not the kernel libraries)"
+    "L2_ga_wording": "APPROVED — docs/hf-kernels/SUPPORT.md (PR #1131, LEGAL-L2-001)",
+    "LICENSE_wording": "RESOLVED — Algenta Community License 1.1 live on all 20 repos (PR #1131, REPUBLISH-002)"
   },
   "supply_chain_controls": {
     "digest": "enforced (ABI 7.5)",
@@ -193,6 +193,7 @@
     "hub_visibility": "PUBLIC (all 20) since 2026-09-21 — capped build only",
     "uncapped_revisions": "removed: super_squash_history on v1 and main of every repository (1 commit each, verified live 2026-09-22)",
     "capped_v1_shas": {
+      "thyn-ai/algenta": "b7baf6c620a6ec42d851d50d310e8bd10805f206",
       "thyn-ai/algenta-bits-time": "199dff6cf340d61d1d10da026e27288fc0b88dff",
       "thyn-ai/algenta-crypto": "944dadd434e2d92f357454e560000f541be7d86c",
       "thyn-ai/algenta-finance": "a646c590c67ff78a29f51b768dd58d32f475a139",
@@ -203,7 +204,7 @@
       "thyn-ai/algenta-general-e": "022f029f19f7e213b0293da11751a2c471f3277d",
       "thyn-ai/algenta-geometry": "54b91d902d9a38a244c8a5f093aa7bfd2824d6dd",
       "thyn-ai/algenta-graph": "7247b466a11e49d2d2eeef2beb488732938e20e6",
-      "thyn-ai/algenta-llm": "a01e2b232875ced70b3dbd925996f913d5126370",
+      "thyn-ai/algenta-llm": "516a8ad9b3fc161dec270f942c2c8dc8f0f9e59d",
       "thyn-ai/algenta-ml": "c67aed624ae1e22398e79780d5bfc8bb66237c0c",
       "thyn-ai/algenta-networking": "11ada7623e74dbbeb3a4f004648d58fe40cd1d9b",
       "thyn-ai/algenta-serialization": "12109d34d242a4fb702d8b78419a9aff195dc91d",
@@ -211,8 +212,7 @@
       "thyn-ai/algenta-stats": "ac35ffe20385f0eb7d2a1d2f1f935dc3a287c886",
       "thyn-ai/algenta-tensors": "e1a96bbad9bedcd71afce08a4c648ffec55576e6",
       "thyn-ai/algenta-text": "fb2cab4558c5ace333d832d0a0c4b807ba0357f1",
-      "thyn-ai/algenta-vision": "ebad076f3be6255d77fee9f279c2af5728ea973e",
-      "thyn-ai/algenta": "b450a8a30bd12ce48efce5c640b974c41126a78b"
+      "thyn-ai/algenta-vision": "ebad076f3be6255d77fee9f279c2af5728ea973e"
     }
   },
   "cuda_by_torch": {

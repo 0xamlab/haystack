@@ -92,7 +92,7 @@ _VERSION_RE = re.compile(r"(\d+)\.(\d+)")
 # --- frozen fallbacks: identical to the JSON sources at the time of writing (tested) ---------
 
 FROZEN_CAPPED_V1_SHAS: dict[str, str] = {
-    "thyn-ai/algenta": "b450a8a30bd12ce48efce5c640b974c41126a78b",
+    "thyn-ai/algenta": "b7baf6c620a6ec42d851d50d310e8bd10805f206",
     "thyn-ai/algenta-bits-time": "199dff6cf340d61d1d10da026e27288fc0b88dff",
     "thyn-ai/algenta-crypto": "944dadd434e2d92f357454e560000f541be7d86c",
     "thyn-ai/algenta-finance": "a646c590c67ff78a29f51b768dd58d32f475a139",
@@ -103,7 +103,7 @@ FROZEN_CAPPED_V1_SHAS: dict[str, str] = {
     "thyn-ai/algenta-general-e": "022f029f19f7e213b0293da11751a2c471f3277d",
     "thyn-ai/algenta-geometry": "54b91d902d9a38a244c8a5f093aa7bfd2824d6dd",
     "thyn-ai/algenta-graph": "7247b466a11e49d2d2eeef2beb488732938e20e6",
-    "thyn-ai/algenta-llm": "a01e2b232875ced70b3dbd925996f913d5126370",
+    "thyn-ai/algenta-llm": "516a8ad9b3fc161dec270f942c2c8dc8f0f9e59d",
     "thyn-ai/algenta-ml": "c67aed624ae1e22398e79780d5bfc8bb66237c0c",
     "thyn-ai/algenta-networking": "11ada7623e74dbbeb3a4f004648d58fe40cd1d9b",
     "thyn-ai/algenta-serialization": "12109d34d242a4fb702d8b78419a9aff195dc91d",
