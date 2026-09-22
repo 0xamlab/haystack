@@ -30,7 +30,10 @@ Space is allowed to do with a shared demo key:
 * **The engine's webhook, end to end.** `webhook_receiver()` builds the
   `/hook/<nonce>` route the Space mounts beside Gradio; `verify()` checks the
   nonce in constant time and, when a signing secret is configured, the
-  `X-Algenta-Signature` HMAC-SHA256 of the raw body. Accepted events are kept so
+  `X-Webhook-Signature: sha256=<hmac>` when the engine signs (its jobs webhooks do; the
+  decision-execution webhook POSTs `webhook_payload` with an `integrity` block and NO signature
+  header — for it the unguessable nonce path is the whole check and the integrity block is shown
+  as returned). Accepted events are kept so
   the UI can show the engine's POST next to the receipt.
 
 Stdlib only at import: `algenta` is imported inside the default client factory.
@@ -72,7 +75,8 @@ DEFAULT_ALLOW: frozenset[str] = frozenset(
 REDACTED = "[redacted]"
 SECRET_RE = re.compile(r"de_(?:live|test)_[A-Za-z0-9._\-]{6,}|[Bb]earer\s+[A-Za-z0-9._\-]{6,}")
 
-SIGNATURE_HEADER = "x-algenta-signature"
+SIGNATURE_HEADER = "x-webhook-signature"  # what the engine sends when it signs (webhook_service.py)
+EVENT_HEADER = "x-webhook-event"
 SIGNATURE_PREFIX = "sha256="
 WEBHOOK_EVENT = "decision.execute"
 HOOK_PREFIX = "/hook"

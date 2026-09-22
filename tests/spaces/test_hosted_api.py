@@ -550,11 +550,11 @@ def test_webhook_receiver_with_a_secret_requires_a_valid_hmac():
     body = json.dumps(WEBHOOK_POST).encode()
     assert rx.signed
     assert rx.verify("n", body, {}) is None
-    assert rx.verify("n", body, {"X-Algenta-Signature": "sha256=" + "0" * 64}) is None
+    assert rx.verify("n", body, {"X-Webhook-Signature": "sha256=" + "0" * 64}) is None
     good = rx.signature(body)
     assert good.startswith("sha256=") and len(good) == 71
-    assert rx.verify("n", body + b" ", {"X-Algenta-Signature": good}) is None
-    event = rx.verify("n", body, {"X-Algenta-Signature": good})
+    assert rx.verify("n", body + b" ", {"X-Webhook-Signature": good}) is None
+    event = rx.verify("n", body, {"X-Webhook-Signature": good})
     assert event is not None and event.signed is True
     _, unsigned = hosted_api.webhook_receiver(lambda: "n")
     with pytest.raises(ValueError):
@@ -631,3 +631,41 @@ def test_concurrent_calls_are_not_serialised_behind_the_client_lock():
     assert wall < 0.45, (
         f"two 0.25 s calls took {wall:.2f} s: the network call is still under the lock"
     )
+
+
+def test_decision_webhook_without_signature_header_is_accepted_by_nonce_and_integrity_recorded():
+    """The engine's execute_decision POST carries no signature header (routers/decisions.py posts
+    `webhook_payload` via async_http_request); the receiver must accept it on the nonce alone and
+    surface the integrity block as returned."""
+    from algenta_spaces.hosted_api import WebhookReceiver
+
+    rx = WebhookReceiver("n0nce-abc")
+    body = json.dumps(
+        {
+            "event": "decision.executed",
+            "decision_id": "d1",
+            "integrity": {
+                "result_hash": "abc",
+                "policy_snapshot_id": "p1",
+                "manifest_version": "1.0.25",
+            },
+        }
+    ).encode()
+    ev = rx.verify("n0nce-abc", body, {"Content-Type": "application/json"})
+    assert ev is not None and ev.integrity["result_hash"] == "abc"
+    assert rx.verify("wrong", body, {}) is None
+
+
+def test_signed_webhooks_use_the_engine_header_name():
+    """When a secret is configured the receiver checks X-Webhook-Signature: sha256=<hmac>."""
+    import hashlib
+    import hmac
+
+    from algenta_spaces.hosted_api import SIGNATURE_HEADER, WebhookReceiver
+
+    assert SIGNATURE_HEADER == "x-webhook-signature"
+    rx = WebhookReceiver("n0nce", secret=b"s3cret")
+    body = b'{"event":"job.completed"}'
+    good = "sha256=" + hmac.new(b"s3cret", body, hashlib.sha256).hexdigest()
+    assert rx.verify("n0nce", body, {"X-Webhook-Signature": good}) is not None
+    assert rx.verify("n0nce", body, {"X-Algenta-Signature": good}) is None

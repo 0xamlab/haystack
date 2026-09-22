@@ -66,6 +66,11 @@ def status_chip(kind: str, text: str) -> str:
     )
 
 
+def chip(text: str, tone: str = "neutral") -> str:
+    """A status/parity chip (public form used by the Space tabs)."""
+    return _chip(text, tone)
+
+
 def _chip(text: str, tone: str = "neutral") -> str:
     return f'<span class="alg-chip alg-chip-{tone}">{_esc(text)}</span>'
 
