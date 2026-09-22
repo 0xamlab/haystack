@@ -12,8 +12,17 @@ M0 registers the checks that exist for today's apps:
                           when the manifest says ``shared_shell = true`` for the Space and is
                           otherwise SKIPPED with an explicit ``[SKIP]`` line, never passed
                           silently (every live Space is ``false`` until M2 puts it on the shell)
-* ``redirect_page``       a retired Space's primary link and canonical point at ``redirect_to``
-                          and the page carries no timed meta refresh (axe: critical)
+* ``redirect_page``       a retired Space's ``/`` on the ``.hf.space`` host (a static Space
+                          serves its index.html there) answers 200, its primary button and
+                          ``<link rel="canonical">`` point at ``redirect_to`` and the page
+                          carries no timed ``<meta http-equiv="refresh">`` (axe: critical);
+                          a Gradio page still being served is named as such
+* ``stylesheet``          ``/style.css`` answers 200 with the stub's own rules, not an app
+                          shell's HTML fallback
+* ``hub_sdk``             the live README on the Hub (``/raw/main/README.md``) declares
+                          ``sdk: static``; until the stub is published it says gradio/docker
+                          and the check fails with that value
+The footer stamp check is never registered for a static Space (no Python, no shared shell).
 
 The check/budget pattern is lifted from governed-agent/scripts/verify_remote.py
 (``check(name, cond, detail)``, ``TURN_BUDGET_S = 30``) and
@@ -38,6 +47,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from manifest import Manifest, Space, load_manifest
+from stage import frontmatter_sdk
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +60,12 @@ PRIMARY_LINK_RE = re.compile(
     r'<a\s+class=["\']alg-button["\']\s+href=["\']([^"\']+)["\']', re.IGNORECASE
 )
 CANONICAL_RE = re.compile(r'<link\s+rel=["\']canonical["\']\s+href=["\']([^"\']+)["\']', re.I)
+TITLE_RE = re.compile(r"<title>\s*([^<]*?)\s*</title>", re.IGNORECASE | re.DOTALL)
+# Markers of a Gradio front end, whichever SDK (gradio or docker) serves it.
+GRADIO_RE = re.compile(r"gradio[-_]container|__gradio_mode__|<gradio-app|gradio_config", re.I)
+STYLESHEET_PATH = "/style.css"
+STYLESHEET_MARKER = ".alg-button"
+HUB_RAW_README = "https://huggingface.co/spaces/{repo_id}/raw/main/README.md"
 USER_AGENT = "algenta-spaces-verify/1.0"
 
 
@@ -199,7 +215,7 @@ def redirect_page(ctx: VerifyContext) -> str:
         raise VerifyError("page carries a meta refresh; the stub redirects only on click")
     m = PRIMARY_LINK_RE.search(html)
     if not m:
-        raise VerifyError("no primary link on the page")
+        raise VerifyError(describe_non_stub(html))
     target = m.group(1).strip()
     if target != ctx.space.redirect_to:
         raise VerifyError(f"primary link points at {target}, manifest says {ctx.space.redirect_to}")
@@ -207,6 +223,47 @@ def redirect_page(ctx: VerifyContext) -> str:
     if not canonical or canonical.group(1).strip() != ctx.space.redirect_to:
         raise VerifyError("canonical link missing or not the redirect target")
     return f"-> {target}"
+
+
+def describe_non_stub(html: str) -> str:
+    """Why a page that lacks the stub's primary link is not the static stub."""
+    if GRADIO_RE.search(html):
+        return "no primary link on the page: a Gradio app is still served, not the static stub"
+    title = TITLE_RE.search(html)
+    if title and title.group(1):
+        return f"no primary link on the page (title {title.group(1)!r}); not the static stub"
+    return "no primary link on the page"
+
+
+@register("for-llm-agents", "governed-tool-calls", "llm-modules")
+def stylesheet(ctx: VerifyContext) -> str:
+    status, css = ctx.get(STYLESHEET_PATH)
+    if status != 200:
+        raise VerifyError(f"{STYLESHEET_PATH} answered {status}")
+    if STYLESHEET_MARKER not in css:
+        raise VerifyError(
+            f"{STYLESHEET_PATH} is not the stub stylesheet (no {STYLESHEET_MARKER} rule); "
+            + ("an app shell answered instead" if GRADIO_RE.search(css) else "wrong content")
+        )
+    return f"{len(css)} bytes"
+
+
+@register("for-llm-agents", "governed-tool-calls", "llm-modules")
+def hub_sdk(ctx: VerifyContext) -> str:
+    """The Hub runs the SDK its README frontmatter names; a stub must say ``sdk: static``."""
+    url = HUB_RAW_README.format(repo_id=ctx.space.repo_id)
+    status, readme = ctx.fetch(url, ctx.budget_s)
+    if status != 200:
+        raise VerifyError(f"{url} answered {status}")
+    declared = frontmatter_sdk(readme)
+    if declared is None:
+        raise VerifyError("live README has no `sdk:` in its frontmatter")
+    if declared != ctx.space.sdk:
+        raise VerifyError(
+            f"Hub README declares sdk: {declared}; the static stub is not published yet "
+            f"(manifest says sdk: {ctx.space.sdk})"
+        )
+    return f"sdk: {declared}"
 
 
 def run_checks(ctx: VerifyContext, checks: list[tuple[str, Check]]) -> VerifyReport:

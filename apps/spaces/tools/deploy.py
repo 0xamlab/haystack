@@ -15,9 +15,15 @@ stage (BUILDING, RUNNING_BUILDING, APP_STARTING, ...) or, when the runtime never
 RUNNING inside the settle window (``SETTLE_S``), only when ``space_info(repo).sha`` equals
 the commit ``oid`` that ``upload_folder`` returned (``huggingface_hub.CommitInfo.oid``).
 
-``--dry-run`` stages, prints the file list and the runtime diff (read anonymously where the
-Hub allows it) and exits 0 without a single write. ``--rollback-to SHA`` stages from a
-detached ``git worktree`` of that commit instead of the checkout.
+``--dry-run`` stages, prints the file list and the diff against the Hub (read anonymously
+where the Hub allows it) and exits 0 without a single write. The diff always starts with the
+SDK: ``space_info(repo).sdk`` is the Hub's reading of the live README frontmatter, and when
+it differs from the manifest the upload's own ``README.md`` (checked by ``stage.py``) is what
+flips the Space — ``create_repo(space_sdk=..., exist_ok=True)`` is a no-op on an existing
+repo. Static Spaces (the redirect stubs) get that flip plus the atomic upload and nothing
+else: no hardware, no sleep time, no variables, and the tool says so.
+``--rollback-to SHA`` stages from a detached ``git worktree`` of that commit instead of
+the checkout.
 
 The token comes from ``HF_TOKEN`` only (``make_api``); a dry run is anonymous and never
 borrows a cached login. The Hub client is injected (``api_factory``) so the decision logic
@@ -107,18 +113,45 @@ def live_variables(api: HubClient, repo_id: str) -> dict[str, str]:
     return {k: str(getattr(v, "value", v)) for k, v in api.get_space_variables(repo_id).items()}
 
 
+def live_sdk(api: HubClient, repo_id: str) -> str:
+    """The SDK the Hub runs the Space with: its parse of the live README frontmatter.
+
+    ``SpaceInfo.sdk`` is that value; older payloads carry it only inside ``card_data``.
+    Readable anonymously for a public Space, so a dry run can show the flip it would make.
+    """
+    info = api.space_info(repo_id)
+    sdk = getattr(info, "sdk", None)
+    if not sdk:
+        card = getattr(info, "card_data", None)
+        sdk = card.get("sdk") if card is not None and hasattr(card, "get") else None
+    if not isinstance(sdk, str) or not sdk:
+        raise DeployError(f"space_info({repo_id}) returned no sdk")
+    return sdk
+
+
 @dataclass(frozen=True)
 class Diff:
+    sdk: tuple[str | None, str] | None = None
     hardware: tuple[str | None, str] | None = None
     sleep_time: tuple[int | None, int] | None = None
     variables: dict[str, tuple[str | None, str]] = field(default_factory=dict)
 
     @property
     def empty(self) -> bool:
-        return self.hardware is None and self.sleep_time is None and not self.variables
+        return (
+            self.sdk is None
+            and self.hardware is None
+            and self.sleep_time is None
+            and not self.variables
+        )
 
     def lines(self) -> list[str]:
         out: list[str] = []
+        if self.sdk:
+            out.append(
+                f"sdk: {self.sdk[0]} -> {self.sdk[1]} (set by the README frontmatter in the "
+                "upload; create_repo(exist_ok=True) cannot change an existing Space)"
+            )
         if self.hardware:
             out.append(f"hardware: {self.hardware[0]} -> {self.hardware[1]}")
         if self.sleep_time:
@@ -129,11 +162,19 @@ class Diff:
 
 
 def compute_diff(
-    space: Space, state: RuntimeState | None, variables: dict[str, str] | None
+    space: Space,
+    state: RuntimeState | None,
+    variables: dict[str, str] | None,
+    live_sdk: str | None = None,
 ) -> Diff:
-    """What must change on the Hub so the live runtime matches the manifest."""
+    """What must change on the Hub so the live Space matches the manifest.
+
+    ``live_sdk`` is ``None`` when the Hub could not be read: nothing is then claimed about
+    the SDK. A static Space never gets hardware, sleep or variable entries.
+    """
+    sdk = (live_sdk, space.sdk) if live_sdk is not None and live_sdk != space.sdk else None
     if not space.is_live:
-        return Diff()
+        return Diff(sdk=sdk)
     hardware = None
     sleep_time = None
     if state is not None:
@@ -146,11 +187,20 @@ def compute_diff(
         for key, value in space.variables.items():
             if variables.get(key) != value:
                 var_changes[key] = (variables.get(key), value)
-    return Diff(hardware=hardware, sleep_time=sleep_time, variables=var_changes)
+    return Diff(sdk=sdk, hardware=hardware, sleep_time=sleep_time, variables=var_changes)
+
+
+STATIC_NOTE = (
+    "static Space: hardware, sleep_time and variables are not managed "
+    "(free, always on); the upload is the whole deploy"
+)
 
 
 def apply_diff(api: HubClient, space: Space, diff: Diff) -> list[str]:
+    """Bring the Hub in line with ``diff``; the SDK entry needs no call (the upload set it)."""
     applied: list[str] = []
+    if diff.sdk:
+        applied.append(f"sdk {diff.sdk[1]} carried by README.md in the upload")
     if diff.hardware:
         api.request_space_hardware(space.repo_id, diff.hardware[1], sleep_time=space.sleep_time)
         applied.append(f"request_space_hardware {diff.hardware[1]} sleep_time={space.sleep_time}")
@@ -268,24 +318,41 @@ def upload(api: HubClient, space: Space, staged: StageResult) -> Any:
     )
 
 
-def read_runtime(
-    api: HubClient, space: Space
-) -> tuple[RuntimeState | None, dict[str, str] | None, list[str]]:
-    """Runtime and variables, each None when the Hub refuses (anonymous dry-run)."""
+@dataclass(frozen=True)
+class LiveRead:
+    """What the Hub said about the Space; a field is None when the Hub refused to say."""
+
+    sdk: str | None
+    state: RuntimeState | None
+    variables: dict[str, str] | None
+    notes: tuple[str, ...]
+
+
+def read_live(api: HubClient, space: Space) -> LiveRead:
+    """SDK for every Space, runtime and variables for a live one; None where the Hub refuses.
+
+    An anonymous dry run reads the SDK of a public Space fine and is refused the runtime and
+    the variables; each refusal becomes a note instead of a crash.
+    """
     notes: list[str] = []
+    sdk: str | None = None
     state: RuntimeState | None = None
     variables: dict[str, str] | None = None
+    try:
+        sdk = live_sdk(api, space.repo_id)
+    except Exception as exc:  # noqa: BLE001 - any Hub error means "not readable here"
+        notes.append(f"sdk not readable: {type(exc).__name__}")
     if not space.is_live:
-        return state, variables, notes
+        return LiveRead(sdk, state, variables, tuple(notes))
     try:
         state = runtime_state(api, space.repo_id)
-    except Exception as exc:  # noqa: BLE001 - any Hub error means "not readable here"
+    except Exception as exc:  # noqa: BLE001
         notes.append(f"runtime not readable: {type(exc).__name__}")
     try:
         variables = live_variables(api, space.repo_id)
     except Exception as exc:  # noqa: BLE001
         notes.append(f"variables not readable: {type(exc).__name__}")
-    return state, variables, notes
+    return LiveRead(sdk, state, variables, tuple(notes))
 
 
 @dataclass(frozen=True)
@@ -384,10 +451,12 @@ def deploy_space(
                 f"secrets required on the Space (set by the owner): {', '.join(space.secrets)}"
             )
 
-        state, variables, notes = read_runtime(api, space)
-        lines.extend(notes)
-        diff = compute_diff(space, state, variables)
+        live = read_live(api, space)
+        lines.extend(live.notes)
+        diff = compute_diff(space, live.state, live.variables, live.sdk)
         lines.extend(diff.lines())
+        if not space.is_live:
+            lines.append(STATIC_NOTE)
 
         if dry_run:
             lines.append("dry run: nothing written")
@@ -451,6 +520,8 @@ def main(
     ap.add_argument("--rollback-to", default=None, metavar="SHA")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+    # huggingface_hub's HTTP client logs every request at INFO; the report is the output here.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     token = token if token is not None else hf_token()
     if not a.dry_run and not token:

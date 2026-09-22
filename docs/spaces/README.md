@@ -57,13 +57,17 @@ python3 apps/spaces/tools/stage.py --space algenta --out /tmp/stage-algenta
 
 Ignored on the way out: `__pycache__/`, `*.pyc`, `tests/`, `*.whl`, `*.so`, `*.dylib`,
 `leaderboard.json`. Any file over 500 KB (the pre-commit ceiling) aborts the stage before
-a byte is written.
+a byte is written. So does a `README.md` whose frontmatter `sdk:` differs from the manifest
+`sdk` (on the Hub that line is what sets the SDK of an existing Space) and, for a static
+redirect, any Python: a stub is `README.md`, `index.html` and `style.css`, staged without
+the shared package.
 
 ## Deploy
 
 ```bash
-# inspect: stage, list the files, show the hardware / sleep / variable diff; no writes
+# inspect: stage, list the files, show the sdk / hardware / sleep / variable diff; no writes
 python3 apps/spaces/tools/deploy.py --space algenta --dry-run
+python3 apps/spaces/tools/deploy.py --space for-llm-agents --dry-run   # a redirect stub
 python3 apps/spaces/tools/deploy.py --all --dry-run
 
 # deploy one Space or the fleet (HF_TOKEN from the environment only, never from .env)
@@ -74,12 +78,21 @@ HF_TOKEN=... python3 apps/spaces/tools/deploy.py --all
 HF_TOKEN=... python3 apps/spaces/tools/deploy.py --space algenta --rollback-to <sha>
 ```
 
-Per Space the tool runs `create_repo(repo_type="space", space_sdk=..., exist_ok=True)`,
-one atomic `upload_folder(delete_patterns=["**"], commit_message="deploy <git sha>")`,
-then `request_space_hardware` / `set_space_sleep_time` / `add_space_variable` only where
-the live runtime differs from the manifest, waits for the new revision (below) and finishes
-with the remote verification. Any failure exits non-zero; `BUILD_ERROR`, `RUNTIME_ERROR`,
+Per Space the tool reads `space_info(repo).sdk` (the Hub's parse of the live README
+frontmatter) and reports `sdk: <live> -> <manifest>` when they differ, runs
+`create_repo(repo_type="space", space_sdk=..., exist_ok=True)`, one atomic
+`upload_folder(delete_patterns=["**"], commit_message="deploy <git sha>")`, then
+`request_space_hardware` / `set_space_sleep_time` / `add_space_variable` only where the live
+runtime differs from the manifest, waits for the new revision (below) and finishes with the
+remote verification. Any failure exits non-zero; `BUILD_ERROR`, `RUNTIME_ERROR`,
 `CONFIG_ERROR` and `NO_APP_FILE` stop the poll immediately.
+
+The SDK flip rides on the upload alone: `create_repo(exist_ok=True)` is a no-op on an
+existing repo, so the staged `README.md` (`sdk: static` for a stub, checked by `stage.py`)
+is what turns a retired Gradio or Docker Space into a static one, and `delete_patterns=["**"]`
+removes every old app file in the same commit. For a static Space that is the whole deploy:
+hardware, sleep time and variables are not managed (the stubs are free and always on), and
+the tool prints that it skipped them.
 
 The first `RUNNING` after an upload is the previous revision still serving while the Hub
 rebuilds, so it is never accepted. The poll (`get_space_runtime().stage`, 40 min budget on
@@ -92,6 +105,60 @@ The dry run uses an anonymous client (`HfApi(token=False)`, so no cached login i
 reads the runtime where the Hub allows it and says `runtime not readable` otherwise; it
 never needs a token.
 
+## Deploying from CI
+
+`.github/workflows/deploy-spaces.yml` runs the same tools from GitHub Actions. Two lanes:
+
+| Trigger | What runs | Writes to the Hub |
+|---|---|---|
+| push to `main` touching `apps/spaces/**` or the workflow file | `test` gates, then `deploy.py --space <name> --dry-run` for every Space in the manifest (anonymous, no token) | never |
+| `workflow_dispatch` with `dry_run=true` (the default) | the same dry run, for the Spaces named in `spaces` | never |
+| `workflow_dispatch` with `dry_run=false` | `test` gates, then per Space: `deploy.py`, an independent `verify_remote.py`, and a GitHub Deployment record | yes, through the `hf-spaces-deploy` environment |
+
+Inputs: `spaces` (space-separated names from `spaces.toml`, live Spaces and redirects alike;
+`all` is the default), `dry_run` (boolean, default `true`), `rollback_sha` (a commit to stage
+from instead of the checkout, default empty). The `plan` job resolves the names through the
+strict manifest loader, so a misspelt name fails before anything runs. The matrix deploys at
+most two Spaces at a time and does not stop the others when one fails.
+
+```bash
+# dry run of two Spaces from the current main
+gh workflow run deploy-spaces --ref main -f spaces="algenta llm-modules"
+
+# deploy the fleet (requires the hf-spaces-deploy environment; protected branches only)
+gh workflow run deploy-spaces --ref main -f spaces=all -f dry_run=false
+
+# roll one Space back to a known good commit
+gh workflow run deploy-spaces --ref main -f spaces=speed-arena -f dry_run=false -f rollback_sha=<sha>
+```
+
+Secrets and expressions: `HF_TOKEN` comes from the `hf-spaces-deploy` GitHub environment and
+reaches `deploy.py` as an environment variable of the deploy step only; the dry-run lane has no
+environment and no token. No `${{ }}` expression is expanded inside a `run:` block; inputs,
+matrix values and the token pass through `env:`. Every action is pinned to a full commit SHA.
+`tests/spaces/test_deploy_workflow.py` asserts all of this and executes the `plan` step
+against the real manifest.
+
+Last green commit per Space: after `deploy.py` and the independent `verify_remote.py` both
+pass, the job records a GitHub Deployment in the `hf-spaces-deploy` environment with
+`task=deploy:<space>`, `ref=<deployed commit>` and a `success` status whose `environment_url`
+is the Space URL. A failed verification fails the job and records nothing, so the last
+successful record stays the last green commit:
+
+```bash
+gh api "repos/thyn-ai/algenta/deployments?environment=hf-spaces-deploy&task=deploy:algenta" \
+  --jq '.[0] | {sha, created_at, description}'
+```
+
+The workflow never rolls back on its own. When a deploy fails verification the operator
+re-runs it with `rollback_sha` set to that last green commit (or runs
+`deploy.py --space <name> --rollback-to <sha>` locally); the rollback goes through the same
+gates, the same verification and the same deployment record.
+
+`pin_drift` runs report-only in the `test` job (its findings are printed, the step warns) until
+the three app directories are pinned exactly in M2; `test_pin_drift_is_report_only_because_it_fails_today`
+fails the moment the tool is clean so the step is made blocking then.
+
 ## Verify a live Space
 
 ```bash
@@ -100,18 +167,27 @@ python3 apps/spaces/tools/verify_remote.py --space for-llm-agents
 python3 apps/spaces/tools/verify_remote.py --space governed-agent --url https://thyn-ai-algenta-governed-agent.hf.space --shared-sha <sha>
 ```
 
-Checks registered today: `/gradio_api/info` answers 200 with JSON inside the 30 s turn
-budget; every `api_names` entry of the manifest is a named endpoint; the footer's
-`build <sha>` stamp equals the staged `.shared_sha`; a redirect page carries a meta refresh
-and a canonical link to its `redirect_to` URL. The stamp check runs only for a Space whose
-manifest entry says `shared_shell = true`; otherwise it prints
+Checks registered today for a live Space: `/gradio_api/info` answers 200 with JSON inside
+the 30 s turn budget; every `api_names` entry of the manifest is a named endpoint; the
+footer's `build <sha>` stamp equals the staged `.shared_sha`. The stamp check runs only for
+a Space whose manifest entry says `shared_shell = true`; otherwise it prints
 `[SKIP] footer_stamp skipped: app not yet on the shared shell` and the verdict line names
 the skip, so a passing report never hides an unchecked footer. Endpoint-level assertions
 with real inputs are added per Space as the endpoints ship.
 
+For a redirect stub (`sdk = "static"`; the `.hf.space` host serves its `index.html`):
+`redirect_page` — `/` answers 200, the primary button and `<link rel="canonical">` point at
+`redirect_to`, and there is no `<meta http-equiv="refresh">` (the stub redirects on click
+only; a timed refresh is an axe critical); `stylesheet` — `/style.css` answers 200 with the
+stub's own rules rather than an app shell's HTML fallback; `hub_sdk` — the live README on the
+Hub (`/spaces/<repo>/raw/main/README.md`) declares `sdk: static`. Until a stub is published
+the report says exactly what is live instead (`a Gradio app is still served, not the static
+stub`, `Hub README declares sdk: gradio; the static stub is not published yet`) and exits 1.
+No footer stamp is checked for a static Space.
+
 ## Gates
 
-Green today, and the set `deploy-spaces.yml` will run before every deploy:
+Green today, and the set the `test` job of `deploy-spaces.yml` runs before every deploy:
 
 ```bash
 python3 apps/spaces/tools/copy_lint.py apps/spaces/_shared apps/spaces/_redirects/for-llm-agents apps/spaces/_redirects/governed-tool-calls apps/spaces/_redirects/llm-modules

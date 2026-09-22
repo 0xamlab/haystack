@@ -8,7 +8,12 @@
     out_dir/.shared_sha           sha256 over the shared package files (sorted paths + bytes)
     out_dir/.git_sha              `git rev-parse HEAD` of the source checkout
 
-Redirect Spaces (``sdk = "static"``) receive no shared package and no ``.shared_sha``.
+Redirect Spaces (``sdk = "static"``) receive no shared package and no ``.shared_sha``:
+a static Space has no Python, so a ``.py`` file, a ``requirements.txt`` or a ``Dockerfile``
+in a redirect source aborts the stage. Every Space must ship a ``README.md`` whose
+frontmatter ``sdk:`` equals the manifest ``sdk`` — on the Hub the frontmatter is what sets
+the SDK of an existing Space (``create_repo(exist_ok=True)`` cannot change it), so the flip
+from ``gradio``/``docker`` to ``static`` rides on that one line.
 Files matching ``IGNORE`` never leave the checkout and a file over ``MAX_FILE_BYTES``
 (the pre-commit ceiling) aborts the stage before anything is written.
 """
@@ -18,6 +23,7 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import logging
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -30,10 +36,14 @@ __all__ = [
     "APPS_SPACES_DIR",
     "MAX_FILE_BYTES",
     "SHARED_DIRNAME",
+    "STATIC_REQUIRED_FILES",
     "UPLOAD_IGNORE_PATTERNS",
     "StageError",
     "StageResult",
+    "check_readme_sdk",
     "check_sizes",
+    "check_static_tree",
+    "frontmatter_sdk",
     "git_head",
     "is_ignored",
     "iter_files",
@@ -60,6 +70,13 @@ UPLOAD_IGNORE_PATTERNS = (
     "*.dylib",
     "leaderboard.json",
 )
+# A static Space serves index.html and nothing runs: these must be present ...
+STATIC_REQUIRED_FILES = ("README.md", "index.html")
+# ... and nothing that only a Python runtime would read may be present.
+STATIC_FORBIDDEN_SUFFIXES = (".py", ".pyi", ".ipynb")
+STATIC_FORBIDDEN_NAMES = frozenset({"requirements.txt", "Dockerfile", "pyproject.toml"})
+_FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|\Z)", re.DOTALL)
+_SDK_LINE_RE = re.compile(r"^sdk:[ \t]*[\"']?([A-Za-z][A-Za-z0-9_-]*)[\"']?[ \t]*$", re.MULTILINE)
 
 
 class StageError(RuntimeError):
@@ -129,6 +146,50 @@ def git_head(repo_dir: Path) -> str:
     return sha
 
 
+def frontmatter_sdk(readme_text: str) -> str | None:
+    """The ``sdk:`` value of a Hub README frontmatter block, or None when there is none."""
+    block = _FRONTMATTER_RE.match(readme_text)
+    if not block:
+        return None
+    m = _SDK_LINE_RE.search(block.group(1))
+    return m.group(1) if m else None
+
+
+def check_readme_sdk(root: Path, rels: list[Path], space: Space) -> str:
+    """Refuse a stage whose README frontmatter would not set the manifest ``sdk`` on the Hub."""
+    if Path("README.md") not in rels:
+        raise StageError(
+            f"{space.source}/README.md is missing; the Hub reads the Space SDK from its frontmatter"
+        )
+    declared = frontmatter_sdk((root / "README.md").read_text(encoding="utf-8"))
+    if declared is None:
+        raise StageError(f"{space.source}/README.md has no `sdk:` in its frontmatter")
+    if declared != space.sdk:
+        raise StageError(
+            f"{space.source}/README.md declares sdk: {declared}, manifest says {space.sdk}; "
+            "the frontmatter is what sets the SDK of an existing Space on the Hub"
+        )
+    return declared
+
+
+def check_static_tree(rels: list[Path], space: Space) -> None:
+    """A redirect stub is HTML + CSS + README: nothing a Python runtime would need."""
+    missing = [name for name in STATIC_REQUIRED_FILES if Path(name) not in rels]
+    if missing:
+        raise StageError(
+            f"{space.source} lacks {', '.join(missing)}; a static Space serves index.html"
+        )
+    runtime_files = sorted(
+        rel.as_posix()
+        for rel in rels
+        if rel.suffix in STATIC_FORBIDDEN_SUFFIXES or rel.name in STATIC_FORBIDDEN_NAMES
+    )
+    if runtime_files:
+        raise StageError(
+            f"{space.source} is a static Space and cannot carry Python: {', '.join(runtime_files)}"
+        )
+
+
 def _copy_tree(src: Path, dst: Path, rels: list[Path]) -> None:
     for rel in rels:
         target = dst / rel
@@ -154,6 +215,9 @@ def stage_space(
     src = manifest.source_dir(name)
     space_files = iter_files(src)
     check_sizes(src, space_files)
+    check_readme_sdk(src, space_files, space)
+    if not space.is_live:
+        check_static_tree(space_files, space)
 
     shared_sha: str | None = None
     shared_files: list[Path] = []

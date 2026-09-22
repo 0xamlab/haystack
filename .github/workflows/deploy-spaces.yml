@@ -1,0 +1,246 @@
+# Deploy the thyn-ai Spaces fleet from apps/spaces/spaces.toml (docs/spaces/README.md,
+# "Deploying from CI").
+#
+# Two lanes, one manifest:
+#   * push to main touching apps/spaces/** (or this file) runs the gates and a DRY RUN of every
+#     Space: stage, file list, hardware / sleep / variable diff, no writes, no token.
+#   * workflow_dispatch is the only way to write to the Hub: `dry_run=false` deploys the
+#     requested Spaces through the `hf-spaces-deploy` environment (protected branches only,
+#     HF_TOKEN fine-grained write on the thyn-ai Spaces). `rollback_sha` stages that commit
+#     instead of the checkout, with the same gates and the same verification.
+#
+# Every deploy is verified against the live URL twice (deploy.py's own post-upload check and an
+# independent verify_remote run) and, only when both pass, recorded as a GitHub Deployment in the
+# `hf-spaces-deploy` environment (task `deploy:<space>`), so the last green commit per Space is
+# discoverable with `gh api`. A failed verification fails the job and records nothing; the
+# operator rolls back by re-running with `rollback_sha` set to that last green commit. Nothing
+# rolls back on its own in this version.
+#
+# Expression safety: no `${{ }}` inside any `run:` block. Inputs, matrix values and secrets reach
+# the shell through `env:` only (the build-hf-kernels.yml FAMILIES_INPUT pattern).
+name: deploy-spaces
+
+on:
+  workflow_dispatch:
+    inputs:
+      spaces:
+        description: "space-separated names from apps/spaces/spaces.toml, or `all` (live Spaces and redirects)"
+        type: string
+        default: all
+      dry_run:
+        description: "stage and diff only; nothing is written to the Hub"
+        type: boolean
+        default: true
+      rollback_sha:
+        description: "commit to stage from instead of the checkout (a last green sha from the hf-spaces-deploy deployments)"
+        type: string
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - "apps/spaces/**"
+      - ".github/workflows/deploy-spaces.yml"
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-spaces-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.14"
+  HUGGINGFACE_HUB_SPEC: "huggingface_hub>=1.26,<2"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the gate toolchain
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet ruff pytest pytest-asyncio pyyaml "$HUGGINGFACE_HUB_SPEC"
+      - name: Ruff (repo rules)
+        run: |
+          set -euo pipefail
+          ruff check apps/spaces/_shared apps/spaces/tools apps/spaces/_redirects tests/spaces
+          ruff format --check apps/spaces/_shared apps/spaces/tools apps/spaces/_redirects tests/spaces
+      - name: Tests (no network)
+        # --confcutdir keeps the repository's root tests/conftest.py (API server fixtures: httpx,
+        # alembic, sqlalchemy) out of a job that installs only the fleet tooling's dependencies.
+        run: |
+          set -euo pipefail
+          python -m pytest tests/spaces -q -p no:cacheprovider --confcutdir=tests/spaces
+      - name: Copy lint (shared package and redirect stubs)
+        run: |
+          set -euo pipefail
+          python apps/spaces/tools/copy_lint.py apps/spaces/_shared
+          python apps/spaces/tools/copy_lint.py apps/spaces/_redirects/for-llm-agents
+          python apps/spaces/tools/copy_lint.py apps/spaces/_redirects/governed-tool-calls
+          python apps/spaces/tools/copy_lint.py apps/spaces/_redirects/llm-modules
+      - name: Pin drift (report only until M2)
+        # The three app directories still carry the pins they shipped with on the Hub (range
+        # pins, one pre-release, versions that disagree across Spaces). The findings are printed
+        # in full here; the step becomes blocking in M2 when the apps migrate onto
+        # apps/spaces/_shared and their requirements are pinned exactly.
+        run: |
+          set -euo pipefail
+          python apps/spaces/tools/pin_drift.py apps/spaces/algenta apps/spaces/speed-arena apps/spaces/governed-agent \
+            || echo "::warning title=pin_drift::legacy pins reported above; this gate becomes blocking in M2"
+
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+      dry_run: ${{ steps.pick.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: pick
+        name: Resolve the Space matrix from apps/spaces/spaces.toml
+        env:
+          MANIFEST: apps/spaces/spaces.toml
+          SPACES_INPUT: ${{ inputs.spaces }} # never expanded inline in the shell
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, sys
+
+          sys.path.insert(0, "apps/spaces/tools")
+          from manifest import load_manifest  # strict tomllib loader; unknown names fail here
+
+          manifest = load_manifest(os.environ["MANIFEST"])
+          requested = os.environ.get("SPACES_INPUT", "").split() or ["all"]
+          if requested == ["all"]:
+              names = list(manifest.spaces)
+          else:
+              names = list(dict.fromkeys(manifest.space(n).name for n in requested))
+          # Only a manual dispatch that says dry_run=false writes to the Hub; a push never does.
+          dispatch = os.environ["EVENT_NAME"] == "workflow_dispatch"
+          dry_run = not dispatch or os.environ.get("DRY_RUN_INPUT", "true") != "false"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"matrix={json.dumps(names)}\n")
+              fh.write(f"dry_run={'true' if dry_run else 'false'}\n")
+          print(f"{'dry run' if dry_run else 'DEPLOY'}: {' '.join(names)}")
+          PY
+
+  dry-run:
+    # No environment and no token: deploy.py --dry-run is anonymous by design.
+    needs: [test, plan]
+    if: needs.plan.outputs.dry_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        space: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # --rollback-to resolves any commit through a detached worktree
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install huggingface_hub
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet "$HUGGINGFACE_HUB_SPEC"
+      - name: Stage and diff ${{ matrix.space }} (no writes)
+        env:
+          SPACE: ${{ matrix.space }}
+          ROLLBACK_SHA: ${{ inputs.rollback_sha }}
+        run: |
+          set -euo pipefail
+          args=(--space "$SPACE" --dry-run)
+          if [ -n "$ROLLBACK_SHA" ]; then args+=(--rollback-to "$ROLLBACK_SHA"); fi
+          python apps/spaces/tools/deploy.py "${args[@]}"
+
+  deploy:
+    needs: [test, plan]
+    if: needs.plan.outputs.dry_run == 'false' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90 # the runtime poll alone may take 60 min on GPU hardware
+    environment: hf-spaces-deploy
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        space: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # --rollback-to resolves any commit through a detached worktree
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install huggingface_hub
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet "$HUGGINGFACE_HUB_SPEC"
+      - name: Deploy ${{ matrix.space }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SPACE: ${{ matrix.space }}
+          ROLLBACK_SHA: ${{ inputs.rollback_sha }}
+        run: |
+          set -euo pipefail
+          args=(--space "$SPACE")
+          if [ -n "$ROLLBACK_SHA" ]; then args+=(--rollback-to "$ROLLBACK_SHA"); fi
+          python apps/spaces/tools/deploy.py "${args[@]}"
+      - name: Verify ${{ matrix.space }} against the live URL
+        # Independent of deploy.py's own check, with the tooling of the revision that was
+        # deployed: the checkout, or a detached worktree of rollback_sha.
+        env:
+          SPACE: ${{ matrix.space }}
+          ROLLBACK_SHA: ${{ inputs.rollback_sha }}
+        run: |
+          set -euo pipefail
+          src="$GITHUB_WORKSPACE"
+          if [ -n "$ROLLBACK_SHA" ]; then
+            src="$RUNNER_TEMP/verify-src"
+            git worktree add --detach "$src" "$ROLLBACK_SHA"
+          fi
+          python "$src/apps/spaces/tools/stage.py" --space "$SPACE" --out "$RUNNER_TEMP/verify-staged"
+          python "$src/apps/spaces/tools/verify_remote.py" --space "$SPACE" --staged "$RUNNER_TEMP/verify-staged"
+      - name: Record the deployment (GitHub Deployments, environment hf-spaces-deploy)
+        # Only reached when deploy and verify passed: the recorded ref is the last green commit
+        # for this Space. List them with
+        #   gh api "repos/<owner>/<repo>/deployments?environment=hf-spaces-deploy&task=deploy:<space>"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPACE: ${{ matrix.space }}
+          ROLLBACK_SHA: ${{ inputs.rollback_sha }}
+        run: |
+          set -euo pipefail
+          ref="$GITHUB_SHA"
+          if [ -n "$ROLLBACK_SHA" ]; then ref="$(git rev-parse --verify "${ROLLBACK_SHA}^{commit}")"; fi
+          space_url="$(SPACE="$SPACE" python3 - <<'PY'
+          import os, sys
+          sys.path.insert(0, "apps/spaces/tools")
+          from manifest import load_manifest
+          print(load_manifest().space(os.environ["SPACE"]).space_url)
+          PY
+          )"
+          log_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          deployment_id="$(jq -cn --arg ref "$ref" --arg task "deploy:$SPACE" --arg desc "$SPACE" \
+            '{ref: $ref, environment: "hf-spaces-deploy", task: $task, description: $desc, auto_merge: false, required_contexts: []}' \
+            | gh api "repos/$GITHUB_REPOSITORY/deployments" --input - --jq .id)"
+          jq -cn --arg log "$log_url" --arg url "$space_url" --arg desc "$SPACE verified at $ref" \
+            '{state: "success", environment: "hf-spaces-deploy", log_url: $log, environment_url: $url, description: $desc}' \
+            | gh api "repos/$GITHUB_REPOSITORY/deployments/$deployment_id/statuses" --input - --jq .state
+          echo "deployment $deployment_id: $SPACE at $ref"

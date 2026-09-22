@@ -36,6 +36,32 @@ def _info(*names: str) -> str:
     )
 
 
+REDIRECTS = Path(__file__).resolve().parents[2] / "apps" / "spaces" / "_redirects"
+STATIC_README = "---\ntitle: Moved\nsdk: static\npinned: false\n---\n"
+# What the .hf.space host of a retired Space serves today: a Gradio front end (the markers
+# come from the live page; Gradio 6 loads its config over fetch, so no window.gradio_config).
+GRADIO_PAGE = (
+    "<!doctype html><html><head><title>Gradio</title></head><body>"
+    '<script>window.__gradio_mode__ = "app";</script>'
+    '<div class="gradio-container gradio-container-6-28-0"></div></body></html>'
+)
+
+
+def _stub_routes(
+    space: Space, *, html: str | None = None, css: str | None = None, readme: str = STATIC_README
+) -> dict[str, tuple[int, str]]:
+    """Routes for a published stub: the page and stylesheet on .hf.space, the README on the Hub."""
+    stub = REDIRECTS / space.source.rsplit("/", 1)[1]
+    return {
+        "/": (200, html if html is not None else stub.joinpath("index.html").read_text("utf-8")),
+        "/style.css": (
+            200,
+            css if css is not None else stub.joinpath("style.css").read_text("utf-8"),
+        ),
+        vr.HUB_RAW_README.format(repo_id=space.repo_id): (200, readme),
+    }
+
+
 @pytest.fixture
 def mf():
     return load_manifest()
@@ -130,39 +156,135 @@ def test_redirect_check_reads_primary_link_and_canonical(mf, apps_spaces_dir: Pa
     html = (apps_spaces_dir / "_redirects" / "for-llm-agents" / "index.html").read_text(
         encoding="utf-8"
     )
-    http = FakeHttp({"/": (200, html)})
+    http = FakeHttp(_stub_routes(space))
     report = vr.verify_space(space, fetch=http)
     assert report.ok, report.lines()
+    assert [r.name for r in report.results] == ["redirect_page", "stylesheet", "hub_sdk"]
     assert report.results[0].detail == f"-> {space.redirect_to}"
+    assert report.results[2].detail == "sdk: static"
+    assert http.calls == [
+        f"{space.space_url}/",
+        f"{space.space_url}/style.css",
+        f"https://huggingface.co/spaces/{space.repo_id}/raw/main/README.md",
+    ]
+    assert report.lines()[-1] == "for-llm-agents: all checks passed"
+
+    def page(variant: str) -> str:
+        return (
+            vr.verify_space(space, fetch=FakeHttp(_stub_routes(space, html=variant)))
+            .results[0]
+            .detail
+        )
 
     button = f'class="alg-button" href="{space.redirect_to}"'
     assert html.count(button) == 1
     wrong = html.replace(
         button, 'class="alg-button" href="https://huggingface.co/spaces/thyn-ai/elsewhere"'
     )
-    report = vr.verify_space(space, fetch=FakeHttp({"/": (200, wrong)}))
+    report = vr.verify_space(space, fetch=FakeHttp(_stub_routes(space, html=wrong)))
     assert report.failures == ["redirect_page"]
     assert "primary link points at" in report.results[0].detail
-    assert (
-        vr.verify_space(space, fetch=FakeHttp({"/": (200, "<html/>")})).results[0].detail
-        == "no primary link on the page"
+    assert page("<html/>") == "no primary link on the page"
+    assert page("<html><head><title>Other app</title></head></html>") == (
+        "no primary link on the page (title 'Other app'); not the static stub"
     )
     timed = html.replace(
         "<head>", f'<head><meta http-equiv="refresh" content="3;url={space.redirect_to}">', 1
     )
+    assert "meta refresh" in page(timed)
     assert (
-        "meta refresh"
-        in vr.verify_space(space, fetch=FakeHttp({"/": (200, timed)})).results[0].detail
-    )
-    assert (
-        vr.verify_space(space, fetch=FakeHttp({"/": (404, "")})).results[0].detail
+        vr.verify_space(space, fetch=FakeHttp({**_stub_routes(space), "/": (404, "")}))
+        .results[0]
+        .detail
         == "/ answered 404"
     )
-    no_canonical = html.replace('rel="canonical"', 'rel="alternate"')
-    assert (
-        "canonical"
-        in vr.verify_space(space, fetch=FakeHttp({"/": (200, no_canonical)})).results[0].detail
+    assert "canonical" in page(html.replace('rel="canonical"', 'rel="alternate"'))
+
+
+def test_every_real_stub_passes_the_static_checks(mf) -> None:
+    for space in mf.redirects:
+        report = vr.verify_space(space, fetch=FakeHttp(_stub_routes(space)))
+        assert report.ok, report.lines()
+        assert report.skipped == [], "no footer stamp for a static Space"
+        assert report.results[0].detail == f"-> {space.redirect_to}"
+
+
+def test_pre_publish_state_is_named_precisely(mf) -> None:
+    """The live Space still runs its old app: every static check must say so, not just fail."""
+    space = mf.space("for-llm-agents")
+    live_readme = "---\ntitle: Algenta for LLM Agents\nsdk: gradio\nsdk_version: 6.28.0\n---\n"
+    # a Gradio front end answers every path with its index page, style.css included
+    http = FakeHttp(_stub_routes(space, html=GRADIO_PAGE, css=GRADIO_PAGE, readme=live_readme))
+    report = vr.verify_space(space, fetch=http)
+    assert not report.ok
+    assert report.failures == ["redirect_page", "stylesheet", "hub_sdk"]
+    details = {r.name: r.detail for r in report.results}
+    assert details["redirect_page"] == (
+        "no primary link on the page: a Gradio app is still served, not the static stub"
     )
+    assert details["stylesheet"] == (
+        "/style.css is not the stub stylesheet (no .alg-button rule); an app shell answered instead"
+    )
+    assert details["hub_sdk"] == (
+        "Hub README declares sdk: gradio; the static stub is not published yet "
+        "(manifest says sdk: static)"
+    )
+    assert report.lines()[-1] == "for-llm-agents: FAILED: redirect_page, stylesheet, hub_sdk"
+    # llm-modules runs a docker Space today
+    space = mf.space("llm-modules")
+    report = vr.verify_space(
+        space, fetch=FakeHttp(_stub_routes(space, readme="---\nsdk: docker\n---\n"))
+    )
+    assert report.failures == ["hub_sdk"]
+    assert report.results[2].detail.startswith("Hub README declares sdk: docker;")
+
+
+def test_stylesheet_and_hub_sdk_edge_cases(mf) -> None:
+    space = mf.space("governed-tool-calls")
+    raw = vr.HUB_RAW_README.format(repo_id=space.repo_id)
+
+    def detail(name: str, **routes: tuple[int, str]) -> str:
+        report = vr.verify_space(space, fetch=FakeHttp({**_stub_routes(space), **routes}))
+        return {r.name: r.detail for r in report.results}[name]
+
+    assert detail("stylesheet", **{"/style.css": (404, "")}) == "/style.css answered 404"
+    assert detail("stylesheet", **{"/style.css": (200, "body { color: red }")}) == (
+        "/style.css is not the stub stylesheet (no .alg-button rule); wrong content"
+    )
+    assert detail("hub_sdk", **{raw: (404, "Not Found")}) == f"{raw} answered 404"
+    assert detail("hub_sdk", **{raw: (200, "---\ntitle: no sdk\n---\n")}) == (
+        "live README has no `sdk:` in its frontmatter"
+    )
+    assert detail("hub_sdk", **{raw: (200, "# no frontmatter at all\n")}) == (
+        "live README has no `sdk:` in its frontmatter"
+    )
+    assert vr.describe_non_stub("") == "no primary link on the page"
+    assert vr.describe_non_stub("<title></title>") == "no primary link on the page"
+    assert vr.describe_non_stub('<gradio-app src="x"></gradio-app>').startswith(
+        "no primary link on the page: a Gradio app"
+    )
+
+
+def test_cli_reports_an_unpublished_stub_and_exits_one(
+    mf, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    space = mf.space("for-llm-agents")
+    live_readme = "---\nsdk: gradio\n---\n"
+    http = FakeHttp(_stub_routes(space, html=GRADIO_PAGE, css=GRADIO_PAGE, readme=live_readme))
+    monkeypatch.setattr(vr, "urllib_fetch", http)
+    rc = vr.main(["--space", "for-llm-agents"], manifest=mf)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "[FAIL] redirect_page no primary link on the page: a Gradio app is still served" in out
+    assert (
+        "[FAIL] hub_sdk Hub README declares sdk: gradio; the static stub is not published yet"
+        in out
+    )
+    assert "for-llm-agents: FAILED: redirect_page, stylesheet, hub_sdk" in out
+    assert "footer_stamp" not in out
+    monkeypatch.setattr(vr, "urllib_fetch", FakeHttp(_stub_routes(space)))
+    assert vr.main(["--space", "for-llm-agents"], manifest=mf) == 0
+    assert "for-llm-agents: all checks passed" in capsys.readouterr().out
 
 
 def test_footer_stamp_parsing_handles_plain_and_json_escaped_html() -> None:
@@ -182,7 +304,8 @@ def test_every_manifest_entry_resolves_and_has_checks(mf) -> None:
         "expected_endpoints",
         "footer_stamp",
     }
-    assert {n for n, _ in vr.CHECKS["llm-modules"]} == {"redirect_page"}
+    for name in ("for-llm-agents", "governed-tool-calls", "llm-modules"):
+        assert [n for n, _ in vr.CHECKS[name]] == ["redirect_page", "stylesheet", "hub_sdk"], name
 
 
 def test_resolve_entry_rejects_foreign_modules_and_unknown_functions(mf) -> None:

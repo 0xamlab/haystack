@@ -28,7 +28,7 @@ def _fake_fleet(root: Path) -> Manifest:
     (live / "arena").mkdir(parents=True)
     (live / "tests").mkdir()
     (live / "app.py").write_text("import gradio\n", encoding="utf-8")
-    (live / "README.md").write_text("---\ntitle: X\n---\n", encoding="utf-8")
+    (live / "README.md").write_text("---\ntitle: X\nsdk: docker\n---\n", encoding="utf-8")
     (live / "Dockerfile").write_text("FROM python:3.14-slim\n", encoding="utf-8")
     (live / "arena" / "duels.py").write_text("DUELS = []\n", encoding="utf-8")
     (live / "arena" / "leaderboard.json").write_text("[]", encoding="utf-8")
@@ -40,6 +40,7 @@ def _fake_fleet(root: Path) -> Manifest:
     redirect.mkdir(parents=True)
     (redirect / "index.html").write_text("<meta http-equiv='refresh'>", encoding="utf-8")
     (redirect / "README.md").write_text("---\nsdk: static\n---\n", encoding="utf-8")
+    (redirect / "style.css").write_text(".alg-button { color: red }\n", encoding="utf-8")
     raw = {
         "fleet": {"org": "thyn-ai", "shared_package": "_shared/algenta_spaces", "budget_usd": 10},
         "spaces": {
@@ -123,8 +124,69 @@ def test_stage_redirect_has_no_shared_package(tmp_path: Path) -> None:
     mf = _fake_fleet(tmp_path / "apps")
     result = stage.stage_space("old", tmp_path / "out", manifest=mf, git_sha=GIT_SHA)
     assert result.shared_sha is None
-    assert result.files == (".git_sha", "README.md", "index.html")
+    assert result.files == (".git_sha", "README.md", "index.html", "style.css")
     assert not (tmp_path / "out" / ".shared_sha").exists()
+    assert not (tmp_path / "out" / stage.SHARED_DIRNAME).exists(), "static Spaces have no Python"
+
+
+def test_frontmatter_sdk_matrix() -> None:
+    assert (
+        stage.frontmatter_sdk("---\ntitle: X\nsdk: static\npinned: false\n---\nbody\n") == "static"
+    )
+    assert stage.frontmatter_sdk('---\nsdk: "gradio"\n---') == "gradio"
+    assert stage.frontmatter_sdk("---\r\nsdk: docker\r\n---\r\n") == "docker"
+    assert stage.frontmatter_sdk("---\ntitle: X\n---\n") is None, "no sdk line"
+    assert stage.frontmatter_sdk("no frontmatter\nsdk: static\n") is None, "sdk outside the block"
+    assert stage.frontmatter_sdk("---\nsdk: static\n") is None, "unterminated block"
+    assert stage.frontmatter_sdk("") is None
+    # the fleet's own READMEs all resolve to their manifest sdk
+    mf = load_manifest()
+    for space in mf.spaces.values():
+        readme = (mf.source_dir(space.name) / "README.md").read_text(encoding="utf-8")
+        assert stage.frontmatter_sdk(readme) == space.sdk, space.name
+
+
+def test_refuses_a_readme_that_would_not_set_the_manifest_sdk(tmp_path: Path) -> None:
+    mf = _fake_fleet(tmp_path / "apps")
+    readme = tmp_path / "apps" / "_redirects" / "old" / "README.md"
+    readme.write_text("---\nsdk: gradio\n---\n", encoding="utf-8")
+    with pytest.raises(stage.StageError, match="declares sdk: gradio, manifest says static"):
+        stage.stage_space("old", tmp_path / "a", manifest=mf, git_sha=GIT_SHA)
+    assert not (tmp_path / "a").exists(), "refused before anything was written"
+    readme.write_text("---\ntitle: no sdk\n---\n", encoding="utf-8")
+    with pytest.raises(stage.StageError, match="has no `sdk:` in its frontmatter"):
+        stage.stage_space("old", tmp_path / "b", manifest=mf, git_sha=GIT_SHA)
+    readme.unlink()
+    with pytest.raises(stage.StageError, match="README.md is missing"):
+        stage.stage_space("old", tmp_path / "c", manifest=mf, git_sha=GIT_SHA)
+    # the same guard holds for a live Space
+    (tmp_path / "apps" / "live" / "README.md").write_text(
+        "---\nsdk: gradio\n---\n", encoding="utf-8"
+    )
+    with pytest.raises(stage.StageError, match="declares sdk: gradio, manifest says docker"):
+        stage.stage_space("live", tmp_path / "d", manifest=mf, git_sha=GIT_SHA)
+
+
+def test_static_stage_refuses_python_and_requires_index_html(tmp_path: Path) -> None:
+    mf = _fake_fleet(tmp_path / "apps")
+    old = tmp_path / "apps" / "_redirects" / "old"
+    (old / "app.py").write_text("import gradio\n", encoding="utf-8")
+    (old / "requirements.txt").write_text("gradio\n", encoding="utf-8")
+    with pytest.raises(stage.StageError, match="cannot carry Python: app.py, requirements.txt"):
+        stage.stage_space("old", tmp_path / "a", manifest=mf, git_sha=GIT_SHA)
+    (old / "app.py").unlink()
+    (old / "requirements.txt").unlink()
+    (old / "index.html").unlink()
+    with pytest.raises(
+        stage.StageError, match="lacks index.html; a static Space serves index.html"
+    ):
+        stage.stage_space("old", tmp_path / "b", manifest=mf, git_sha=GIT_SHA)
+    assert not (tmp_path / "a").exists() and not (tmp_path / "b").exists()
+    # a live Space may of course carry Python
+    (tmp_path / "apps" / "live" / "extra.py").write_text("X = 1\n", encoding="utf-8")
+    assert (
+        "extra.py" in stage.stage_space("live", tmp_path / "c", manifest=mf, git_sha=GIT_SHA).files
+    )
 
 
 def test_refuses_files_over_500_kb_before_writing(tmp_path: Path) -> None:
@@ -287,3 +349,17 @@ def test_real_tree_stages_every_live_space(tmp_path: Path) -> None:
         )
     shas = {stage.read_stamp(tmp_path / s.name, ".shared_sha") for s in mf.live}
     assert len(shas) == 1, "every live Space vendors the same shared package"
+
+
+def test_real_tree_stages_every_redirect_stub_without_python(tmp_path: Path) -> None:
+    mf = load_manifest()
+    assert len(mf.redirects) == 3
+    for space in mf.redirects:
+        result = stage.stage_space(space.name, tmp_path / space.name, manifest=mf, git_sha=GIT_SHA)
+        assert result.files == (".git_sha", "README.md", "index.html", "style.css"), space.name
+        assert result.shared_sha is None
+        staged_readme = (tmp_path / space.name / "README.md").read_text(encoding="utf-8")
+        assert stage.frontmatter_sdk(staged_readme) == "static"
+        assert space.redirect_to in (tmp_path / space.name / "index.html").read_text(
+            encoding="utf-8"
+        )
