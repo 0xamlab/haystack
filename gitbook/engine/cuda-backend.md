@@ -17,14 +17,16 @@ Apple Metal remains the default serve path in the shipped SDK; the full backend 
 | --- | --- | --- |
 | Python facade and CLI | `algenta` on PyPI | Published |
 | Native runtime, macOS arm64 and linux-x86\_64 | `algenta-runtime-native` on PyPI | Published |
-| Native runtime, CUDA shards | `algenta-runtime-native-linux-x86_64-cuda`, built by the `build-linux-cuda` CI job | Ships with the next runtime release |
+| Native runtime, CUDA shards | `algenta-runtime-native` >= 1.0.7 on PyPI (the linux-x86\_64 slot carries the run-verified CUDA build) | Published; bundled engine certified on H100 (see Determinism) |
 | TypeScript client | `algenta-sdk` on npm | Published. Backend-agnostic — see [TypeScript SDK](#typescript-sdk) |
 
 The CUDA runtime is a build variant of `algenta-runtime-native` for linux-x86\_64: the same
 package and platform tag, with the accelerator shards compiled
-`-D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_90`. It publishes with the next runtime
-release, gated on the hardware verification recorded on this page. The install line does not
-change:
+`-D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_90`. Since runtime-native 1.0.7 the
+linux-x86\_64 file on PyPI IS the CUDA variant: it publishes only against a
+`cuda-release-verdict.json` attached to the release, produced by the hardware verification
+recorded on this page, and the publish gate matches the certified engine digest inside the
+wheel. The install line does not change:
 
 ```bash title="install on Linux x86_64 with an NVIDIA GPU"
 python3.14 -m venv .venv
@@ -44,6 +46,7 @@ verifies it against its signed manifest before execution; it fails closed on a m
 | GPU architecture | sm\_52, sm\_60/61, sm\_75, sm\_80, sm\_86, sm\_87, sm\_89, sm\_90(a), sm\_100(a), sm\_110, sm\_120(a), sm\_121 — the pinned toolchain's supported range |
 | Excluded architecture | sm\_70 (V100 / Volta) — rejected at compile time by the pinned toolchain |
 | NVIDIA driver | >= 580, validated at 580.173.02 and 595.71.05 |
+| CUDA host libraries | `libcublas.so.12` and `libcublasLt.so.12` from a CUDA toolkit install (host-provided, declared in the signed manifest); `libcudart.so.12` ships inside the wheel |
 | Operating system | Linux x86\_64, glibc >= 2.35 (`manylinux_2_35_x86_64`) |
 | Toolchain | The repo's pinned Mojo toolchain (mojo 1.0.0 / MAX 26.5.0), resolved from the lockfile |
 | Compile target | `sm_90` by default; override with `MOJO_BUILD_CUDA_TARGET` |
