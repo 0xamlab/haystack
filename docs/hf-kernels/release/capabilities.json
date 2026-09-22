@@ -190,8 +190,30 @@
     "pre_execution_enforcement": "none — get_kernel does not verify signatures; opt-in only (documented)"
   },
   "publication_state": {
-    "hub_visibility": "PRIVATE (all 20 repos) since 2026-09-22 pending the capped rebuild, Linux red-team, history squash and owner L1",
-    "uncapped_revisions": "to be buried (history squash) before any re-open"
+    "hub_visibility": "PUBLIC (all 20) since 2026-09-21 — capped build only",
+    "uncapped_revisions": "removed: super_squash_history on v1 and main of every repository (1 commit each, verified live 2026-09-21)",
+    "capped_v1_shas": {
+      "thyn-ai/algenta-bits-time": "899e29017366d9a0cd2edee9a1d4d303c46bd52e",
+      "thyn-ai/algenta-crypto": "4368d5c3beec4736b1c6e38861b1adb1552f6752",
+      "thyn-ai/algenta-finance": "9473a0ea4a54ddd0812e5e5be54efb8559072a74",
+      "thyn-ai/algenta-general-a": "07ed697bebe817e5ddf1b67d7873020e0fcf762e",
+      "thyn-ai/algenta-general-b": "13345760337fd0a600e9aecbaf668facb4c913b3",
+      "thyn-ai/algenta-general-c": "918f4f22fd9dfb3d2595dc289b9e77434527ddef",
+      "thyn-ai/algenta-general-d": "fe3ffc8ff6116f95cd09b5789151be0ce57acdf6",
+      "thyn-ai/algenta-general-e": "f77cb78c58ffe82268c406077831721cb083a40d",
+      "thyn-ai/algenta-geometry": "5b7d3318ad7ef28d030dfdcf5b3c0dc8de12ec14",
+      "thyn-ai/algenta-graph": "0216f866fd533c8cff3ba9b04b7e8699123ada02",
+      "thyn-ai/algenta-llm": "7638dd1b38d82f7d5cfe5d1c613e2716c9253053",
+      "thyn-ai/algenta-ml": "ae179a7bf1028c33de2287de94fed9eb76c63c18",
+      "thyn-ai/algenta-networking": "8b87ab1486e7d2cb60937dbbedf1895e49a566c4",
+      "thyn-ai/algenta-serialization": "3bf8ec08aecd81fefdf42fd43059e25fbfaf136b",
+      "thyn-ai/algenta-signal": "b6a2ff058f3f39e4a3b76d53a919995fa9ad87f0",
+      "thyn-ai/algenta-stats": "e43c6f7824d59afed7d28ff0cba3724cac5ff493",
+      "thyn-ai/algenta-tensors": "81bf6a88389c51515110fa3cac626a2677c81dfc",
+      "thyn-ai/algenta-text": "785985a4095b2444344dd4b4d398139739fbea57",
+      "thyn-ai/algenta-vision": "f503f13006d5b8f7f242d5c8d918cbdbe2e0a365",
+      "thyn-ai/algenta": "eef8d7d109dab9ba1ad6e9cdb5dabbbffb882212"
+    }
   },
   "cuda_by_torch": {
     "2.5": [
