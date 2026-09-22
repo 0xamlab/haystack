@@ -69,7 +69,9 @@
       "variant_dir": "torch<MN>-metal-aarch64-darwin",
       "families": [
         "algenta-llm"
-      ]
+      ],
+      "resident_stage_tier": 6144,
+      "stage_note": "residentk staging tier 6144 (-D ALGENTA_STAGE_6144): decode admits models with max(d_model, h_q*d_head, d_ff) <= 6144 (Qwen3-0.6B, Qwen3-1.7B); larger models are refused with resident_dimension_too_large (REPUBLISH-004; GPU-SPACE-PARITY-001)"
     },
     {
       "os": "linux",
@@ -90,7 +92,9 @@
       "families": [
         "algenta-llm"
       ],
-      "note": "PTX embedded per target; loader picks the newest built target <= device compute capability"
+      "note": "PTX embedded per target; loader picks the newest built target <= device compute capability",
+      "resident_stage_tier": 6144,
+      "stage_note": "residentk staging tier 6144 (-D ALGENTA_STAGE_6144): decode admits models with max(d_model, h_q*d_head, d_ff) <= 6144 (Qwen3-0.6B, Qwen3-1.7B); larger models are refused with resident_dimension_too_large (REPUBLISH-004; GPU-SPACE-PARITY-001)"
     }
   ],
   "candidates_not_published": [
@@ -193,7 +197,7 @@
     "hub_visibility": "PUBLIC (all 20) since 2026-09-21 — capped build only",
     "uncapped_revisions": "removed: super_squash_history on v1 and main of every repository (1 commit each, verified live 2026-09-22)",
     "capped_v1_shas": {
-      "thyn-ai/algenta": "b7baf6c620a6ec42d851d50d310e8bd10805f206",
+      "thyn-ai/algenta": "5063de83c1c6637c0f749edf6a57a684981df7f0",
       "thyn-ai/algenta-bits-time": "199dff6cf340d61d1d10da026e27288fc0b88dff",
       "thyn-ai/algenta-crypto": "944dadd434e2d92f357454e560000f541be7d86c",
       "thyn-ai/algenta-finance": "a646c590c67ff78a29f51b768dd58d32f475a139",
@@ -204,7 +208,7 @@
       "thyn-ai/algenta-general-e": "022f029f19f7e213b0293da11751a2c471f3277d",
       "thyn-ai/algenta-geometry": "54b91d902d9a38a244c8a5f093aa7bfd2824d6dd",
       "thyn-ai/algenta-graph": "7247b466a11e49d2d2eeef2beb488732938e20e6",
-      "thyn-ai/algenta-llm": "516a8ad9b3fc161dec270f942c2c8dc8f0f9e59d",
+      "thyn-ai/algenta-llm": "92ef06d7b01116a70d8a8a6179c492aac5462146",
       "thyn-ai/algenta-ml": "c67aed624ae1e22398e79780d5bfc8bb66237c0c",
       "thyn-ai/algenta-networking": "11ada7623e74dbbeb3a4f004648d58fe40cd1d9b",
       "thyn-ai/algenta-serialization": "12109d34d242a4fb702d8b78419a9aff195dc91d",

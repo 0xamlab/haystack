@@ -1,17 +1,17 @@
 {
  "schema": 1,
- "created": "2026-09-22T16:41:10+00:00",
+ "created": "2026-09-22T18:44:48+00:00",
  "source": {
   "repository": "thyn-ai/algenta",
-  "commit": "f60c631654a2f75a0e2742f4ba81d5e57040c362"
+  "commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0"
  },
  "inputs": {
   "runtime_library_contract_sha256": "11a54187eecb0da5dc135853455a05954091158fd166a0f3561f02ec1dde0c62",
   "hf_kernel_filters_sha256": "ec5c8f0db0eec1afeeb9e3a53c938a4c1624133f135ef9afe1f7ae6f80b4a441",
   "abi_sha256": "7b7fce5800b2879bf561315fa919afc631c034c55e0e78d5425eaa5c9cdc38a5",
   "cuda_decode_session_sha256": "691ce89eb3751ef559b75e2fbe2e9dced354586fb66af285bfa2130d5352af82",
-  "generator_sha256": "dba86514ed59464d3cbb166cff1dfbf92af09cf3afc9dd73a3fe98a6b286db54",
-  "builder_sha256": "99e1ed273bc2822ef6ce9b00b16ac63fdba5bb04db58d3a6dd203d5cee4ea287",
+  "generator_sha256": "7b99beca6c943da50c50a68cfe1c7e4ce5db15a0ab7cb90271da5fafa75fa0b8",
+  "builder_sha256": "bf2c3dbf90b228a47637cbe88e9cbd1eb96d5764d3e9d3341fce2658120ae405",
   "templates_sha256": {
    "_native.py": "1592188589200668ec0f0f4372920aea8bd0f731441c68c5ab02188edd6528c3",
    "_transport.py": "fc2a9d33e0389137dbb27a53d3a133cdb7668dc9bbb9ccfaf943f0bd038c5652",
@@ -7426,8 +7426,8 @@
   "algenta-llm": {
    "repo": "thyn-ai/algenta-llm",
    "revisions": {
-    "v1": "516a8ad9b3fc161dec270f942c2c8dc8f0f9e59d",
-    "main": "e75bdc59dbccb2800c864da430a77371e7d96e25"
+    "v1": "92ef06d7b01116a70d8a8a6179c492aac5462146",
+    "main": "1097541a9aea4954dfdfc84690c98efde6c18e2a"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -7504,8 +7504,8 @@
      }
     },
     "torch210-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "8a617b96d8ea9415a5b6f5d24524afdc76fc20144e8a8fa5141772de18ee1dd4",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "283da1187478f0231dd1db0b5707321ccaaaf56824fbe49ea35cc95ba5bf45ad",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7513,7 +7513,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7525,7 +7526,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7533,18 +7534,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch210-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "736bfff99f6fd967184c49a585a8d76c2f858929a8c9ada1cc50e9a97669840f",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "75220c9405daea4815b04874b4fbcd368a3d0a7f49508eecbd799024e3cd6ff9",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7552,7 +7553,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7564,7 +7566,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7572,18 +7574,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch210-cxx11-cu129-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "aedcdaf313c93194c097c2f5ca9b42f387f08b663b01667328ceb59f32fd3512",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "fdb87c13e335319132a1adcdfe49c7071907e0040b692a2af236afdd6f670075",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7591,7 +7593,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7603,7 +7606,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7611,18 +7614,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch210-cxx11-cu130-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "082a4387ab834aa9bf4305e8d26b24a713b842bc2bc4f83cb4a12ee22b30ba4e",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "6ccea6cbfcc54e6166dd3db0e28f902d5baa1fda91c9f8ef7e16ca6424a8c3e8",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7630,7 +7633,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7642,7 +7646,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7650,18 +7654,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch210-cxx11-cu132-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "0eda5ac1f765e519e4c81dcc79fcb232dac342f543bd39c3175a48a24ac0bef9",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "dcdc1370f859d80c9e2175a4a3804ea84ada2f48daec99e495bdde2d27736fce",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7669,7 +7673,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7681,7 +7686,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7689,27 +7694,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch210-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "f7bdcf36edef4fbc8f8977c0a547d07479bceb767b86f302aba266b9cda37c9e",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "93c5bb90f8ba664713192ac651d252303e2f40f9ff5d5121027dd1a535e04e4b",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7717,7 +7723,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -7796,8 +7802,8 @@
      }
     },
     "torch211-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "667aec85154d691d421efeaf132513c03ca758fe6ca573b604c87703db46155f",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "aa11077b20bd7e0c6fd48ab029db2bd9722f3dfb73a907720415f85f40d46246",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7805,7 +7811,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7817,7 +7824,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7825,18 +7832,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch211-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "199e2db3fd40cdebc577567dfb5e522e3f0b1d14d6729b6b0400aa6dcea58966",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "6781f8e2d9d4fb1eeb9eb8a2821253bf91d15f01aa78b56a2edffe22037ea2bb",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7844,7 +7851,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7856,7 +7864,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7864,18 +7872,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch211-cxx11-cu129-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "3da1aea5295944bdd5ce38a780e44a5c17fe00d1c33c1c8be985bfcaa7cf2d66",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "c52bf74aa7f2189772a739d6aa9aee48a6e7418c30315d1b895377ff72dcca66",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7883,7 +7891,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7895,7 +7904,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7903,18 +7912,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch211-cxx11-cu130-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "a24dfcfa400f9a0efc6c9f004ecb0761f2fa7e28d6c14c224cb5b8551c0fd5bc",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "36ac2880939b6c802fec0c2c65330b7de148fc5d26cbac288769d0e571f79da6",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7922,7 +7931,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7934,7 +7944,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7942,18 +7952,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch211-cxx11-cu132-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "f472f1b129e59d82d3d109eca63749442527fc26d8642dbfe34c009c4b693a03",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "4b435144b7be31addb1e6dc04b3336bcd97bba876a632df3e955b6acff09a444",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -7961,7 +7971,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -7973,7 +7984,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -7981,27 +7992,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch211-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "d66f404d20fed00f48d3c853f4470ee87904799dc98690c57b4b846acb7c3da4",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "78494e1345e46ed7fd5a3615bc462a0559a330929f0e54e987e23e3d823a5441",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8009,7 +8021,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -8088,8 +8100,8 @@
      }
     },
     "torch212-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "4cbebbfa056a87c62d4aca628adfb8abab5ad81a35026b3cbdf38999b3f187f0",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "da9e71f0fea8f52dbcbef25da3972a8b3ee8c7b22baa1fac32a1796449c5133f",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8097,7 +8109,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8109,7 +8122,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8117,18 +8130,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch212-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "33bb370c167cfb2ec63289cf3366ff24d4bb0a77fcdaf5f4d6093cd580ee990f",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "0f2c3c8007b80ef07f25c8ca7def9c8b7eefa21f5fbf135d2b22fcfbe493f38d",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8136,7 +8149,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8148,7 +8162,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8156,18 +8170,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch212-cxx11-cu129-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "c9d904cf0fe34328e85522124b1b7507af2d3c99f933b8da9d704949f90abcf0",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "cc03afb2bc25a8d995dc4ad86d36c604db783f78feb5404f63344472b5b53b55",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8175,7 +8189,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8187,7 +8202,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8195,18 +8210,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch212-cxx11-cu130-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "59c1ea8bbb3740aa5ae6718597c0ef2e97a02fc9383e393e558c70812d8cf660",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "3ec20ac23b9b2f9d336b7ad1c5f17c569120605c36bc4c504b599a0ea7081465",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8214,7 +8229,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8226,7 +8242,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8234,18 +8250,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch212-cxx11-cu132-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "ee4cf41f520d2eef7d1824cefbb55306f41d0cef6070e33cfe16280adf3135fb",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "a72435f72ad81afd10514c02b618d8187155fb5c9b31680490114bb04705780c",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8253,7 +8269,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8265,7 +8282,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8273,27 +8290,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch212-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "c5a8ec72e76179764077f7b82c321635708bb5cdbc123e8c6bee94703696318c",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "3502a183f56119b53dff0f57bf8c479716bf896046cae3b5399b4fbd1a4caea5",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8301,7 +8319,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -8380,8 +8398,8 @@
      }
     },
     "torch213-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "e18b6fdfd9fcc55194df5b0903dbc35449a6f01e4d59874c01a32bf66daa6d6b",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "c0fcc388bd57a0ad7f72fc4e92b8556716e1f97df3c57b0bb363940167d58122",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8389,7 +8407,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8401,7 +8420,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8409,18 +8428,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch213-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "f08d186e496529a523564848a726db45a25dd1ba89e902aa881142f8bb229da3",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "87f6dd37d22c4477ec0e460570701f1c1e63554dc0a7c032166e4ae4e2f0947c",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8428,7 +8447,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8440,7 +8460,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8448,18 +8468,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch213-cxx11-cu129-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "dc9b52914a5be08ca18e2b384cbf4a827607d6b0fed7f34c9ae08b52424364d4",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "702139533a955fb7b4b54a1612e30b392327904ce6f5b5f23ab827c0befcf465",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8467,7 +8487,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8479,7 +8500,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8487,18 +8508,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch213-cxx11-cu130-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "9e3296b202ce140021f9fea9f3badb5470d09cbe05cf343796b65f90e3615efb",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "9358502017e4bfd5297b2624466b27f38f4442287e999f2625c267d14bef9ae8",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8506,7 +8527,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8518,7 +8540,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8526,18 +8548,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch213-cxx11-cu132-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "b81a4124a9012da163ed5990246f5c4c01e8be0e8ccd3a1edb6c1fdb0b199996",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "2b007af57ff29003140fcbb80fb226ab195edcd0f36aba18a787fc58fbca583b",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8545,7 +8567,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8557,7 +8580,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8565,27 +8588,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch213-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "86eacaddfc3ccfccc12b8334aa66abeba3e727f918f2022d6137de0e11c6a6de",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "b16447f89fc64e3635791b5b14d4613ab9a7d60c26ec80bd38cf3acf7f6cb65d",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8593,7 +8617,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -8672,8 +8696,8 @@
      }
     },
     "torch214-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "781e1ade8c7ececa4531188282a1af4547fdbed432957ab22a94cc69b64a8749",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "7c21582b70d0ef34b6c508b5eb1eda4b1e86f62964f4c06e2d68c157ad8619aa",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8681,7 +8705,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8693,7 +8718,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8701,18 +8726,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch214-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "6b42e4c3503fbba6f893687bff3ff9da15e4d54cabde8a79e6a9a981e257250d",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "10746039cb31f6df91e7c0cc09bd887a163820e5fa70e90023b0bbf06d191be3",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8720,7 +8745,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8732,7 +8758,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8740,18 +8766,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch214-cxx11-cu129-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "e7b68920bdfcd0a479aeb64ecb81f85da01d6f6feb150f23bdbf18a216cf8db6",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "5c147f63d029c1a0cc0167f76b6f44889548606b0c55535d6605578cf71f446f",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8759,7 +8785,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8771,7 +8798,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8779,18 +8806,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch214-cxx11-cu130-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "08c5069bfbe015e03c85ccbb5f930f3638550299867f014d470e98e79958bb10",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "0a95039a375159fbad8c49e6b87d54f3d8bacb06f56f5876e29bc5a068b7838f",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8798,7 +8825,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8810,7 +8838,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8818,18 +8846,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch214-cxx11-cu132-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "e99b15a0143c1149425fc310408307774ed4af6b215a1b3aa11937d3bd0b1c55",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "185a29358cea7f139f0e69d6d27204cbe64f7fb29e0c5ef949e133ea88f2e362",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8837,7 +8865,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8849,7 +8878,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8857,27 +8886,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch214-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "018b761e0e3587f7d8779c9b13e878265ebf4e9474c3ef036257ca617730c2ed",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "2585fe89b502c94ebe256a96ca7878ad9e2b54c7ff8f48425459d7adff93836c",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8885,7 +8915,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -8964,8 +8994,8 @@
      }
     },
     "torch25-cxx11-cu118-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "204f19493124cf9cfce270ab61e3e299ec209d0ffab21dbdd427ce2840182c8d",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "301ff094526ec40259269bfe3594588b2ebff19044914c2b00828db10057a064",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -8973,7 +9003,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -8985,7 +9016,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -8993,18 +9024,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch25-cxx11-cu121-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "165e90fd83cd42c62404862cb2dc6584c4af726b4bab3af15f6b95dcc6300bb6",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "299d3a876a78b3ef1752998e3d17f2396790b7f729e05daff366c4fe030b05ad",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9012,7 +9043,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9024,7 +9056,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9032,18 +9064,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch25-cxx11-cu124-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "3a68881b3edfb817a1f6105e6fd297210a49dabc81a7b9f77bfa1a9b58fe7d1e",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "ef3b477ae0e123b0b9981c2cc389d051176d15c3cf6600a5f1572fef44f59f23",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9051,7 +9083,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9063,7 +9096,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9071,27 +9104,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch25-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "46c4506f6baea52ebbb7f983f2f1c33a081657d6b25ac2306f2b36c52c0a9301",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "ec4aa0361039fe54c5b0b5d8d0b446e63c9760728a88336c2755e4be43a7688c",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9099,7 +9133,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -9178,8 +9212,8 @@
      }
     },
     "torch26-cxx11-cu118-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "f52f829a5f8143633fa98a7bc3da58643c32dcebe3ac45f9a7330c545eb6827d",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "a4c90cce82485112e247022efce66533314ac14ba6fdf9346645723b9e08efd2",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9187,7 +9221,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9199,7 +9234,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9207,18 +9242,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch26-cxx11-cu124-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "84b8771aa7416a40a99bbae391f9663b065e70925a8abf2fb6f8c6fd6000d33c",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "5e10f43848ae51833941b31069106d4515e0f7fa9b5070a4a62ef6b24db5e332",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9226,7 +9261,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9238,7 +9274,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9246,18 +9282,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch26-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "b0d3ae7adc16f9aec41e8997c8216588a801048f19f218d8aa86aedcbdcb5150",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "c04e8484adfb2607650d7421e1c728109081717a049e0de76838fd066ec2d0b0",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9265,7 +9301,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9277,7 +9314,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9285,27 +9322,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch26-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "a9da7ff917d3c1bf0aa6edeb9bb236503a5b3da6808ee09411e6b380459753a1",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "04afd776324059fcb21db0afc6ebf6570a968295f570875de0e7c5e3ac464e5a",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9313,7 +9351,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -9392,8 +9430,8 @@
      }
     },
     "torch27-cxx11-cu118-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "097a2dd4adbce79f097058ba6fd72302529b084619b1fe4fac4c0be03a0ed063",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "2a23544959ff046d1e5e2063e471e25f114236d7fb7867e3676639c4b2593522",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9401,7 +9439,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9413,7 +9452,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9421,18 +9460,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch27-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "9bce2138848095d92970f4f7b6914519c108f312a6d69801866f0c9cdec65a81",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "d1118a002b19deebd1b4009af02f4b0b4d928fffa9c653e4446f21d0ae1c853b",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9440,7 +9479,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9452,7 +9492,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9460,18 +9500,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch27-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "fb706755bafc2f47773320e809aa19f049d148ce804c98203385a2299227466d",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "e185f341af8813b0cf3e2400d9756ebf6c3fb92198428a2caabda0b48e4b3c46",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9479,7 +9519,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9491,7 +9532,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9499,27 +9540,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch27-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "ace918b61c57754d76b52eb219c84b93bfd1486cea59d3fe55c1dc1b396adf0c",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "511125c753bd390a7e415df7702a11c2b3ac5f9cdd42454fa010b1eb332da3da",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9527,7 +9569,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -9606,8 +9648,8 @@
      }
     },
     "torch28-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "8c349a2b74957565a1867ec0446f3398a8a385a497ee68998798af5b447e6201",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "5adeb3f363480b4f0e671c22a2ae601206d6bfdc16599aab84624c0566f06f4c",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9615,7 +9657,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9627,7 +9670,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9635,18 +9678,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch28-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "c8ac1fe440b2ab47f3f3c5f0553487655bed870672a46637adc1a459d055132a",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "d2eb1d88d65fd948f0a252c3aa68784f122f6e558a8e224b33c4be3958a607d2",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9654,7 +9697,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9666,7 +9710,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9674,18 +9718,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch28-cxx11-cu129-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "06b660477dc45e5123076ef53b72cb24cb0d27b1544e5f718bb18acdc24503d7",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "abb11f4f1356a58421742a2e0a9065d0b9a3f058c5fb99d80d24667a9a16b9ba",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9693,7 +9737,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9705,7 +9750,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9713,27 +9758,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch28-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "becb1427425f5dc0e63fcc31c3dbe215faab55c05d8a095351c8b3b120799523",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "ecf8c0d90d13202e2102a6957a039483b9eac7ea8a31a72e1f2af9e913495b35",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9741,7 +9787,7 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
@@ -9820,8 +9866,8 @@
      }
     },
     "torch29-cxx11-cu126-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "f85b4de0b9d52aebfd1fbf81c60b5dacd042d99c0382f19caa32bbaed087d3c8",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "bd551d94eabf352b803b5daff9a789e5484e3ebb39bbc5dd61a702e19e4e2db9",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9829,7 +9875,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9841,7 +9888,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9849,18 +9896,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch29-cxx11-cu128-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "882e1983daec993204314d01dab06531954eb91e2750f477cd71972e9880e6e3",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "7c21ae8edaec8800e718c22ed2c9fb9b506763cb09c0e5a619001b7d65600308",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9868,7 +9915,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9880,7 +9928,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9888,18 +9936,18 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch29-cxx11-cu130-x86_64-linux": {
-     "metadata_id": "_algenta_llm_cuda_508e4d8",
-     "metadata_sha256": "8837f9563ada646a63fd95762fab5e88700141eb4ec91c8bb6a422c0da522c8f",
+     "metadata_id": "_algenta_llm_cuda_4c6fe5e",
+     "metadata_sha256": "ed8a84d3b8904051c306b070b1c4260c35b1103b1834fa070d2c477551a5f63c",
      "backend": {
       "type": "cuda",
       "archs": [
@@ -9907,7 +9955,8 @@
        "8.0",
        "8.9",
        "9.0"
-      ]
+      ],
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "x86_64-linux",
@@ -9919,7 +9968,7 @@
        "sm_89",
        "sm_90"
       ],
-      "source_commit": "508e4d8b702246018a9097a74ec504379858f171",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9927,27 +9976,28 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.so": "24f7f0b40c56c8b64d843cb01bb604a4d1de7f2cb4c0a3dfc4e5efb4d0090bf8",
        "libKGENCompilerRTShared.mojo1_0_0.so": "ee0c0bf7b4e1f73e8844c11b910118e369166e1fc1e83c5f8c0182898a210124",
        "libMSupportGlobals.mojo1_0_0.so": "cce5ccf3e32417d03b5afabf8cf27266d07cee9514c9e57d53e6d9a7d61edb37",
-       "libalgenta_algenta_llm.sm_75.so": "ef1db1e519730811d167086d35f098a61be1509514303a693b87fedac722174a",
+       "libalgenta_algenta_llm.sm_75.so": "2448a624d53eefc9cbb65670b797607ed040590b6a9771e6bf2b4f59c9c77464",
        "libgcc_s.mojo1_0_0.so.1": "860baa60c8fc9823c88283a52fca730ef8144595d8721d16064a23da1e182a32",
        "libstdc++.mojo1_0_0.so.6": "aa43d02b14b824518ccd9b93f5f26b11a54b5dc5dc5f8bd4e5b58f48ba3ed061",
-       "libalgenta_algenta_llm.sm_80.so": "83883eb38591668be5c1c5498797bf2785d92a95c945dce17f6cf2f8e7a4b6fb",
-       "libalgenta_algenta_llm.sm_89.so": "f01ffb76f66462b1630d817cd53c60f54fee9b5e6910ce8aeea5b8b7899c258f",
-       "libalgenta_algenta_llm.sm_90.so": "a60b0516405ab220d49fc375d1f536f59202bfe0b09eb9f088eaeb59f6fe0a92"
+       "libalgenta_algenta_llm.sm_80.so": "63fe5c0d61c4e87ef18417fdf16186ee1ea5f0caa03638c1ec3dfad87a472929",
+       "libalgenta_algenta_llm.sm_89.so": "4f5a649551d1273a5ffa315e486eebe8734cee3c0a74af5ca30ed8627bbb57a9",
+       "libalgenta_algenta_llm.sm_90.so": "cc7efaab3f9674fc8137371b315a0f482da490c1dfceb92cab0e7d1bc95270aa"
       }
      }
     },
     "torch29-metal-aarch64-darwin": {
-     "metadata_id": "_algenta_llm_metal_9069cc4",
-     "metadata_sha256": "c9929df30e0c0627c6b31ccce8c3975650a9c287d34f6944f8ee5e042a7f2605",
+     "metadata_id": "_algenta_llm_metal_4c6fe5e",
+     "metadata_sha256": "f9b408a58e948aee263063d22de12b54172851b2c05d88bce446c0a95fec1e3c",
      "backend": {
-      "type": "metal"
+      "type": "metal",
+      "resident_stage_tier": 6144
      },
      "native": {
       "platform": "aarch64-darwin",
       "backend": "metal",
       "library": "libalgenta_algenta_llm.dylib",
       "cuda_targets": [],
-      "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+      "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
       "mojo_version": "Mojo 1.0.0 (ed45d567)",
       "runtime_tag": "mojo1_0_0",
       "files": {
@@ -9955,13 +10005,13 @@
        "libAsyncRTRuntimeGlobals.mojo1_0_0.dylib": "1672e8d8e00a6fd0d939cc4af80fd0a37ff556b69ec7e39a8f3b1c14d6e44f74",
        "libKGENCompilerRTShared.mojo1_0_0.dylib": "2f0e0ced662971f58a76f9372b474ce9f838a090b7151ca3df769108bb2bb418",
        "libMSupportGlobals.mojo1_0_0.dylib": "c5e5c4dc8b0ae05014e346a306d7f83bc37fe0481dc359d8122c74a72301da31",
-       "libalgenta_algenta_llm.dylib": "3f8dcec49204a57f0ffb3eb3c6fb53dd8652e8333d37b5facb1db43d2825fc61",
+       "libalgenta_algenta_llm.dylib": "68b35496952868c468c715c7c011159fe3863d60f37c81e72f76265ac90e2f7f",
        "libc++.1.mojo1_0_0.dylib": "78540097d09e0acbb4db7d7cb6b464d7d8c88a311d5cfeb8b47463f0ee539c07"
       }
      }
     }
    },
-   "card_sha256": "85fb9120a60a76a5267531d02ebd6022d9ee4008189f6d2c94a9f33765b50108"
+   "card_sha256": "4abdedceae2b1ef0d0749f3ad138f6d7d3b2644661b7c323bd6c2d575b1399e6"
   },
   "algenta-ml": {
    "repo": "thyn-ai/algenta-ml",
@@ -15887,8 +15937,8 @@
  "umbrella": {
   "repo": "thyn-ai/algenta",
   "revisions": {
-   "v1": "b7baf6c620a6ec42d851d50d310e8bd10805f206",
-   "main": "ef05f0207733c08ccde3931356e77715b481bb94"
+   "v1": "5063de83c1c6637c0f749edf6a57a684981df7f0",
+   "main": "1b6604f9b79b70e01af895847a8e6d18c285162d"
   },
   "kernel_depends": [
    {
@@ -15933,7 +15983,7 @@
    },
    {
     "repo-id": "thyn-ai/algenta-llm",
-    "revision": "516a8ad9b3fc161dec270f942c2c8dc8f0f9e59d"
+    "revision": "92ef06d7b01116a70d8a8a6179c492aac5462146"
    },
    {
     "repo-id": "thyn-ai/algenta-ml",
@@ -15968,6 +16018,6 @@
     "revision": "ebad076f3be6255d77fee9f279c2af5728ea973e"
    }
   ],
-  "metadata_id": "_algenta_umbrella_508e4d8"
+  "metadata_id": "_algenta_umbrella_4c6fe5e"
  }
 }

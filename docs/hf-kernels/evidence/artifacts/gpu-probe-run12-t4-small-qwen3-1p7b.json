@@ -1,0 +1,654 @@
+{
+ "schema": "algenta-gpu-probe/1",
+ "status": "done",
+ "started_utc": "2026-09-22T18:48:35+00:00",
+ "space": {
+  "SPACE_ID": "thyn-ai/algenta-gpu-probe",
+  "SPACE_HOST": "thyn-ai-algenta-gpu-probe.hf.space",
+  "ACCELERATOR": "gpu",
+  "CPU_CORES": "3",
+  "MEMORY": "16.0G",
+  "SPACE_REPO_NAME": "algenta-gpu-probe"
+ },
+ "image": {
+  "python": "3.14.7",
+  "glibc": "2.39",
+  "cuda_version_env": "12.8.1",
+  "ld_library_path": "/usr/local/cuda/lib64",
+  "nvidia_require_cuda": "cuda>=12.8 brand=unknown,driver>=470,driver<471 brand=grid,driver>=470,driver<471 brand=tesla,driver>=470,driver<471 bra",
+  "cpu_count": 4,
+  "build_facts": {
+   "built_utc": "2026-09-22T18:45:44+00:00",
+   "python": "3.14.7",
+   "glibc": "2.39",
+   "machine": "x86_64",
+   "packages": {
+    "torch": "2.9.1",
+    "kernels": "0.17.1",
+    "huggingface_hub": "1.26.1",
+    "transformers": "5.17.0",
+    "numpy": "2.5.3",
+    "algenta": "1.0.24",
+    "algenta-runtime-native": "1.0.7",
+    "safetensors": "0.8.0",
+    "tokenizers": "0.23.2"
+   },
+   "snapshot": {
+    "repo": "Qwen/Qwen3-1.7B",
+    "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "path": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "download_s": 7.1,
+    "files": [
+     [
+      ".gitattributes",
+      1570
+     ],
+     [
+      "LICENSE",
+      11343
+     ],
+     [
+      "README.md",
+      13963
+     ],
+     [
+      "config.json",
+      726
+     ],
+     [
+      "generation_config.json",
+      239
+     ],
+     [
+      "merges.txt",
+      1671853
+     ],
+     [
+      "model-00001-of-00002.safetensors",
+      3441185608
+     ],
+     [
+      "model-00002-of-00002.safetensors",
+      622329984
+     ],
+     [
+      "model.safetensors.index.json",
+      25605
+     ],
+     [
+      "tokenizer.json",
+      11422654
+     ],
+     [
+      "tokenizer_config.json",
+      9732
+     ],
+     [
+      "vocab.json",
+      2776833
+     ]
+    ],
+    "total_bytes": 4079450110,
+    "architectures": [
+     "Qwen3ForCausalLM"
+    ],
+    "tie_word_embeddings": true,
+    "torch_dtype": "bfloat16",
+    "num_hidden_layers": 28,
+    "hidden_size": 2048,
+    "vocab_size": 151936,
+    "eos_token_id": 151645
+   },
+   "kernel": {
+    "repo": "thyn-ai/algenta-llm",
+    "version": 1,
+    "install_s": 5.3,
+    "variant": "torch29-cxx11-cu128-x86_64-linux",
+    "expected_variant": "torch29-cxx11-cu128-x86_64-linux",
+    "variant_as_expected": true,
+    "path": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/92ef06d7b01116a70d8a8a6179c492aac5462146/build/torch29-cxx11-cu128-x86_64-linux",
+    "native_manifest": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/92ef06d7b01116a70d8a8a6179c492aac5462146/build/torch29-cxx11-cu128-x86_64-linux/algenta_llm/_native/manifest.json",
+    "primary_library": "libalgenta_algenta_llm.sm_90.so",
+    "cuda_libraries": {
+     "sm_75": "libalgenta_algenta_llm.sm_75.so",
+     "sm_80": "libalgenta_algenta_llm.sm_80.so",
+     "sm_89": "libalgenta_algenta_llm.sm_89.so",
+     "sm_90": "libalgenta_algenta_llm.sm_90.so"
+    },
+    "cuda_targets": [
+     "sm_75",
+     "sm_80",
+     "sm_89",
+     "sm_90"
+    ],
+    "load_order": [
+     "libgcc_s.mojo1_0_0.so.1",
+     "libstdc++.mojo1_0_0.so.6",
+     "libMSupportGlobals.mojo1_0_0.so",
+     "libAsyncRTRuntimeGlobals.mojo1_0_0.so",
+     "libAsyncRTMojoBindings.mojo1_0_0.so",
+     "libKGENCompilerRTShared.mojo1_0_0.so"
+    ],
+    "native_bytes": 38912510,
+    "mojo_version": "Mojo 1.0.0 (ed45d567)",
+    "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
+    "source_dirty": null,
+    "abi_version": 1,
+    "v1_sha": "92ef06d7b01116a70d8a8a6179c492aac5462146",
+    "resident_stage_tier": 6144,
+    "resident_stage_define": null
+   },
+   "compat": {
+    "dir": "/usr/local/cuda-13.0/compat",
+    "present": true,
+    "files": [
+     "libcuda.so",
+     "libcuda.so.1",
+     "libcuda.so.580.178.04",
+     "libcudadebugger.so.1",
+     "libcudadebugger.so.580.178.04",
+     "libnvidia-gpucomp.so.580.178.04",
+     "libnvidia-nvvm.so",
+     "libnvidia-nvvm.so.4",
+     "libnvidia-nvvm.so.580.178.04",
+     "libnvidia-nvvm70.so.4",
+     "libnvidia-pkcs11-openssl3.so.580.178.04",
+     "libnvidia-ptxjitcompiler.so.1",
+     "libnvidia-ptxjitcompiler.so.580.178.04"
+    ],
+    "packages": [
+     "cuda-compat-12-8 570.124.06-0ubuntu1",
+     "cuda-compat-13-0 580.178.04-1ubuntu1"
+    ]
+   }
+  },
+  "compat_packages": [
+   "cuda-compat-12-8 570.124.06-0ubuntu1",
+   "cuda-compat-13-0 580.178.04-1ubuntu1",
+   ""
+  ]
+ },
+ "plan": {
+  "driver_floor": 580,
+  "supported_compute_capabilities": [
+   [
+    7,
+    5
+   ],
+   [
+    8,
+    0
+   ],
+   [
+    8,
+    9
+   ],
+   [
+    9,
+    0
+   ]
+  ],
+  "kernel": {
+   "repo": "thyn-ai/algenta-llm",
+   "version": 1,
+   "expected_variant": "torch29-cxx11-cu128-x86_64-linux"
+  },
+  "model": {
+   "repo": "Qwen/Qwen3-1.7B",
+   "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+  },
+  "compat_dir": "/usr/local/cuda-13.0/compat",
+  "budget_s": 3000,
+  "max_ctx": {
+   "n_prompt": 12,
+   "max_new_tokens": 8,
+   "needed_ctx": 20,
+   "max_ctx": 512,
+   "resident_default_context": 512,
+   "resident_max_context": 65536,
+   "within_ceiling": true,
+   "rule": "next power of two >= n_prompt + max_new_tokens, floor 512 (cuda_decode_session.mojo::_ctx_bucket); refused above 65536",
+   "kv_cache_f32_bytes": 117440512
+  }
+ },
+ "steps": {
+  "driver": {
+   "stage": "driver",
+   "returncode": 0,
+   "timed_out": false,
+   "wall_s": 0.52,
+   "log": "stages/driver.log",
+   "data": {
+    "ok": true,
+    "ld_library_path": "/usr/local/cuda/lib64",
+    "nvidia_smi": {
+     "name": "Tesla T4",
+     "driver_version": "580.178.04",
+     "compute_cap": "7.5",
+     "memory.total": "15360 MiB",
+     "query_fields": "name,driver_version,compute_cap,memory.total"
+    },
+    "proc_driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  580.178.04  Tue Jul  7 12:38:21 UTC 2026\nGCC version:  gcc version 11.5.0 20240719 (Red Hat 11.5.0-5) (GCC)",
+    "compat_dirs": {
+     "/usr/local/cuda-12/compat": [
+      "libcuda.so",
+      "libcuda.so.1",
+      "libcuda.so.570.124.06",
+      "libcudadebugger.so.1",
+      "libcudadebugger.so.570.124.06",
+      "libnvidia-nvvm.so",
+      "libnvidia-nvvm.so.4",
+      "libnvidia-nvvm.so.570.124.06",
+      "libnvidia-ptxjitcompiler.so.1",
+      "libnvidia-ptxjitcompiler.so.570.124.06"
+     ],
+     "/usr/local/cuda-12.8/compat": [
+      "libcuda.so",
+      "libcuda.so.1",
+      "libcuda.so.570.124.06",
+      "libcudadebugger.so.1",
+      "libcudadebugger.so.570.124.06",
+      "libnvidia-nvvm.so",
+      "libnvidia-nvvm.so.4",
+      "libnvidia-nvvm.so.570.124.06",
+      "libnvidia-ptxjitcompiler.so.1",
+      "libnvidia-ptxjitcompiler.so.570.124.06"
+     ],
+     "/usr/local/cuda-13.0/compat": [
+      "libcuda.so",
+      "libcuda.so.1",
+      "libcuda.so.580.178.04",
+      "libcudadebugger.so.1",
+      "libcudadebugger.so.580.178.04",
+      "libnvidia-gpucomp.so.580.178.04",
+      "libnvidia-nvvm.so",
+      "libnvidia-nvvm.so.4",
+      "libnvidia-nvvm.so.580.178.04",
+      "libnvidia-nvvm70.so.4",
+      "libnvidia-pkcs11-openssl3.so.580.178.04",
+      "libnvidia-ptxjitcompiler.so.1",
+      "libnvidia-ptxjitcompiler.so.580.178.04"
+     ]
+    },
+    "ldconfig_cuda_entries": [
+     "libnvidia-ptxjitcompiler.so.1 (libc6,x86-64) => /usr/lib64/libnvidia-ptxjitcompiler.so.1"
+    ],
+    "libcuda": {
+     "soname": "libcuda.so.1",
+     "mapped_paths": [
+      "/usr/lib64/libcuda.so.580.178.04"
+     ],
+     "cu_init": 0,
+     "cu_driver_get_version": 13000,
+     "cuda_driver_api": "13.0",
+     "device_count": 1,
+     "device_name": "Tesla T4",
+     "compute_capability": [
+      7,
+      5
+     ],
+     "total_memory_bytes": 15828320256
+    },
+    "base_driver_major": 580,
+    "driver_floor": 580,
+    "meets_driver_floor": true,
+    "compute_capability_supported": true,
+    "stage": "driver",
+    "finished_utc": "2026-09-22T18:48:36+00:00"
+   },
+   "log_tail": [
+    "{\"ok\": true, \"ld_library_path\": \"/usr/local/cuda/lib64\", \"nvidia_smi\": {\"name\": \"Tesla T4\", \"driver_version\": \"580.178.04\", \"compute_cap\": \"7.5\", \"memory.total\": \"15360 MiB\", \"query_fields\": \"name,driver_version,compute_cap,memory.total\"}, \"proc_driver_version\": \"NVRM version: NVIDIA UNIX x86_64 Kernel Module  580.178.04  Tue Jul  7 12:38:21 UTC 2026\\nGCC version:  gcc version 11.5.0 20240719 (Red Hat 11.5.0-5) (GCC)\", \"compat_dirs\": {\"/usr/local/cuda-12/compat\": [\"libcuda.so\", \"libcuda.so.1\", \"libcuda.so.570.124.06\", \"libcudadebugger.so.1\", \"libcudadebugger.so.570.124.06\", \"libnvidia-nvvm.so\", \"libnvidia-nvvm.so.4\", \"libnvidia-nvvm.so.570.124.06\", \"libnvidia-ptxjitcompiler.so.1\", \"libnvidia-ptxjitcompiler.so.570.124.06\"], \"/usr/local/cuda-12.8/compat\": [\"libcuda.so\", \"libcuda.so.1\", \"libcuda.so.570.124.06\", \"libcudadebugger.so.1\", \"libcudadebugger.so.570.124.06\", \"libnvidia-nvvm.so\", \"libnvidia-nvvm.so.4\", \"libnvidia-nvvm.so.570.124.06\", \"libnvidia-ptxjitcompiler.so.1\", \"libnvidia-ptxjitcompiler.so.570.124.06\"], \"/usr/local/cuda-13.0/compat\": [\"libcuda.so\", \"libcuda.so.1\", \"libcuda.so.580.178.04\", \"libcudadebugger.so.1\", \"libcudadebugger.so.580.178.04\", \"libnvidia-gpucomp.so.580.178.04\", \"libnvidia-nvvm.so\", \"libnvidia-nvvm.so.4\", \"libnvidia-nvvm.so.580.178.04\", \"libnvidia-nvvm70.so.4\", \"libnvidia-pkcs11-openssl3.so.580.178.04\", \"libnvidia-ptxjitcompiler.so.1\", \"libnvidia-ptxjitcompiler.so.580.178.04\"]}, \"ldconfig_cuda_entries\": [\"libnvidia-ptxjitcompiler.so.1 (libc6,x86-64) => /usr/lib64/libnvidia-ptxjitcompiler.so.1\"], \"libcuda\": {\"soname\": \"libcuda.so.1\", \"mapped_paths\": [\"/usr/lib64/libcuda.so.580.178.04\"], \"cu_init\": 0, \"cu_driver_get_version\": 13000, \"cuda_driver_api\": \"13.0\", \"device_count\": 1, \"device_name\": \"Tesla T4\", \"compute_capability\": [7, 5], \"total_memory_bytes\": 15828320256}, \"base_driver_major\": 580, \"driver_floor\": 580, \"meets_driver_floor\": true, \"compute_capability_supported\": true, \"stage\": \"driver\", \"finished_utc\": \"2026-09-22T18:48:36+00:00\"}"
+   ],
+   "ok": true
+  },
+  "convert": {
+   "stage": "convert",
+   "returncode": 0,
+   "timed_out": false,
+   "wall_s": 82.21,
+   "log": "stages/convert.log",
+   "data": {
+    "ok": true,
+    "algenta": "1.0.24",
+    "numpy": "2.5.3",
+    "snapshot": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "out_dir": "/home/user/work/qwen3-1.7b-f64-cuda",
+    "weights_dtype": "f64",
+    "backend": "cuda",
+    "disk_free_before_bytes": 53525311488,
+    "reused": false,
+    "wall_s": 81.73,
+    "returned_dir": "/home/user/work/qwen3-1.7b-f64-cuda",
+    "blob_bytes": 13764599808,
+    "blob_gib": 12.82,
+    "n_tensors": 310,
+    "manifest_config": {
+     "hidden_size": 2048,
+     "num_hidden_layers": 28,
+     "num_attention_heads": 16,
+     "num_key_value_heads": 8,
+     "head_dim": 128,
+     "intermediate_size": 6144,
+     "vocab_size": 151936,
+     "rope_theta": 1000000.0,
+     "rms_norm_eps": 1e-06,
+     "has_qk_norm": 1,
+     "tie_word_embeddings": 1,
+     "eos_token_id": 151645
+    },
+    "disk_free_after_bytes": 39766261760,
+    "max_rss_mib": 749.8,
+    "stage": "convert",
+    "finished_utc": "2026-09-22T18:49:59+00:00"
+   },
+   "log_tail": [
+    "{\"ok\": true, \"algenta\": \"1.0.24\", \"numpy\": \"2.5.3\", \"snapshot\": \"/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e\", \"out_dir\": \"/home/user/work/qwen3-1.7b-f64-cuda\", \"weights_dtype\": \"f64\", \"backend\": \"cuda\", \"disk_free_before_bytes\": 53525311488, \"reused\": false, \"wall_s\": 81.73, \"returned_dir\": \"/home/user/work/qwen3-1.7b-f64-cuda\", \"blob_bytes\": 13764599808, \"blob_gib\": 12.82, \"n_tensors\": 310, \"manifest_config\": {\"hidden_size\": 2048, \"num_hidden_layers\": 28, \"num_attention_heads\": 16, \"num_key_value_heads\": 8, \"head_dim\": 128, \"intermediate_size\": 6144, \"vocab_size\": 151936, \"rope_theta\": 1000000.0, \"rms_norm_eps\": 1e-06, \"has_qk_norm\": 1, \"tie_word_embeddings\": 1, \"eos_token_id\": 151645}, \"disk_free_after_bytes\": 39766261760, \"max_rss_mib\": 749.8, \"stage\": \"convert\", \"finished_utc\": \"2026-09-22T18:49:59+00:00\"}"
+   ],
+   "ok": true
+  },
+  "reference": {
+   "stage": "reference",
+   "returncode": 0,
+   "timed_out": false,
+   "wall_s": 19.63,
+   "log": "stages/reference.log",
+   "data": {
+    "ok": true,
+    "reference": "transformers float32 greedy, CPU",
+    "torch": "2.9.1+cu128",
+    "transformers": "5.17.0",
+    "threads": 4,
+    "transformers_prompt_ids": [
+     59604,
+     374,
+     279,
+     6722,
+     315,
+     9625,
+     13,
+     19846,
+     374,
+     279,
+     6722,
+     315
+    ],
+    "prompt_ids_agree_with_algenta_tokenizer": true,
+    "load_s": 5.57,
+    "generate_s": 4.09,
+    "tokens": [
+     9856,
+     13,
+     15920,
+     315,
+     279,
+     2701,
+     374,
+     830
+    ],
+    "decoded": " Germany. Which of the following is true",
+    "eos_token_id": 151645,
+    "max_rss_mib": 11154.7,
+    "stage": "reference",
+    "finished_utc": "2026-09-22T18:50:17+00:00"
+   },
+   "log_tail": [
+    "",
+    "Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]",
+    "Loading weights:   0%|          | 1/311 [00:01<05:41,  1.10s/it]",
+    "Loading weights:  26%|\u2588\u2588\u258c       | 81/311 [00:01<00:02, 91.72it/s]",
+    "Loading weights:  40%|\u2588\u2588\u2588\u2588      | 125/311 [00:01<00:01, 105.15it/s]",
+    "Loading weights:  50%|\u2588\u2588\u2588\u2588\u2589     | 155/311 [00:01<00:01, 118.71it/s]",
+    "Loading weights:  58%|\u2588\u2588\u2588\u2588\u2588\u258a    | 180/311 [00:01<00:01, 115.87it/s]",
+    "Loading weights:  64%|\u2588\u2588\u2588\u2588\u2588\u2588\u258d   | 200/311 [00:02<00:00, 116.26it/s]",
+    "Loading weights:  70%|\u2588\u2588\u2588\u2588\u2588\u2588\u2589   | 217/311 [00:02<00:00, 116.54it/s]",
+    "Loading weights:  75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d  | 233/311 [00:02<00:00, 94.03it/s] ",
+    "Loading weights:  79%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589  | 246/311 [00:02<00:01, 64.68it/s]",
+    "Loading weights:  83%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e | 257/311 [00:03<00:00, 56.61it/s]",
+    "Loading weights:  86%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c | 268/311 [00:03<00:00, 53.75it/s]",
+    "Loading weights:  88%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a | 275/311 [00:03<00:00, 54.02it/s]",
+    "Loading weights:  91%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 | 282/311 [00:03<00:00, 44.99it/s]",
+    "Loading weights:  93%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e| 290/311 [00:04<00:00, 40.08it/s]",
+    "Loading weights:  96%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c| 298/311 [00:04<00:00, 40.16it/s]",
+    "Loading weights:  97%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b| 303/311 [00:04<00:00, 40.99it/s]",
+    "Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 311/311 [00:04<00:00, 68.29it/s]",
+    "[transformers] The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.",
+    "{\"ok\": true, \"reference\": \"transformers float32 greedy, CPU\", \"torch\": \"2.9.1+cu128\", \"transformers\": \"5.17.0\", \"threads\": 4, \"transformers_prompt_ids\": [59604, 374, 279, 6722, 315, 9625, 13, 19846, 374, 279, 6722, 315], \"prompt_ids_agree_with_algenta_tokenizer\": true, \"load_s\": 5.57, \"generate_s\": 4.09, \"tokens\": [9856, 13, 15920, 315, 279, 2701, 374, 830], \"decoded\": \" Germany. Which of the following is true\", \"eos_token_id\": 151645, \"max_rss_mib\": 11154.7, \"stage\": \"reference\", \"finished_utc\": \"2026-09-22T18:50:17+00:00\"}"
+   ],
+   "ok": true
+  },
+  "gpu": {
+   "stage": "gpu",
+   "returncode": 0,
+   "timed_out": false,
+   "wall_s": 45.45,
+   "log": "stages/gpu.log",
+   "data": {
+    "ok": true,
+    "ld_library_path": "/usr/local/cuda/lib64",
+    "torch": {
+     "version": "2.9.1+cu128",
+     "cuda": "12.8",
+     "cxx11_abi": true,
+     "cuda_available": true,
+     "device_name": "Tesla T4",
+     "compute_capability": [
+      7,
+      5
+     ]
+    },
+    "kernel": {
+     "arch_check": "passed",
+     "get_kernel_s": 0.22,
+     "file": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/92ef06d7b01116a70d8a8a6179c492aac5462146/build/torch29-cxx11-cu128-x86_64-linux/__init__.py",
+     "variant": "torch29-cxx11-cu128-x86_64-linux",
+     "variant_as_expected": true,
+     "expected_variant": "torch29-cxx11-cu128-x86_64-linux",
+     "backend": "cuda",
+     "primary_library": "libalgenta_algenta_llm.sm_90.so",
+     "loaded": true,
+     "native_init_s": 0.11,
+     "selected_library": "libalgenta_algenta_llm.sm_75.so",
+     "sanity_cosine_similarity": 0.7071067811865475
+    },
+    "decode": {
+     "checkpoint_dir": "/home/user/work/qwen3-1.7b-f64-cuda",
+     "n_prompt": 12,
+     "max_new_tokens": 8,
+     "max_ctx": 512,
+     "open_s": 41.67,
+     "session_n_prompt": 12,
+     "gpu_free_bytes_after_open": 8468496384,
+     "tokens": [
+      9856,
+      13,
+      15920,
+      315,
+      279,
+      2701,
+      374,
+      830
+     ],
+     "step_ms": [
+      0.24,
+      177.22,
+      26.72,
+      26.85,
+      26.88,
+      26.93,
+      26.98,
+      27.03
+     ],
+     "positions": [
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+     ],
+     "stopped_on_eos": false,
+     "gpu_free_bytes_after_close": 8468496384,
+     "ok": true
+    },
+    "gpu_free_bytes_start": 15718350848,
+    "libcuda_mapped_paths": [
+     "/usr/lib64/libcuda.so.580.178.04"
+    ],
+    "max_rss_mib": 4509.5,
+    "stage": "gpu",
+    "finished_utc": "2026-09-22T18:51:03+00:00"
+   },
+   "log_tail": [
+    "",
+    "Fetching 82 files:   0%|          | 0/82 [00:00<?, ?it/s]",
+    "Fetching 82 files: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 82/82 [00:00<00:00, 3439.47it/s]",
+    "{\"ok\": true, \"ld_library_path\": \"/usr/local/cuda/lib64\", \"torch\": {\"version\": \"2.9.1+cu128\", \"cuda\": \"12.8\", \"cxx11_abi\": true, \"cuda_available\": true, \"device_name\": \"Tesla T4\", \"compute_capability\": [7, 5]}, \"kernel\": {\"arch_check\": \"passed\", \"get_kernel_s\": 0.22, \"file\": \"/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/92ef06d7b01116a70d8a8a6179c492aac5462146/build/torch29-cxx11-cu128-x86_64-linux/__init__.py\", \"variant\": \"torch29-cxx11-cu128-x86_64-linux\", \"variant_as_expected\": true, \"expected_variant\": \"torch29-cxx11-cu128-x86_64-linux\", \"backend\": \"cuda\", \"primary_library\": \"libalgenta_algenta_llm.sm_90.so\", \"loaded\": true, \"native_init_s\": 0.11, \"selected_library\": \"libalgenta_algenta_llm.sm_75.so\", \"sanity_cosine_similarity\": 0.7071067811865475}, \"decode\": {\"checkpoint_dir\": \"/home/user/work/qwen3-1.7b-f64-cuda\", \"n_prompt\": 12, \"max_new_tokens\": 8, \"max_ctx\": 512, \"open_s\": 41.67, \"session_n_prompt\": 12, \"gpu_free_bytes_after_open\": 8468496384, \"tokens\": [9856, 13, 15920, 315, 279, 2701, 374, 830], \"step_ms\": [0.24, 177.22, 26.72, 26.85, 26.88, 26.93, 26.98, 27.03], \"positions\": [13, 14, 15, 16, 17, 18, 19, 20], \"stopped_on_eos\": false, \"gpu_free_bytes_after_close\": 8468496384, \"ok\": true}, \"gpu_free_bytes_start\": 15718350848, \"libcuda_mapped_paths\": [\"/usr/lib64/libcuda.so.580.178.04\"], \"max_rss_mib\": 4509.5, \"stage\": \"gpu\", \"finished_utc\": \"2026-09-22T18:51:03+00:00\"}"
+   ],
+   "ok": true
+  }
+ },
+ "updated_utc": "2026-09-22T18:51:04+00:00",
+ "model": {
+  "snapshot_path": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+ },
+ "prompt": {
+  "text": "Paris is the capital of France. Berlin is the capital of",
+  "token_ids": [
+   59604,
+   374,
+   279,
+   6722,
+   315,
+   9625,
+   13,
+   19846,
+   374,
+   279,
+   6722,
+   315
+  ],
+  "n_prompt": 12,
+  "tokenizer": "algenta.tokenizer.load_tokenizer",
+  "max_prompt_tokens": 32
+ },
+ "compat": {
+  "attempted": false,
+  "reason": "native run succeeded on driver 580.178.04"
+ },
+ "parity": {
+  "reference_tokens": [
+   9856,
+   13,
+   15920,
+   315,
+   279,
+   2701,
+   374,
+   830
+  ],
+  "reference_decoded": " Germany. Which of the following is true",
+  "native": {
+   "tokens": [
+    9856,
+    13,
+    15920,
+    315,
+    279,
+    2701,
+    374,
+    830
+   ],
+   "prefix_match": 8,
+   "compared": 8,
+   "full_match": true,
+   "decoded": " Germany. Which of the following is true"
+  },
+  "compat": {
+   "tokens": null,
+   "prefix_match": null,
+   "full_match": null
+  }
+ },
+ "decision": "ok",
+ "decision_reason": "native CUDA build loaded and decoded; all tokens match the reference",
+ "evidence": {
+  "GPU-SPACE-DRIVER-001": {
+   "hardware": "gpu",
+   "gpu": "Tesla T4",
+   "nvidia_smi_driver_version": "580.178.04",
+   "nvidia_smi_compute_cap": "7.5",
+   "cuDriverGetVersion": 13000,
+   "cuda_driver_api": "13.0",
+   "compute_capability": [
+    7,
+    5
+   ],
+   "driver_floor": 580,
+   "meets_driver_floor": true,
+   "libcuda_mapped_paths": [
+    "/usr/lib64/libcuda.so.580.178.04"
+   ],
+   "compat_cuDriverGetVersion": null,
+   "compat_libcuda_mapped_paths": null,
+   "decision": "ok"
+  },
+  "GPU-SPACE-PARITY-001": {
+   "variant": "torch29-cxx11-cu128-x86_64-linux",
+   "selected_library": "libalgenta_algenta_llm.sm_75.so",
+   "conversion_wall_s": 81.73,
+   "blob_bytes": 13764599808,
+   "prompt_token_ids": [
+    59604,
+    374,
+    279,
+    6722,
+    315,
+    9625,
+    13,
+    19846,
+    374,
+    279,
+    6722,
+    315
+   ],
+   "reference_tokens": [
+    9856,
+    13,
+    15920,
+    315,
+    279,
+    2701,
+    374,
+    830
+   ],
+   "native_tokens": [
+    9856,
+    13,
+    15920,
+    315,
+    279,
+    2701,
+    374,
+    830
+   ],
+   "native_full_match": true,
+   "compat_tokens": null,
+   "compat_full_match": null,
+   "open_s": 41.67,
+   "step_ms": [
+    0.24,
+    177.22,
+    26.72,
+    26.85,
+    26.88,
+    26.93,
+    26.98,
+    27.03
+   ]
+  }
+ },
+ "finished_utc": "2026-09-22T18:51:04+00:00",
+ "elapsed_s": 148.7
+}

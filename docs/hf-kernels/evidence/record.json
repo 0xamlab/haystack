@@ -1429,6 +1429,40 @@
       "owner": "maintainer",
       "accessed": "2026-09-22",
       "contradicts": ""
+    },
+    {
+      "id": "REPUBLISH-004",
+      "question": "Were all 19 families and the umbrella republished from the capped final-source builds, with the uncapped history removed?",
+      "claim": "algenta-llm GPU variants (CUDA sm_75/80/89/90 + Metal) rebuilt at the residentk 6144 staging tier (-D ALGENTA_STAGE_6144, --stage-tier 6144, PR #1147) from clean main and republished v1=92ef06d7 (was 516a8ad9) / main squashed; umbrella re-pinned v1=5063de83 (was b7baf6c6) / main=1b6604f9, one commit each; every other family unchanged. Qwen3-1.7B (d_ff 6144) is now within the GPU decode preflight; the CPU variants of algenta-llm are byte-identical rebuilds of the same natives. Yes. Each family: generated from the final macOS/Linux/CUDA natives, passed family_smoke and the API-versioning gate against its previously published v1 (0 removed, 0 changed), uploaded to v1 and main with stale build/** deleted, then super_squash_history on both branches — one commit each. Umbrella regenerated with kernel-depends pinned to the post-squash v1 shas and squashed. Release record regenerated from the published tree.",
+      "kind": "measurement",
+      "source": "scripts/hf_kernels/republish_capped.py (republish_report.json); huggingface_hub live state",
+      "result": "thyn-ai/algenta-llm: 516a8ad9 -> 92ef06d7 (v1 1 commit, main 1, private=False); thyn-ai/algenta: b7baf6c6 -> 5063de83 (v1 1 commit, main 1, private=False)",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "accepted-constraint",
+      "capability_scope": "all 20 repositories",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "eng",
+      "accessed": "2026-09-22",
+      "contradicts": []
+    },
+    {
+      "id": "GPU-SPACE-PARITY-001",
+      "question": "Does the published algenta-llm CUDA variant, loaded through kernels.get_kernel on Hugging Face GPU hardware, decode Qwen3-1.7B token-exactly against an independent transformers reference?",
+      "claim": "Yes, on a real Tesla T4 (the smallest published target, sm_75) with the 6144-tier build. Private probe Space thyn-ai/algenta-gpu-probe on t4-small (Tesla T4, compute capability 7.5, 15,360 MiB, 3 vCPU, 16 GB; driver 580.178.04, CUDA driver API 13.0; image nvidia/cuda:12.8.1-runtime-ubuntu24.04, uv Python 3.14, torch 2.9.1+cu128, kernels 0.17.1, huggingface_hub 1.26.1, transformers 5.17.0, algenta 1.0.24). Build-time gates in fetch_assets.py asserted the kernel snapshot is thyn-ai/algenta-llm v1 92ef06d7b01116a70d8a8a6179c492aac5462146 (REPUBLISH-004, source_commit 4c6fe5efa) and that the native manifest carries resident_stage_tier 6144. At run time get_kernel(backend='cuda', trust_remote_code=<20 repos>) resolved torch29-cxx11-cu128-x86_64-linux in 0.22 s, kernels' arch check passed and the loader selected libalgenta_algenta_llm.sm_75.so for cc 7.5. algenta.inference.prepare_model_checkpoint converted Qwen/Qwen3-1.7B@70d244cc to the f64 CUDA blob (13,764,599,808 B) in 81.7 s. kernel.DecodeSession(converted, prompt_ids, max_new_tokens=8) on the prompt 'Paris is the capital of France. Berlin is the capital of' (12 ids; algenta tokenizer == transformers tokenizer) produced [9856, 13, 15920, 315, 279, 2701, 374, 830] (' Germany. Which of the following is true'), identical to the transformers float32 greedy CPU reference computed on the same box (4 threads, 4.09 s). Negative control: run 11 (2026-09-22 17:20Z), same Space and hardware, with the default-tier v1 516a8ad9 was refused by the decode preflight with resident_dimension_too_large — the tier is what admits Qwen3-1.7B (d_ff 6144). The forward-compat lane (cuda-compat-13-0) was not needed (floor met natively). Billed ~2.7 min on t4-small (~$0.02); the Space was returned to cpu-basic and paused. Not verified here: execution on L4 (sm_89; the library dlopens on amd64 and L4 capacity stalled the earlier run), longer generations and multi-prompt parity (the flagship GPU stage's boot parity badge covers 8 prompts x 64 tokens with the near-tie nondeterminism rule documented in the plan), throughput (the probe measures parity, not tok/s).",
+      "kind": "observed-behaviour",
+      "source": "docs/hf-kernels/evidence/artifacts/gpu-probe-run12-t4-small-qwen3-1p7b.json (probe_result.json of run 12, steps.driver/convert/reference/gpu, image.build_facts.kernel.v1_sha and resident_stage_tier); scratchpad gpu-probe/{Dockerfile,probe_config.py,fetch_assets.py,probe.py,run_probe.py} and results/runner12_t4.log; run 11 negative control results/runner11_t4.log",
+      "result": "decision=ok; native tokens == reference tokens (8/8); kernel v1 92ef06d7 tier 6144 sm_75 on Tesla T4; conversion 81.7 s / 13.76 GB f64; run 11 on v1 516a8ad9 (default tier) = held resident_dimension_too_large",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "informational",
+      "capability_scope": "Linux x86_64 CUDA sm_75 (HF t4-small), thyn-ai/algenta-llm v1 92ef06d7, Qwen3-1.7B; L4/sm_89 execution not re-verified",
+      "required_before": "gpu_stage_public",
+      "status": "pass",
+      "owner": "maintainer",
+      "accessed": "2026-09-22",
+      "contradicts": ""
     }
   ]
 }
