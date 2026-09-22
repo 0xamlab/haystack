@@ -1,86 +1,135 @@
 Algenta Community License (ACL)
-Version 1.0 — March 2026
+Version 1.1 — September 2026
 
 Copyright (c) 2026 Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai)
 
-TERMS AND CONDITIONS
+ACCEPTANCE
 
-1. DEFINITIONS
+By using the Software, you agree to all of the terms and conditions below.
 
-"Software" means the Algenta Decision Engine source code, documentation, and associated files
-distributed under this license.
+COPYRIGHT LICENSE
 
-"Community Use" means use of the Software for non-commercial purposes, personal projects,
-research, education, open-source projects, or internal business operations at organizations
-with fewer than 50 employees AND annual gross revenue under $5,000,000 USD.
+The Licensor grants you a non-exclusive, royalty-free, worldwide, non-sublicensable,
+non-transferable license to use, copy, distribute, make available, and prepare derivative
+works of the Software, in each case subject to the limitations and conditions below.
 
-"Commercial Self-Hosting" means deploying the Software as part of a commercial product or
-service offered to external customers, OR use by organizations exceeding the Community Use
-thresholds, without purchasing a commercial license from Algenta.
+LIMITATIONS
 
-"Engine Binary" means the compiled Mojo simulation engine binary (`mojo_build/simulate`)
-distributed alongside this Software.
+1. Community Use. You may use, modify and run the Software only for Community Use: personal,
+   research or educational use; use in open-source projects; or internal business use by an
+   organization with fewer than 50 employees AND less than US$5,000,000 in annual gross revenue.
+   Any other use — including offering the Software, or a product or service that includes it,
+   to third parties for a fee, and any use by or on behalf of an organization above those
+   thresholds — requires a commercial license from the Licensor, available at
+   https://algenta.ai/pricing.
 
-2. COMMUNITY USE GRANT
+2. Managed service. You may not provide the Software to third parties as a hosted or managed
+   service, where the service provides users with access to any substantial set of the features
+   or functionality of the Software.
 
-Subject to the terms of this license, Algenta grants you a worldwide, royalty-free,
-non-exclusive license to:
+3. Compiled Components. You may not reverse engineer, decompile or disassemble the Compiled
+   Components, except to the extent that applicable law expressly permits it despite this
+   limitation.
 
-  (a) Use, copy, modify, and distribute the Software for Community Use;
-  (b) Build applications and integrations on top of the Software API;
-  (c) Run the Software on your own infrastructure for Community Use.
+4. Usage limits and license verification. You may not move, change, disable, or circumvent the
+   usage-limit or license-verification functionality in the Software — including the Community
+   worker limit built into the Compiled Components — and you may not remove or obscure any
+   functionality in the Software that is protected by it.
 
-3. RESTRICTIONS
+5. Notices. You may not alter, remove, or obscure any licensing, copyright, or other notices of
+   the Licensor in the Software. Any use of the Licensor's trademarks is subject to applicable
+   law.
 
-You may NOT, without a commercial license from Algenta:
+PATENTS
 
-  (a) Use the Software for Commercial Self-Hosting;
-  (b) Remove or modify license notices or attribution;
-  (c) Reverse-engineer the Engine Binary;
-  (d) Sub-license the Software under different terms.
+The Licensor grants you a license, under any patent claims the Licensor can license, or becomes
+able to license, to make, have made, use, sell, offer for sale, import and have imported the
+Software, in each case subject to the limitations and conditions in this license. This license
+does not cover any patent claims that you cause to be infringed by modifications or additions to
+the Software. If you or your company make any written claim that the Software infringes or
+contributes to infringement of any patent, your patent license for the Software granted under
+these terms ends immediately. If your company makes such a claim, your patent license ends
+immediately for work on behalf of your company.
 
-4. COMMERCIAL LICENSE
+DISTRIBUTION AND NOTICES
 
-Organizations requiring Commercial Self-Hosting must obtain a commercial license.
-Contact: licensing@algenta.ai | https://algenta.ai/pricing
+You must ensure that anyone who gets a copy of any part of the Software from you also gets a
+copy of these terms. If you modify the Software, you must include in any modified copies of the
+Software a prominent notice stating that you have modified the Software. You may redistribute
+unmodified Compiled Components only together with this license and only for Community Use.
 
-5. ENGINE BINARY
+NO OTHER RIGHTS
 
-The Engine Binary (`mojo_build/simulate`) is provided under a separate binary license.
-It may be redistributed with this Software for Community Use purposes only.
-The Mojo source code for the engine is proprietary and not covered by this license.
+These terms do not imply any licenses other than those expressly granted in these terms.
 
-6. CONTRIBUTIONS
+TERMINATION
 
-Contributions to this Software are welcome. There is no separate Contributor License
-Agreement: by submitting a contribution you license it to Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai)
+If you use the Software in violation of these terms, such use is not licensed, and your licenses
+will automatically terminate. If the Licensor provides you with a notice of your violation, and
+you cease all violation of this license no later than 30 days after you receive that notice,
+your licenses will be reinstated retroactively. However, if you violate these terms after such
+reinstatement, any additional violation of these terms will cause your licenses to terminate
+automatically and permanently.
+
+NO LIABILITY
+
+As far as the law allows, the Software comes as is, without any warranty or condition, and the
+Licensor will not be liable to you for any damages arising out of these terms or the use or
+nature of the Software, under any kind of legal claim.
+
+HOSTED SERVICE
+
+The Licensor operates a hosted version of the Software at https://api.algenta.ai. Use of the
+hosted service is governed by the Algenta Terms of Service, not by this license.
+
+CONTRIBUTIONS
+
+Contributions to the Software are welcome. There is no separate Contributor License Agreement:
+by submitting a contribution you license it to Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai)
 under this same license (inbound = outbound), consistent with GitHub Terms of Service §D.6.
 
-7. CLOUD SERVICE
+ATTRIBUTION
 
-Algenta operates a hosted version of this Software at https://api.algenta.ai.
-Use of the hosted service is governed by the Algenta Terms of Service, not this license.
+If you distribute the Software or a derivative work, you must retain this copyright notice and a
+link to https://algenta.ai in your documentation.
 
-8. DISCLAIMER
+DEFINITIONS
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL SEVILLE AI TECHNOLOGIES, INC. BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+"Licensor" is Seville AI Technologies, Inc. d/b/a Thyn (thyn.ai), the entity offering these terms.
 
-9. ATTRIBUTION
+"Software" is the software the Licensor makes available under these terms, including any portion
+of it, in source or compiled form: the Algenta runtime library and engine, their Compiled
+Components, the SDKs, integrations, documentation and associated files.
 
-If you distribute the Software or a derivative work, you must retain this copyright notice
-and a link to https://algenta.ai in your documentation.
+"Compiled Components" are the compiled kernel libraries, runtime closures and worker binaries the
+Licensor distributes — for example the `libalgenta_*` libraries published on the Hugging Face Hub
+and the binaries in the `algenta-runtime-native` packages. Their source code is proprietary and
+is not made available under these terms.
+
+"Community Use" has the meaning given in Limitation 1.
+
+"You" refers to the individual or entity agreeing to these terms.
+
+"Your company" is any legal entity, sole proprietorship, or other kind of organization that you
+work for, plus all organizations that have control over, are under the control of, or are under
+common control with that organization. Control means ownership of substantially all the assets
+of an entity, or the power to direct its management and policies by vote, contract, or
+otherwise. Control can be direct or indirect.
+
+"Your licenses" are all the licenses granted to you for the Software under these terms.
+
+"Use" means anything you do with the Software requiring one of your licenses.
 
 ---
 
 Why this license? (not legal advice)
 
-We follow the open-core model used by Supabase, n8n, Reown, and others:
-- The framework, integrations, portal, and SDKs are source-available
-- The simulation engine core remains proprietary
+We follow the source-available, open-core model used by Elastic (Elastic License 2.0),
+n8n (Sustainable Use License), Confluent (Community License) and others:
+- The framework, integrations, portal and SDKs are source-available
+- The compiled kernels and engine remain proprietary, and their usage limits are enforced in the
+  binaries themselves
 - Community builders get full access to build on top of Algenta
 - Commercial deployment beyond the thresholds requires a paid license
 
-Questions? licensing@algenta.ai
+Questions and plans: https://algenta.ai · Community: https://discord.gg/w8NDsph9an

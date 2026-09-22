@@ -475,10 +475,15 @@ the full record for one token. Decode needs a GPU build; on the CPU build `Decod
     missing = [w for w, present in (("Linux x86-64", "x86_64" in linux_arches), ("Linux arm64", "aarch64" in linux_arches), ("macOS", darwin)) if not present]
     platform_note = ("Windows is not supported." if not missing else ", ".join(missing) + (" builds follow" if len(missing) > 1 else " builds follow") + " from the same source. Windows is not supported.")
     headline = wrap(f"{summary}. Compiled Mojo, loaded in-process.")
+    # the licence version comes from LICENSE itself, so an approved bump propagates on the next publish
+    _version_line = re.search(r"^Version (\d+\.\d+)", (ROOT / "LICENSE").read_text(encoding="utf-8-sig"), re.M)
+    if not _version_line:
+        raise SystemExit("LICENSE has no 'Version X.Y' line: the card's license_name cannot be derived; refusing to generate")
+    license_version = _version_line.group(1)
     return f"""---
 library_name: kernels
 license: other
-license_name: algenta-community-license-1.0
+license_name: algenta-community-license-{license_version}
 license_link: LICENSE
 tags:
 - algenta
@@ -537,14 +542,21 @@ does not survive `fork()`; start worker processes with `spawn`.
 
 ## License
 
-Algenta Community License 1.0 (`LICENSE`). Free for personal, research and open-source use, and
+Algenta Community License {license_version} (`LICENSE`). Free for personal, research and open-source use, and
 for internal use at organizations with fewer than 50 employees and under $5M in annual revenue.
-Beyond that, a commercial license is required: licensing@algenta.ai.
+Beyond that, a commercial license is required: https://algenta.ai/pricing.
 
 Enforced in the compiled library, not just in this text: **one concurrent native worker per
 device** (ABI §9). A second process, family or thread waits its turn rather than running in
 parallel. That is the Community licence's worker floor made real; parallel execution comes with a
 commercial license.
+
+## Support
+
+Generally Available on the platforms listed under Requirements. Within `v1`, functions are only added;
+removals or signature changes ship as `v2`. Platforms, accelerators and PyTorch releases not listed are not
+supported. Community: https://discord.gg/w8NDsph9an or this repository's Community tab.
+Commercial licences and support: https://algenta.ai/pricing.
 """
 
 

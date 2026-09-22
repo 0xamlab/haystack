@@ -278,7 +278,7 @@ def test_vendored_count_guard_agrees_with_the_sdk_guard():
 @pytest.mark.skipif(not REPO_DIR, reason="HF_KERNEL_REPO_DIR not set")
 def test_card_reads_for_an_external_user():
     card = (Path(REPO_DIR) / "README.md").read_text()
-    for needle in ("pip install kernels torch", "trust_remote_code=[", "## What's inside", "## Requirements", "## License", "licensing@algenta.ai"):
+    for needle in ("pip install kernels torch", "trust_remote_code=[", "## What's inside", "## Requirements", "## License", "algenta.ai/pricing"):
         assert needle in card, needle
     for banned in ("Built from", "serialized within a process", "count relation", "Decision Engine", "thyn-ai/algenta`", "Kernels Hub"):
         assert banned not in card, banned

@@ -110,7 +110,7 @@ An umbrella release moves only when every family it pins has been re-verified to
 
 Algenta Community License 1.0 (`LICENSE`). Free for personal, research and open-source use, and
 for internal use at organizations with fewer than 50 employees and under $5M in annual revenue.
-Beyond that, a commercial license is required: licensing@algenta.ai.
+Beyond that, a commercial license is required: https://algenta.ai/pricing.
 """
 
 
