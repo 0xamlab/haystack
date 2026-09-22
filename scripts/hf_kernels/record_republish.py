@@ -151,8 +151,21 @@ if a.reopened:
 json.dump(R, open(P, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 cp = ROOT / "docs/hf-kernels/release/capabilities.json"
 cap = json.load(open(cp, encoding="utf-8"))
+pub_since = re.search(
+    r"PUBLIC \(all 20\) since \d{4}-\d{2}-\d{2}",
+    str(cap.get("publication_state", {}).get("hub_visibility", "")),
+)
+pub_since = pub_since.group(0) if pub_since else ""
 cap["publication_state"] = {
-    "hub_visibility": ("PUBLIC (all 20) since " + today + " — capped build only")
+    # A --public-ok re-release does not change WHEN the repos became public: keep the date already recorded.
+    "hub_visibility": (
+        (
+            pub_since
+            if (a.public_ok and not a.reopened and pub_since)
+            else ("PUBLIC (all 20) since " + today)
+        )
+        + " — capped build only"
+    )
     if (a.reopened or a.public_ok)
     else "PRIVATE (all 20) — capped build published, re-open pending verification",
     "uncapped_revisions": "removed: super_squash_history on v1 and main of every repository (1 commit each, verified live "

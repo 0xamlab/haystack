@@ -1210,7 +1210,7 @@
     {
       "id": "PUBLISH-VISIBILITY-001",
       "question": "What is the Hub visibility of the 20 repositories while the cap is rebuilt?",
-      "claim": "All 20 flipped to PRIVATE on 2026-09-22 (containment): the published binaries carried no technical worker cap and L1 was never granted. Hub download counters read 0 for every repo while public (counters lag/undercount; not proof of zero pulls).",
+      "claim": "All 20 flipped to PRIVATE on 2026-09-21 local time (2026-09-22T02–03Z; containment): the published binaries carried no technical worker cap and L1 was never granted. Hub download counters read 0 for every repo while public (counters lag/undercount; not proof of zero pulls).",
       "kind": "observed-behaviour",
       "source": "huggingface_hub HfApi.update_repo_settings(private=True) × 20; repo_info.downloads",
       "accessed": "2026-09-21",
@@ -1325,6 +1325,42 @@
       "owner": "owner",
       "accessed": "2026-09-22",
       "contradicts": []
+    },
+    {
+      "id": "REPUBLISH-002",
+      "question": "Were all 19 families and the umbrella republished from the capped final-source builds, with the uncapped history removed?",
+      "claim": "ACL 1.1 + card rollout 2026-09-22 (19 families; umbrella regenerated with the version-aware card from #1134 and republished v1=b450a8a3 / main=1f3bb325, one commit each). Yes. Each family: generated from the final macOS/Linux/CUDA natives, passed family_smoke and the API-versioning gate against its previously published v1 (0 removed, 0 changed), uploaded to v1 and main with stale build/** deleted, then super_squash_history on both branches — one commit each. Umbrella regenerated with kernel-depends pinned to the post-squash v1 shas and squashed. Release record regenerated from the published tree.",
+      "kind": "measurement",
+      "source": "scripts/hf_kernels/republish_capped.py (republish_report.json); huggingface_hub live state",
+      "result": "thyn-ai/algenta-bits-time: 899e2901 -> 199dff6c (v1 1 commit, main 1, private=False); thyn-ai/algenta-crypto: 4368d5c3 -> 944dadd4 (v1 1 commit, main 1, private=False); thyn-ai/algenta-finance: 9473a0ea -> a646c590 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-a: 07ed697b -> 34fa002a (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-b: 13345760 -> a2ffcc4e (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-c: 918f4f22 -> 8c2dd049 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-d: fe3ffc8f -> d2eb31c5 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-e: f77cb78c -> 022f029f (v1 1 commit, main 1, private=False); thyn-ai/algenta-geometry: 5b7d3318 -> 54b91d90 (v1 1 commit, main 1, private=False); thyn-ai/algenta-graph: 0216f866 -> 7247b466 (v1 1 commit, main 1, private=False); thyn-ai/algenta-llm: 7638dd1b -> a01e2b23 (v1 1 commit, main 1, private=False); thyn-ai/algenta-ml: ae179a7b -> c67aed62 (v1 1 commit, main 1, private=False); thyn-ai/algenta-networking: 8b87ab14 -> 11ada762 (v1 1 commit, main 1, private=False); thyn-ai/algenta-serialization: 3bf8ec08 -> 12109d34 (v1 1 commit, main 1, private=False); thyn-ai/algenta-signal: b6a2ff05 -> a770d6fe (v1 1 commit, main 1, private=False); thyn-ai/algenta-stats: e43c6f78 -> ac35ffe2 (v1 1 commit, main 1, private=False); thyn-ai/algenta-tensors: 81bf6a88 -> e1a96bba (v1 1 commit, main 1, private=False); thyn-ai/algenta-text: 785985a4 -> fb2cab45 (v1 1 commit, main 1, private=False); thyn-ai/algenta-vision: f503f130 -> ebad076f (v1 1 commit, main 1, private=False); thyn-ai/algenta: eef8d7d1 -> b450a8a3 (v1 1 commit, main 1, private=False)",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "accepted-constraint",
+      "capability_scope": "all 20 repositories",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "eng",
+      "accessed": "2026-09-22",
+      "contradicts": []
+    },
+    {
+      "id": "HUB-CLEANUP-001",
+      "question": "Does the thyn-ai Hub org expose any model- or dataset-type repository besides the 20 capped kernel repositories, and what else is public under the org?",
+      "claim": "No model or dataset repositories. thyn-ai/mojo-kernels-wheels — a public model-type repo mirroring the OSS mojo-kernels GitHub release arena-wheels-v0.1.0 (13 manylinux wheels, Apache-2.0, 0 downloads at deletion; already stale vs mojo-kernels v0.1.3) — was deleted on the owner's instruction on 2026-09-22. By file inventory the 13 wheels were third-party *_mojo packages, name/size-identical to the OSS release assets for all 13 and sha256-identical for the 12 LFS-stored wheels (the Hub recorded no sha for the 20 KB non-LFS pydicom_mojo wheel; its contents were inspected before deletion: one third-party .so, no Algenta names); no libalgenta/hfkernel/residentk/metaldispatch/algenta_runtime names among them (contents not re-inspected after deletion). Live org inventory afterwards (anonymous): numModels 0, numDatasets 0, numKernels 20, numSpaces 6. The public inventory is the 19 family repos + the umbrella (kernel-type) plus 6 public Spaces: algenta, algenta-for-llm-agents, algenta-governed-agent, algenta-governed-tool-calls, algenta-llm-modules, algenta-speed-arena. The Spaces are demo/eval front-ends, not kernel distributions, and are outside this record's capability scope.",
+      "kind": "observed-behaviour",
+      "source": "HfApi().delete_repo('thyn-ai/mojo-kernels-wheels', repo_type='model'); anonymous model_info -> RepositoryNotFoundError; list_models(author='thyn-ai') -> []; list_datasets -> []; list_spaces -> 6; GET /api/organizations/thyn-ai/overview; pre-deletion snapshot sha 2fa75407 (16 files / 13 wheels, downloads 0, mirror of https://github.com/thyn-ai/mojo-kernels/releases/tag/arena-wheels-v0.1.0)",
+      "result": "RepositoryNotFound anonymously for thyn-ai/mojo-kernels-wheels; list_models/list_datasets(author='thyn-ai') empty; org overview numModels 0, numDatasets 0, numKernels 20, numSpaces 6",
+      "confidence": "high",
+      "impact": "P1",
+      "outcome_class": "informational",
+      "capability_scope": "hub-org",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "owner (go given 2026-09-22)",
+      "accessed": "2026-09-22",
+      "contradicts": [
+        "HF-WHEELS-001 (status 'delete = owner decision' — now executed; superseded)"
+      ]
     }
   ]
 }
