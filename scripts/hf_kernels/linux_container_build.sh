@@ -19,6 +19,10 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$ARCH" ] && [ -n "$OUT" ] && [ "${#FAMILIES[@]}" -gt 0 ] || { echo "usage: $0 --arch arm64|amd64 --out DIR [--backend cpu|cuda] FAMILY..." >&2; exit 2; }
 case "$OUT" in /Users/*|/home/*|/tmp/*) ;; *) echo "--out must be under a directory Docker shares with containers (/Users, /home or /tmp); got $OUT" >&2; exit 2 ;; esac
+# NOTE: the list above is only a sanity check — the path must actually be in Docker Desktop's file-sharing
+# list. On some installs /tmp and /private/tmp mount as EMPTY directories (writes vanish with the
+# container while the build still reports success); /Users always works. The guard at the end of this
+# script fails loudly if nothing landed in --out.
 IMAGE="algenta-hfk-builder:${ARCH}"
 PLATFORM="linux/${ARCH}"
 SRC_VOL="hfk-src-${ARCH}"
@@ -50,3 +54,7 @@ docker run --rm --platform "$PLATFORM" \
     done
     ls -la /out
   '
+
+# Fail loudly if the bind mount silently dropped the artifacts (unshared host path).
+[ -n "$(ls -A "$OUT" 2>/dev/null)" ] || { echo "ERROR: the build reported success but NOTHING landed in $OUT — that host path is not shared with Docker Desktop (use a /Users path)" >&2; exit 3; }
+echo "artifacts on host: $(find "$OUT" -name 'libalgenta_*' -type f | wc -l | tr -d ' ') family librar(ies) under $OUT"

@@ -89,6 +89,9 @@ These five are the **only** exported symbols. Everything else in the library is 
 - 6.2 Cross-family or cross-revision serialisation is **not** provided by this ABI; it needs an
   explicit shared coordinator and a concurrency test (plan v3, Concurrency scope).
 
+- 6.4 Independently of any per-handle rule, §9 serialises every `execute` on the device: two handles,
+  two families or two processes never execute natively at the same time.
+
 ## 7. Python wrapper obligations (`_native.py`)
 
 - 7.1 `restype` of `execute` is `c_void_p`; bytes are copied out with `ctypes.string_at` and the
@@ -113,3 +116,58 @@ These five are the **only** exported symbols. Everything else in the library is 
 
 - 8.1 Any change to §1 signatures, §3 envelopes or §4 ownership bumps `ABI_VERSION` and the Hub
   kernel major version together.
+- 8.2 §9 (the Community worker cap) is additive: §1 signatures, the §3 envelope shape and §4
+  ownership are unchanged and the only new surface is the `community_worker_slot_unavailable` error
+  code, so `ABI_VERSION` stays 1. Removing or weakening §9 would be a licensing change, not an ABI
+  one, and is not something a wrapper may do.
+
+## 9. Community worker cap (device-wide single worker) — enforced in the compiled library
+
+- 9.1 At most **one** native execution is in flight per device at any instant, across every process,
+  thread, loaded family and loaded revision. `algenta_runtime_execute` takes the device worker slot
+  before `_execute` and releases it before the response pointer crosses the boundary. This is the
+  Community licence's `concurrent_worker_limit = 1` (the licensed engine's local broker cap) made
+  technical for a distribution that has no device login. It is enforced **in the compiled
+  `libalgenta_<family>`**, not in Python and not by licence text.
+- 9.2 Primitive: BSD `flock(LOCK_EX)` on `/dev/null`. The anchor is POSIX-guaranteed to exist,
+  root-owned, world-openable read-only and undeletable by any user, so there is no lock *file* a
+  user can delete-and-recreate to obtain a second worker. The lock is taken **blocking**: a second
+  caller queues (no timeout) and then runs with a correct result — Community gets exactly one
+  worker's throughput. The kernel releases the lock when the holder exits or dies, so a crashed
+  caller can never wedge the device.
+- 9.3 Always on. No environment variable, init-config key or request field disables or widens it: the
+  cap code (`abi.mojo`) reads no environment variable, and gate scenario (e) proves a hostile environment
+  has no effect. 17 of the 19 family binaries import no `getenv` at all; `algenta-bits-time` and `algenta-general-a` import it
+  transitively through the Mojo stdlib (`os` / `os.env` / `ffi.cstring` routines reached by their kernels — no
+  kernel module of theirs calls it directly), not through the cap. That code runs INSIDE the lock and cannot
+  influence whether it is taken; proven on general-a's final artifact — hostile environment, 0.82 effective
+  workers, all nine scenarios held. There is no "dark" mode (contrast: the engine's broker is dark
+  until a licence sets a limit — here there is no licence to consult, so the floor is unconditional).
+- 9.4 Fail-closed. If the slot cannot be taken (the anchor cannot be opened or locked), the call is
+  refused with the `community_worker_slot_unavailable` error envelope and nothing executes. The
+  library never runs uncapped.
+- 9.4a Release is guaranteed while the process lives (every return path, and the defensive `except`
+  around `_execute`), and by the kernel when it does not: SIGKILL, a Mojo panic/abort or an OOM kill
+  closes the descriptor and drops the lock (gate scenario (f): the next call proceeds ~115 ms after the
+  holder dies). A live process that never returns from `_execute` (a hang) holds the one worker — by
+  design; that is the crash gate's domain (`family_smoke` hangs = 0), and it grants no parallelism.
+  `_execute` handles every malformed input by RETURNING an envelope (a 14-input adversarial probe found
+  no external input that makes it raise), so the `except` is a backstop, not a reachable path.
+- 9.5 Scope of "device": one operating-system / IPC instance. Separate containers, VMs or machines
+  are separate devices and each gets its own single worker — the fleet case that only a licence
+  (identity) can count, exactly as for the licensed engine. Outside the model, and prohibited by ACL
+  §3 as tampering: running as root, patching the binary, or interposing `flock` via `LD_PRELOAD` /
+  `DYLD_INSERT_LIBRARIES`.
+- 9.6 The cap is on *execution*. `init`, `shutdown`, `free` and `version` are not serialised; any
+  number of families and handles may be loaded. Only one of them computes at a time.
+- 9.7 Verification gate. `scripts/hf_kernels/community_cap_redteam.py LIB REQ` must report
+  ≤ 1.0 effective workers in every scenario before any artifact is published: 4 processes, 4 threads
+  on one handle, two library instances (two families), fork-after-load, hostile environment
+  variables, SIGKILL of the slot holder (next call proceeds), a queued call while the slot is held
+  (returns a clean result), that the anchor cannot be unlinked, and that each reachable error path (four distinct error codes) keeps
+  its own code and releases the slot (the next heavy call runs at once; a leak would hang). It measures **total wall time
+  against the serialised sum of warm heavy calls** — the only metric that cannot be fooled by a
+  blocking lock (call-count and window-overlap methods both mis-read queued waiting as
+  parallelism). Reference on final-source artifacts: macOS arm64 0.80–0.89, Linux aarch64 (non-root, ubuntu 22.04)
+  0.74–1.00, and general-a — a family whose binary imports getenv via the stdlib — 0.62–0.90 effective workers in
+  every scenario (1.0 = a single worker; a bypass reads ~4.0).

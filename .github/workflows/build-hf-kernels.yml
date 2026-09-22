@@ -143,6 +143,14 @@ jobs:
             for v in hub/"$fam"/build/*-cpu-x86_64-linux; do
               if [ -d "$v" ]; then mkdir -p smoke && python3 scripts/hf_kernels/family_smoke.py --variant "$v" --out "smoke/$fam-linux-x86_64.json"; break; fi
             done
+            # ABI §9 gate: the compiled Community worker cap holds — one native worker per device, across
+            # processes, threads, families and forks. Proven on algenta-stats; the cap lives in the shared
+            # ABI, so one family proves the mechanism for every library built from it.
+            if [ "$fam" = "algenta-stats" ]; then
+              lib=$(ls hub/"$fam"/build/*-cpu-x86_64-linux/*/_native/libalgenta_algenta_stats*.so 2>/dev/null | head -1)
+              [ -n "$lib" ] || { echo "::error::no linux algenta-stats library for the ABI §9 gate"; exit 1; }
+              mkdir -p smoke && python3 scripts/hf_kernels/community_cap_redteam.py "$lib" smoke/heavy_req.json
+            fi
           done
       - name: Sign metadata (sigstore, keyless)
         run: |
@@ -189,6 +197,12 @@ jobs:
               v="hub/$fam/build/$VARIANT"
               if [ ! -d "$v" ]; then echo "::error::$fam ships $backend but $v is missing from the assembled repositories"; exit 1; fi
               python3 scripts/hf_kernels/family_smoke.py --variant "$v"
+              if [ "$fam" = "algenta-stats" ]; then
+                # ABI §9 gate on the darwin build (see the assemble job for the linux run).
+                lib=$(ls "$v"/*/_native/libalgenta_algenta_stats*.dylib 2>/dev/null | head -1)
+                [ -n "$lib" ] || { echo "::error::no darwin algenta-stats library for the ABI §9 gate"; exit 1; }
+                python3 scripts/hf_kernels/community_cap_redteam.py "$lib" "$RUNNER_TEMP/heavy_req.json"
+              fi
               ran=$((ran + 1))
             done
           fi

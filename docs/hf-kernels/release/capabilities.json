@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "purpose": "Release capability manifest for the Algenta Hugging Face kernel repositories (plan v3). Every release gate evaluates exactly this file.",
+  "status": "DRAFT — awaiting owner approval (L1/L2). Nothing here is claimed as approved.",
+  "approved_by": null,
+  "approved_at": null,
+  "source_commit": "2cee5905168d9bc4643fc395984b79c26ebb3cc0",
+  "generated": "2026-09-21",
+  "kernels_interval": ">=0.17.1,<0.18",
+  "tested_versions": {
+    "kernels": "0.17.1",
+    "huggingface_hub": "1.26.1",
+    "mojo": "1.0.0",
+    "glibc_floor": "2.35"
+  },
+  "torch_requirement": "required — native per-torch variants; no torch-free universal native payload (the umbrella's torch-universal dir is a pure-Python kernel-depends dispatcher)",
+  "torch_versions": [
+    "2.5",
+    "2.6",
+    "2.7",
+    "2.8",
+    "2.9",
+    "2.10",
+    "2.11",
+    "2.12",
+    "2.13",
+    "2.14"
+  ],
+  "cuda_toolkits": [
+    "cu118",
+    "cu121",
+    "cu124",
+    "cu126",
+    "cu128",
+    "cu129",
+    "cu130",
+    "cu132"
+  ],
+  "supported_configurations": [
+    {
+      "os": "macos",
+      "arch": "aarch64",
+      "backend": "cpu",
+      "floor": "macOS 15.0 (minos; header-measured, real macOS-15 hardware run still open: HF-MACOS-001)",
+      "variant_dir": "torch<MN>-cpu-aarch64-darwin",
+      "families": "all 19"
+    },
+    {
+      "os": "linux",
+      "arch": "aarch64",
+      "backend": "cpu",
+      "floor": "glibc 2.35",
+      "variant_dir": "torch<MN>-cxx11-cpu-aarch64-linux",
+      "families": "all 19"
+    },
+    {
+      "os": "linux",
+      "arch": "x86_64",
+      "backend": "cpu",
+      "floor": "glibc 2.35, x86-64-v3",
+      "variant_dir": "torch<MN>-cxx11-cpu-x86_64-linux",
+      "families": "all 19"
+    },
+    {
+      "os": "macos",
+      "arch": "aarch64",
+      "backend": "metal",
+      "floor": "macOS 26",
+      "variant_dir": "torch<MN>-metal-aarch64-darwin",
+      "families": [
+        "algenta-llm"
+      ]
+    },
+    {
+      "os": "linux",
+      "arch": "x86_64",
+      "backend": "cuda",
+      "targets": [
+        "sm_75",
+        "sm_80",
+        "sm_89",
+        "sm_90"
+      ],
+      "excluded_targets": [
+        "sm_70"
+      ],
+      "driver": ">= 580",
+      "floor": "glibc 2.35",
+      "variant_dir": "torch<MN>-cxx11-cu<NNN>-x86_64-linux",
+      "families": [
+        "algenta-llm"
+      ],
+      "note": "PTX embedded per target; loader picks the newest built target <= device compute capability"
+    }
+  ],
+  "candidates_not_published": [
+    {
+      "backend": "rocm",
+      "reason": "no AMD build+execution evidence on hardware (GPU-ROCM-001); stays a candidate"
+    }
+  ],
+  "families": [
+    "algenta-bits-time",
+    "algenta-crypto",
+    "algenta-finance",
+    "algenta-general-a",
+    "algenta-general-b",
+    "algenta-general-c",
+    "algenta-general-d",
+    "algenta-general-e",
+    "algenta-geometry",
+    "algenta-graph",
+    "algenta-llm",
+    "algenta-ml",
+    "algenta-networking",
+    "algenta-serialization",
+    "algenta-signal",
+    "algenta-stats",
+    "algenta-tensors",
+    "algenta-text",
+    "algenta-vision"
+  ],
+  "umbrella": "thyn-ai/algenta (kernel-depends pinned by revision to each family's v1 head)",
+  "included_modules": "per family: scripts/hf_kernel_filters.json (every executable module in exactly one family)",
+  "excluded_functions": {
+    "column_rank.run_column_rank": "takes a full JSON request string; reached through the column-ranking session, not a plain in-process call",
+    "combinatorial.tsp_greedy": "reads its distance argument as a square matrix; a non-square nested list is not expressible as a length rule",
+    "contest_strategy.option_board": "requires its per-entrant arrays to share one length; a mismatch is not expressible as a length rule",
+    "dimensionality.power_iteration": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "dependency.dependency_depth": "walks an adjacency list that must be acyclic and in range; not expressible as a length rule",
+    "gbdt.gbdt_predict": "walks a tree encoding that must be well-formed; a malformed tree is not expressible as a length rule",
+    "svm_kernel.is_positive_semidefinite": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "svm_kernel.kernel_center": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "topology.filtration_values": "requires a consistent distance/simplex structure; not expressible as a length rule",
+    "topology.persistence_diagram_0": "requires a consistent distance/simplex structure; not expressible as a length rule",
+    "topology.vietoris_rips_edges": "requires a square distance matrix; a non-square nested list is not expressible as a length rule",
+    "trie.*": "the trie functions take a Trie structure that a plain in-process call cannot build; use the SDK for tries",
+    "constraint.magic_square_check": "reads its grid argument as square; a non-square nested list is not expressible as a length rule",
+    "compression.huffman.generate_codes": "allocates from a frequency table whose size it trusts; an ill-formed table is not expressible as a length rule",
+    "matrix_decomp.lu_decompose": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "matrix_decomp.trace": "reads the diagonal of a square matrix; a non-square nested list is not expressible as a length rule",
+    "datetime.now_epoch": "needs the host interpreter (Python interop) — SIGSEGV in-process",
+    "env.*": "needs the host interpreter (Python interop) — SIGSEGV in-process"
+  },
+  "enforced_restrictions": [
+    {
+      "restriction": "at most ONE concurrent native worker per device",
+      "mechanism": "ABI §9: flock(LOCK_EX) on /dev/null taken inside algenta_runtime_execute in the compiled library; blocking; kernel-released on holder death; fail-closed (community_worker_slot_unavailable); the cap code reads no environment variable (abi.mojo has no getenv; gate scenario (e)); 17/19 family binaries import no getenv, bits-time and general-a import it transitively through the Mojo stdlib, inside the lock (general-a final artifact: hostile env 0.82 effective workers, 9/9 held)",
+      "scope": "one OS/IPC instance = one device",
+      "matches": "apps/runtime/license.py Community floor concurrent_worker_limit=1",
+      "verified_by": "scripts/hf_kernels/community_cap_redteam.py — 9 scenarios <= 1.0 effective workers (see evidence CAP-ENFORCE-001/002/003)"
+    },
+    {
+      "restriction": "request validation at the native boundary",
+      "mechanism": "ABI §2–§5 (bounded C strings, nesting, count relations, excluded functions refused before dispatch)"
+    },
+    {
+      "restriction": "artifact integrity",
+      "mechanism": "sha256 of every native file verified against _native/manifest.json before dlopen (ABI 7.5)"
+    }
+  ],
+  "license_only_obligations": [
+    "Community-use thresholds (non-commercial, or < 50 employees AND < $5M revenue) — ACL §1/§2/§3(a)",
+    "no reverse-engineering of the engine binary — ACL §3(c)",
+    "attribution / notices — ACL §3(b), §9",
+    "device and seat counts ACROSS separate OS instances / machines — need identity; the licensed engine counts them, the no-login kernels cannot"
+  ],
+  "accepted_deviations": [
+    {
+      "id": "HF-LINUX-001",
+      "deviation": "Linux closure floor is glibc 2.35 (Ubuntu 22.04), not manylinux_2_28",
+      "status": "open with HF"
+    },
+    {
+      "id": "HF-MACOS-001",
+      "deviation": "macOS 15 CPU floor measured from headers (minos 15.0), no macOS-15 hardware run yet",
+      "status": "open"
+    }
+  ],
+  "licensing_status": {
+    "L1_redistribution_approval": "OPEN — not yet granted (LEGAL-L1-001); artifacts are PRIVATE on the Hub until granted",
+    "L2_ga_wording": "OPEN",
+    "LICENSE_wording": "OPEN (LEGAL-L1-003: ACL 1.0 still names the Decision Engine and mojo_build/simulate, not the kernel libraries)"
+  },
+  "supply_chain_controls": {
+    "digest": "enforced (ABI 7.5)",
+    "signature": "wired in build-hf-kernels.yml (sigstore keyless) — no signed artifact on the Hub yet (workflow never run)",
+    "provenance_slsa": "not wired",
+    "sbom": "not wired",
+    "pre_execution_enforcement": "none — get_kernel does not verify signatures; opt-in only (documented)"
+  },
+  "publication_state": {
+    "hub_visibility": "PRIVATE (all 20 repos) since 2026-09-22 pending the capped rebuild, Linux red-team, history squash and owner L1",
+    "uncapped_revisions": "to be buried (history squash) before any re-open"
+  },
+  "cuda_by_torch": {
+    "2.5": [
+      "cu118",
+      "cu121",
+      "cu124"
+    ],
+    "2.6": [
+      "cu118",
+      "cu124",
+      "cu126"
+    ],
+    "2.7": [
+      "cu118",
+      "cu126",
+      "cu128"
+    ],
+    "2.8": [
+      "cu126",
+      "cu128",
+      "cu129"
+    ],
+    "2.9": [
+      "cu126",
+      "cu128",
+      "cu130"
+    ],
+    "default (torch >= 2.10)": [
+      "cu126",
+      "cu128",
+      "cu129",
+      "cu130",
+      "cu132"
+    ]
+  },
+  "family_reconciliation": {
+    "in_filter_table": 20,
+    "published_v1_per_release_record": 19,
+    "in_filter_table_not_in_release_record": [
+      "algenta-host-interop"
+    ],
+    "in_release_record_not_in_filter_table": [],
+    "note": "Every filter-table family must either be published or be listed here with a recorded reason before GA.",
+    "withheld": {
+      "algenta-host-interop": "in the filter table, never published: its modules ['env'] need the host Python interpreter and SIGSEGV in-process (evidence INTEROP-001/002); it stays withheld until a supported host-interpreter interaction is defined and tested"
+    }
+  }
+}

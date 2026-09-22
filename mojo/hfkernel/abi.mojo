@@ -214,10 +214,87 @@ def algenta_runtime_init(cfg_addr: Int) abi("C") -> Int:
     return Int(h)
 
 
+# ── ABI 9: Community worker cap — enforced HERE, in the compiled library ──────────────────────────
+# At most ONE native execution is in flight per device, machine-wide, across every process, thread,
+# family and loaded revision. This is the Community licence's `concurrent_worker_limit = 1`
+# (apps/runtime/license.py) made technical for a distribution with no device login: the same
+# posture as the licensed engine's local broker, but it can never be dark, never be configured and
+# never be edited out of Python. Nothing in the environment, the init config or the request turns it
+# off — the only way around it is patching this binary, which the ACL prohibits.
+#
+# Primitive: BSD flock(LOCK_EX) on /dev/null. The anchor is POSIX-guaranteed to exist, root-owned,
+# world-openable read-only and undeletable by any user, so there is no lock FILE to delete-and-
+# recreate for a second worker. flock is released by the kernel when the holder dies (or when the
+# descriptor closes), so a crashed caller can never wedge the device. LOCK_EX without LOCK_NB
+# blocks: a second caller queues, gets exactly one worker's throughput, and its result stays
+# correct. Fail-closed: if the slot cannot be taken the call is REFUSED
+# (community_worker_slot_unavailable) — never a free ride to parallelism.
+#
+# The descriptor comes from the stdlib's own `open()` (a FileHandle), NOT from an `external_call`
+# of ours: libc `open` is variadic and the stdlib declares it with `num_fixed_args=2`; a second
+# declaration of the same symbol with any other shape fails to lower ("existing function with
+# conflicting signature") in every family that also links std/io/file — algenta-llm did. The only
+# extern this block introduces is `flock`, which nothing else in the stdlib or the engine declares.
+# `FileHandle._get_raw_fd()` is a private stdlib accessor: the toolchain is deliberately frozen at
+# Mojo 1.0.0, and a toolchain bump re-checks this line (the §9 gate fails loudly if it breaks).
+# Verified mutually exclusive across processes on macOS arm64 and Linux (ubuntu 22.04); the shipped
+# gate is scripts/hf_kernels/community_cap_redteam.py (ABI 9.7). Flag values are identical on every
+# supported target.
+comptime _CAP_ANCHOR: StaticString = "/dev/null"
+comptime _LOCK_EX: Int32 = 2
+comptime _LOCK_UN: Int32 = 8
+
+
+def _take_slot() raises -> FileHandle:
+    """ABI 9.1: open the anchor and take the exclusive device slot. Raises, with the reason, if either
+    step fails; on a failed flock the descriptor is closed before raising (no lock was ever held)."""
+    var anchor = open(String(_CAP_ANCHOR), "r")
+    if external_call["flock", Int32](Int32(anchor._get_raw_fd()), _LOCK_EX) != 0:
+        try:
+            anchor.close()
+        except:
+            pass
+        raise Error("could not take the device worker slot")
+    return anchor^
+
+
+def _release_slot(mut anchor: FileHandle):
+    """ABI 9.1: drop the lock and close the descriptor. Never raises — a close failure has nowhere to
+    be reported and must never mask the response (closing also drops the lock; belt and braces)."""
+    _ = external_call["flock", Int32](Int32(anchor._get_raw_fd()), _LOCK_UN)
+    try:
+        anchor.close()
+    except:
+        pass
+
+
+def _execute_capped(handle_addr: Int, req_addr: Int) -> String:
+    """ABI 9.1/9.4: take the device worker slot, run the request, release. Never raises.
+
+    Two failure domains, deliberately kept apart so an error is never misattributed:
+      * acquisition (anchor cannot be opened or locked) -> community_worker_slot_unavailable (9.4);
+      * execution (anything `_execute` raises outside its own `route` guard, e.g. while decoding
+        the request) -> runtime_execution_failed (3.3), exactly as an uncapped call would report it.
+    The slot is released on EVERY path once taken, explicitly, before the response crosses the
+    boundary — not left to the FileHandle destructor."""
+    var anchor: FileHandle
+    try:
+        anchor = _take_slot()
+    except e:
+        return _error("community_worker_slot_unavailable", String(e))  # ABI 9.4 fail-closed
+    var response: String
+    try:
+        response = _execute(handle_addr, req_addr)
+    except e:
+        response = _error("runtime_execution_failed", String(e))  # ABI 3.3 — never blamed on the slot
+    _release_slot(anchor)  # ABI 9.1: released on every path, before the response crosses the boundary
+    return response
+
+
 @export
 def algenta_runtime_execute(handle_addr: Int, req_addr: Int) abi("C") -> Int:
     _ensure_cpu_device()  # ABI 4.9: the calling thread may not be the one that ran init
-    return _to_cstr_address(_execute(handle_addr, req_addr))  # ABI 1.3 / 4.1
+    return _to_cstr_address(_execute_capped(handle_addr, req_addr))  # ABI 9.1 / 1.3 / 4.1
 
 
 @export

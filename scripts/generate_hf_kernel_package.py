@@ -460,7 +460,12 @@ the full record for one token. Decode needs a GPU build; on the CPU build `Decod
 """
     excluded_block = ""
     if excluded:
-        excluded_block = "\n## Not included\n\n" + "\n".join(f"- `{e}` \u2014 {exclusion_reasons.get(e, 'served by the Algenta runtime, not this in-process build')}." for e in sorted(excluded)) + "\n"
+        # One bullet per excluded function, wrapped at 100 columns with a hanging indent so the card
+        # stays readable in a terminal (the package test enforces <= 110 characters per prose line).
+        excluded_block = "\n## Not included\n\n" + "\n".join(
+            textwrap.fill(f"`{e}` \u2014 {exclusion_reasons.get(e, 'served by the Algenta runtime, not this in-process build')}.",
+                          width=100, initial_indent="- ", subsequent_indent="  ", break_on_hyphens=False, break_long_words=False)
+            for e in sorted(excluded)) + "\n"
     backend_word = " · ".join(b.upper() if b == "cpu" else b.capitalize() for b in backends)
     wrap = lambda text: textwrap.fill(" ".join(text.split()), width=100)  # noqa: E731
     intro = wrap(f"{backend_note} `trust_remote_code` names the repositories you allow; Hugging Face's trusted publishers load without it.")
@@ -535,6 +540,11 @@ does not survive `fork()`; start worker processes with `spawn`.
 Algenta Community License 1.0 (`LICENSE`). Free for personal, research and open-source use, and
 for internal use at organizations with fewer than 50 employees and under $5M in annual revenue.
 Beyond that, a commercial license is required: licensing@algenta.ai.
+
+Enforced in the compiled library, not just in this text: **one concurrent native worker per
+device** (ABI §9). A second process, family or thread waits its turn rather than running in
+parallel. That is the Community licence's worker floor made real; parallel execution comes with a
+commercial license.
 """
 
 
