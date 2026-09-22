@@ -45,11 +45,11 @@ cd /work
 # HONESTY NOTE, because a reviewer will ask: conform_generate_cuda.mojo composes
 # residentk.session_cuda (the fact-driven Qwen3 resident session), so the ALGENTA_G3_* defines are
 # INERT in this binary — they gate the gemma-3 session modules, which are not in its import closure.
-# The defines that are LIVE here are ALGENTA_GPU, ALGENTA_CUDA, ALGENTA_STAGE_6144 and
+# The defines that are LIVE here are ALGENTA_GPU, ALGENTA_CUDA, ALGENTA_STAGE_18944 and
 # ALGENTA_TC_SHIM (tc_shim_bridge.TC_SHIM_BUILD), which is what pulls the tensor-core shim in. The
 # full stack is passed anyway, verbatim, so this gate proves the certified configuration still
 # compiles and links as a whole and cannot silently drift from it.
-BASE_DEFINES=(ALGENTA_GPU ALGENTA_CUDA ALGENTA_STAGE_6144 ALGENTA_G3_GEGLU_U4
+BASE_DEFINES=(ALGENTA_GPU ALGENTA_CUDA ALGENTA_STAGE_18944 ALGENTA_G3_GEGLU_U4
               ALGENTA_TC_SHIM ALGENTA_G3_ATTN_FLASH ALGENTA_G3_PF_TCATTN ALGENTA_G3_STREAM)
 R5_DEFINES=(ALGENTA_G3_PF_FA ALGENTA_G3_PF_F16ATTN ALGENTA_G3_PF_F16NORM
             ALGENTA_G3_PF_F16MLP ALGENTA_G3_PF_ROPE2)
