@@ -8,6 +8,14 @@
 #   scripts/hf_kernels/linux_container_build.sh --arch arm64|amd64 --out <host dir> [--backend cpu|cuda] [--cuda-targets "sm_75 sm_80 sm_89 sm_90"] <family> [<family> ...]
 set -euo pipefail
 ARCH=""; OUT=""; BACKEND="cpu"; CUDA_TARGETS="${CUDA_TARGETS:-sm_75 sm_80 sm_89 sm_90}"; FAMILIES=()
+# patchelf: the retag (SONAME / DT_NEEDED / RUNPATH=$ORIGIN) must never run with ubuntu:22.04's apt package
+# (0.14.3). When a rewrite has to grow a segment it leaves a zero-size PT_LOAD whose address and offset differ
+# by a non-page multiple, and glibc refuses the library on every real Linux host ("ELF load command
+# address/offset not page-aligned") -- the 2026-09-22 algenta-llm x86_64 defect, invisible on macOS and in the
+# arm64 builds. The pinned PyPI build (manylinux wheel of upstream 0.19.1) is installed into /usr/local/bin,
+# which precedes /usr/bin on the image's PATH, and its exact version is gated inside the container; the family
+# build then refuses any artifact whose program headers are misaligned (scripts/hf_kernels/elf_check.py).
+PATCHELF_PIN="${PATCHELF_PIN:-patchelf==0.19.1.0}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --arch) ARCH="$2"; shift 2 ;;
@@ -41,11 +49,19 @@ tar --exclude='*/__pycache__' -cf - mojo scripts packages/algenta mojo_env/pixi.
 docker run --rm --platform "$PLATFORM" \
   -v "$SRC_VOL":/work -v "$CACHE_VOL":/root/.cache/rattler -v "$OUT":/out \
   -e ALGENTA_SOURCE_COMMIT="$COMMIT" -e ALGENTA_SOURCE_DIRTY="$DIRTY" -e BACKEND="$BACKEND" -e CUDA_TARGETS="$CUDA_TARGETS" \
-  -e FAMILIES="${FAMILIES[*]}" \
+  -e FAMILIES="${FAMILIES[*]}" -e PATCHELF_PIN="$PATCHELF_PIN" \
   "$IMAGE" bash -euo pipefail -c '
+    python3 -m pip install --quiet --disable-pip-version-check --no-cache-dir "$PATCHELF_PIN"
+    hash -r
+    want="${PATCHELF_PIN##*==}"; want="${want%.*}"   # PyPI 0.19.1.0 wraps upstream patchelf 0.19.1
+    have="$(patchelf --version)"
+    echo "patchelf: $have at $(command -v patchelf) (pinned $PATCHELF_PIN; apt ships $(dpkg-query -W patchelf 2>/dev/null | cut -f2))"
+    [ "$have" = "patchelf $want" ] || { echo "FATAL: patchelf $want must win on PATH, got: $have" >&2; exit 4; }
     cd /work/mojo_env && pixi install --locked 2>&1 | tail -3
     PY=/work/mojo_env/.pixi/envs/default/bin/python3
-    "$PY" --version; uname -m; ldd --version | head -1
+    # sed, never "| head -1": ldd is a bash script, and head closing the pipe early kills it with SIGPIPE
+    # (exit 141) under pipefail -- the "container died silently after the toolchain install" failures.
+    "$PY" --version; uname -m; ldd --version | sed -n 1p
     cd /work
     for fam in $FAMILIES; do
       echo "=== build $fam ($BACKEND) on $(uname -m)"

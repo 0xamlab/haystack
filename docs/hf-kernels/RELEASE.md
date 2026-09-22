@@ -25,6 +25,17 @@ Rules learned the hard way (each recorded in the evidence record):
 - A dry run stops before upload, so read the code path of every step it skips (squash, umbrella, release
   record) before the real run. `release_record.py --hub-dir` treats every subdirectory that has `build/` as a
   family: keep scratch and the umbrella out of `hub/`.
-- Container CUDA builds die silently under concurrent host load: run them alone, one target per invocation,
-  to a host path Docker actually shares (`/Users` on this machine; `/tmp` mounts empty).
+- Container builds that "die silently" right after the toolchain install (log ends at the `ldd` line, container
+  exit code 141, no error text -- cap5's first `cuda-sm_75` run) were a SIGPIPE race in the container script
+  (`ldd --version | head -1` under `pipefail`; `ldd` is a bash script), fixed 2026-09-22 by reading the line with
+  `sed`. Still run CUDA builds one target per invocation, to a host path Docker actually shares (`/Users` on
+  this machine; `/tmp` mounts empty).
 - Never publish a binary whose §9 gate has not held on **that** platform's artifact.
+- Never retag a Linux closure with ubuntu:22.04's apt `patchelf` (0.14.3). When a `--set-rpath` / `--set-soname`
+  rewrite has to grow a segment it leaves a zero-size PT_LOAD whose address and offset differ by a non-page
+  multiple, and glibc refuses the library on every real host (`ELF load command address/offset not page-aligned`
+  -- the 2026-09-22 `algenta-llm` x86_64 defect, invisible on macOS and in the arm64 builds, and invisible to
+  every gate that ran on a Mac). `linux_container_build.sh` installs the pinned PyPI `patchelf==0.19.1.0` and
+  logs its version; `build_hf_kernel_family.py` refuses any artifact with a misaligned PT_LOAD; the same check
+  runs over every staged closure in `republish_capped.py` and CI, and by hand with
+  `scripts/hf_kernels/elf_check.py <staged tree>` before step 3.

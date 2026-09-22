@@ -177,6 +177,14 @@ def main():
             continue
         out = a.hub_out / fam
         shutil.rmtree(out, ignore_errors=True)
+        # Loadability gate before anything is generated from these closures: every Linux ELF in
+        # every staged native has page-congruent PT_LOAD headers (macOS dylibs skip as non-ELF).
+        run(
+            sys.executable,
+            "scripts/hf_kernels/elf_check.py",
+            "--quiet",
+            *[p for _, p in natives],
+        )
         run(
             sys.executable,
             "scripts/generate_hf_kernel_package.py",

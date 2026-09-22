@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from hf_kernels.elf_check import alignment_defects  # noqa: E402
 from stage_runtime_worker_package import (  # noqa: E402
     StageError,
     _is_system_dependency,
@@ -175,6 +176,20 @@ def _absolute_rpaths(lib: Path) -> list[str]:
             paths.append(line.split("path ", 1)[1].split(" (offset")[0].strip())
             grab = False
     return [p for p in paths if p.startswith("/")]
+
+
+def _assert_elf_page_aligned(path: Path) -> None:
+    """Refuse a Linux artifact glibc would not map ("ELF load command address/offset not
+    page-aligned"). A plain raise, never `assert`: the gate must hold under -O. The predicate
+    lives in scripts/hf_kernels/elf_check.py so release tooling and CI run the same check."""
+    defects = alignment_defects(path)
+    if defects:
+        raise SystemExit(
+            "ELF PT_LOAD alignment gate failed: glibc would refuse this library on every real "
+            "Linux host. Known cause: patchelf 0.14.x (ubuntu:22.04 apt) growing a segment in "
+            "the retag; the container build installs the pinned PyPI patchelf "
+            "(scripts/hf_kernels/linux_container_build.sh).\n  " + "\n  ".join(defects)
+        )
 
 
 def main() -> int:
@@ -349,14 +364,27 @@ def main() -> int:
         elif system == "linux":
             # The ELF analogue: the renamed runtime objects get their new name as SONAME, every artifact's
             # DT_NEEDED entries follow the rename, and RUNPATH is $ORIGIN so the closure resolves in place.
-            if shutil.which("patchelf") is None:
-                raise SystemExit("patchelf is required to retag the Linux runtime closure (apt-get install patchelf)")
+            patchelf = shutil.which("patchelf")
+            if patchelf is None:
+                raise SystemExit(
+                    "patchelf is required to retag the Linux runtime closure: pip install "
+                    "patchelf==0.19.1.0 -- never ubuntu:22.04's apt 0.14.3 "
+                    "(see _assert_elf_page_aligned)"
+                )
+            patchelf_version = _run([patchelf, "--version"]).strip()
+            print(f"retag: {patchelf_version} at {patchelf}")
             for art in artifacts:
                 if art.name in renamed.values():
-                    _run(["patchelf", "--set-soname", art.name, str(art)])
+                    _run([patchelf, "--set-soname", art.name, str(art)])
                 for old_name, new_name in renamed.items():
-                    _run(["patchelf", "--replace-needed", old_name, new_name, str(art)])
-                _run(["patchelf", "--set-rpath", "$ORIGIN", str(art)])
+                    _run([patchelf, "--replace-needed", old_name, new_name, str(art)])
+                _run([patchelf, "--set-rpath", "$ORIGIN", str(art)])
+            # Hard gate on the OUTPUT, not on a version string: whichever patchelf ran, every
+            # artifact must still be one glibc will map (2026-09-22: apt patchelf 0.14.3 left a
+            # zero-size, misaligned PT_LOAD in every x86_64 algenta-llm library; the macOS and
+            # aarch64 artifacts of the same run were fine).
+            for art in artifacts:
+                _assert_elf_page_aligned(art)
         closure_names = {art.name for art in artifacts}
         deps_of: dict[str, set[str]] = {}
         for art in artifacts:
@@ -391,6 +419,7 @@ def main() -> int:
         else:
             for lib in own_libs:
                 _run(["strip", "--strip-unneeded", str(lib)])
+                _assert_elf_page_aligned(lib)  # the shipped bytes, after the last rewriting tool
 
         lib_path = native / lib_name
         for lib in own_libs:

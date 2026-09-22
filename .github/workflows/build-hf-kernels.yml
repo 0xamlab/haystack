@@ -75,7 +75,13 @@ jobs:
       - name: Build family (CPU)
         run: |
           set -euo pipefail
-          if [ "$(uname -s)" = "Linux" ]; then apt-get update -q && apt-get install -y -q --no-install-recommends clang binutils patchelf python3 git ca-certificates; fi
+          if [ "$(uname -s)" = "Linux" ]; then
+            apt-get update -q && apt-get install -y -q --no-install-recommends clang binutils python3 python3-pip git ca-certificates
+            # Never the apt patchelf: ubuntu:22.04 ships 0.14.3, which leaves misaligned PT_LOADs that glibc
+            # refuses (scripts/hf_kernels/elf_check.py). Same pin as scripts/hf_kernels/linux_container_build.sh.
+            python3 -m pip install --quiet --disable-pip-version-check "patchelf==0.19.1.0"
+            patchelf --version
+          fi
           python3 scripts/build_hf_kernel_family.py --family "${{ matrix.family }}" --out "build_out/${{ matrix.family }}/cpu"
       - name: Record artifact identity
         run: |
@@ -126,6 +132,8 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: natives
+      - name: Every Linux closure is loadable (PT_LOAD alignment gate)
+        run: python3 scripts/hf_kernels/elf_check.py --quiet natives
       - name: Generate Hub repositories
         run: |
           set -euo pipefail
@@ -133,10 +141,10 @@ jobs:
           for fam in $(python3 -c 'import json,sys; print(" ".join(json.loads(sys.argv[1])))' '${{ needs.families.outputs.list }}'); do
             args=""
             for d in natives/native-"$fam"-cpu-*; do
-              plat=$(python3 -c "import json;print(json.load(open('$d/manifest.json'))['platform'])")
               args="$args --native cpu=$d"
             done
             if [ -d "natives/native-$fam-metal-darwin-aarch64" ]; then args="$args --native metal=natives/native-$fam-metal-darwin-aarch64"; fi
+            # shellcheck disable=SC2086  # $args is a deliberately word-split list of --native flags
             python3 scripts/generate_hf_kernel_package.py --family "$fam" $args --out "hub/$fam"
             HF_KERNEL_REPO_DIR="hub/$fam" PYTHONPATH=.:packages/algenta python3 -m pytest tests/test_hf_kernel_package.py -q -p no:cacheprovider --noconftest
             # Crash-hunting gate: every function survives one contract-valid call (the variant this runner can load).
@@ -147,7 +155,7 @@ jobs:
             # processes, threads, families and forks. Proven on algenta-stats; the cap lives in the shared
             # ABI, so one family proves the mechanism for every library built from it.
             if [ "$fam" = "algenta-stats" ]; then
-              lib=$(ls hub/"$fam"/build/*-cpu-x86_64-linux/*/_native/libalgenta_algenta_stats*.so 2>/dev/null | head -1)
+              lib=$(find hub/"$fam"/build/*-cpu-x86_64-linux/*/_native/libalgenta_algenta_stats*.so -maxdepth 0 -print -quit 2>/dev/null)
               [ -n "$lib" ] || { echo "::error::no linux algenta-stats library for the ABI §9 gate"; exit 1; }
               mkdir -p smoke && python3 scripts/hf_kernels/community_cap_redteam.py "$lib" smoke/heavy_req.json
             fi
@@ -199,7 +207,7 @@ jobs:
               python3 scripts/hf_kernels/family_smoke.py --variant "$v"
               if [ "$fam" = "algenta-stats" ]; then
                 # ABI §9 gate on the darwin build (see the assemble job for the linux run).
-                lib=$(ls "$v"/*/_native/libalgenta_algenta_stats*.dylib 2>/dev/null | head -1)
+                lib=$(find "$v"/*/_native/libalgenta_algenta_stats*.dylib -maxdepth 0 -print -quit 2>/dev/null)
                 [ -n "$lib" ] || { echo "::error::no darwin algenta-stats library for the ABI §9 gate"; exit 1; }
                 python3 scripts/hf_kernels/community_cap_redteam.py "$lib" "$RUNNER_TEMP/heavy_req.json"
               fi
