@@ -9,7 +9,14 @@ from algenta_mcp.client import api
 
 LIST_RUNS_SPEC: dict[str, Any] = {
     "name": "list_runs",
-    "description": "List recent simulation runs with optional filters.",
+    "description": (
+        "List the organization's recent simulation runs, newest first, with their "
+        "recommended_action, confidence, expected_value, mode, and created_at. "
+        "Optional filters narrow by mode (auto or expert) and status (completed, "
+        "failed, running); limit caps the results (default 20, up to 100). Use "
+        "get_run for one run's full detail and get_analytics for aggregate trends. "
+        "Read-only. Returns runs plus total."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -23,18 +30,29 @@ LIST_RUNS_SPEC: dict[str, Any] = {
                 "enum": ["auto", "expert"],
                 "description": "Filter by mode",
             },
-            "status": {"type": "string", "enum": ["completed", "failed", "running"]},
+            "status": {
+                "type": "string",
+                "enum": ["completed", "failed", "running"],
+                "description": "Keep only runs in this status.",
+            },
         },
     },
 }
 
 GET_RUN_SPEC: dict[str, Any] = {
     "name": "get_run",
-    "description": "Fetch a single simulation run by ID.",
+    "description": (
+        "Fetch one simulation run by run_id with its full detail — the decision "
+        "metrics and the request context it ran under. Use list_runs to find run "
+        "ids. Read-only; an unknown run_id fails with not_found."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "run_id": {"type": "string", "description": "UUID of the simulation run"},
+            "run_id": {
+                "type": "string",
+                "description": "UUID of the simulation run",
+            },
         },
         "required": ["run_id"],
     },

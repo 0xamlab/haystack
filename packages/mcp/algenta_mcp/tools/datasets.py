@@ -190,9 +190,13 @@ async def list_handler(arguments: dict[str, Any]) -> str:
 STATUS_SPEC: dict[str, Any] = {
     "name": "get_dataset_status",
     "description": (
-        "Get live training status and model tier for a specific dataset. "
-        "model_tier: 'none' = deterministic only, 'base' = generic model, "
-        "'schema' = fully trained schema-specific model (best quality)."
+        "Get the live training status and model tier of one dataset: whether semantic "
+        "training is still running or the dataset is ready, and which model serves "
+        "queries — model_tier 'none' = deterministic fallback only, 'base' = generic "
+        "model, 'schema' = fully trained schema-specific model (best quality). Poll "
+        "this after onboard_dataset until training completes, and use retrain_dataset "
+        "after schema or alias changes. Read-only; an unknown dataset_id fails with "
+        "not_found. Also returns name, column_count, source_names, and updated_at."
     ),
     "inputSchema": {
         "type": "object",
@@ -209,15 +213,27 @@ STATUS_SPEC: dict[str, Any] = {
 RETRAIN_SPEC: dict[str, Any] = {
     "name": "retrain_dataset",
     "description": (
-        "Re-trigger semantic training for a dataset. "
-        "Use after schema changes, alias updates, or to force a fresh model build."
+        "Re-trigger background semantic training for one dataset and return "
+        "immediately with status and a confirmation message — the build runs "
+        "asynchronously, so poll get_dataset_status until model_tier reaches "
+        "'schema'. Use after schema changes, alias updates, or to force a fresh "
+        "model build. epochs (default 80, range 5-500) controls training length. "
+        "An unknown dataset_id fails with not_found; a dataset whose training "
+        "backend is unavailable fails with semantic_training_unavailable."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["dataset_id"],
         "properties": {
-            "dataset_id": {"type": "string"},
-            "epochs": {"type": "integer", "default": 80},
+            "dataset_id": {
+                "type": "string",
+                "description": "Dataset ID from onboard_dataset or list_datasets.",
+            },
+            "epochs": {
+                "type": "integer",
+                "default": 80,
+                "description": "Training epochs, 5-500; defaults to 80.",
+            },
         },
     },
 }

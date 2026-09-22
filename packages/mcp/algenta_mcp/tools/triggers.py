@@ -146,12 +146,21 @@ FIRE_TRIGGER_SPEC: dict[str, Any] = {
 
 DELETE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "delete_trigger",
-    "description": "Remove a trigger. The trigger will no longer fire automatically.",
+    "description": (
+        "Delete one trigger by trigger_id (find ids with list_triggers). The trigger "
+        "is removed immediately and will no longer fire automatically; its "
+        "registration cannot be recovered from this tool. To stop a trigger "
+        "temporarily instead, use pause_trigger. An unknown trigger_id fails with "
+        "not_found. Returns trigger_id with deleted: true."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["trigger_id"],
         "properties": {
-            "trigger_id": {"type": "string", "description": "Trigger ID to delete."},
+            "trigger_id": {
+                "type": "string",
+                "description": "Trigger ID to delete.",
+            },
         },
     },
 }

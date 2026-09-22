@@ -9,7 +9,14 @@ from algenta_mcp.client import api
 
 LIST_CAPABILITY_PROVIDERS_SPEC: dict[str, Any] = {
     "name": "list_capability_providers",
-    "description": "List unified capability providers across data, MCP, skills, native tools, and runtime libraries.",
+    "description": (
+        "List the unified capability providers available to the organization — data "
+        "sources, MCP servers, skill packs, native tools, and runtime libraries — "
+        "with their profiles, auth kinds, supported execution owners, and binding "
+        "scopes. Start here to find provider_id and profile_id for "
+        "create_capability_binding, then discover_capability_binding to see what a "
+        "binding exposes. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -19,12 +26,27 @@ LIST_CAPABILITY_PROVIDERS_SPEC: dict[str, Any] = {
 
 LIST_CAPABILITY_BINDINGS_SPEC: dict[str, Any] = {
     "name": "list_capability_bindings",
-    "description": "List capability bindings for the current organization.",
+    "description": (
+        "List the capability bindings saved under the caller's organization, "
+        "optionally narrowed by provider_id or scope (user, workspace, organization). "
+        "A binding pairs a provider profile with credentials/config and is what makes "
+        "capabilities executable. Use create_capability_binding to add one, "
+        "test_capability_binding to verify one, and list_capabilities to browse what "
+        "they expose. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "provider_id": {"type": "string", "minLength": 1},
-            "scope": {"type": "string", "enum": ["user", "workspace", "organization"]},
+            "provider_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only bindings of this provider.",
+            },
+            "scope": {
+                "type": "string",
+                "enum": ["user", "workspace", "organization"],
+                "description": "Keep only bindings at this scope.",
+            },
         },
         "additionalProperties": False,
     },
@@ -32,21 +54,59 @@ LIST_CAPABILITY_BINDINGS_SPEC: dict[str, Any] = {
 
 CREATE_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
     "name": "create_capability_binding",
-    "description": "Create one capability binding for a provider/profile pair.",
+    "description": (
+        "Save one capability binding for a provider/profile pair and return it with "
+        "its binding_id. scope (default workspace) decides who can use it, "
+        "execution_owner decides where executions run (algenta_managed on the engine, "
+        "client_managed in the customer app or adapter path), and config carries the "
+        "profile's credentials and options. Find valid provider_id/profile_id pairs "
+        "with list_capability_providers, then call discover_capability_binding to "
+        "publish the binding's capabilities and test_capability_binding to verify. "
+        "Persists the binding."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "provider_id": {"type": "string", "minLength": 1},
-            "profile_id": {"type": "string", "minLength": 1},
-            "binding_name": {"type": "string", "minLength": 1},
-            "scope": {"type": "string", "enum": ["user", "workspace", "organization"]},
-            "scope_ref": {"type": "string"},
+            "provider_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Provider id from list_capability_providers.",
+            },
+            "profile_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Profile id within the provider.",
+            },
+            "binding_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable binding name.",
+            },
+            "scope": {
+                "type": "string",
+                "enum": ["user", "workspace", "organization"],
+                "description": "Visibility scope; defaults to workspace.",
+            },
+            "scope_ref": {
+                "type": "string",
+                "description": "Optional concrete user/workspace id the scope binds to.",
+            },
             "execution_owner": {
                 "type": "string",
                 "enum": ["algenta_managed", "client_managed"],
+                "description": (
+                    "Where executions run; defaults to the profile's "
+                    "default_execution_owner."
+                ),
             },
-            "config": {"type": "object"},
-            "customer_metadata": {"type": "object"},
+            "config": {
+                "type": "object",
+                "description": "Profile credentials and options.",
+            },
+            "customer_metadata": {
+                "type": "object",
+                "description": "Optional caller metadata stored with the binding.",
+            },
         },
         "required": ["provider_id", "profile_id", "binding_name"],
         "additionalProperties": False,
@@ -55,21 +115,53 @@ CREATE_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
 
 TEST_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
     "name": "test_capability_binding",
-    "description": "Test a saved capability binding or preview-test an unsaved one.",
+    "description": (
+        "Run a health test on one capability binding and return the outcome. Pass "
+        "binding_id to test a saved binding, or a full inline definition "
+        "(provider_id, profile_id, config, ...) to preview-test one that was never "
+        "saved — nothing is persisted in the preview form. Use this after "
+        "create_capability_binding or update, before routing traffic to the binding."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "binding_id": {"type": "string", "minLength": 1},
-            "provider_id": {"type": "string", "minLength": 1},
-            "profile_id": {"type": "string", "minLength": 1},
-            "scope": {"type": "string", "enum": ["user", "workspace", "organization"]},
-            "scope_ref": {"type": "string"},
+            "binding_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved binding id to test; omit to preview-test inline.",
+            },
+            "provider_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Provider id for the inline preview form.",
+            },
+            "profile_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Profile id for the inline preview form.",
+            },
+            "scope": {
+                "type": "string",
+                "enum": ["user", "workspace", "organization"],
+                "description": "Scope for the inline preview form.",
+            },
+            "scope_ref": {
+                "type": "string",
+                "description": "Scope reference for the inline preview form.",
+            },
             "execution_owner": {
                 "type": "string",
                 "enum": ["algenta_managed", "client_managed"],
+                "description": "Execution owner for the inline preview form.",
             },
-            "config": {"type": "object"},
-            "customer_metadata": {"type": "object"},
+            "config": {
+                "type": "object",
+                "description": "Credentials/options for the inline preview form.",
+            },
+            "customer_metadata": {
+                "type": "object",
+                "description": "Metadata for the inline preview form.",
+            },
         },
         "additionalProperties": False,
     },
@@ -77,21 +169,53 @@ TEST_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
 
 DISCOVER_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
     "name": "discover_capability_binding",
-    "description": "Discover capabilities for a saved capability binding or preview-discover an unsaved one.",
+    "description": (
+        "Discover the capabilities one binding exposes and return them as catalog "
+        "entries. Pass binding_id to discover a saved binding (this publishes or "
+        "refreshes its capabilities in the catalog), or a full inline definition to "
+        "preview-discover one that was never saved. Call this after "
+        "create_capability_binding, then browse the result with list_capabilities."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "binding_id": {"type": "string", "minLength": 1},
-            "provider_id": {"type": "string", "minLength": 1},
-            "profile_id": {"type": "string", "minLength": 1},
-            "scope": {"type": "string", "enum": ["user", "workspace", "organization"]},
-            "scope_ref": {"type": "string"},
+            "binding_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved binding id to discover; omit to preview inline.",
+            },
+            "provider_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Provider id for the inline preview form.",
+            },
+            "profile_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Profile id for the inline preview form.",
+            },
+            "scope": {
+                "type": "string",
+                "enum": ["user", "workspace", "organization"],
+                "description": "Scope for the inline preview form.",
+            },
+            "scope_ref": {
+                "type": "string",
+                "description": "Scope reference for the inline preview form.",
+            },
             "execution_owner": {
                 "type": "string",
                 "enum": ["algenta_managed", "client_managed"],
+                "description": "Execution owner for the inline preview form.",
             },
-            "config": {"type": "object"},
-            "customer_metadata": {"type": "object"},
+            "config": {
+                "type": "object",
+                "description": "Credentials/options for the inline preview form.",
+            },
+            "customer_metadata": {
+                "type": "object",
+                "description": "Metadata for the inline preview form.",
+            },
         },
         "additionalProperties": False,
     },
@@ -99,7 +223,14 @@ DISCOVER_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
 
 LIST_CAPABILITIES_SPEC: dict[str, Any] = {
     "name": "list_capabilities",
-    "description": "List unified capabilities filtered by kind, provider, or binding.",
+    "description": (
+        "List the unified capability catalog visible to the caller — datasets, MCP "
+        "tools, resources and prompts, skills, native tools, and runtime libraries — "
+        "with each entry's kind, provider, binding, and execution owner. Filter by "
+        "kinds, provider_ids, or binding_ids to narrow the catalog. Use "
+        "get_capability for one entry's detail, route_capabilities to pick the best "
+        "entry for an objective, and list_skills for the skill subset. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -117,9 +248,18 @@ LIST_CAPABILITIES_SPEC: dict[str, Any] = {
                         "runtime_library",
                     ],
                 },
+                "description": "Keep only these capability kinds.",
             },
-            "provider_ids": {"type": "array", "items": {"type": "string"}},
-            "binding_ids": {"type": "array", "items": {"type": "string"}},
+            "provider_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Keep only capabilities from these providers.",
+            },
+            "binding_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Keep only capabilities from these bindings.",
+            },
         },
         "additionalProperties": False,
     },
@@ -127,12 +267,25 @@ LIST_CAPABILITIES_SPEC: dict[str, Any] = {
 
 GET_CAPABILITY_SPEC: dict[str, Any] = {
     "name": "get_capability",
-    "description": "Get one unified capability by capability id.",
+    "description": (
+        "Fetch one unified capability catalog entry by capability_id: kind, provider, "
+        "binding, execution owner, approval requirement, and tags. "
+        "include_instruction=true also returns the skill instruction text. Find "
+        "capability ids with list_capabilities or route_capabilities. Read-only; an "
+        "unknown id fails with not_found."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "capability_id": {"type": "string", "minLength": 1},
-            "include_instruction": {"type": "boolean"},
+            "capability_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Capability id from list_capabilities or route_capabilities.",
+            },
+            "include_instruction": {
+                "type": "boolean",
+                "description": "Also return the instruction text for skill capabilities.",
+            },
         },
         "required": ["capability_id"],
         "additionalProperties": False,
@@ -141,18 +294,58 @@ GET_CAPABILITY_SPEC: dict[str, Any] = {
 
 ROUTE_CAPABILITIES_SPEC: dict[str, Any] = {
     "name": "route_capabilities",
-    "description": "Route an objective to the best unified capability with fallbacks and an authoritative execution_owner.",
+    "description": (
+        "Pick the best unified capability for a natural-language objective and return "
+        "the route plan: the selected capability, binding, and kind, the authoritative "
+        "execution_owner, whether approval is required, confidence and reason, plus "
+        "ordered fallbacks (max_fallbacks, default 3). The optional filters narrow "
+        "which catalog entries may be selected. Routing never executes anything — "
+        "feed the selected_capability_id to execute_capability. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "objective": {"type": "string", "minLength": 1},
-            "binding_ids": {"type": "array", "items": {"type": "string"}},
-            "provider_ids": {"type": "array", "items": {"type": "string"}},
-            "kinds": {"type": "array", "items": {"type": "string"}},
-            "execution_owners": {"type": "array", "items": {"type": "string"}},
-            "artifact_affinities": {"type": "array", "items": {"type": "string"}},
-            "tags": {"type": "array", "items": {"type": "string"}},
-            "max_fallbacks": {"type": "integer", "minimum": 0, "maximum": 10},
+            "objective": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What you want to accomplish, in plain words.",
+            },
+            "binding_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Restrict candidates to these bindings.",
+            },
+            "provider_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Restrict candidates to these providers.",
+            },
+            "kinds": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Restrict candidates to these capability kinds.",
+            },
+            "execution_owners": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Restrict candidates to these execution owners.",
+            },
+            "artifact_affinities": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Prefer capabilities affine to these artifacts.",
+            },
+            "tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Prefer capabilities carrying these tags.",
+            },
+            "max_fallbacks": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10,
+                "description": "How many fallback routes to return, 0-10; defaults to 3.",
+            },
         },
         "required": ["objective"],
         "additionalProperties": False,
@@ -161,14 +354,36 @@ ROUTE_CAPABILITIES_SPEC: dict[str, Any] = {
 
 EXECUTE_CAPABILITY_SPEC: dict[str, Any] = {
     "name": "execute_capability",
-    "description": "Execute one routed or known algenta_managed capability by capability id. client_managed routes must execute in the customer app or adapter path.",
+    "description": (
+        "Execute one routed or known algenta_managed capability by capability id and "
+        "return the execution receipt. client_managed routes must execute in the "
+        "customer app or adapter path — this tool will not run them. If the capability "
+        "requires approval (approval_required), this returns a pending plan "
+        "(status='approval_required', plus plan_id/plan_hash/nonce) instead of "
+        "executing — approval and the final plan_id execution are separate, "
+        "credentialed HTTP operations and are NOT available as tools. Route first "
+        "with route_capabilities when the right capability is not known."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "capability_id": {"type": "string", "minLength": 1},
-            "binding_id": {"type": "string"},
-            "input": {"type": "object"},
-            "request_id": {"type": "string"},
+            "capability_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Capability id from route_capabilities or list_capabilities.",
+            },
+            "binding_id": {
+                "type": "string",
+                "description": "Optional binding id to disambiguate the execution target.",
+            },
+            "input": {
+                "type": "object",
+                "description": "Capability-specific execution input.",
+            },
+            "request_id": {
+                "type": "string",
+                "description": "Optional caller request id for correlation.",
+            },
         },
         "required": ["capability_id"],
         "additionalProperties": False,
@@ -177,7 +392,12 @@ EXECUTE_CAPABILITY_SPEC: dict[str, Any] = {
 
 LIST_SKILLS_SPEC: dict[str, Any] = {
     "name": "list_skills",
-    "description": "List skill capabilities from the unified capability plane.",
+    "description": (
+        "List the skill capabilities in the unified capability plane — prompt skills "
+        "enabled for the caller's organization with their names, bindings, and "
+        "execution owners. This is list_capabilities narrowed to kind=skill. Use "
+        "enable_skill to add one and disable_skill to remove one. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -187,18 +407,44 @@ LIST_SKILLS_SPEC: dict[str, Any] = {
 
 ENABLE_SKILL_SPEC: dict[str, Any] = {
     "name": "enable_skill",
-    "description": "Enable one prompt-skill as a first-class capability binding.",
+    "description": (
+        "Enable one prompt skill as a first-class capability binding and return its "
+        "discovered catalog entry. The skill's instruction text becomes an "
+        "instruction_only capability under the caller's user scope, selectable by "
+        "route_capabilities. Persists a new binding; remove it with disable_skill. "
+        "Use list_skills to see what is already enabled."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "skill_name": {"type": "string", "minLength": 1},
-            "instruction": {"type": "string", "minLength": 1},
-            "description": {"type": "string"},
-            "tags": {"type": "array", "items": {"type": "string"}},
-            "artifact_affinities": {"type": "array", "items": {"type": "string"}},
+            "skill_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Skill name; also names the new binding.",
+            },
+            "instruction": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Instruction text the skill injects when selected.",
+            },
+            "description": {
+                "type": "string",
+                "description": "Optional human-readable summary of the skill.",
+            },
+            "tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional routing tags.",
+            },
+            "artifact_affinities": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional artifact affinities for routing.",
+            },
             "execution_owner": {
                 "type": "string",
                 "enum": ["algenta_managed", "client_managed"],
+                "description": "Where executions run; defaults to client_managed.",
             },
         },
         "required": ["skill_name", "instruction"],
@@ -208,11 +454,21 @@ ENABLE_SKILL_SPEC: dict[str, Any] = {
 
 DISABLE_SKILL_SPEC: dict[str, Any] = {
     "name": "disable_skill",
-    "description": "Disable one skill binding by binding id.",
+    "description": (
+        "Disable one skill by deleting its capability binding (find binding ids with "
+        "list_skills or list_capability_bindings). The skill immediately stops "
+        "appearing in the capability catalog and can no longer be routed or "
+        "executed; the deletion is permanent. Returns binding_id with disabled: "
+        "true."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "binding_id": {"type": "string", "minLength": 1},
+            "binding_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Skill binding id from list_skills.",
+            },
         },
         "required": ["binding_id"],
         "additionalProperties": False,

@@ -43,8 +43,14 @@ SPEC: dict[str, Any] = {
 SCORE_SPEC: dict[str, Any] = {
     "name": "score",
     "description": (
-        "Score a single simulation request with explicit weights and return the "
-        "decision envelope plus score breakdown."
+        "Run one simulation request (the same payload shape as simulate) and return "
+        "the decision envelope fields plus a composite score with its breakdown. The "
+        "score blends the normalized expected value and one minus the probability of "
+        "loss; scoring_weights tunes the blend (expected_value default 0.6, "
+        "downside_risk default 0.4). Use simulate when you need the full envelope "
+        "without scoring, and compare to rank several scenarios. Synchronous; the "
+        "underlying run is persisted. Returns recommended_action, expected_value, "
+        "probability_of_loss, score, and score_breakdown."
     ),
     "inputSchema": {
         "type": "object",
@@ -87,8 +93,13 @@ BATCH_SPEC: dict[str, Any] = {
 COMPARE_SPEC: dict[str, Any] = {
     "name": "compare",
     "description": (
-        "Run named scenarios side by side and return the winner plus deltas versus "
-        "the best scenario."
+        "Run 2-10 named scenarios side by side and return the winner plus each "
+        "scenario's deltas versus the best one. The winner is the scenario with the "
+        "highest expected value; every entry reports its recommended_action, "
+        "expected_value, probability_of_loss, and delta_vs_best. Each scenario's "
+        "request uses the simulate payload shape; runs and seed are forwarded for "
+        "reproducibility. Use recommend for a ranked recommendation over actions "
+        "instead. Synchronous; the underlying runs are persisted."
     ),
     "inputSchema": {
         "type": "object",
@@ -105,10 +116,19 @@ COMPARE_SPEC: dict[str, Any] = {
                     "additionalProperties": False,
                 },
                 "minItems": 2,
-                "description": "Named scenarios forwarded to POST /v1/compare.",
+                "description": (
+                    "Named scenarios, each {name, request} with request in the "
+                    "simulate payload shape; 2-10 items."
+                ),
             },
-            "runs": {"type": "integer"},
-            "seed": {"type": "integer"},
+            "runs": {
+                "type": "integer",
+                "description": "Scenario count per simulation; forwarded to each run.",
+            },
+            "seed": {
+                "type": "integer",
+                "description": "Simulation seed for reproducible results.",
+            },
         },
         "required": ["scenarios"],
         "additionalProperties": False,

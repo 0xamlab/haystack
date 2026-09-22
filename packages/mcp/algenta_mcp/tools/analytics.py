@@ -9,11 +9,21 @@ from algenta_mcp.client import api
 
 SPEC: dict[str, Any] = {
     "name": "get_analytics",
-    "description": "Get usage analytics: simulation volume, latency p95, outcome distributions.",
+    "description": (
+        "Get aggregate usage analytics over the organization's simulation runs inside "
+        "a lookback window: total_simulations, avg_confidence, action_breakdown (how "
+        "recommended actions distribute), and latency_p95_ms. days sets the window "
+        "(default 30, range 1-365). Use list_runs for individual runs instead of "
+        "aggregates. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "days": {"type": "integer", "default": 30, "description": "Lookback window in days"},
+            "days": {
+                "type": "integer",
+                "default": 30,
+                "description": "Lookback window in days",
+            },
         },
     },
 }

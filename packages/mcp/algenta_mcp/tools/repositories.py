@@ -13,18 +13,50 @@ from algenta_mcp.client import api
 CREATE_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
     "name": "create_repository_snapshot",
     "description": (
-        "Create or reuse an immutable repository snapshot for a saved repository connector."
+        "Create or reuse an immutable, content-hashed snapshot of a saved repository "
+        "connector (a connector of a repository type — find its id with list_connectors). "
+        "Re-running with identical inputs returns the existing snapshot "
+        "(status='existing') instead of duplicating it. The snapshot is the input to "
+        "triage_repository and query_repository_graph; every later stage references it by "
+        "snapshot_id. Reads the repository and persists snapshot, symbol, and dependency "
+        "graph artifacts; it never writes to the repository. Returns snapshot_id, "
+        "resolved_revision, content_hash, file_count, language_counts, and artifact refs."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "ref": {"type": "string"},
-            "include_patterns": {"type": "array", "items": {"type": "string"}},
-            "exclude_patterns": {"type": "array", "items": {"type": "string"}},
-            "max_files": {"type": "integer", "minimum": 1},
-            "max_file_size_bytes": {"type": "integer", "minimum": 1024},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "ref": {
+                "type": "string",
+                "description": "Git ref to snapshot; defaults to the connector's default ref.",
+            },
+            "include_patterns": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Glob patterns limiting which files are snapshotted.",
+            },
+            "exclude_patterns": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Glob patterns excluding files from the snapshot.",
+            },
+            "max_files": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "File-count cap, up to 200000; defaults to 20000.",
+            },
+            "max_file_size_bytes": {
+                "type": "integer",
+                "minimum": 1024,
+                "description": (
+                    "Per-file size cap in bytes, 1024-10000000; defaults to 1000000."
+                ),
+            },
         },
         "additionalProperties": False,
     },
@@ -44,13 +76,27 @@ GET_REPOSITORY_INTELLIGENCE_CAPABILITIES_SPEC: dict[str, Any] = {
 
 GET_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
     "name": "get_repository_snapshot",
-    "description": "Fetch one immutable repository snapshot by repository_id and snapshot_id.",
+    "description": (
+        "Fetch one persisted immutable repository snapshot by repository_id and "
+        "snapshot_id, including its resolved_revision, content_hash, file_count, "
+        "language_counts, and graph artifact refs. Use this to re-read a snapshot created "
+        "earlier with create_repository_snapshot (or through run_repository_pipeline). "
+        "Read-only; an unknown snapshot or repository id fails with not_found."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id", "snapshot_id"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Snapshot id returned by create_repository_snapshot.",
+            },
         },
         "additionalProperties": False,
     },
@@ -59,19 +105,54 @@ GET_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
 TRIAGE_REPOSITORY_SPEC: dict[str, Any] = {
     "name": "triage_repository",
     "description": (
-        "Triage a repository snapshot into a bounded workspace evidence bundle "
-        "with suspect files and symbols."
+        "Condense one repository snapshot into a bounded workspace evidence bundle for "
+        "the planner: ranked suspect files and symbols with scored, budget-capped "
+        "snippets. signals seeds the search — pass issue_text, diagnostics, "
+        "failing_tests, changed_files, and/or workspace_context. The returned "
+        "workspace_evidence_bundle_ref is the required input to "
+        "create_repository_decision_plan; use run_repository_pipeline to chain both "
+        "stages in one call. Read-only against the repository; persists the bundle "
+        "artifact. Returns suspect_files, suspect_symbols, evidence_items, and token "
+        "reduction stats."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id", "snapshot_id", "signals"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
-            "signals": {"type": "object"},
-            "max_evidence_items": {"type": "integer", "minimum": 1},
-            "max_snippet_lines": {"type": "integer", "minimum": 5},
-            "token_budget": {"type": "integer", "minimum": 256},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Snapshot id from create_repository_snapshot.",
+            },
+            "signals": {
+                "type": "object",
+                "description": (
+                    "Evidence seeds: issue_text, diagnostics, failing_tests, "
+                    "changed_files, workspace_context."
+                ),
+            },
+            "max_evidence_items": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Evidence item cap, 1-64; defaults to 16.",
+            },
+            "max_snippet_lines": {
+                "type": "integer",
+                "minimum": 5,
+                "description": "Per-snippet line cap, 5-200; defaults to 40.",
+            },
+            "token_budget": {
+                "type": "integer",
+                "minimum": 256,
+                "description": (
+                    "Total evidence token budget, 256-32000; defaults to 6000."
+                ),
+            },
         },
         "additionalProperties": False,
     },
@@ -80,17 +161,38 @@ TRIAGE_REPOSITORY_SPEC: dict[str, Any] = {
 CREATE_REPOSITORY_DECISION_PLAN_SPEC: dict[str, Any] = {
     "name": "create_repository_decision_plan",
     "description": (
-        "Create one immutable repository DecisionPlan revision from a workspace "
-        "evidence bundle, resolving snapshot_id from triage when omitted."
+        "Create one stored, immutable repository DecisionPlan revision from a triage "
+        "workspace evidence bundle and return its decision_plan_id plus the validated "
+        "patch diff inline. snapshot_id is resolved from the bundle when omitted. This "
+        "is the only LLM-touching stage of the repository chain; model optionally picks "
+        "the planner model. The decision_plan_id feeds simulate_repository and "
+        "apply_repository. Persists the plan revision."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id", "workspace_evidence_bundle_ref"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
-            "workspace_evidence_bundle_ref": {"type": "string", "minLength": 1},
-            "model": {"type": "string"},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Snapshot id; resolved from the evidence bundle when omitted."
+                ),
+            },
+            "workspace_evidence_bundle_ref": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Bundle ref returned by triage_repository.",
+            },
+            "model": {
+                "type": "string",
+                "description": "Optional planner model override.",
+            },
         },
         "additionalProperties": False,
     },
@@ -99,21 +201,68 @@ CREATE_REPOSITORY_DECISION_PLAN_SPEC: dict[str, Any] = {
 QUERY_REPOSITORY_GRAPH_SPEC: dict[str, Any] = {
     "name": "query_repository_graph",
     "description": (
-        "Query one persisted repository snapshot for dependency, dependent, "
-        "and change-risk graph edges."
+        "Walk the dependency graph of one persisted repository snapshot from optional "
+        "file_path/symbol_name seeds and return impacted files and symbols with "
+        "change-risk scores. Seed scope comes from snapshot_id or a triage "
+        "workspace_evidence_bundle_ref — one of the two is required. direction inbound "
+        "follows dependents, outbound follows dependencies, both (default) walks both. "
+        "Use this before simulate_repository or apply_repository to size the blast "
+        "radius of a change. Read-only against the repository; persists a lookup "
+        "artifact. Returns seed "
+        "files/symbols, direct dependencies and dependents, impacted files/symbols, "
+        "graph nodes and edges, and top_change_risk_files."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
-            "file_path": {"type": "string"},
-            "symbol_name": {"type": "string"},
-            "workspace_evidence_bundle_ref": {"type": "string"},
-            "direction": {"type": "string", "enum": ["inbound", "outbound", "both"]},
-            "max_depth": {"type": "integer", "minimum": 1, "maximum": 6},
-            "max_nodes": {"type": "integer", "minimum": 1, "maximum": 1024},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Snapshot id from create_repository_snapshot; required unless "
+                    "workspace_evidence_bundle_ref is given."
+                ),
+            },
+            "file_path": {
+                "type": "string",
+                "description": "Optional seed file to walk the graph from.",
+            },
+            "symbol_name": {
+                "type": "string",
+                "description": "Optional seed symbol to walk the graph from.",
+            },
+            "workspace_evidence_bundle_ref": {
+                "type": "string",
+                "description": (
+                    "Triage bundle ref; alternative seed scope to snapshot_id."
+                ),
+            },
+            "direction": {
+                "type": "string",
+                "enum": ["inbound", "outbound", "both"],
+                "description": (
+                    "Edge direction to walk: inbound = dependents, outbound = "
+                    "dependencies; defaults to both."
+                ),
+            },
+            "max_depth": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 6,
+                "description": "Traversal depth from the seeds, 1-6; defaults to 2.",
+            },
+            "max_nodes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1024,
+                "description": "Graph node cap, 1-1024; defaults to 128.",
+            },
         },
         "additionalProperties": False,
     },
@@ -122,18 +271,46 @@ QUERY_REPOSITORY_GRAPH_SPEC: dict[str, Any] = {
 SIMULATE_REPOSITORY_SPEC: dict[str, Any] = {
     "name": "simulate_repository",
     "description": (
-        "Simulate repository patch risk and return the gated DecisionEnvelope, "
-        "resolving snapshot_id from the decision plan when omitted."
+        "Score the patch risk of a stored repository DecisionPlan with the "
+        "deterministic simulation engine and return the gated DecisionEnvelope whose "
+        "apply gate apply_repository checks. snapshot_id is resolved from the plan when "
+        "omitted. runs pins the scenario count (100 or more; omit for the "
+        "complexity-adaptive count) and seed (default 42) makes repeated calls "
+        "reproducible — no LLM is involved in this stage. Call "
+        "create_repository_decision_plan first; use simulate_repository_patch instead "
+        "for a patch that has no stored plan."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id", "decision_plan_id"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
-            "decision_plan_id": {"type": "string", "minLength": 1},
-            "runs": {"type": "integer", "minimum": 100},
-            "seed": {"type": "integer", "minimum": 0},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Snapshot id; resolved from the decision plan when omitted.",
+            },
+            "decision_plan_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Plan id from create_repository_decision_plan.",
+            },
+            "runs": {
+                "type": "integer",
+                "minimum": 100,
+                "description": (
+                    "Scenario count, 100-250000; omit for the complexity-adaptive count."
+                ),
+            },
+            "seed": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Simulation seed for reproducible results; defaults to 42.",
+            },
         },
         "additionalProperties": False,
     },
@@ -142,23 +319,79 @@ SIMULATE_REPOSITORY_SPEC: dict[str, Any] = {
 APPLY_REPOSITORY_SPEC: dict[str, Any] = {
     "name": "apply_repository",
     "description": (
-        "Apply a simulated repository decision as patch_only, local_branch, or remote_pr."
+        "Materialize a simulated repository decision in one of three modes. patch_only "
+        "just returns the validated patch diff with applied=false and writes nothing. "
+        "local_branch commits the patch to a new branch (default algenta/<plan-suffix>) "
+        "in the engine-side checkout and returns commit_sha and local_checkout_path. "
+        "remote_pr additionally pushes the branch and opens a pull request, returning "
+        "pull_request_url. Both write modes are hard-gated: the simulation must satisfy "
+        "policy thresholds (otherwise repository_apply_gate_failed) and "
+        "write_permission=true must be passed explicitly (otherwise "
+        "repository_write_permission_required). Use patch_only to review the diff "
+        "before writing anything, and run_repository_fix to chain the whole flow. "
+        "Requires decision_plan_id and simulation_id from simulate_repository."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id", "decision_plan_id", "simulation_id", "mode"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
-            "decision_plan_id": {"type": "string", "minLength": 1},
-            "simulation_id": {"type": "string", "minLength": 1},
-            "mode": {"type": "string", "enum": ["patch_only", "local_branch", "remote_pr"]},
-            "write_permission": {"type": "boolean"},
-            "branch_name": {"type": "string"},
-            "commit_message": {"type": "string"},
-            "base_branch": {"type": "string"},
-            "pull_request_title": {"type": "string"},
-            "pull_request_body": {"type": "string"},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Snapshot id; resolved from the decision plan when omitted.",
+            },
+            "decision_plan_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Plan id from create_repository_decision_plan.",
+            },
+            "simulation_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Simulation id from simulate_repository.",
+            },
+            "mode": {
+                "type": "string",
+                "enum": ["patch_only", "local_branch", "remote_pr"],
+                "description": (
+                    "patch_only returns the diff; local_branch commits it; remote_pr "
+                    "pushes and opens a PR."
+                ),
+            },
+            "write_permission": {
+                "type": "boolean",
+                "description": (
+                    "Must be true for local_branch and remote_pr; ignored for patch_only."
+                ),
+            },
+            "branch_name": {
+                "type": "string",
+                "description": "Branch to create; defaults to algenta/<plan-suffix>.",
+            },
+            "commit_message": {
+                "type": "string",
+                "description": "Commit message; a default naming the plan id is used otherwise.",
+            },
+            "base_branch": {
+                "type": "string",
+                "description": (
+                    "Branch the patch applies onto and the PR targets; defaults to the "
+                    "connector's default branch."
+                ),
+            },
+            "pull_request_title": {
+                "type": "string",
+                "description": "PR title for remote_pr mode.",
+            },
+            "pull_request_body": {
+                "type": "string",
+                "description": "PR body for remote_pr mode.",
+            },
         },
         "additionalProperties": False,
     },
@@ -166,22 +399,77 @@ APPLY_REPOSITORY_SPEC: dict[str, Any] = {
 
 RUN_REPOSITORY_PIPELINE_SPEC: dict[str, Any] = {
     "name": "run_repository_pipeline",
-    "description": "Run the repository snapshot->triage->plan->simulate chain and return the canonical repository envelope.",
+    "description": (
+        "Run the whole repository-intelligence chain — snapshot, triage, plan, simulate "
+        "— in one call and return the canonical repository envelope with every stage's "
+        "response, stage timings, and the ids (snapshot_id, plan_id, simulation_id) the "
+        "apply step needs. Pass snapshot_id to reuse an existing snapshot or snapshot to "
+        "create one inline; stop_after halts the chain early (triage skips the LLM "
+        "planner, plan also skips the deterministic simulate). Signals, triage bounds, "
+        "model, runs, and seed mirror the standalone stage tools. Use the single-stage "
+        "tools when you need to inspect or adjust between stages."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
-            "snapshot": {"type": "object"},
-            "signals": {"type": "object"},
-            "max_evidence_items": {"type": "integer", "minimum": 1},
-            "max_snippet_lines": {"type": "integer", "minimum": 5},
-            "token_budget": {"type": "integer", "minimum": 256},
-            "model": {"type": "string"},
-            "runs": {"type": "integer", "minimum": 100},
-            "seed": {"type": "integer", "minimum": 0},
-            "stop_after": {"type": "string", "enum": ["snapshot", "triage", "plan", "simulate"]},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Existing snapshot id to reuse.",
+            },
+            "snapshot": {
+                "type": "object",
+                "description": (
+                    "Inline create_repository_snapshot arguments when no snapshot_id is "
+                    "given."
+                ),
+            },
+            "signals": {
+                "type": "object",
+                "description": "Triage evidence seeds (see triage_repository).",
+            },
+            "max_evidence_items": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Triage evidence item cap; defaults to 16.",
+            },
+            "max_snippet_lines": {
+                "type": "integer",
+                "minimum": 5,
+                "description": "Triage per-snippet line cap; defaults to 40.",
+            },
+            "token_budget": {
+                "type": "integer",
+                "minimum": 256,
+                "description": "Triage evidence token budget; defaults to 6000.",
+            },
+            "model": {
+                "type": "string",
+                "description": "Optional planner model override for the plan stage.",
+            },
+            "runs": {
+                "type": "integer",
+                "minimum": 100,
+                "description": (
+                    "Simulation scenario count; omit for the complexity-adaptive count."
+                ),
+            },
+            "seed": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Simulation seed; defaults to 42.",
+            },
+            "stop_after": {
+                "type": "string",
+                "enum": ["snapshot", "triage", "plan", "simulate"],
+                "description": "Stage to halt after; defaults to simulate (full chain).",
+            },
         },
         "additionalProperties": False,
     },
@@ -189,15 +477,39 @@ RUN_REPOSITORY_PIPELINE_SPEC: dict[str, Any] = {
 
 SIMULATE_REPOSITORY_PATCH_SPEC: dict[str, Any] = {
     "name": "simulate_repository_patch",
-    "description": "Simulate an in-flight repository patch and return the canonical repository envelope.",
+    "description": (
+        "Simulate the risk of an in-flight unified diff against one persisted snapshot "
+        "and return the canonical repository envelope — without creating a stored "
+        "decision plan. Use this to verify a working-tree patch mid-run; use "
+        "simulate_repository when a stored DecisionPlan already exists. Deterministic; "
+        "no LLM is involved. Returns the gated DecisionEnvelope including the apply "
+        "gate verdict."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id", "snapshot_id", "patch_diff"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "snapshot_id": {"type": "string", "minLength": 1},
-            "patch_diff": {"type": "string", "minLength": 1},
-            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Snapshot id from create_repository_snapshot.",
+            },
+            "patch_diff": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Unified diff of the in-flight patch to evaluate.",
+            },
+            "confidence": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "description": "Optional caller confidence recorded with the simulation.",
+            },
         },
         "additionalProperties": False,
     },
@@ -205,14 +517,35 @@ SIMULATE_REPOSITORY_PATCH_SPEC: dict[str, Any] = {
 
 RUN_REPOSITORY_FIX_SPEC: dict[str, Any] = {
     "name": "run_repository_fix",
-    "description": "Run repository pipeline then apply the result, returning the canonical repository envelope.",
+    "description": (
+        "Run the repository pipeline and then apply its result in one call, returning "
+        "the canonical repository envelope for both stages. pipeline takes "
+        "run_repository_pipeline's arguments and must complete through simulate (the "
+        "call fails otherwise); apply takes apply_repository's arguments with mode "
+        "defaulting to patch_only — the write modes still require the simulation gate "
+        "to pass and write_permission=true. Use the separate stage tools when you need "
+        "to review the plan or simulation before anything is written."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["repository_id"],
         "properties": {
-            "repository_id": {"type": "string", "minLength": 1},
-            "pipeline": {"type": "object"},
-            "apply": {"type": "object"},
+            "repository_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved repository connector id from list_connectors.",
+            },
+            "pipeline": {
+                "type": "object",
+                "description": "run_repository_pipeline arguments; defaults to {}.",
+            },
+            "apply": {
+                "type": "object",
+                "description": (
+                    "apply_repository arguments (branch, message, PR fields, "
+                    "write_permission); mode defaults to patch_only."
+                ),
+            },
         },
         "additionalProperties": False,
     },

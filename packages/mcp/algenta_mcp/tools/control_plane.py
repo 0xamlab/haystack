@@ -9,12 +9,27 @@ from algenta_mcp.client import api
 
 LIST_TEAM_MEMBERS_SPEC: dict[str, Any] = {
     "name": "list_team_members",
-    "description": "List team members for the current organization.",
+    "description": (
+        "List the active users of the caller's organization with user_id, name, email, "
+        "role, and status. Called with no arguments it returns the full member array; "
+        "passing page or limit switches to a paginated envelope {members, total, page, "
+        "limit, pages} (defaults page 1, limit 25). Use the returned user_id with "
+        "update_team_member_role or remove_team_member. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "page": {"type": "integer", "minimum": 1},
-            "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+            "page": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "1-based page number; enables the paginated envelope.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Members per page (default 25 when paginating).",
+            },
         },
         "additionalProperties": False,
     },
@@ -22,12 +37,27 @@ LIST_TEAM_MEMBERS_SPEC: dict[str, Any] = {
 
 INVITE_TEAM_MEMBER_SPEC: dict[str, Any] = {
     "name": "invite_team_member",
-    "description": "Invite a team member to the current organization.",
+    "description": (
+        "Invite someone to the caller's organization by email and return the pending "
+        "invite. This creates a pending invitation, emails an accept link, and reserves a "
+        "seat until the invite is accepted. The caller's API key must have an admin role "
+        "and the plan must have seats available — single-seat plans fail with "
+        "seats_not_available. Use list_team_members to see who is already in the org. "
+        "Role defaults to member."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "email": {"type": "string", "minLength": 3},
-            "role": {"type": "string", "enum": ["owner", "admin", "member", "viewer"]},
+            "email": {
+                "type": "string",
+                "minLength": 3,
+                "description": "Email address the invite link is sent to.",
+            },
+            "role": {
+                "type": "string",
+                "enum": ["owner", "admin", "member", "viewer"],
+                "description": "Org role granted on accept; defaults to member.",
+            },
         },
         "required": ["email"],
         "additionalProperties": False,
@@ -36,12 +66,27 @@ INVITE_TEAM_MEMBER_SPEC: dict[str, Any] = {
 
 UPDATE_TEAM_MEMBER_ROLE_SPEC: dict[str, Any] = {
     "name": "update_team_member_role",
-    "description": "Update one current organization team member role by user id.",
+    "description": (
+        "Change one organization member's role by user_id (find ids with "
+        "list_team_members). Requires an admin API key. Guardrails: you cannot change "
+        "your own role (self_role_change_forbidden), only an owner can grant the owner "
+        "role (owner_grant_forbidden), and demoting the last active owner is refused "
+        "(last_owner). An unknown user_id fails with not_found. Returns the updated "
+        "user_id and a confirmation message."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "user_id": {"type": "string", "minLength": 1},
-            "role": {"type": "string", "enum": ["owner", "admin", "member", "viewer"]},
+            "user_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Target member's user_id from list_team_members.",
+            },
+            "role": {
+                "type": "string",
+                "enum": ["owner", "admin", "member", "viewer"],
+                "description": "New org role for the member.",
+            },
         },
         "required": ["user_id", "role"],
         "additionalProperties": False,
@@ -50,11 +95,21 @@ UPDATE_TEAM_MEMBER_ROLE_SPEC: dict[str, Any] = {
 
 REMOVE_TEAM_MEMBER_SPEC: dict[str, Any] = {
     "name": "remove_team_member",
-    "description": "Remove one team member from the current organization by user id.",
+    "description": (
+        "Remove one member from the caller's organization by user_id (find ids with "
+        "list_team_members). Requires an admin API key. The member is suspended "
+        "immediately — their API keys stop authenticating at once — and removing the "
+        "last active owner is refused (last_owner). An unknown user_id fails with "
+        "not_found. Returns removed: true with the removed user_id."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "user_id": {"type": "string", "minLength": 1},
+            "user_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Member's user_id from list_team_members.",
+            },
         },
         "required": ["user_id"],
         "additionalProperties": False,
@@ -63,12 +118,27 @@ REMOVE_TEAM_MEMBER_SPEC: dict[str, Any] = {
 
 LIST_DEVICES_SPEC: dict[str, Any] = {
     "name": "list_devices",
-    "description": "List registered devices for the current organization.",
+    "description": (
+        "List the devices registered to the caller's organization, paginated, together "
+        "with the plan's device_limit and plan name. Requires an API-key identity "
+        "(user-session keys fail with api_key_identity_required). Use a device's "
+        "registration_id with revoke_device to free a slot. Read-only. Returns devices, "
+        "device_count, total, page, pages, device_limit, and plan."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "page": {"type": "integer", "minimum": 1},
-            "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+            "page": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "1-based page number; defaults to 1.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Devices per page, up to 200; defaults to 25.",
+            },
         },
         "additionalProperties": False,
     },
@@ -76,11 +146,20 @@ LIST_DEVICES_SPEC: dict[str, Any] = {
 
 REVOKE_DEVICE_SPEC: dict[str, Any] = {
     "name": "revoke_device",
-    "description": "Revoke one registered device by registration id for the current organization.",
+    "description": (
+        "Revoke one registered device by registration_id (find ids with list_devices), "
+        "freeing one device slot. The device loses access on its next license refresh. "
+        "An unknown registration_id fails with not_found. Returns revoked: true with the "
+        "registration_id."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "registration_id": {"type": "string", "minLength": 1},
+            "registration_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Device registration id from list_devices.",
+            },
         },
         "required": ["registration_id"],
         "additionalProperties": False,
@@ -89,20 +168,69 @@ REVOKE_DEVICE_SPEC: dict[str, Any] = {
 
 GET_AUDIT_LOGS_SPEC: dict[str, Any] = {
     "name": "get_audit_logs",
-    "description": "Get paginated audit logs for the current organization.",
+    "description": (
+        "Query the organization's audit-event log, newest first, with pagination "
+        "(defaults page 1, limit 25) and exact-match filters. Every entry records who "
+        "did what to which resource with which result; an org with no events returns an "
+        "honest empty page. Requires an admin API key. Use get_audit_log_artifacts for "
+        "the immutable Parquet artifact copy, and filter by policy_snapshot_id, "
+        "schema_snapshot_id, manifest_version, or request_hash to trace one execution. "
+        "Read-only. Returns entries plus total, page, limit, and pages."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "page": {"type": "integer", "minimum": 1},
-            "limit": {"type": "integer", "minimum": 1, "maximum": 100},
-            "actor_email": {"type": "string", "minLength": 1},
-            "action": {"type": "string", "minLength": 1},
-            "resource_type": {"type": "string", "minLength": 1},
-            "result": {"type": "string", "minLength": 1},
-            "policy_snapshot_id": {"type": "string", "minLength": 1},
-            "schema_snapshot_id": {"type": "string", "minLength": 1},
-            "manifest_version": {"type": "string", "minLength": 1},
-            "request_hash": {"type": "string", "minLength": 1},
+            "page": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "1-based page number; defaults to 1.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Entries per page, up to 100; defaults to 25.",
+            },
+            "actor_email": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events by this actor email.",
+            },
+            "action": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events with this action, e.g. execution_policy.update.",
+            },
+            "resource_type": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events against this resource type.",
+            },
+            "result": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events with this result value.",
+            },
+            "policy_snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events tied to this execution-policy snapshot.",
+            },
+            "schema_snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events tied to this schema snapshot.",
+            },
+            "manifest_version": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events tied to this runtime manifest version.",
+            },
+            "request_hash": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only events tied to this request hash.",
+            },
         },
         "additionalProperties": False,
     },
@@ -110,21 +238,73 @@ GET_AUDIT_LOGS_SPEC: dict[str, Any] = {
 
 GET_AUDIT_LOG_ARTIFACTS_SPEC: dict[str, Any] = {
     "name": "get_audit_log_artifacts",
-    "description": "Get paginated immutable audit-log artifacts for the current organization.",
+    "description": (
+        "Query the organization's immutable Parquet audit-log artifacts with pagination "
+        "(defaults page 1, limit 25) and exact-match filters, including content_hash for "
+        "pinpointing one artifact. Artifacts are the tamper-evident copy of the audit "
+        "trail; use get_audit_logs for the live audit-event table. Requires an admin API "
+        "key; a workspace-scoped key sees only its own workspace's artifacts. Read-only. "
+        "Returns entries plus total, page, limit, and pages."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "page": {"type": "integer", "minimum": 1},
-            "limit": {"type": "integer", "minimum": 1, "maximum": 100},
-            "actor_email": {"type": "string", "minLength": 1},
-            "action": {"type": "string", "minLength": 1},
-            "resource_type": {"type": "string", "minLength": 1},
-            "result": {"type": "string", "minLength": 1},
-            "policy_snapshot_id": {"type": "string", "minLength": 1},
-            "schema_snapshot_id": {"type": "string", "minLength": 1},
-            "manifest_version": {"type": "string", "minLength": 1},
-            "request_hash": {"type": "string", "minLength": 1},
-            "content_hash": {"type": "string", "minLength": 1},
+            "page": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "1-based page number; defaults to 1.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Entries per page, up to 100; defaults to 25.",
+            },
+            "actor_email": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts by this actor email.",
+            },
+            "action": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts with this action.",
+            },
+            "resource_type": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts against this resource type.",
+            },
+            "result": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts with this result value.",
+            },
+            "policy_snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts tied to this execution-policy snapshot.",
+            },
+            "schema_snapshot_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts tied to this schema snapshot.",
+            },
+            "manifest_version": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts tied to this runtime manifest version.",
+            },
+            "request_hash": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only artifacts tied to this request hash.",
+            },
+            "content_hash": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Keep only the artifact with this content hash.",
+            },
         },
         "additionalProperties": False,
     },
@@ -142,7 +322,12 @@ GET_EXECUTION_POLICY_SPEC: dict[str, Any] = {
 
 LIST_EXECUTION_POLICY_SNAPSHOTS_SPEC: dict[str, Any] = {
     "name": "list_execution_policy_snapshots",
-    "description": "List persisted execution-policy snapshots for the active organization.",
+    "description": (
+        "List the organization's persisted execution-policy snapshots in revision order "
+        "with total_snapshots. Every policy update writes a new snapshot, so these ids "
+        "are the lineage trail for replay and audit inspection; get_execution_policy "
+        "returns only the current one. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -162,11 +347,22 @@ GET_BILLING_INFO_SPEC: dict[str, Any] = {
 
 CREATE_BILLING_CHECKOUT_SPEC: dict[str, Any] = {
     "name": "create_billing_checkout",
-    "description": "Create a Stripe Checkout session for the active organization.",
+    "description": (
+        "Create a Stripe Checkout session for the active organization and return its "
+        "hosted checkout URL. The user completes the purchase in the browser; nothing is "
+        "charged by this call itself. Requires an owner API key. plan defaults to "
+        "developer; an unsupported plan fails with invalid_plan. Use get_billing_info to "
+        "check the current plan and create_billing_portal to manage an existing "
+        "subscription."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "plan": {"type": "string", "enum": ["developer", "pro"]},
+            "plan": {
+                "type": "string",
+                "enum": ["developer", "pro"],
+                "description": "Plan to purchase; defaults to developer.",
+            },
         },
         "additionalProperties": False,
     },
@@ -174,7 +370,13 @@ CREATE_BILLING_CHECKOUT_SPEC: dict[str, Any] = {
 
 CREATE_BILLING_PORTAL_SPEC: dict[str, Any] = {
     "name": "create_billing_portal",
-    "description": "Create a Stripe Billing Portal session for the active organization.",
+    "description": (
+        "Create a Stripe Billing Portal session for the active organization and return "
+        "its URL, where the user manages payment methods, invoices, and the "
+        "subscription. Requires an owner API key and an existing billing account — an "
+        "org that has never checked out fails with no_billing_account (call "
+        "create_billing_checkout first). This call itself changes nothing."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -184,13 +386,33 @@ CREATE_BILLING_PORTAL_SPEC: dict[str, Any] = {
 
 REFRESH_CREDITS_SPEC: dict[str, Any] = {
     "name": "refresh_credits",
-    "description": "Issue a compatibility credit batch for a quota-governed managed runtime.",
+    "description": (
+        "Issue a compatibility credit batch to a quota-governed managed runtime. This "
+        "exists for non-Algenta managed plans; Algenta editions are unmetered and do "
+        "not need execution credits. Requires an API-key identity "
+        "(api_key_identity_required otherwise) and a registered device_id. "
+        "credits_used reports consumption since the last refresh and defaults to 0. "
+        "Returns credits_granted, credits_issued_this_month, monthly_limit (0 means "
+        "unlimited), monthly_remaining, expires_at, refresh_after, and server_time."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "device_id": {"type": "string", "minLength": 1},
-            "billing_period": {"type": "string", "pattern": "^\\d{4}-\\d{2}$"},
-            "credits_used": {"type": "integer", "minimum": 0},
+            "device_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Registered device id the credits are issued to.",
+            },
+            "billing_period": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}$",
+                "description": "Billing month in YYYY-MM form.",
+            },
+            "credits_used": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Credits consumed since the last refresh; defaults to 0.",
+            },
         },
         "required": ["device_id", "billing_period"],
         "additionalProperties": False,
@@ -199,25 +421,65 @@ REFRESH_CREDITS_SPEC: dict[str, Any] = {
 
 INGEST_METERING_EVENTS_SPEC: dict[str, Any] = {
     "name": "ingest_metering_events",
-    "description": "Ingest an explicitly enabled managed-runtime analytics batch.",
+    "description": (
+        "Ingest one batch of execution-analytics events from a managed runtime that "
+        "explicitly enabled control-plane sync. This endpoint is analytics-only: "
+        "received events are counted for dashboards and structured-logged, never used "
+        "for billing or quota enforcement, and self-hosted Algenta profiles never call "
+        "it automatically. Every event field is optional; events without a timestamp "
+        "count toward the current billing month. An empty events list fails with "
+        "empty_events. Returns accepted (event count) and the primary billing_period."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "device_id": {"type": "string", "minLength": 1},
+            "device_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Managed-runtime device id that produced the events.",
+            },
             "events": {
                 "type": "array",
                 "minItems": 1,
+                "description": "Analytics events; every field below is optional.",
                 "items": {
                     "type": "object",
                     "properties": {
-                        "event_type": {"type": "string"},
-                        "module": {"type": "string"},
-                        "function": {"type": "string"},
-                        "engine_used": {"type": "string"},
-                        "latency_ms": {"type": "number"},
-                        "success": {"type": "boolean"},
-                        "timestamp": {"type": "number"},
-                        "request_id": {"type": "string"},
+                        "event_type": {
+                            "type": "string",
+                            "description": "Event kind label, e.g. execution.",
+                        },
+                        "module": {
+                            "type": "string",
+                            "description": "Runtime module that ran.",
+                        },
+                        "function": {
+                            "type": "string",
+                            "description": "Function within the module that ran.",
+                        },
+                        "engine_used": {
+                            "type": "string",
+                            "description": "Compute engine that executed the call.",
+                        },
+                        "latency_ms": {
+                            "type": "number",
+                            "description": "Observed execution latency in milliseconds.",
+                        },
+                        "success": {
+                            "type": "boolean",
+                            "description": "Whether the execution succeeded.",
+                        },
+                        "timestamp": {
+                            "type": "number",
+                            "description": (
+                                "Unix timestamp of the event; determines its billing "
+                                "period."
+                            ),
+                        },
+                        "request_id": {
+                            "type": "string",
+                            "description": "Caller-side request id for correlation.",
+                        },
                     },
                     "additionalProperties": False,
                 },
@@ -230,14 +492,38 @@ INGEST_METERING_EVENTS_SPEC: dict[str, Any] = {
 
 UPDATE_EXECUTION_POLICY_SPEC: dict[str, Any] = {
     "name": "update_execution_policy",
-    "description": "Update one or more execution-policy thresholds for the active organization.",
+    "description": (
+        "Partially update the organization's autonomous execution policy: only the "
+        "fields supplied change, the rest keep their values. min_confidence blocks "
+        "decisions below that confidence, risk_floor blocks decisions whose worst-case "
+        "(p5) loss exceeds it, require_calibration makes auto-execution wait for enough "
+        "recorded outcomes, and allow_reexecution is the idempotency gate. Changes take "
+        "effect immediately, are recorded in the audit log, and write a new policy "
+        "snapshot (see list_execution_policy_snapshots). Read the current values first "
+        "with get_execution_policy. Returns the full updated policy."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "min_confidence": {"type": "number", "minimum": 0, "maximum": 1},
-            "risk_floor": {"type": "number", "minimum": 0},
-            "require_calibration": {"type": "boolean"},
-            "allow_reexecution": {"type": "boolean"},
+            "min_confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Block executions whose confidence is below this, 0-1.",
+            },
+            "risk_floor": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Block executions whose worst-case (p5) loss exceeds this.",
+            },
+            "require_calibration": {
+                "type": "boolean",
+                "description": "Require recorded outcomes before auto-execution.",
+            },
+            "allow_reexecution": {
+                "type": "boolean",
+                "description": "Idempotency gate preventing double-actions.",
+            },
         },
         "additionalProperties": False,
     },

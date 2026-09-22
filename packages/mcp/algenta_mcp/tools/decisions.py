@@ -19,8 +19,13 @@ from algenta_mcp.client import api
 PLAN_DECISION_SPEC: dict[str, Any] = {
     "name": "plan_decision",
     "description": (
-        "Build a structured Algenta DecisionPlan from a validated simulation-style request. "
-        "Use this when the caller needs the plan summary without the full decision envelope."
+        "Run a validated simulation-style request (the same payload contract as "
+        "simulate) but return only the structured DecisionPlan summary — the compact "
+        "plan object with recommended action and calibrated confidence, without the "
+        "full DecisionEnvelope metrics. Use this when the caller needs the plan "
+        "summary for a dashboard or a follow-up plan_decision-to-log_decision flow; "
+        "use simulate for the full envelope. Synchronous; the underlying run is "
+        "persisted."
     ),
     "inputSchema": {
         "type": "object",

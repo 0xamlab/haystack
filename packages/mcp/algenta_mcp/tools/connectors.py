@@ -11,18 +11,34 @@ from algenta_mcp.client import api
 LIST_CONNECTORS_SPEC: dict[str, Any] = {
     "name": "list_connectors",
     "description": (
-        "List saved data connectors such as databases, APIs, and file-backed sources. "
-        "Use this before get_connector, test_connector, or browse_connector."
+        "List the data connectors saved under the caller's organization — databases, "
+        "APIs, file-backed, and repository sources — with id, name, connector_type, "
+        "status (untested, live, error), and visibility; stored credentials are never "
+        "returned. Paginated with page and limit; status filters the returned page "
+        "client-side. Use this first to find a connector_id for get_connector, "
+        "test_connector, browse_connector, or the repository tools, and "
+        "create_connector to add one. Read-only."
     ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "page": {"type": "integer", "minimum": 1, "default": 1},
-            "limit": {"type": "integer", "minimum": 1, "default": 25},
+            "page": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1,
+                "description": "1-based page number; defaults to 1.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 25,
+                "description": "Connectors per page; defaults to 25.",
+            },
             "status": {
                 "type": "string",
                 "enum": ["untested", "live", "error", "all"],
                 "default": "all",
+                "description": "Keep only connectors in this health status; defaults to all.",
             },
         },
         "additionalProperties": False,
@@ -32,18 +48,45 @@ LIST_CONNECTORS_SPEC: dict[str, Any] = {
 CREATE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "create_connector",
     "description": (
-        "Create and save one connector configuration for later data onboarding, health checks, "
-        "and schema browsing."
+        "Save one connector configuration (host, credentials, options) for later data "
+        "onboarding, health checks, and schema browsing. config is encrypted at rest "
+        "and the new connector starts untested — call test_connector to verify it "
+        "reaches the source, then browse_connector to discover what it exposes. Returns "
+        "the saved connector with its connector_id. To try a definition without saving "
+        "anything, call preview_test_connector instead."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["name", "connector_type"],
         "properties": {
-            "name": {"type": "string", "minLength": 1},
-            "connector_type": {"type": "string", "minLength": 1},
-            "config": {"type": "object"},
-            "description": {"type": "string"},
-            "visibility": {"type": "string", "enum": ["private", "organization", "public"]},
+            "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable connector name.",
+            },
+            "connector_type": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Connector type id, e.g. a database, API, file, or repository type."
+                ),
+            },
+            "config": {
+                "type": "object",
+                "description": (
+                    "Type-specific connection settings and credentials; encrypted at "
+                    "rest and never returned."
+                ),
+            },
+            "description": {
+                "type": "string",
+                "description": "Optional note on what this connector is for.",
+            },
+            "visibility": {
+                "type": "string",
+                "enum": ["private", "organization", "public"],
+                "description": "Who can see the connector; defaults to private.",
+            },
         },
         "additionalProperties": False,
     },
@@ -51,12 +94,21 @@ CREATE_CONNECTOR_SPEC: dict[str, Any] = {
 
 GET_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "get_connector",
-    "description": "Fetch one saved connector by id.",
+    "description": (
+        "Fetch one saved connector by connector_id: name, connector_type, status, "
+        "visibility, timestamps, and the config fingerprint — never the stored "
+        "credentials. Use list_connectors to find ids. Read-only; an unknown or "
+        "invisible id fails with not_found."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["connector_id"],
         "properties": {
-            "connector_id": {"type": "string", "minLength": 1},
+            "connector_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved connector id from list_connectors.",
+            },
         },
         "additionalProperties": False,
     },
@@ -64,16 +116,43 @@ GET_CONNECTOR_SPEC: dict[str, Any] = {
 
 UPDATE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "update_connector",
-    "description": "Update one saved connector name, description, visibility, or config.",
+    "description": (
+        "Partially update one saved connector: only the supplied fields change. "
+        "Passing a new config replaces the encrypted credentials and resets the "
+        "connector to untested, so call test_connector again afterwards. Requires "
+        "manage permission on the connector (access_scope_denied otherwise) and at "
+        "least one field; an unknown id fails with not_found. Returns the updated "
+        "connector."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["connector_id"],
         "properties": {
-            "connector_id": {"type": "string", "minLength": 1},
-            "name": {"type": "string", "minLength": 1},
-            "description": {"type": "string"},
-            "visibility": {"type": "string", "enum": ["private", "organization", "public"]},
-            "config": {"type": "object"},
+            "connector_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved connector id from list_connectors.",
+            },
+            "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "New human-readable name.",
+            },
+            "description": {
+                "type": "string",
+                "description": "New description note.",
+            },
+            "visibility": {
+                "type": "string",
+                "enum": ["private", "organization", "public"],
+                "description": "New visibility.",
+            },
+            "config": {
+                "type": "object",
+                "description": (
+                    "Replacement connection config; resets health status to untested."
+                ),
+            },
         },
         "additionalProperties": False,
     },
@@ -81,12 +160,22 @@ UPDATE_CONNECTOR_SPEC: dict[str, Any] = {
 
 TEST_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "test_connector",
-    "description": "Run a real connectivity test for one saved connector and persist its live/error status.",
+    "description": (
+        "Run a real connectivity test against one saved connector's stored config and "
+        "persist the outcome as its live or error status with last_tested_at. This "
+        "opens an actual connection to the source. Use preview_test_connector for an "
+        "unsaved inline definition, and browse_connector once the connector is live. "
+        "Returns success, message, latency_ms, status, error_type, and recoverable."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["connector_id"],
         "properties": {
-            "connector_id": {"type": "string", "minLength": 1},
+            "connector_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved connector id from list_connectors.",
+            },
         },
         "additionalProperties": False,
     },
@@ -94,12 +183,23 @@ TEST_CONNECTOR_SPEC: dict[str, Any] = {
 
 BROWSE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "browse_connector",
-    "description": "Browse one saved live connector to discover files, tables, endpoints, or items.",
+    "description": (
+        "Discover what one saved connector exposes — files, tables, endpoints, or "
+        "items — with discovery labels and metadata for choosing what to onboard. The "
+        "connector must be live: an untested or errored connector fails with "
+        "not_connected, so run test_connector first. Use preview_browse_connector for "
+        "an unsaved inline definition. Read-only against the source. Returns "
+        "connector_type, items, total, message, labels, and discovery."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["connector_id"],
         "properties": {
-            "connector_id": {"type": "string", "minLength": 1},
+            "connector_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Saved connector id from list_connectors.",
+            },
         },
         "additionalProperties": False,
     },
@@ -108,14 +208,26 @@ BROWSE_CONNECTOR_SPEC: dict[str, Any] = {
 PREVIEW_TEST_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "preview_test_connector",
     "description": (
-        "Run a real connectivity test for one inline connector definition without saving it."
+        "Run a real connectivity test against an inline connector definition without "
+        "saving anything — the dry run for create_connector. This opens an actual "
+        "connection to the source, is rate-limited per organization, and caches "
+        "successful outcomes briefly. Nothing is persisted. Returns success, message, "
+        "latency_ms, status, error_type, and recoverable; call create_connector once "
+        "the definition passes."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["connector_type"],
         "properties": {
-            "connector_type": {"type": "string", "minLength": 1},
-            "config": {"type": "object"},
+            "connector_type": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Connector type id to test.",
+            },
+            "config": {
+                "type": "object",
+                "description": "Inline connection settings and credentials to test.",
+            },
         },
         "additionalProperties": False,
     },

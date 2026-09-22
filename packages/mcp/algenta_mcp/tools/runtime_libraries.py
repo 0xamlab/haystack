@@ -10,14 +10,27 @@ from algenta_mcp.client import api
 LIST_RUNTIME_LIBRARIES_SPEC: dict[str, Any] = {
     "name": "list_runtime_libraries",
     "description": (
-        "List executable Algenta runtime libraries and their public functions. "
-        "Use q to filter by module name before selecting a function."
+        "List the executable Algenta runtime libraries with their engine and public "
+        "functions — the discovery step before execute_runtime_library. q filters by "
+        "substring against module names and exported functions. The tool paginates "
+        "the API for you and returns up to limit modules in one response (default "
+        "1000). Read-only. Returns modules, total, count, page, and limit."
     ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "q": {"type": "string", "minLength": 1},
-            "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 1000},
+            "q": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Substring match against module names and exported functions.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000,
+                "default": 1000,
+                "description": "Maximum modules to return, up to 1000; defaults to 1000.",
+            },
         },
         "additionalProperties": False,
     },
@@ -26,17 +39,35 @@ LIST_RUNTIME_LIBRARIES_SPEC: dict[str, Any] = {
 EXECUTE_RUNTIME_LIBRARY_SPEC: dict[str, Any] = {
     "name": "execute_runtime_library",
     "description": (
-        "Execute one public function from an Algenta runtime library. "
-        "Call list_runtime_libraries first to discover exact module and function names."
+        "Execute one public function from an Algenta runtime library with positional "
+        "args and return its result, latency_ms, engine_used, and request_id. Call "
+        "list_runtime_libraries first to discover exact module and function names — "
+        "an unknown pair fails with module_not_registered or function_not_registered, "
+        "and a mismatched args list fails with invalid_arguments. Synchronous "
+        "compute; nothing is persisted."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["module", "function"],
         "properties": {
-            "module": {"type": "string", "minLength": 1},
-            "function": {"type": "string", "minLength": 1},
-            "args": {},
-            "request_id": {"type": "string", "minLength": 1},
+            "module": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Runtime library module name from list_runtime_libraries.",
+            },
+            "function": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Public function exported by the module.",
+            },
+            "args": {
+                "description": "Positional argument list passed to the function.",
+            },
+            "request_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Optional caller request id for correlation.",
+            },
         },
         "additionalProperties": False,
     },

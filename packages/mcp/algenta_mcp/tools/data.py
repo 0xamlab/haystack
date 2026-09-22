@@ -177,7 +177,14 @@ GET_SUMMARY_SPEC: dict[str, Any] = {
 
 REFRESH_SPEC: dict[str, Any] = {
     "name": "refresh_data",
-    "description": "Refresh a saved dataset from its original database/API/object-store origin.",
+    "description": (
+        "Re-pull a saved dataset from its original database, API, or object-store "
+        "origin using the stored connection and selection, and return the same "
+        "envelope as connect_data (status, schema_summary, refreshable). Only datasets "
+        "created from a live connection can refresh — an inline upload fails with "
+        "not_refreshable (check the refreshable flag in list_data first), and an "
+        "unknown dataset_id fails with not_found."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["dataset_id"],
@@ -192,7 +199,15 @@ REFRESH_SPEC: dict[str, Any] = {
 
 DISCONNECT_SPEC: dict[str, Any] = {
     "name": "disconnect_data",
-    "description": "Delete a saved dataset and disconnect it from future use.",
+    "description": (
+        "Delete a saved dataset and disconnect it from future use. When no other "
+        "dataset in the workspace still uses the backing saved connection, that "
+        "connection is deleted too and connection_deleted is true in the response. "
+        "Requires manage permission on the dataset (access_scope_denied otherwise); "
+        "an unknown dataset_id fails with not_found. Use list_data to confirm the "
+        "dataset first — deletion is immediate. Returns dataset_id, status 'deleted', "
+        "and connection_deleted."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["dataset_id"],

@@ -83,15 +83,35 @@ GET_JOB_RESULT_SPEC: dict[str, Any] = {
 
 LIST_JOBS_SPEC: dict[str, Any] = {
     "name": "list_jobs",
-    "description": "List async simulation jobs with pagination and optional status filtering.",
+    "description": (
+        "List the organization's async simulation jobs, newest first, with pagination "
+        "(defaults page 1, limit 25, max 200) and an optional status filter such as "
+        "queued, running, completed, failed, or cancelled. Each entry carries the job "
+        "id, status, progress, and poll URL. Use get_job_status or poll_job to follow "
+        "one job and get_job_result for its output. Read-only. Returns jobs plus "
+        "total, page, limit, and pages."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "page": {"type": "integer", "minimum": 1, "default": 1},
-            "limit": {"type": "integer", "minimum": 1, "default": 25},
+            "page": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1,
+                "description": "1-based page number; defaults to 1.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 25,
+                "description": "Jobs per page, up to 200; defaults to 25.",
+            },
             "status": {
                 "type": "string",
-                "description": "Optional job status filter such as queued or completed.",
+                "description": (
+                    "Optional job status filter such as queued, running, completed, "
+                    "failed, or cancelled."
+                ),
             },
         },
     },
@@ -111,7 +131,14 @@ CANCEL_JOB_SPEC: dict[str, Any] = {
 
 TEST_WEBHOOK_DELIVERY_SPEC: dict[str, Any] = {
     "name": "test_webhook_delivery",
-    "description": "Send a test webhook payload to a callback URL and return the delivery result.",
+    "description": (
+        "Send one real test webhook payload (event webhook.test with a sample message) "
+        "to a callback URL and return the delivery result. This makes an actual "
+        "outbound HTTP POST from the Algenta API to the given URL, with no retries. "
+        "Use it to verify a receiver before wiring callback_url into submit_job or "
+        "register_trigger. Returns success, the receiver's HTTP status_code, and a "
+        "message."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
