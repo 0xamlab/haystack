@@ -110,6 +110,12 @@ STAGE_SCRIPT=${STAGE_SCRIPT:-chain7stage.sh}
 STAGE_NEEDS_FIXTURE_IDENTITY=${STAGE_NEEDS_FIXTURE_IDENTITY:-1}
 CELL_MIN=${CELL_MIN:-2}
 CW_TIMEOUT_S=${CW_TIMEOUT_S:-900}
+# WHICH SHIPPED SURFACE THE GATE CELLS DRIVE. 'decode' = algenta.inference.decode, the METAL
+# resident session (no backend argument exists on it), which is right for the gemma/Metal lanes and
+# cannot reach a CUDA kernel. 'serve' = one `algenta serve --backend cuda --json` per cell, which
+# resolves the BUNDLED conform_generate_cuda engine out of the wheel under test -- the surface a
+# CUDA user actually gets, and the only one that can certify a cuda wheel.
+CELL_ENGINE=${CELL_ENGINE:-decode}
 # The serve-entry live launch: `algenta serve --backend cuda` against the wheel's own engine. Empty
 # SERVE_MODEL skips the phase and the verdict records that it was skipped -- a launch-unverified
 # wheel must say so rather than imply it was launched.
@@ -507,6 +513,7 @@ log "forwarding: GATE_SPECS=[$GATE_SPECS]"
 log "forwarding: ORACLE_DIR=[$ORACLE_DIR] EOS_TOKENS=[$EOS_TOKENS] CW_PIN_MHZ=$CW_PIN_MHZ"
 log "forwarding: STAGE_SCRIPT=$STAGE_SCRIPT needs_fixture_identity=$STAGE_NEEDS_FIXTURE_IDENTITY"
 log "forwarding: CELL_MIN=$CELL_MIN CW_TIMEOUT_S=$CW_TIMEOUT_S SERVE_MODEL=[$SERVE_MODEL]"
+log "forwarding: CELL_ENGINE=$CELL_ENGINE (decode=metal resident session, serve=bundled cuda engine)"
 gc ssh "$VM" --command \
   "CW_DEADLINE_EPOCH=$DEADLINE CAP_MIN=$CAP_MIN GRACE_MIN=$GRACE_MIN SAFETY_S=$STOP_MARGIN_S \
    GPU=$GPU WORK=$WORK SRC_TREE=\$HOME/$REMOTE_DIR WHEEL_PATH=\$HOME/$REMOTE_DIR.whl \
@@ -517,7 +524,7 @@ gc ssh "$VM" --command \
    GATE_COVERAGE_PROMPTS='$GATE_COVERAGE_PROMPTS' \
    GATE_COVERAGE_SINGLE_RUN='$GATE_COVERAGE_SINGLE_RUN' CW_PIN_MHZ='$CW_PIN_MHZ' \
    STAGE_SCRIPT='$STAGE_SCRIPT' STAGE_NEEDS_FIXTURE_IDENTITY='$STAGE_NEEDS_FIXTURE_IDENTITY' \
-   CELL_MIN='$CELL_MIN' CW_TIMEOUT_S='$CW_TIMEOUT_S' \
+   CELL_MIN='$CELL_MIN' CW_TIMEOUT_S='$CW_TIMEOUT_S' CELL_ENGINE='$CELL_ENGINE' \
    SERVE_MODEL='$SERVE_MODEL' SERVE_PROMPT='$SERVE_PROMPT' \
    SERVE_MAX_NEW_TOKENS='$SERVE_MAX_NEW_TOKENS' \
    CKPT='${CKPT:-/mnt/ramblob/g3conv27b}' HF_CKPT='${HF_CKPT:-\$HOME/gemma3-27b}' \
@@ -537,7 +544,8 @@ while true; do
   hb=$(gc ssh "$VM" --command "tail -2 $WORK/heartbeat.log 2>/dev/null; echo ---; \
        cat $WORK/PHASE 2>/dev/null; echo ---; cat $WORK/BATTERY_EXIT 2>/dev/null; echo ---; \
        grep -m1 'GATE ALL_PASS' $WORK/battery.log 2>/dev/null; echo ---; \
-       grep -m1 'BATTERY COMPLETE' $WORK/battery.log 2>/dev/null" 2>/dev/null | tr '\n' '|')
+       grep -m1 'BATTERY COMPLETE' $WORK/battery.log 2>/dev/null; echo ---; \
+       grep -m1 'BATTERY_FAILED' $WORK/battery.log 2>/dev/null" 2>/dev/null | tr '\n' '|')
   [ "$hb" != "$last_hb" ] && log "hb: $hb"
   last_hb="$hb"
   case "$hb" in *"BATTERY COMPLETE"*) log "battery reports COMPLETE"; break ;; esac

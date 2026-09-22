@@ -50,6 +50,7 @@ import hashlib
 import json
 import os
 import platform
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -123,6 +124,99 @@ def _schedule(specs: list[str]) -> list[tuple[str, str, Path, int]]:
     return out
 
 
+def _emit_cell(
+    label: str,
+    out_path: Path,
+    record: dict,
+    error: str | None,
+    requested: int,
+    elapsed: float,
+) -> None:
+    """Write and print one cell in the canonical form gate_any.py reads.
+
+    Shared by both engine paths so the two cannot drift in the one thing the evaluator depends on:
+    the LAST stdout line starting with `{` and containing `"generated"` is the cell's verdict input,
+    because under the battery this process runs inside cell_watchdog's cw_cell, which captures
+    STDOUT into the cell file. The `--runs` copy is the audit trail for a bare invocation.
+    """
+    line = json.dumps(record)
+    if error is not None:
+        # No `generated` key on purpose: that is what makes gate_any.py take its NOT-RUN branch, so a
+        # refused cell can never be read as a passed one.
+        print(f"CELL {label} FAILED after {elapsed:.1f}s: {error}")
+    else:
+        with out_path.open("w", encoding="utf-8") as handle:
+            handle.write(f"CELL {label} elapsed={elapsed:.1f}s\n")
+            handle.write(line + "\n")
+        generated = record.get("generated") or []
+        print(
+            f"CELL {label} END rc=0 n_generated={len(generated)}/{requested} "
+            f"eos_stop={record.get('eos_stop')} decode_tok_s={record.get('decode_tok_s')} "
+            f"elapsed={elapsed:.1f}s"
+        )
+    print(line)
+
+
+def _run_serve_cell(
+    *,
+    label: str,
+    name: str,
+    ids: list[int],
+    width: int,
+    args: argparse.Namespace,
+    worker_sha: str,
+    wheel_sha: str,
+    started: float,
+):
+    """One cell through `algenta serve --backend cuda --json`, the CUDA surface a user gets.
+
+    Imported lazily and run as a SUBPROCESS per cell: each cell then gets its own engine lifetime,
+    which is what makes a hang killable by cell_watchdog and what keeps one cell's state out of the
+    next. Parsing lives in serve_cell_record.py so it can be unit-tested without a GPU, a wheel, or
+    an engine binary.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from serve_cell_record import build_serve_command, parse_serve_output
+
+    argv = build_serve_command(
+        python=args.python,
+        model=str(args.hf_checkpoint),
+        converted_dir=str(args.ckpt),
+        prompt_token_ids=ids,
+        max_new_tokens=width,
+        weights_dtype=args.weights_dtype,
+        timeout=args.timeout,
+    )
+    try:
+        proc = subprocess.run(
+            argv, capture_output=True, text=True, timeout=args.timeout + 60.0, check=False
+        )
+        returncode, stdout, stderr = proc.returncode, proc.stdout, proc.stderr
+    except subprocess.TimeoutExpired as exc:
+        returncode = -1
+        stdout = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+        stderr = "serve cell exceeded its %.0fs timeout" % (args.timeout + 60.0)
+    except Exception as exc:  # noqa: BLE001 - a launch failure is a cell refusal, not a crash
+        returncode = -1
+        stdout = ""
+        stderr = "%s: %s" % (type(exc).__name__, exc)
+    elapsed = time.time() - started
+    record, error = parse_serve_output(
+        label=label,
+        prompt=name,
+        n_prompt=len(ids),
+        requested=width,
+        returncode=returncode,
+        stdout=stdout,
+        stderr=stderr,
+        worker_sha256_16=worker_sha,
+        wheel_sha256_16=wheel_sha,
+        cell_seconds=elapsed,
+        eos_tokens=EOS_TOKENS,
+    )
+    return record, error, elapsed
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--runs", required=True, type=Path, help="cell output directory")
@@ -170,6 +264,33 @@ def main(argv: list[str] | None = None) -> int:
         type=float,
         default=1800.0,
         help="per-call runtime timeout in seconds (the 27B blob load dominates a cell)",
+    )
+    parser.add_argument(
+        "--engine",
+        choices=("decode", "serve"),
+        default="decode",
+        help=(
+            "which shipped surface drives the cell. 'decode' (the DEFAULT, unchanged) calls "
+            "algenta.inference.decode in-process -- that function is the METAL resident session and "
+            "takes no backend argument, so it is right for the gemma/Metal lanes and cannot reach a "
+            "CUDA kernel. 'serve' runs one `algenta serve --backend cuda --json` subprocess per cell, "
+            "which resolves the BUNDLED conform_generate_cuda engine out of the wheel under test -- "
+            "the surface a CUDA user actually gets. See serve_cell_record.py for why the two differ."
+        ),
+    )
+    parser.add_argument(
+        "--python",
+        default=sys.executable,
+        help=(
+            "interpreter for `--engine serve` (it runs `<python> -m algenta.cli`). Defaults to this "
+            "process's own interpreter, which under the battery is the wheel's python3.14."
+        ),
+    )
+    parser.add_argument(
+        "--weights-dtype",
+        choices=("f32", "f64"),
+        default=None,
+        help="forwarded to `algenta serve` in serve mode only; omitted means serve's own default",
     )
     args = parser.parse_args(argv)
 
@@ -225,25 +346,57 @@ def main(argv: list[str] | None = None) -> int:
     print(f"python={platform.python_version()} fallback_mode={fallback} cells={len(cells)}")
     print(f"labels={[c[1] for c in cells]}")
 
-    try:
-        from algenta import MojoRuntime
-        from algenta.inference import decode
-    except Exception as exc:  # noqa: BLE001 - an unimportable shipped path is a hard refusal
-        print(f"FATAL: the shipped path is not importable: {exc}", file=sys.stderr)
-        print(
-            "  (PYTHONPATH must carry the wheel's unpacked site-packages and the synced tree's "
-            "packages/algenta)",
-            file=sys.stderr,
-        )
-        return 2
-
-    runtime = MojoRuntime(mode="local", timeout=args.timeout)
+    runtime = None
+    decode = None
+    if args.engine == "decode":
+        try:
+            from algenta import MojoRuntime
+            from algenta.inference import decode
+        except Exception as exc:  # noqa: BLE001 - an unimportable shipped path is a hard refusal
+            print(f"FATAL: the shipped path is not importable: {exc}", file=sys.stderr)
+            print(
+                "  (PYTHONPATH must carry the wheel's unpacked site-packages and the synced tree's "
+                "packages/algenta)",
+                file=sys.stderr,
+            )
+            return 2
+        runtime = MojoRuntime(mode="local", timeout=args.timeout)
+    else:
+        # SERVE MODE drives `<python> -m algenta.cli serve --backend cuda`, so what must be
+        # importable is the CLI module, not decode(). Checked HERE rather than letting the first
+        # cell fail seven times over for one missing package. decode() is deliberately NOT imported
+        # in this mode: it is the metal resident session, and importing it would only invite a
+        # future reader to think this path can reach a CUDA kernel.
+        try:
+            import algenta.cli  # noqa: F401
+        except Exception as exc:  # noqa: BLE001
+            print(f"FATAL: algenta.cli is not importable, so `--engine serve` cannot run: {exc}",
+                  file=sys.stderr)
+            print(
+                "  (PYTHONPATH must carry the wheel's unpacked site-packages and the synced tree's "
+                "packages/algenta)",
+                file=sys.stderr,
+            )
+            return 2
+        print(f"engine=serve path=`algenta serve --backend cuda --json` python={args.python}")
     failures = 0
     for name, label, fixture, width in cells:
         out_path = args.runs / f"{label}.out"
         ids = _read_ids(fixture)
         started = time.time()
         print(f"CELL {label} START prompt={name} n_prompt={len(ids)} max_new={width}")
+        if args.engine == "serve":
+            record, error, elapsed = _run_serve_cell(
+                label=label, name=name, ids=ids, width=width, args=args,
+                worker_sha=worker_sha, wheel_sha=wheel_sha, started=started,
+            )
+            _emit_cell(label, out_path, record, error, width, elapsed)
+            if error is not None:
+                failures += 1
+            elif not record.get("generated"):
+                failures += 1
+                print(f"CELL {label} EMPTY GENERATION (0 tokens) — counted as a failure")
+            continue
         try:
             result = decode(
                 runtime,

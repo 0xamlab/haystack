@@ -87,6 +87,15 @@ STAGE_SCRIPT=${STAGE_SCRIPT:-chain7stage.sh}
 # and grepping for a marker the stage never writes is a guaranteed refusal dressed up as a gate.
 STAGE_NEEDS_FIXTURE_IDENTITY=${STAGE_NEEDS_FIXTURE_IDENTITY:-1}
 CELL_MIN=${CELL_MIN:-2}
+# WHICH SHIPPED SURFACE THE CELLS DRIVE. 'decode' (the default) calls algenta.inference.decode,
+# which is the METAL resident session and takes no backend argument -- correct for the gemma/Metal
+# lanes, and structurally incapable of reaching a CUDA kernel. A CUDA wheel must use 'serve', which
+# runs `algenta serve --backend cuda --json` per cell and so resolves the BUNDLED
+# conform_generate_cuda engine out of the wheel under test. Measured, not inferred: with 'decode'
+# against the certified 1.0.6 cuda wheel on an H100, the first cell died in 0.6 s at preflight with
+# `InferenceError: preflight refused this run: metaldispatch_code_out_of_range` -- Qwen2.5-7B's
+# intermediate_size 18944 is a declared CUDA staging tier and is not a metal one.
+CELL_ENGINE=${CELL_ENGINE:-decode}
 # The serve-entry live launch. This is the evidence that a user can actually START the shipped
 # engine, which an oracle gate over `algenta.inference.decode` does not by itself prove: decode()
 # drives the worker directly, while `algenta serve` additionally resolves the bundled engine binary,
@@ -134,7 +143,7 @@ export GATE_JSON CONFORM_JSON
 # cell_watchdog.sh reads CW_PIN_MHZ -- all out of the environment, so an un-exported assignment here
 # would silently leave each of them on its gemma default while the log claimed otherwise.
 export ORACLE_DIR ORACLE_LABEL EOS_TOKENS GATE_COVERAGE_PROMPTS GATE_COVERAGE_SINGLE_RUN
-export CW_PIN_MHZ STAGE_SCRIPT STAGE_NEEDS_FIXTURE_IDENTITY
+export CW_PIN_MHZ STAGE_SCRIPT STAGE_NEEDS_FIXTURE_IDENTITY CELL_ENGINE
 export SERVE_JSON SERVE_MODEL SERVE_PROMPT SERVE_MAX_NEW_TOKENS
 
 ts() { date -u +%FT%TZ; }
@@ -306,6 +315,15 @@ if [ -z "$PY314" ]; then
 fi
 [ -n "$PY314" ] || { log "FATAL: no python3.14 interpreter found (set PY314=)"; finish 12; }
 log "python: $PY314 ($("$PY314" -V 2>&1))"
+# PYTHONHOME, exported for every child that touches the wheel's worker. The worker embeds
+# libpython3.14 but NOT the Python standard library, so a child that spawns it without PYTHONHOME
+# dies with `ModuleNotFoundError: No module named 'encodings'` -- the exact fault that refused the
+# first r1115-cert window at rc=14 (see the load phase). The shipped launcher sets this itself
+# (algenta/native/worker.py: env["PYTHONHOME"] = sys.base_prefix); this mirrors it for the paths
+# that go through this script instead.
+PY314_HOME=$("$PY314" -c 'import sys; print(sys.base_prefix)' 2>/dev/null || echo "")
+export PY314_HOME
+log "PYTHONHOME for children: ${PY314_HOME:-<unresolved>}"
 
 # ── 1. UNPACK THE WHEEL WITH THE STDLIB, AND CENSUS EVERY BINARY IN IT ────────────────────────
 # `python3 -m zipfile -e` and no pip: the box has no github egress and a venv would need an index. A
@@ -353,6 +371,35 @@ for path in sorted(glob.glob(os.path.join(pkg, "algenta-runtime-worker*"))):
     digest = hashlib.sha256(blob).hexdigest()
     rows.append({"name": os.path.basename(path), "bytes": len(blob),
                  "sha256": digest, "sha256_16": digest[:16]})
+# THE BUNDLED ENGINE, CENSUSED BY NAME FROM THE SIGNED MANIFEST -- NOT BY THE WORKER GLOB ABOVE.
+# scripts/release/cuda_publish_gate.py has an engine-digest fallback
+# (REASON_VERIFIED_ENGINE = verdict_pass_and_engine_sha256_matches) that reads
+# binaries.engine_binaries, picks the entry named conform_generate_cuda, and compares its sha256
+# with the wheel manifest engine.sha256. That fallback is the ONLY stable handle a verdict has,
+# because the 27 worker shards are NOT byte-reproducible across builds while the engine binary IS
+# (measured: engine sha256 61100a6c6b9dc66e... identical on the 1.0.5 and the 1.0.6 builds, while
+# two same-version worker wheels hashed d980542e... and 9088bbaa...). The glob above matched
+# algenta-runtime-worker* only, so the one binary carrying the certified CUDA kernels was ABSENT
+# from the verdict and the fallback could never match -- verified against a real window artifact:
+# engine_binary_count=27, conform_generate_cuda present=False. Read the name from the signed
+# manifest rather than hardcoding it: the manifest is the authority on what the engine is called.
+engine_name = None
+try:
+    _man = json.load(open(os.path.join(pkg, "manifest.json"), encoding="utf-8"))
+    engine_name = (_man.get("engine") or {}).get("name")
+except Exception:
+    engine_name = None
+_have = {r["name"] for r in rows}
+if engine_name and engine_name not in _have:
+    _epath = os.path.join(pkg, engine_name)
+    if os.path.isfile(_epath):
+        _blob = open(_epath, "rb").read()
+        _dig = hashlib.sha256(_blob).hexdigest()
+        rows.append({"name": engine_name, "bytes": len(_blob), "sha256": _dig,
+                     "sha256_16": _dig[:16], "is_bundled_engine": True})
+        print("census: bundled engine %s sha256=%s" % (engine_name, _dig))
+    else:
+        print("census: WARNING manifest names engine %r but no such file in the wheel" % engine_name)
 libs = []
 for path in sorted(glob.glob(os.path.join(pkg, "lib*"))):
     blob = open(path, "rb").read()
@@ -380,6 +427,19 @@ run_phase load bash -c '
   W="$SITE/algenta_runtime_native/algenta-runtime-worker"
   PKG="$SITE/algenta_runtime_native"
   export LD_LIBRARY_PATH="$PKG:${LD_LIBRARY_PATH:-}"
+  # PYTHONHOME, MIRRORING THE SHIPPED LAUNCHER -- WITHOUT IT THIS PROBE PROVES NOTHING.
+  # algenta/native/worker.py sets env["PYTHONHOME"] = sys.base_prefix before it spawns the worker.
+  # The worker embeds libpython3.14 but NOT the Python standard library, so launched raw it dies
+  # immediately with:
+  #   Could not find platform independent libraries <prefix>
+  #   Fatal Python error: Failed to import encodings module
+  #   ModuleNotFoundError: No module named "encodings"
+  # That is a fault of the PROBE, not of the wheel: the product never starts the worker this way.
+  # Measured on r1115-cert-1g (a3-highgpu-1g, driver 595.71.05) -- the identical binary with
+  # PYTHONHOME set stays up as a server; without it, it exits during startup and the whole battery
+  # refuses at rc=14 having certified nothing.
+  export PYTHONHOME="$("$PY314" -c "import sys; print(sys.base_prefix)" 2>/dev/null)"
+  echo "PYTHONHOME=$PYTHONHOME (mirrors worker.py env[PYTHONHOME]=sys.base_prefix)"
   OUTTXT="$WORK/gpuless_load.txt"
   { echo "worker=$W"
     echo "--- ldd (unresolved entries are what a GPU-less host would hit) ---"
@@ -416,7 +476,12 @@ run_phase load bash -c '
       | tee -a "$OUTTXT"
   fi
   SOCK=/tmp/crv_probe_$$.sock
-  timeout 120 "$W" --server "$SOCK" >/dev/null 2>&1 &
+  # CAPTURE THE WORKER OUTPUT, DO NOT DISCARD IT. It went to /dev/null, which is why a startup
+  # failure arrived as the single uninformative line "WORKER_LAUNCH_FAILED: the wheel worker exited
+  # during startup" and the actual reason (a Python interpreter that could not find its stdlib) had
+  # to be reproduced by hand on the box. A probe whose failure mode is undiagnosable costs a window.
+  PROBE_OUT="$WORK/worker_probe.out"
+  timeout 120 "$W" --server "$SOCK" >"$PROBE_OUT" 2>&1 &
   pid=$!
   sleep 8
   if kill -0 "$pid" 2>/dev/null; then
@@ -424,6 +489,8 @@ run_phase load bash -c '
     kill "$pid" 2>/dev/null
   else
     echo "WORKER_LAUNCH_FAILED: the wheel worker exited during startup" | tee -a "$OUTTXT"
+    echo "--- worker output (first 25 lines) ---" | tee -a "$OUTTXT"
+    head -25 "$PROBE_OUT" 2>/dev/null | tee -a "$OUTTXT"
     exit 1
   fi
   echo "NOTE: this host HAS an NVIDIA driver, so this proves LOAD here, not on a GPU-less host." \
@@ -522,6 +589,7 @@ for label in $LABELS; do
   # cw_cell writes $RUNS/$label.out from the command's stdout, which is exactly the file gate_any.py
   # reads, so the driver's JSON line lands where the evaluator expects it.
   cw_cell "$label" env PYTHONPATH="$SITE:$SRC_TREE/packages/algenta" \
+    PYTHONHOME="$PY314_HOME" \
     ALGENTA_NATIVE_WORKER="$SITE/algenta_runtime_native/algenta-runtime-worker" \
     ALGENTA_RUNTIME_WORKER="$SITE/algenta_runtime_native/algenta-runtime-worker" \
     ALGENTA_RUNTIME_FALLBACK_MODE=deny \
@@ -529,7 +597,8 @@ for label in $LABELS; do
     "$PY314" "$SRC_TREE/scripts/release/wheel_gate_cells.py" \
       --runs "$WORK/cell_tmp" --ckpt "$CKPT" --hf-checkpoint "$HF_CKPT" \
       --worker "$SITE/algenta_runtime_native/algenta-runtime-worker" --wheel "$WHEEL_PATH" \
-      --only "$label" --specs "$name:$fixture"
+      --only "$label" --specs "$name:$fixture" \
+      --engine "$CELL_ENGINE" --python "$PY314"
   rc=$?
   # The driver writes into its own --runs dir; cw_cell captured its stdout to $RUNS/$label.out, which
   # is the file the evaluator reads. Keep the driver's copy too, for the audit trail.
