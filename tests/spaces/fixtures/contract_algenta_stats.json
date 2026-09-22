@@ -1,0 +1,4492 @@
+{
+ "contract": {
+  "modules": {
+   "ab_testing": {
+    "description": "A/B testing: two-proportion z-test, power, sample size, sequential tests",
+    "functions": {
+     "confidence_interval_proportion": {
+      "count_relations": [],
+      "doc": "Wilson score confidence interval for a proportion.",
+      "name": "confidence_interval_proportion",
+      "params": [
+       {
+        "doc": "Number of successes.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes",
+        "type": "Int"
+       },
+       {
+        "doc": "Total trials.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "default": 0.95,
+        "doc": "Confidence level (default 0.95).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "confidence",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "[lower, upper] bounds."
+     },
+     "epsilon_greedy_select": {
+      "count_relations": [],
+      "doc": "Epsilon-greedy multi-arm bandit arm selection.",
+      "name": "epsilon_greedy_select",
+      "params": [
+       {
+        "doc": "Cumulative rewards for each arm.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "rewards",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Number of pulls for each arm.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "counts",
+        "type": "List[Int]"
+       },
+       {
+        "doc": "Exploration probability.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "epsilon",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": "Index of the selected arm."
+     },
+     "is_significant": {
+      "count_relations": [],
+      "doc": "Check if result is statistically significant.",
+      "name": "is_significant",
+      "params": [
+       {
+        "doc": "The p-value from a test.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "p_value",
+        "type": "Float64"
+       },
+       {
+        "default": 0.05,
+        "doc": "Significance level (default 0.05).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Bool",
+      "returns_doc": "True if p_value < alpha."
+     },
+     "mde": {
+      "count_relations": [],
+      "doc": "Minimum detectable effect size.",
+      "name": "mde",
+      "params": [
+       {
+        "doc": "Sample size per group.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "doc": "Baseline conversion rate.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "baseline_rate",
+        "type": "Float64"
+       },
+       {
+        "default": 0.05,
+        "doc": "Significance level (default 0.05).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "default": 0.8,
+        "doc": "Desired power (default 0.8).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "power",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Minimum detectable absolute effect size."
+     },
+     "power_analysis": {
+      "count_relations": [],
+      "doc": "Statistical power for given effect size and sample size.",
+      "name": "power_analysis",
+      "params": [
+       {
+        "doc": "Standardized effect size (Cohen's h).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "effect_size",
+        "type": "Float64"
+       },
+       {
+        "doc": "Sample size per group.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "default": 0.05,
+        "doc": "Significance level (default 0.05).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Statistical power (probability of rejecting H0)."
+     },
+     "relative_uplift": {
+      "count_relations": [],
+      "doc": "Relative uplift: (treatment - control) / control.",
+      "name": "relative_uplift",
+      "params": [
+       {
+        "doc": "Control group rate.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "control_rate",
+        "type": "Float64"
+       },
+       {
+        "doc": "Treatment group rate.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "treatment_rate",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Relative uplift as a fraction."
+     },
+     "sample_size_proportion": {
+      "count_relations": [],
+      "doc": "Required sample size per group for a two-proportion test.",
+      "name": "sample_size_proportion",
+      "params": [
+       {
+        "doc": "Baseline proportion.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "p1",
+        "type": "Float64"
+       },
+       {
+        "doc": "Expected proportion under alternative.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "p2",
+        "type": "Float64"
+       },
+       {
+        "default": 0.05,
+        "doc": "Significance level (default 0.05).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "default": 0.8,
+        "doc": "Statistical power (default 0.8).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "power",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": "Minimum sample size per group."
+     },
+     "sequential_test": {
+      "count_relations": [],
+      "doc": "Sequential test with spending function boundary.",
+      "name": "sequential_test",
+      "params": [
+       {
+        "doc": "Successes in group A.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes_a",
+        "type": "Int"
+       },
+       {
+        "doc": "Total observations in group A.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_a",
+        "type": "Int"
+       },
+       {
+        "doc": "Successes in group B.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes_b",
+        "type": "Int"
+       },
+       {
+        "doc": "Total observations in group B.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_b",
+        "type": "Int"
+       },
+       {
+        "default": 0.05,
+        "doc": "Significance level (default 0.05).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": "0 = continue, 1 = A wins, 2 = B wins."
+     },
+     "ucb1_select": {
+      "count_relations": [],
+      "doc": "UCB1 arm selection: argmax(mean_reward + sqrt(2*ln(total)/count)).",
+      "name": "ucb1_select",
+      "params": [
+       {
+        "doc": "Cumulative rewards for each arm.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "rewards",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Number of pulls for each arm.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "counts",
+        "type": "List[Int]"
+       },
+       {
+        "doc": "Total number of pulls across all arms.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "total",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": "Index of the selected arm."
+     },
+     "z_test_proportions": {
+      "count_relations": [],
+      "doc": "Two-proportion z-test.",
+      "name": "z_test_proportions",
+      "params": [
+       {
+        "doc": "Successes in group A.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes_a",
+        "type": "Int"
+       },
+       {
+        "doc": "Total observations in group A.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_a",
+        "type": "Int"
+       },
+       {
+        "doc": "Successes in group B.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes_b",
+        "type": "Int"
+       },
+       {
+        "doc": "Total observations in group B.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_b",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "[z_statistic, p_value]."
+     }
+    },
+    "name": "ab_testing",
+    "structs": {}
+   },
+   "bayesian": {
+    "description": "Bayesian inference: Beta, Normal and Poisson posteriors, credible intervals, Bayes factors",
+    "functions": {
+     "bayes_factor": {
+      "count_relations": [],
+      "doc": "Bayes factor: L(H1) / L(H0).",
+      "name": "bayes_factor",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "likelihood_h1",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "likelihood_h0",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "bayesian_ab_test": {
+      "count_relations": [],
+      "doc": "P(B > A) using Monte Carlo sampling from Beta posteriors (flat prior).",
+      "name": "bayesian_ab_test",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes_a",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "trials_a",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes_b",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "trials_b",
+        "type": "Int"
+       },
+       {
+        "default": 10000,
+        "has_default": true,
+        "is_mut": false,
+        "name": "n_samples",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "beta_credible_interval": {
+      "count_relations": [],
+      "doc": "Approximate credible interval [lower, upper] using normal approximation.",
+      "name": "beta_credible_interval",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       },
+       {
+        "default": 0.95,
+        "has_default": true,
+        "is_mut": false,
+        "name": "mass",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "beta_mean": {
+      "count_relations": [],
+      "doc": "Mean of Beta(\u03b1, \u03b2): \u03b1 / (\u03b1 + \u03b2).",
+      "name": "beta_mean",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "beta_posterior": {
+      "count_relations": [],
+      "doc": "Beta-Binomial conjugate update. Returns [posterior_alpha, posterior_beta].",
+      "name": "beta_posterior",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "prior_alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "prior_beta",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "successes",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "failures",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "beta_variance": {
+      "count_relations": [],
+      "doc": "Variance of Beta(\u03b1, \u03b2): \u03b1\u03b2 / ((\u03b1+\u03b2)\u00b2(\u03b1+\u03b2+1)).",
+      "name": "beta_variance",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "hpd_interval_normal": {
+      "count_relations": [],
+      "doc": "HPD interval for normal: [mean - z*std, mean + z*std].",
+      "name": "hpd_interval_normal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mean",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "std",
+        "type": "Float64"
+       },
+       {
+        "default": 0.95,
+        "has_default": true,
+        "is_mut": false,
+        "name": "mass",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "normal_posterior": {
+      "count_relations": [],
+      "doc": "Normal-Normal conjugate update. Returns [posterior_mean, posterior_variance].",
+      "name": "normal_posterior",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "prior_mean",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "prior_var",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data_mean",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data_var",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "poisson_posterior": {
+      "count_relations": [],
+      "doc": "Gamma-Poisson conjugate. Returns [posterior_alpha, posterior_beta]. Posterior is Gamma(\u03b1 + \u03a3x, \u03b2 + n).",
+      "name": "poisson_posterior",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "prior_alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "prior_beta",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sum_x",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "posterior_predictive_beta": {
+      "count_relations": [],
+      "doc": "Predictive probability of next success: \u03b1 / (\u03b1 + \u03b2).",
+      "name": "posterior_predictive_beta",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     }
+    },
+    "name": "bayesian",
+    "structs": {}
+   },
+   "distribution_fit": {
+    "description": "Distribution fitting",
+    "functions": {
+     "aic": {
+      "count_relations": [],
+      "doc": "Akaike Information Criterion: 2k - 2*LL.",
+      "name": "aic",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "log_likelihood",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "k",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "best_fit": {
+      "count_relations": [],
+      "doc": "Compare normal(0) vs exponential(1) vs uniform(2) by AIC. Returns index of best fit (lowest AIC).",
+      "name": "best_fit",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": ""
+     },
+     "bic": {
+      "count_relations": [],
+      "doc": "Bayesian Information Criterion: k*ln(n) - 2*LL.",
+      "name": "bic",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "log_likelihood",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "k",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "fit_exponential": {
+      "count_relations": [],
+      "doc": "Fit exponential distribution via MLE. Returns \u03bb (rate = 1/mean).",
+      "name": "fit_exponential",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "fit_normal": {
+      "count_relations": [],
+      "doc": "Fit normal distribution via MLE. Returns [mean, std].",
+      "name": "fit_normal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "fit_uniform": {
+      "count_relations": [],
+      "doc": "Fit uniform distribution via MLE. Returns [min, max].",
+      "name": "fit_uniform",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "fit_weibull": {
+      "count_relations": [],
+      "doc": "Fit Weibull distribution via method of moments approximation. Returns [shape_beta, scale_eta]. Uses iterative estimation: CV -> shape, then scale from mean.",
+      "name": "fit_weibull",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "log_likelihood_exponential": {
+      "count_relations": [],
+      "doc": "Log-likelihood for exponential distribution.",
+      "name": "log_likelihood_exponential",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "rate",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "log_likelihood_normal": {
+      "count_relations": [],
+      "doc": "Log-likelihood for normal distribution.",
+      "name": "log_likelihood_normal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mean",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "std",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "qq_residuals": {
+      "count_relations": [],
+      "doc": "QQ plot residuals: sorted data vs expected normal quantiles. residual[i] = sorted_data[i] - (mean + std * Phi^-1((i+0.5)/n))",
+      "name": "qq_residuals",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mean",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "std",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     }
+    },
+    "name": "distribution_fit",
+    "structs": {}
+   },
+   "distributions": {
+    "description": "Samplers for 27 probability distributions",
+    "functions": {
+     "acos_approx": {
+      "count_relations": [],
+      "doc": "",
+      "name": "acos_approx",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_arcsine": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_arcsine",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lo",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "hi",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_bernoulli": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_bernoulli",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_beta": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_beta",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_cauchy": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_cauchy",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "location",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "scale",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_exponential": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_exponential",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "rate",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_gamma_mt": {
+      "count_relations": [],
+      "doc": "Marsaglia-Tsang method.",
+      "name": "sample_gamma_mt",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "shape",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "scale",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_gumbel": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_gumbel",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_halfnormal": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_halfnormal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sigma",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_hypergeometric": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_hypergeometric",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "N",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "K",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_laplace": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_laplace",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_logistic": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_logistic",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "s",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_lognormal": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_lognormal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sigma",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_neg_binomial": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_neg_binomial",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "r",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_normal": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_normal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sigma",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_one": {
+      "count_relations": [],
+      "doc": "Universal sampler \u2014 all 27 distribution types. Zero Python calls.",
+      "name": "sample_one",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "dt",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p0",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p1",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p2",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p3",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "dv",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "dp",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_pareto": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_pareto",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x_m",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_pert": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_pert",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lo",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "likely",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "hi",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "g",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_poisson": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_poisson",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lam",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_rayleigh": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_rayleigh",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sigma",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_student_t": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_student_t",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "df",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sigma",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_triangular": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_triangular",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lo",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mode",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "hi",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_uniform": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_uniform",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lo",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "hi",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_vonmises": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_vonmises",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "kappa",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sample_weibull": {
+      "count_relations": [],
+      "doc": "",
+      "name": "sample_weibull",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "shape",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "scale",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     }
+    },
+    "name": "distributions",
+    "structs": {}
+   },
+   "forecasting.interval": {
+    "description": "Prediction bands from backtest residuals",
+    "functions": {
+     "interval_bootstrap_flat": {
+      "count_relations": [],
+      "doc": "Seeded-bootstrap prediction band: resample each lead time's residuals, then quantile.",
+      "name": "interval_bootstrap_flat",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "error",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_origins",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "horizon",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "point",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "level",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_draws",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "seed",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "stream",
+        "type": "Int"
+       }
+      ],
+      "return_type": "IntervalBand",
+      "returns_doc": ""
+     },
+     "interval_coverage_flat": {
+      "count_relations": [],
+      "doc": "MEASURED coverage of a band against held-out actuals, with the misses split by side.",
+      "name": "interval_coverage_flat",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "actual",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lower",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "upper",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "CoverageReport",
+      "returns_doc": ""
+     },
+     "interval_empirical_flat": {
+      "count_relations": [],
+      "doc": "Empirical prediction band: the residual quantiles at each lead time, added to `point`.",
+      "name": "interval_empirical_flat",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "error",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_origins",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "horizon",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "point",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "level",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "IntervalBand",
+      "returns_doc": ""
+     }
+    },
+    "name": "forecasting.interval",
+    "structs": {
+     "CoverageReport": {
+      "fields": [
+       {
+        "name": "status",
+        "type": "Int"
+       },
+       {
+        "name": "n_points",
+        "type": "Int"
+       },
+       {
+        "name": "n_covered",
+        "type": "Int"
+       },
+       {
+        "name": "n_below",
+        "type": "Int"
+       },
+       {
+        "name": "n_above",
+        "type": "Int"
+       },
+       {
+        "name": "n_degenerate",
+        "type": "Int"
+       },
+       {
+        "name": "coverage",
+        "type": "Float64"
+       },
+       {
+        "name": "has_coverage",
+        "type": "Bool"
+       },
+       {
+        "name": "status_name",
+        "type": "String"
+       }
+      ],
+      "name": "CoverageReport"
+     },
+     "IntervalBand": {
+      "fields": [
+       {
+        "name": "status",
+        "type": "Int"
+       },
+       {
+        "name": "method_id",
+        "type": "Int"
+       },
+       {
+        "name": "horizon",
+        "type": "Int"
+       },
+       {
+        "name": "n_origins",
+        "type": "Int"
+       },
+       {
+        "name": "level",
+        "type": "Float64"
+       },
+       {
+        "name": "min_residuals_required",
+        "type": "Int"
+       },
+       {
+        "name": "center",
+        "type": "List[Float64]"
+       },
+       {
+        "name": "lower",
+        "type": "List[Float64]"
+       },
+       {
+        "name": "upper",
+        "type": "List[Float64]"
+       },
+       {
+        "name": "has_interval",
+        "type": "List[Bool]"
+       },
+       {
+        "name": "n_residuals",
+        "type": "List[Int]"
+       },
+       {
+        "name": "n_steps_covered",
+        "type": "Int"
+       },
+       {
+        "name": "draws_per_step",
+        "type": "Int"
+       },
+       {
+        "name": "seed",
+        "type": "Int"
+       },
+       {
+        "name": "stream",
+        "type": "Int"
+       },
+       {
+        "name": "rng_version",
+        "type": "String"
+       },
+       {
+        "name": "status_name",
+        "type": "String"
+       }
+      ],
+      "name": "IntervalBand"
+     }
+    }
+   },
+   "hypothesis": {
+    "description": "Nonparametric tests: Mann-Whitney, Wilcoxon, Kruskal-Wallis, Fisher exact, sign test",
+    "functions": {
+     "fisher_exact_2x2": {
+      "count_relations": [],
+      "doc": "Fisher's exact test for a 2\u00d72 contingency table.",
+      "name": "fisher_exact_2x2",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "c",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "d",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "kruskal_wallis": {
+      "count_relations": [],
+      "doc": "Kruskal-Wallis H test for k independent groups.",
+      "name": "kruskal_wallis",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "groups",
+        "type": "List[List[Float64]]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "mann_whitney_u": {
+      "count_relations": [],
+      "doc": "Mann-Whitney U test for two independent samples.",
+      "name": "mann_whitney_u",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "rank_data": {
+      "count_relations": [],
+      "doc": "Assign ranks (1-based) to data with average tie-breaking.",
+      "name": "rank_data",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "sign_test": {
+      "count_relations": [],
+      "doc": "Sign test: count values above, below, and equal to the median.",
+      "name": "sign_test",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "default": 0.0,
+        "has_default": true,
+        "is_mut": false,
+        "name": "median",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "wilcoxon_signed_rank": {
+      "count_relations": [],
+      "doc": "Wilcoxon signed-rank test for paired samples.",
+      "name": "wilcoxon_signed_rank",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     }
+    },
+    "name": "hypothesis",
+    "structs": {}
+   },
+   "interval": {
+    "description": "Interval arithmetic",
+    "functions": {
+     "empty_interval": {
+      "count_relations": [],
+      "doc": "Create an empty interval.",
+      "name": "empty_interval",
+      "params": [],
+      "return_type": "Interval",
+      "returns_doc": "An Interval with empty=True."
+     },
+     "interval": {
+      "count_relations": [],
+      "doc": "Create interval [lo, hi]. If lo > hi, returns empty interval.",
+      "name": "interval",
+      "params": [
+       {
+        "doc": "Lower bound.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "lo",
+        "type": "Float64"
+       },
+       {
+        "doc": "Upper bound.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "hi",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Interval",
+      "returns_doc": "Interval [lo, hi], or empty if lo > hi."
+     },
+     "interval_add": {
+      "count_relations": [],
+      "doc": "Add two intervals: [a.lo+b.lo, a.hi+b.hi].",
+      "name": "interval_add",
+      "params": [
+       {
+        "doc": "First interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Interval"
+       },
+       {
+        "doc": "Second interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Interval",
+      "returns_doc": "Sum interval, or empty if either input is empty."
+     },
+     "interval_contains": {
+      "count_relations": [],
+      "doc": "Check if x \u2208 [lo, hi].",
+      "name": "interval_contains",
+      "params": [
+       {
+        "doc": "The interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "iv",
+        "type": "Interval"
+       },
+       {
+        "doc": "The value to test.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Bool",
+      "returns_doc": "True if iv is non-empty and lo <= x <= hi."
+     },
+     "interval_div": {
+      "count_relations": [],
+      "doc": "Divide intervals: a * [1/b.hi, 1/b.lo].",
+      "name": "interval_div",
+      "params": [
+       {
+        "doc": "Numerator interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Interval"
+       },
+       {
+        "doc": "Denominator interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Interval",
+      "returns_doc": "Quotient interval."
+     },
+     "interval_intersection": {
+      "count_relations": [],
+      "doc": "Intersection of two intervals (may be empty).",
+      "name": "interval_intersection",
+      "params": [
+       {
+        "doc": "First interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Interval"
+       },
+       {
+        "doc": "Second interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Interval",
+      "returns_doc": "The intersection, or empty if they don't overlap."
+     },
+     "interval_midpoint": {
+      "count_relations": [],
+      "doc": "Midpoint of interval: (lo + hi) / 2.",
+      "name": "interval_midpoint",
+      "params": [
+       {
+        "doc": "The interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "iv",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Midpoint as Float64 (0 for empty)."
+     },
+     "interval_mul": {
+      "count_relations": [],
+      "doc": "Multiply intervals: [min(products), max(products)] of all endpoints.",
+      "name": "interval_mul",
+      "params": [
+       {
+        "doc": "First interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Interval"
+       },
+       {
+        "doc": "Second interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Interval",
+      "returns_doc": "Product interval, or empty if either input is empty."
+     },
+     "interval_overlaps": {
+      "count_relations": [],
+      "doc": "Check if two intervals overlap.",
+      "name": "interval_overlaps",
+      "params": [
+       {
+        "doc": "First interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Interval"
+       },
+       {
+        "doc": "Second interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Bool",
+      "returns_doc": "True if the intervals share at least one point."
+     },
+     "interval_radius": {
+      "count_relations": [],
+      "doc": "Radius of interval: (hi - lo) / 2.",
+      "name": "interval_radius",
+      "params": [
+       {
+        "doc": "The interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "iv",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Radius as Float64 (0 for empty)."
+     },
+     "interval_sub": {
+      "count_relations": [],
+      "doc": "Subtract intervals: [a.lo-b.hi, a.hi-b.lo].",
+      "name": "interval_sub",
+      "params": [
+       {
+        "doc": "First interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Interval"
+       },
+       {
+        "doc": "Second interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Interval",
+      "returns_doc": "Difference interval, or empty if either input is empty."
+     },
+     "interval_union_hull": {
+      "count_relations": [],
+      "doc": "Smallest interval containing both (convex hull).",
+      "name": "interval_union_hull",
+      "params": [
+       {
+        "doc": "First interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "a",
+        "type": "Interval"
+       },
+       {
+        "doc": "Second interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "b",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Interval",
+      "returns_doc": "Hull interval [min(lo), max(hi)], or the non-empty one if one is empty."
+     },
+     "interval_width": {
+      "count_relations": [],
+      "doc": "Width of interval: hi - lo (0 for empty).",
+      "name": "interval_width",
+      "params": [
+       {
+        "doc": "The interval.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "iv",
+        "type": "Interval"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Width as Float64."
+     }
+    },
+    "name": "interval",
+    "structs": {
+     "Interval": {
+      "fields": [
+       {
+        "name": "lo",
+        "type": "Float64"
+       },
+       {
+        "name": "hi",
+        "type": "Float64"
+       },
+       {
+        "name": "empty",
+        "type": "Bool"
+       }
+      ],
+      "name": "Interval"
+     }
+    }
+   },
+   "ml.naive_bayes": {
+    "description": "Gaussian naive Bayes classifier",
+    "functions": {
+     "accuracy": {
+      "count_relations": [],
+      "doc": "Classification accuracy: fraction of correct predictions.",
+      "name": "accuracy",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "predicted",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "actual",
+        "type": "List[Int]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "compute_priors": {
+      "count_relations": [],
+      "doc": "Compute prior probabilities from integer labels.",
+      "name": "compute_priors",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_classes",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "confusion_matrix": {
+      "count_relations": [],
+      "doc": "Build an n_classes \u00d7 n_classes confusion matrix.",
+      "name": "confusion_matrix",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "predicted",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "actual",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_classes",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[List[Int]]",
+      "returns_doc": ""
+     },
+     "gaussian_log_likelihood": {
+      "count_relations": [],
+      "doc": "Log-likelihood of x under Gaussian(mean, std).",
+      "name": "gaussian_log_likelihood",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mean",
+        "type": "Float64"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "std",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "gaussian_nb_fit": {
+      "count_relations": [],
+      "doc": "Fit Gaussian Naive Bayes.",
+      "name": "gaussian_nb_fit",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_classes",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[List[Float64]]",
+      "returns_doc": ""
+     },
+     "gaussian_nb_predict": {
+      "count_relations": [],
+      "doc": "Predict class for a single sample using Gaussian NB.",
+      "name": "gaussian_nb_predict",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "params",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "priors",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": ""
+     },
+     "gaussian_nb_predict_batch": {
+      "count_relations": [],
+      "doc": "Predict classes for a batch of samples.",
+      "name": "gaussian_nb_predict_batch",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "params",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "priors",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       }
+      ],
+      "return_type": "List[Int]",
+      "returns_doc": ""
+     },
+     "precision_recall": {
+      "count_relations": [],
+      "doc": "Compute [precision, recall, f1] for a target class.",
+      "name": "precision_recall",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "predicted",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "actual",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "target_class",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     }
+    },
+    "name": "ml.naive_bayes",
+    "structs": {}
+   },
+   "probability": {
+    "description": "Probability: Bayes' rule, combinatorics, PMFs, entropy, KL divergence",
+    "functions": {
+     "bayes": {
+      "count_relations": [],
+      "doc": "Bayes' theorem: P(A|B) = P(B|A) * P(A) / P(B).",
+      "name": "bayes",
+      "params": [
+       {
+        "doc": "P(A) \u2014 prior probability.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "prior",
+        "type": "Float64"
+       },
+       {
+        "doc": "P(B|A) \u2014 likelihood of evidence given hypothesis.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "likelihood",
+        "type": "Float64"
+       },
+       {
+        "doc": "P(B) \u2014 total probability of evidence.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "evidence",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "P(A|B) \u2014 posterior probability. Returns 0.0 if evidence is zero."
+     },
+     "binomial_pmf": {
+      "count_relations": [],
+      "doc": "Binomial PMF: P(X=k) = C(n,k) * p^k * (1-p)^(n-k).",
+      "name": "binomial_pmf",
+      "params": [
+       {
+        "doc": "Number of successes.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "k",
+        "type": "Int"
+       },
+       {
+        "doc": "Number of trials.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "doc": "Probability of success per trial.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "p",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "P(X=k). Returns 0.0 if k < 0 or k > n."
+     },
+     "combinations": {
+      "count_relations": [],
+      "doc": "Binomial coefficient: C(n, k) = n! / (k! * (n-k)!).",
+      "name": "combinations",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "k",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "entropy": {
+      "count_relations": [],
+      "doc": "Shannon entropy in bits: H = -\u03a3 p * log2(p).",
+      "name": "entropy",
+      "params": [
+       {
+        "doc": "List of probabilities (should sum to 1).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "probs",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Entropy in bits."
+     },
+     "factorial": {
+      "count_relations": [],
+      "doc": "Compute n! as Float64.",
+      "name": "factorial",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "joint_probability": {
+      "count_relations": [],
+      "doc": "Joint probability: P(A\u2229B) = P(B|A) * P(A).",
+      "name": "joint_probability",
+      "params": [
+       {
+        "doc": "P(A).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "p_a",
+        "type": "Float64"
+       },
+       {
+        "doc": "P(B|A) \u2014 conditional probability.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "p_b_given_a",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "P(A\u2229B)."
+     },
+     "kl_divergence": {
+      "count_relations": [],
+      "doc": "Kullback-Leibler divergence in bits: D_KL(P||Q) = \u03a3 p * log2(p/q).",
+      "name": "kl_divergence",
+      "params": [
+       {
+        "doc": "True distribution.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "p",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Approximate distribution.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "q",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "KL divergence in bits."
+     },
+     "mutual_information": {
+      "count_relations": [],
+      "doc": "Mutual information from joint distribution in bits.",
+      "name": "mutual_information",
+      "params": [
+       {
+        "doc": "2D joint probability table. joint[i][j] = P(X=i, Y=j).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "joint",
+        "type": "List[List[Float64]]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Mutual information in bits."
+     },
+     "permutations": {
+      "count_relations": [],
+      "doc": "Permutations: P(n, k) = n! / (n-k)!.",
+      "name": "permutations",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "k",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "poisson_pmf": {
+      "count_relations": [],
+      "doc": "Poisson PMF: P(X=k) = \u03bb^k * e^(-\u03bb) / k!.",
+      "name": "poisson_pmf",
+      "params": [
+       {
+        "doc": "Number of events.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "k",
+        "type": "Int"
+       },
+       {
+        "doc": "\u03bb \u2014 expected number of events.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "lam",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "P(X=k). Returns 0.0 if k < 0."
+     },
+     "total_probability": {
+      "count_relations": [],
+      "doc": "Law of total probability: P(B) = \u03a3 P(B|A\u1d62) * P(A\u1d62).",
+      "name": "total_probability",
+      "params": [
+       {
+        "doc": "List of P(A\u1d62) for each partition.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "priors",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "List of P(B|A\u1d62) for each partition.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "likelihoods",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "P(B). Uses min(len(priors), len(likelihoods)) terms."
+     }
+    },
+    "name": "probability",
+    "structs": {}
+   },
+   "regression": {
+    "description": "Regression: simple and multiple OLS, ridge, polynomial features, fit metrics",
+    "functions": {
+     "mse": {
+      "count_relations": [],
+      "doc": "Mean Squared Error.",
+      "name": "mse",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y_actual",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y_predicted",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "ols_multiple": {
+      "count_relations": [],
+      "doc": "Multiple OLS via normal equations: \u03b2 = (X^T X)^-1 X^T y.",
+      "name": "ols_multiple",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "RegressionResult",
+      "returns_doc": ""
+     },
+     "ols_simple": {
+      "count_relations": [],
+      "doc": "Simple OLS regression (1 predictor). slope, intercept, R\u00b2, residuals.",
+      "name": "ols_simple",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "RegressionResult",
+      "returns_doc": ""
+     },
+     "polynomial_features": {
+      "count_relations": [],
+      "doc": "Generate polynomial features [x, x\u00b2, ..., x^degree]. Returns n\u00d7degree.",
+      "name": "polynomial_features",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "degree",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[List[Float64]]",
+      "returns_doc": ""
+     },
+     "predict": {
+      "count_relations": [],
+      "doc": "Predict y = X * \u03b2 + intercept.",
+      "name": "predict",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "coefficients",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "intercept",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "r_squared": {
+      "count_relations": [],
+      "doc": "R\u00b2 = 1 - SS_res / SS_tot.",
+      "name": "r_squared",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y_actual",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y_predicted",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "ridge_regression": {
+      "count_relations": [],
+      "doc": "Ridge: \u03b2 = (X^T X + \u03b1I)^-1 X^T y. Intercept column not penalized.",
+      "name": "ridge_regression",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       },
+       {
+        "default": 1.0,
+        "has_default": true,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "RegressionResult",
+      "returns_doc": ""
+     },
+     "rmse": {
+      "count_relations": [],
+      "doc": "Root Mean Squared Error.",
+      "name": "rmse",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y_actual",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y_predicted",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     }
+    },
+    "name": "regression",
+    "structs": {
+     "RegressionResult": {
+      "fields": [
+       {
+        "name": "coefficients",
+        "type": "List[Float64]"
+       },
+       {
+        "name": "intercept",
+        "type": "Float64"
+       },
+       {
+        "name": "r_squared",
+        "type": "Float64"
+       },
+       {
+        "name": "residuals",
+        "type": "List[Float64]"
+       }
+      ],
+      "name": "RegressionResult"
+     }
+    }
+   },
+   "regression_tree": {
+    "description": "Regression trees (CART)",
+    "functions": {
+     "best_split": {
+      "count_relations": [],
+      "doc": "Find best feature and split value for given indices.",
+      "name": "best_split",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "indices",
+        "type": "List[Int]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "build_tree": {
+      "count_relations": [],
+      "doc": "Build regression tree using recursive binary splitting on MSE.",
+      "name": "build_tree",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       },
+       {
+        "default": 5,
+        "has_default": true,
+        "is_mut": false,
+        "name": "max_depth",
+        "type": "Int"
+       },
+       {
+        "default": 2,
+        "has_default": true,
+        "is_mut": false,
+        "name": "min_samples",
+        "type": "Int"
+       }
+      ],
+      "return_type": "RegressionTree",
+      "returns_doc": ""
+     },
+     "mse_reduction": {
+      "count_relations": [],
+      "doc": "MSE reduction from a split.",
+      "name": "mse_reduction",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "left_idx",
+        "type": "List[Int]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "right_idx",
+        "type": "List[Int]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "predict_batch": {
+      "count_relations": [],
+      "doc": "Predict for multiple samples.",
+      "name": "predict_batch",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "tree",
+        "type": "RegressionTree"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "predict_single": {
+      "count_relations": [],
+      "doc": "Predict for one sample by traversing tree from root (node 0).",
+      "name": "predict_single",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "tree",
+        "type": "RegressionTree"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "tree_depth": {
+      "count_relations": [],
+      "doc": "Maximum depth of tree (root = depth 1).",
+      "name": "tree_depth",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "tree",
+        "type": "RegressionTree"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": ""
+     },
+     "tree_mse": {
+      "count_relations": [],
+      "doc": "MSE of tree predictions on a dataset.",
+      "name": "tree_mse",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "tree",
+        "type": "RegressionTree"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "X",
+        "type": "List[List[Float64]]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "tree_n_leaves": {
+      "count_relations": [],
+      "doc": "Count leaf nodes.",
+      "name": "tree_n_leaves",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "tree",
+        "type": "RegressionTree"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": ""
+     }
+    },
+    "name": "regression_tree",
+    "structs": {
+     "RegressionTree": {
+      "fields": [
+       {
+        "name": "split_feature",
+        "type": "List[Int]"
+       },
+       {
+        "name": "split_value",
+        "type": "List[Float64]"
+       },
+       {
+        "name": "left_child",
+        "type": "List[Int]"
+       },
+       {
+        "name": "right_child",
+        "type": "List[Int]"
+       },
+       {
+        "name": "leaf_value",
+        "type": "List[Float64]"
+       },
+       {
+        "name": "n_nodes",
+        "type": "Int"
+       }
+      ],
+      "name": "RegressionTree"
+     }
+    }
+   },
+   "sampling": {
+    "description": "Quasi-random sampling: Halton, Sobol-like, Latin hypercube, stratified",
+    "functions": {
+     "discrepancy_l2_star": {
+      "count_relations": [],
+      "doc": "L2-star discrepancy for 2D point sets.",
+      "name": "discrepancy_l2_star",
+      "params": [
+       {
+        "doc": "List of [x, y] pairs in [0, 1]\u00b2.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "points",
+        "type": "List[List[Float64]]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "L2-star discrepancy (non-negative Float64)."
+     },
+     "halton_2d": {
+      "count_relations": [],
+      "doc": "Generate n 2D Halton points using bases 2 and 3.",
+      "name": "halton_2d",
+      "params": [
+       {
+        "doc": "Number of 2D points to generate.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[List[Float64]]",
+      "returns_doc": "List of n [x, y] pairs."
+     },
+     "halton_sequence": {
+      "count_relations": [],
+      "doc": "Generate n values of the Halton (van der Corput) sequence in given base.",
+      "name": "halton_sequence",
+      "params": [
+       {
+        "doc": "Number of points to generate.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "doc": "Integer base (must be >= 2, typically a prime).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "base",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "List of n Float64 values in (0, 1)."
+     },
+     "latin_hypercube_sample": {
+      "count_relations": [],
+      "doc": "Generate n samples in d dimensions using Latin Hypercube Sampling.",
+      "name": "latin_hypercube_sample",
+      "params": [
+       {
+        "doc": "Number of samples.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "doc": "Number of dimensions.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "d",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[List[Float64]]",
+      "returns_doc": "List of n points, each a List[Float64] of length d with values in [0,1]."
+     },
+     "sobol_like_2d": {
+      "count_relations": [],
+      "doc": "Simple additive recurrence low-discrepancy sequence in 2D.",
+      "name": "sobol_like_2d",
+      "params": [
+       {
+        "doc": "Number of 2D points.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[List[Float64]]",
+      "returns_doc": "List of n [x, y] pairs in [0, 1]\u00b2."
+     },
+     "stratified_sample_1d": {
+      "count_relations": [],
+      "doc": "Divide [0,1] into n_strata equal bins, sample one uniform value from each.",
+      "name": "stratified_sample_1d",
+      "params": [
+       {
+        "doc": "Number of equal-width strata.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_strata",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "List of n_strata Float64 values, one from each stratum."
+     }
+    },
+    "name": "sampling",
+    "structs": {}
+   },
+   "scipy_stats_ops": {
+    "description": "Distribution PDF, CDF and PPF",
+    "functions": {
+     "beta_pdf_unnorm": {
+      "count_relations": [],
+      "doc": "Beta distribution unnormalised PDF.",
+      "name": "beta_pdf_unnorm",
+      "params": [
+       {
+        "doc": "Value in (0, 1).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "\u03b1 shape parameter.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "doc": "\u03b2 shape parameter.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Unnormalised PDF value."
+     },
+     "chi2_pdf": {
+      "count_relations": [],
+      "doc": "Chi-squared PDF (unnormalised).",
+      "name": "chi2_pdf",
+      "params": [
+       {
+        "doc": "Value (must be > 0).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Degrees of freedom k.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "df",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Unnormalised chi-squared PDF."
+     },
+     "exponential_pdf": {
+      "count_relations": [],
+      "doc": "Exponential distribution PDF.",
+      "name": "exponential_pdf",
+      "params": [
+       {
+        "doc": "Value.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Rate parameter \u03bb.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "rate",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "PDF value."
+     },
+     "gamma_pdf_unnorm": {
+      "count_relations": [],
+      "doc": "Gamma distribution unnormalised PDF.",
+      "name": "gamma_pdf_unnorm",
+      "params": [
+       {
+        "doc": "Value (> 0).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Shape \u03b1.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "shape",
+        "type": "Float64"
+       },
+       {
+        "doc": "Rate \u03b2.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "rate",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Unnormalised PDF value."
+     },
+     "logistic_pdf": {
+      "count_relations": [],
+      "doc": "Logistic distribution PDF.",
+      "name": "logistic_pdf",
+      "params": [
+       {
+        "doc": "Value.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Location.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "doc": "Scale (> 0).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "s",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "PDF value."
+     },
+     "normal_cdf_approx": {
+      "count_relations": [],
+      "doc": "Normal CDF approximation using tanh-based erf approximation.",
+      "name": "normal_cdf_approx",
+      "params": [
+       {
+        "doc": "Value.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Mean.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "doc": "Standard deviation.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "sigma",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "CDF value (0\u20131)."
+     },
+     "normal_pdf": {
+      "count_relations": [],
+      "doc": "Normal (Gaussian) PDF.",
+      "name": "normal_pdf",
+      "params": [
+       {
+        "doc": "Value.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Mean \u03bc.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu",
+        "type": "Float64"
+       },
+       {
+        "doc": "Standard deviation \u03c3.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "sigma",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "PDF value."
+     },
+     "poisson_pmf": {
+      "count_relations": [],
+      "doc": "Poisson PMF in log space: log P(X=k) = k log \u03bb - \u03bb - log(k!).",
+      "name": "poisson_pmf",
+      "params": [
+       {
+        "doc": "Count (non-negative integer as Float64).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "k",
+        "type": "Float64"
+       },
+       {
+        "doc": "Rate parameter \u03bb.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "lam",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Log PMF value (returns log probability)."
+     },
+     "t_distribution_pdf": {
+      "count_relations": [],
+      "doc": "Student's t-distribution PDF (unnormalised proportional form).",
+      "name": "t_distribution_pdf",
+      "params": [
+       {
+        "doc": "Value.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Degrees of freedom \u03bd.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "df",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Unnormalised PDF value."
+     },
+     "weibull_pdf": {
+      "count_relations": [],
+      "doc": "Weibull distribution PDF.",
+      "name": "weibull_pdf",
+      "params": [
+       {
+        "doc": "Value (\u2265 0).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "Float64"
+       },
+       {
+        "doc": "Shape k.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "shape",
+        "type": "Float64"
+       },
+       {
+        "doc": "Scale \u03bb.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "scale",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "PDF value."
+     }
+    },
+    "name": "scipy_stats_ops",
+    "structs": {}
+   },
+   "stat_tests": {
+    "description": "Hypothesis tests: t-tests, Kolmogorov-Smirnov, Pearson, Spearman",
+    "functions": {
+     "anderson_darling_normal": {
+      "count_relations": [],
+      "doc": "Anderson-Darling test for normality. A\u00b2 = -n - (1/n) * \u03a3 (2i-1)[ln(\u03a6(z_i)) + ln(1-\u03a6(z_{n+1-i}))] Modified statistic: A\u00b2* = A\u00b2(1 + 0.75/n + 2.25/n\u00b2) Critical values: 0.631 (15%), 0.752 (10%), 0.873 (5%), 1.035 (2.5%), 1.159 (1%)",
+      "name": "anderson_darling_normal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "TestResult",
+      "returns_doc": ""
+     },
+     "chi_squared_test": {
+      "count_relations": [],
+      "doc": "Chi-squared goodness-of-fit test. \u03c7\u00b2 = \u03a3 (O_i - E_i)\u00b2 / E_i df = k - 1 where k is the number of categories.",
+      "name": "chi_squared_test",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "observed",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "expected",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "TestResult",
+      "returns_doc": ""
+     },
+     "ks_test_2sample": {
+      "count_relations": [],
+      "doc": "Two-sample Kolmogorov-Smirnov test. Tests if two samples come from the same distribution. KS statistic = max |F1(x) - F2(x)| over all x.",
+      "name": "ks_test_2sample",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample1",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample2",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "TestResult",
+      "returns_doc": ""
+     },
+     "ks_test_normal": {
+      "count_relations": [],
+      "doc": "One-sample KS test against normal distribution. Tests if sample comes from N(sample_mean, sample_std).",
+      "name": "ks_test_normal",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "TestResult",
+      "returns_doc": ""
+     },
+     "pearson_r": {
+      "count_relations": [],
+      "doc": "Pearson correlation coefficient and p-value. Returns CorrResult(r, p_value). p-value uses the t-distribution: t = r * sqrt(n-2) / sqrt(1-r\u00b2), df = n-2",
+      "name": "pearson_r",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "CorrResult",
+      "returns_doc": ""
+     },
+     "pearson_r_strict": {
+      "count_relations": [],
+      "doc": "`pearson_r`, but NaN/\u00b1Inf in `x` or `y` raises instead of returning `CorrResult(NaN, NaN)`.",
+      "name": "pearson_r_strict",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "CorrResult",
+      "returns_doc": ""
+     },
+     "shapiro_wilk_approx": {
+      "count_relations": [],
+      "doc": "Approximate Shapiro-Wilk test for normality (for n <= 5000). Uses a simplified version based on the correlation between sample order statistics and expected normal order statistics. W \u2248 (\u03a3 a_i * x_(i))\u00b2 / \u03a3(x_i - x\u0304)\u00b2 For large n, we approximate a_i using normal quantiles.",
+      "name": "shapiro_wilk_approx",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "TestResult",
+      "returns_doc": ""
+     },
+     "spearman_r": {
+      "count_relations": [],
+      "doc": "Spearman rank correlation coefficient and p-value. Returns CorrResult(rho, p_value). Ranks ties by averaging. P-value uses the t-distribution approximation.",
+      "name": "spearman_r",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "CorrResult",
+      "returns_doc": ""
+     },
+     "spearman_r_strict": {
+      "count_relations": [],
+      "doc": "`spearman_r`, but NaN/\u00b1Inf in `x` or `y` raises instead of returning `CorrResult(NaN, NaN)`.",
+      "name": "spearman_r_strict",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "x",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "y",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "CorrResult",
+      "returns_doc": ""
+     },
+     "t_test_1sample": {
+      "count_relations": [],
+      "doc": "One-sample t-test: test if sample mean equals mu0. t = (x\u0304 - \u03bc\u2080) / (s / \u221an), df = n - 1",
+      "name": "t_test_1sample",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mu0",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "TestResult",
+      "returns_doc": ""
+     },
+     "t_test_2sample": {
+      "count_relations": [],
+      "doc": "Two-sample (independent) t-test: test if means are equal. Uses Welch's t-test (unequal variances). t = (x\u0304\u2081 - x\u0304\u2082) / \u221a(s\u2081\u00b2/n\u2081 + s\u2082\u00b2/n\u2082) df from Welch-Satterthwaite equation.",
+      "name": "t_test_2sample",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample1",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "sample2",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "TestResult",
+      "returns_doc": ""
+     }
+    },
+    "name": "stat_tests",
+    "structs": {
+     "CorrResult": {
+      "fields": [
+       {
+        "name": "r",
+        "type": "Float64"
+       },
+       {
+        "name": "p_value",
+        "type": "Float64"
+       }
+      ],
+      "name": "CorrResult"
+     },
+     "TestResult": {
+      "fields": [
+       {
+        "name": "statistic",
+        "type": "Float64"
+       },
+       {
+        "name": "p_value",
+        "type": "Float64"
+       },
+       {
+        "name": "reject_h0",
+        "type": "Bool"
+       }
+      ],
+      "name": "TestResult"
+     }
+    }
+   },
+   "stats": {
+    "description": "Descriptive statistics, quantiles and sorting",
+    "functions": {
+     "compute_mean": {
+      "count_relations": [
+       {
+        "bounds": [
+         "v"
+        ],
+        "factors": [
+         "n"
+        ],
+        "plus": 0,
+        "role": "count",
+        "scope": "length"
+       }
+      ],
+      "doc": "Arithmetic mean of the first `n` values.",
+      "name": "compute_mean",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "compute_std": {
+      "count_relations": [
+       {
+        "bounds": [
+         "v"
+        ],
+        "factors": [
+         "n"
+        ],
+        "plus": 0,
+        "role": "count",
+        "scope": "length"
+       }
+      ],
+      "doc": "Sample standard deviation (ddof=1) of the first `n` values about a caller-supplied `mean` -- `sqrt(compute_variance(v, n, mean))`, computed in ONE kernel call instead of two plus a caller-side square root.",
+      "name": "compute_std",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mean",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "compute_std_from_values": {
+      "count_relations": [
+       {
+        "bounds": [
+         "v"
+        ],
+        "factors": [
+         "n"
+        ],
+        "plus": 0,
+        "role": "count",
+        "scope": "length"
+       }
+      ],
+      "doc": "Sample standard deviation (ddof=1) of the first `n` values -- computes the mean INTERNALLY (`compute_mean(v, n)`), then `compute_std(v, n, that_mean)`, so there is no `mean` parameter for a caller to supply at all.",
+      "name": "compute_std_from_values",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "compute_variance": {
+      "count_relations": [
+       {
+        "bounds": [
+         "v"
+        ],
+        "factors": [
+         "n"
+        ],
+        "plus": 0,
+        "role": "count",
+        "scope": "length"
+       }
+      ],
+      "doc": "Sample variance of the first `n` values about a caller-supplied `mean`.",
+      "name": "compute_variance",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "mean",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "count_below_zero": {
+      "count_relations": [
+       {
+        "bounds": [
+         "v"
+        ],
+        "factors": [
+         "n"
+        ],
+        "plus": 0,
+        "role": "count",
+        "scope": "length"
+       }
+      ],
+      "doc": "How many of the first `n` values are negative.",
+      "name": "count_below_zero",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": ""
+     },
+     "fast_sort": {
+      "count_relations": [
+       {
+        "bounds": [
+         "a"
+        ],
+        "factors": [
+         "n"
+        ],
+        "plus": 0,
+        "role": "count",
+        "scope": "length"
+       }
+      ],
+      "doc": "Introsort the first `n` elements of `a` in place.",
+      "name": "fast_sort",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": true,
+        "name": "a",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "None",
+      "returns_doc": ""
+     },
+     "ilog2": {
+      "count_relations": [],
+      "doc": "",
+      "name": "ilog2",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": ""
+     },
+     "ins_sort": {
+      "count_relations": [],
+      "doc": "Insertion-sort `a[lo..hi]` in place.",
+      "name": "ins_sort",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": true,
+        "name": "a",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lo",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "hi",
+        "type": "Int"
+       }
+      ],
+      "return_type": "None",
+      "returns_doc": ""
+     },
+     "median": {
+      "count_relations": [],
+      "doc": "Median of UNSORTED input (mean of the two middle values for even n).",
+      "name": "median",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "part3": {
+      "count_relations": [],
+      "doc": "Median-of-3 partition of `a[lo..hi]`, returning the pivot's final index.",
+      "name": "part3",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": true,
+        "name": "a",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "lo",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "hi",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Int",
+      "returns_doc": ""
+     },
+     "pctile": {
+      "count_relations": [
+       {
+        "bounds": [
+         "v"
+        ],
+        "factors": [
+         "n"
+        ],
+        "plus": 0,
+        "role": "count",
+        "scope": "length"
+       }
+      ],
+      "doc": "O(1) percentile index into a PRE-SORTED buffer of `n` values (`p` in [0,100]).",
+      "name": "pctile",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "percentile": {
+      "count_relations": [],
+      "doc": "Linear-interpolated percentile of UNSORTED input, p in [0,100].",
+      "name": "percentile",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "p",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "quantile": {
+      "count_relations": [],
+      "doc": "Linear-interpolated quantile of UNSORTED input, q in [0,1] (numpy 'linear'). Non-finite values are ignored; the rank is computed over the finite count.",
+      "name": "quantile",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "q",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "sort_values": {
+      "count_relations": [],
+      "doc": "Ascending-sorted COPY of the FINITE values among the first n (drops NaN/+/-inf so a non-finite input degrades gracefully instead of crashing the worker; input untouched). Finite test: NaN fails x==x; +/-inf fails (x-x)==0 since inf-inf=NaN.",
+      "name": "sort_values",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "v",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     }
+    },
+    "name": "stats",
+    "structs": {}
+   },
+   "stats_bootstrap": {
+    "description": "Bootstrap statistics",
+    "functions": {
+     "bca_correction": {
+      "count_relations": [],
+      "doc": "BCa (bias-corrected and accelerated) CI for mean.",
+      "name": "bca_correction",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_bootstrap",
+        "type": "Int"
+       },
+       {
+        "default": 0.95,
+        "has_default": true,
+        "is_mut": false,
+        "name": "confidence",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "bootstrap_bias": {
+      "count_relations": [],
+      "doc": "Bootstrap bias estimate: E[\u03b8*] - \u03b8. stat_type: 0=mean, 1=median.",
+      "name": "bootstrap_bias",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_bootstrap",
+        "type": "Int"
+       },
+       {
+        "default": 0,
+        "has_default": true,
+        "is_mut": false,
+        "name": "stat_type",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "bootstrap_mean_ci": {
+      "count_relations": [],
+      "doc": "Bootstrap confidence interval for mean. Returns [lower, upper].",
+      "name": "bootstrap_mean_ci",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_bootstrap",
+        "type": "Int"
+       },
+       {
+        "default": 0.95,
+        "has_default": true,
+        "is_mut": false,
+        "name": "confidence",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "bootstrap_median_ci": {
+      "count_relations": [],
+      "doc": "Bootstrap CI for median.",
+      "name": "bootstrap_median_ci",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_bootstrap",
+        "type": "Int"
+       },
+       {
+        "default": 0.95,
+        "has_default": true,
+        "is_mut": false,
+        "name": "confidence",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "bootstrap_replicate": {
+      "count_relations": [],
+      "doc": "Generate one bootstrap replicate (sample with replacement, same size).",
+      "name": "bootstrap_replicate",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "bootstrap_se": {
+      "count_relations": [],
+      "doc": "Bootstrap standard error of statistic.",
+      "name": "bootstrap_se",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_bootstrap",
+        "type": "Int"
+       },
+       {
+        "default": 0,
+        "has_default": true,
+        "is_mut": false,
+        "name": "stat_type",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "bootstrap_std_ci": {
+      "count_relations": [],
+      "doc": "Bootstrap CI for standard deviation.",
+      "name": "bootstrap_std_ci",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_bootstrap",
+        "type": "Int"
+       },
+       {
+        "default": 0.95,
+        "has_default": true,
+        "is_mut": false,
+        "name": "confidence",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "bootstrap_test": {
+      "count_relations": [],
+      "doc": "Bootstrap permutation test p-value: test if two groups have same mean.",
+      "name": "bootstrap_test",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data1",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data2",
+        "type": "List[Float64]"
+       },
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "n_bootstrap",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     },
+     "jackknife_mean": {
+      "count_relations": [],
+      "doc": "Jackknife leave-one-out means.",
+      "name": "jackknife_mean",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": ""
+     },
+     "jackknife_se": {
+      "count_relations": [],
+      "doc": "Jackknife standard error of the mean.",
+      "name": "jackknife_se",
+      "params": [
+       {
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": ""
+     }
+    },
+    "name": "stats_bootstrap",
+    "structs": {}
+   },
+   "timeseries_stats": {
+    "description": "Time-series statistics: autocorrelation, ADF, smoothing, rolling windows",
+    "functions": {
+     "adf_test_statistic": {
+      "count_relations": [],
+      "doc": "Simplified Augmented Dickey-Fuller test statistic.",
+      "name": "adf_test_statistic",
+      "params": [
+       {
+        "doc": "Time series values (length >= 3 recommended).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "ADF test statistic (more negative \u2192 more likely stationary)."
+     },
+     "autocorrelation": {
+      "count_relations": [],
+      "doc": "Sample autocorrelation at the given lag.",
+      "name": "autocorrelation",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Non-negative lag.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "lag",
+        "type": "Int"
+       }
+      ],
+      "return_type": "Float64",
+      "returns_doc": "Autocorrelation coefficient at the given lag. Returns 1.0 for lag=0."
+     },
+     "autocorrelation_function": {
+      "count_relations": [],
+      "doc": "Autocorrelation function for lags 0..max_lag.",
+      "name": "autocorrelation_function",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Maximum lag (inclusive).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "max_lag",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "List of ACF values of length max_lag + 1."
+     },
+     "difference": {
+      "count_relations": [],
+      "doc": "First or higher-order differencing.",
+      "name": "difference",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "default": 1,
+        "doc": "Differencing order (default 1).",
+        "has_default": true,
+        "is_mut": false,
+        "name": "order",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "Differenced series of length len(data) - order."
+     },
+     "exponential_smoothing": {
+      "count_relations": [],
+      "doc": "Single exponential smoothing (SES).",
+      "name": "exponential_smoothing",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Smoothing factor in (0, 1].",
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "Smoothed series of same length as data."
+     },
+     "holt_linear": {
+      "count_relations": [],
+      "doc": "Holt's linear trend method (double exponential smoothing).",
+      "name": "holt_linear",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Level smoothing factor in (0, 1].",
+        "has_default": false,
+        "is_mut": false,
+        "name": "alpha",
+        "type": "Float64"
+       },
+       {
+        "doc": "Trend smoothing factor in (0, 1].",
+        "has_default": false,
+        "is_mut": false,
+        "name": "beta",
+        "type": "Float64"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "Smoothed series of same length as data."
+     },
+     "partial_autocorrelation": {
+      "count_relations": [],
+      "doc": "Partial autocorrelation function via Durbin-Levinson recursion.",
+      "name": "partial_autocorrelation",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Maximum lag (inclusive).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "max_lag",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "List of PACF values of length max_lag + 1. pacf[0] = 1.0 by convention."
+     },
+     "rolling_mean": {
+      "count_relations": [],
+      "doc": "Simple moving average with given window size.",
+      "name": "rolling_mean",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Window size (must be >= 1).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "window",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "List of length len(data) - window + 1."
+     },
+     "rolling_std": {
+      "count_relations": [],
+      "doc": "Rolling standard deviation with given window size.",
+      "name": "rolling_std",
+      "params": [
+       {
+        "doc": "Time series values.",
+        "has_default": false,
+        "is_mut": false,
+        "name": "data",
+        "type": "List[Float64]"
+       },
+       {
+        "doc": "Window size (must be >= 1).",
+        "has_default": false,
+        "is_mut": false,
+        "name": "window",
+        "type": "Int"
+       }
+      ],
+      "return_type": "List[Float64]",
+      "returns_doc": "List of length len(data) - window + 1."
+     }
+    },
+    "name": "timeseries_stats",
+    "structs": {}
+   }
+  },
+  "status_names": {}
+ },
+ "excluded_functions": [],
+ "kernels_version": "0.17.1",
+ "repo_id": "thyn-ai/algenta-stats",
+ "revision": "ac35ffe20385f0eb7d2a1d2f1f935dc3a287c886",
+ "variant": "torch25-cpu-aarch64-darwin"
+}

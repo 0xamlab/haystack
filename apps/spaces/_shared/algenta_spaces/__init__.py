@@ -7,7 +7,20 @@ then shell, cards and boot).
 
 from __future__ import annotations
 
-from . import bench, boot, cards, css, design, facts, ratelimit, runtime, shell
+from . import (
+    bench,
+    boot,
+    cards,
+    css,
+    design,
+    facts,
+    hubkernel,
+    lane,
+    playground,
+    ratelimit,
+    runtime,
+    shell,
+)
 
 __version__ = "0.1.0"
 
@@ -20,6 +33,9 @@ __all__ = [
     "design",
     "facts",
     "fleet_css",
+    "hubkernel",
+    "lane",
+    "playground",
     "ratelimit",
     "runtime",
     "shell",

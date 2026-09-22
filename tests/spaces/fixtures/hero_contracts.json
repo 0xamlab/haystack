@@ -1,0 +1,3361 @@
+{
+ "bits-time": {
+  "contract": {
+   "modules": {
+    "number_theory": {
+     "description": "Number theory: Miller-Rabin primality, GCD, LCM, modular power and inverse, totient, sieve",
+     "functions": {
+      "euler_totient": {
+       "count_relations": [],
+       "doc": "Euler's totient \u03c6(n) by trial division.",
+       "name": "euler_totient",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "extended_gcd": {
+       "count_relations": [],
+       "doc": "Returns [gcd, x, y] where a*x + b*y = gcd(a, b).",
+       "name": "extended_gcd",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[Int]",
+       "returns_doc": ""
+      },
+      "fibonacci": {
+       "count_relations": [],
+       "doc": "Nth Fibonacci number (iterative). fib(0)=0, fib(1)=1.",
+       "name": "fibonacci",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "gcd": {
+       "count_relations": [],
+       "doc": "Greatest common divisor via Euclidean algorithm.",
+       "name": "gcd",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "is_coprime": {
+       "count_relations": [],
+       "doc": "True if gcd(a, b) == 1.",
+       "name": "is_coprime",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      },
+      "is_perfect_square": {
+       "count_relations": [],
+       "doc": "Check if n is a perfect square.",
+       "name": "is_perfect_square",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      },
+      "is_prime": {
+       "count_relations": [],
+       "doc": "Deterministic Miller-Rabin-like primality test for n < 2^31.",
+       "name": "is_prime",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      },
+      "lcm": {
+       "count_relations": [],
+       "doc": "Least common multiple: a*b / gcd(a,b).",
+       "name": "lcm",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "mod_inverse": {
+       "count_relations": [],
+       "doc": "Modular multiplicative inverse of a mod m. Returns -1 if none.",
+       "name": "mod_inverse",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "m",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "mod_pow": {
+       "count_relations": [],
+       "doc": "Modular exponentiation by squaring: base^exp mod modulus.",
+       "name": "mod_pow",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "base",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "exp",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "modulus",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "prime_factors": {
+       "count_relations": [],
+       "doc": "List of prime factors with repetition.",
+       "name": "prime_factors",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[Int]",
+       "returns_doc": ""
+      },
+      "sieve_of_eratosthenes": {
+       "count_relations": [],
+       "doc": "All primes up to limit (inclusive).",
+       "name": "sieve_of_eratosthenes",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "limit",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[Int]",
+       "returns_doc": ""
+      }
+     },
+     "name": "number_theory",
+     "structs": {}
+    }
+   },
+   "status_names": {}
+  },
+  "excluded_functions": [
+   "datetime.now_epoch"
+  ],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-bits-time",
+  "revision": "199dff6cf340d61d1d10da026e27288fc0b88dff",
+  "variant": "torch25-cpu-aarch64-darwin"
+ },
+ "crypto": {
+  "contract": {
+   "modules": {
+    "crypto.hmac": {
+     "description": "HMAC-SHA256 message authentication codes (RFC 2104) with constant-time verification",
+     "functions": {
+      "hmac_sha256": {
+       "count_relations": [],
+       "doc": "Compute HMAC-SHA256(key, message). Returns 64-char hex digest.",
+       "name": "hmac_sha256",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "key",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "message",
+         "type": "String"
+        }
+       ],
+       "return_type": "String",
+       "returns_doc": ""
+      },
+      "hmac_sha256_verify": {
+       "count_relations": [],
+       "doc": "Constant-time HMAC verification.",
+       "name": "hmac_sha256_verify",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "key",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "message",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "expected_hex",
+         "type": "String"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      }
+     },
+     "name": "crypto.hmac",
+     "structs": {}
+    },
+    "perceptual_hash": {
+     "description": "Perceptual image hashes: average, difference and DCT hashes, Hamming distance, duplicate check",
+     "functions": {
+      "ahash": {
+       "count_relations": [],
+       "doc": "8\u00d78 average hash: bit set where the cell is >= the 8\u00d78 mean.",
+       "name": "ahash",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "image",
+         "type": "List[List[Float64]]"
+        }
+       ],
+       "return_type": "UInt64",
+       "returns_doc": ""
+      },
+      "ahash_flat": {
+       "count_relations": [],
+       "doc": "aHash from row-major flat grayscale pixels.",
+       "name": "ahash_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "flat",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "width",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "height",
+         "type": "Int"
+        }
+       ],
+       "return_type": "UInt64",
+       "returns_doc": ""
+      },
+      "dhash": {
+       "count_relations": [],
+       "doc": "9\u00d78 difference hash: bit set where a cell is brighter than its right neighbor.",
+       "name": "dhash",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "image",
+         "type": "List[List[Float64]]"
+        }
+       ],
+       "return_type": "UInt64",
+       "returns_doc": ""
+      },
+      "dhash_flat": {
+       "count_relations": [],
+       "doc": "dHash from row-major flat grayscale pixels.",
+       "name": "dhash_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "flat",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "width",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "height",
+         "type": "Int"
+        }
+       ],
+       "return_type": "UInt64",
+       "returns_doc": ""
+      },
+      "hamming_distance": {
+       "count_relations": [],
+       "doc": "Number of differing bits between two 64-bit hashes (0..64).",
+       "name": "hamming_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "UInt64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "UInt64"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "is_duplicate": {
+       "count_relations": [],
+       "doc": "True if the two hashes differ by at most max_distance bits.",
+       "name": "is_duplicate",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "UInt64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "UInt64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "max_distance",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      },
+      "phash": {
+       "count_relations": [],
+       "doc": "32\u00d732 DCT perceptual hash: bit set where a low-freq coeff exceeds the AC median.",
+       "name": "phash",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "image",
+         "type": "List[List[Float64]]"
+        }
+       ],
+       "return_type": "UInt64",
+       "returns_doc": ""
+      },
+      "phash_flat": {
+       "count_relations": [],
+       "doc": "pHash from row-major flat grayscale pixels.",
+       "name": "phash_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "flat",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "width",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "height",
+         "type": "Int"
+        }
+       ],
+       "return_type": "UInt64",
+       "returns_doc": ""
+      }
+     },
+     "name": "perceptual_hash",
+     "structs": {}
+    }
+   },
+   "status_names": {}
+  },
+  "excluded_functions": [],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-crypto",
+  "revision": "944dadd434e2d92f357454e560000f541be7d86c",
+  "variant": "torch25-cpu-aarch64-darwin"
+ },
+ "finance": {
+  "contract": {
+   "modules": {
+    "option_greeks_batch": {
+     "description": "Black-Scholes price, delta, gamma, vega and theta for a whole option chain in one pass",
+     "functions": {
+      "chain_greeks": {
+       "count_relations": [],
+       "doc": "Batched Black-Scholes price and greeks for a whole option chain.",
+       "name": "chain_greeks",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "spots",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "strikes",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "times",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "rates",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "sigmas",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "is_calls",
+         "type": "List[Float64]"
+        }
+       ],
+       "return_type": "ChainGreeksResult",
+       "returns_doc": ""
+      }
+     },
+     "name": "option_greeks_batch",
+     "structs": {
+      "ChainGreeksResult": {
+       "fields": [
+        {
+         "name": "price",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "delta",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "gamma",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "vega",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "theta",
+         "type": "List[Float64]"
+        }
+       ],
+       "name": "ChainGreeksResult"
+      }
+     }
+    }
+   },
+   "status_names": {}
+  },
+  "excluded_functions": [],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-finance",
+  "revision": "a646c590c67ff78a29f51b768dd58d32f475a139",
+  "variant": "torch25-cpu-aarch64-darwin"
+ },
+ "geometry": {
+  "contract": {
+   "modules": {
+    "geodesy": {
+     "description": "Geodesy: haversine and Vincenty distance, bearing, destination point, cross-track, ECEF",
+     "functions": {
+      "along_track_distance": {
+       "count_relations": [],
+       "doc": "Distance in km along great-circle path to point nearest to (lat, lon).",
+       "name": "along_track_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "start_lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "start_lon",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "end_lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "end_lon",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "cross_track_distance": {
+       "count_relations": [],
+       "doc": "Distance in km from point to great-circle path (start\u2192end). Absolute value.",
+       "name": "cross_track_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "start_lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "start_lon",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "end_lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "end_lon",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "destination_point": {
+       "count_relations": [],
+       "doc": "Point at distance (km) along bearing (deg). Returns [lat, lon].",
+       "name": "destination_point",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "bearing_deg",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "distance_km",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "ecef_to_geodetic": {
+       "count_relations": [],
+       "doc": "Convert ECEF (x,y,z meters) to geodetic [lat, lon, alt]. Iterative.",
+       "name": "ecef_to_geodetic",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "y",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "z",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "geodetic_to_ecef": {
+       "count_relations": [],
+       "doc": "Convert geodetic (lat, lon, alt_m) to ECEF [x, y, z] in meters.",
+       "name": "geodetic_to_ecef",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "alt",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "haversine_distance": {
+       "count_relations": [],
+       "doc": "Great-circle distance in km using haversine formula.",
+       "name": "haversine_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat2",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon2",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "initial_bearing": {
+       "count_relations": [],
+       "doc": "Forward azimuth in degrees [0, 360).",
+       "name": "initial_bearing",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat2",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon2",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "midpoint": {
+       "count_relations": [],
+       "doc": "Geographic midpoint [lat, lon] in degrees.",
+       "name": "midpoint",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat2",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon2",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "rhumb_distance": {
+       "count_relations": [],
+       "doc": "Distance along rhumb line (constant bearing) in km.",
+       "name": "rhumb_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat2",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon2",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "vincenty_distance": {
+       "count_relations": [],
+       "doc": "Vincenty geodesic distance in km (iterative formula on WGS84 ellipsoid).",
+       "name": "vincenty_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon1",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lat2",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "lon2",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      }
+     },
+     "name": "geodesy",
+     "structs": {}
+    }
+   },
+   "status_names": {}
+  },
+  "excluded_functions": [],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-geometry",
+  "revision": "54b91d902d9a38a244c8a5f093aa7bfd2824d6dd",
+  "variant": "torch25-cpu-aarch64-darwin"
+ },
+ "graph": {
+  "contract": {
+   "modules": {
+    "graph.weighted": {
+     "description": "Weighted edge lists: Kruskal spanning tree, Floyd-Warshall, Bellman-Ford, Dijkstra, union-find",
+     "functions": {
+      "bellman_ford": {
+       "count_relations": [],
+       "doc": "Single-source shortest paths allowing negative edges.",
+       "name": "bellman_ford",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "edges",
+         "type": "List[WeightedEdge]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "source",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "floyd_warshall": {
+       "count_relations": [],
+       "doc": "All-pairs shortest paths. Returns n\u00d7n distance matrix.",
+       "name": "floyd_warshall",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "edges",
+         "type": "List[WeightedEdge]"
+        }
+       ],
+       "return_type": "List[List[Float64]]",
+       "returns_doc": ""
+      },
+      "has_negative_cycle": {
+       "count_relations": [],
+       "doc": "Check for negative weight cycles using Bellman-Ford from node 0.",
+       "name": "has_negative_cycle",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "edges",
+         "type": "List[WeightedEdge]"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      },
+      "kruskal_mst": {
+       "count_relations": [],
+       "doc": "Kruskal's MST using Union-Find. Returns MST edges.",
+       "name": "kruskal_mst",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "edges",
+         "type": "List[WeightedEdge]"
+        }
+       ],
+       "return_type": "List[WeightedEdge]",
+       "returns_doc": ""
+      },
+      "mst_total_weight": {
+       "count_relations": [],
+       "doc": "Sum of MST edge weights.",
+       "name": "mst_total_weight",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "mst_edges",
+         "type": "List[WeightedEdge]"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "shortest_path_dijkstra": {
+       "count_relations": [],
+       "doc": "Dijkstra's algorithm for non-negative weights. Uses simple O(V^2) scan instead of a priority queue.",
+       "name": "shortest_path_dijkstra",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "edges",
+         "type": "List[WeightedEdge]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "source",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "union_find_create": {
+       "count_relations": [],
+       "doc": "Create Union-Find parent array (each node is its own parent).",
+       "name": "union_find_create",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[Int]",
+       "returns_doc": ""
+      },
+      "union_find_find": {
+       "count_relations": [
+        {
+         "bounds": [
+          "parent"
+         ],
+         "factors": [
+          "x"
+         ],
+         "plus": 1,
+         "role": "index",
+         "scope": "length"
+        }
+       ],
+       "doc": "Find root with path compression.",
+       "name": "union_find_find",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": true,
+         "name": "parent",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "union_find_union": {
+       "count_relations": [],
+       "doc": "Union two sets. Returns True if they were in different sets.",
+       "name": "union_find_union",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": true,
+         "name": "parent",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "y",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      }
+     },
+     "name": "graph.weighted",
+     "structs": {
+      "WeightedEdge": {
+       "fields": [
+        {
+         "name": "src",
+         "type": "Int"
+        },
+        {
+         "name": "dst",
+         "type": "Int"
+        },
+        {
+         "name": "weight",
+         "type": "Float64"
+        }
+       ],
+       "name": "WeightedEdge"
+      }
+     }
+    },
+    "graph_analytics.centrality": {
+     "description": "Centrality on sparse graphs: Brandes betweenness, closeness, harmonic, eigenvector, PageRank",
+     "functions": {
+      "centrality_status_name": {
+       "count_relations": [],
+       "doc": "Name for a status code, this module's own or an adjacency one it passed through.",
+       "name": "centrality_status_name",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "code",
+         "type": "Int"
+        }
+       ],
+       "return_type": "String",
+       "returns_doc": ""
+      },
+      "graph_betweenness_from_triplets": {
+       "count_relations": [],
+       "doc": "Build a CSR from an edge list, then Brandes. Out-of-range endpoints are skipped.",
+       "name": "graph_betweenness_from_triplets",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "src",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "dst",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weight",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weighted",
+         "type": "Bool"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "normalized",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "BetweennessResult",
+       "returns_doc": ""
+      },
+      "graph_betweenness_unweighted": {
+       "count_relations": [],
+       "doc": "Brandes betweenness counting hops, ignoring `weights`.",
+       "name": "graph_betweenness_unweighted",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "row_ptr",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "targets",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weights",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "normalized",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "BetweennessResult",
+       "returns_doc": ""
+      },
+      "graph_betweenness_weighted": {
+       "count_relations": [],
+       "doc": "Brandes betweenness over weighted shortest paths, one Dijkstra per source.",
+       "name": "graph_betweenness_weighted",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "row_ptr",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "targets",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weights",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "normalized",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "BetweennessResult",
+       "returns_doc": ""
+      },
+      "graph_closeness_centrality": {
+       "count_relations": [],
+       "doc": "Closeness per node, component-local, with the reachable count returned alongside.",
+       "name": "graph_closeness_centrality",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "row_ptr",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "targets",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weights",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weighted",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "ClosenessResult",
+       "returns_doc": ""
+      },
+      "graph_degree_centrality": {
+       "count_relations": [],
+       "doc": "Out-, in- and total-degree centrality over *distinct* neighbours.",
+       "name": "graph_degree_centrality",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "row_ptr",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "targets",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weights",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "normalized",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "DegreeCentralityResult",
+       "returns_doc": ""
+      },
+      "graph_eigenvector_centrality": {
+       "count_relations": [],
+       "doc": "Dominant eigenvector of the adjacency matrix, from the frozen power iteration.",
+       "name": "graph_eigenvector_centrality",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "row_ptr",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "targets",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weights",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "max_iter",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "tol",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "EigenvectorResult",
+       "returns_doc": ""
+      },
+      "graph_harmonic_centrality": {
+       "count_relations": [],
+       "doc": "`\u03a3 1/d` over reachable others \u2014 the closeness variant a disconnected graph allows.",
+       "name": "graph_harmonic_centrality",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "row_ptr",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "targets",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weights",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weighted",
+         "type": "Bool"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "normalized",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "HarmonicResult",
+       "returns_doc": ""
+      },
+      "graph_pagerank": {
+       "count_relations": [],
+       "doc": "PageRank from the frozen `network_analysis.pagerank`, made correct and measurable.",
+       "name": "graph_pagerank",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "row_ptr",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "targets",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "weights",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "damping",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "max_iter",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "tol",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "dangling_uniform",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "PageRankResult",
+       "returns_doc": ""
+      }
+     },
+     "name": "graph_analytics.centrality",
+     "structs": {
+      "BetweennessResult": {
+       "fields": [
+        {
+         "name": "status",
+         "type": "Int"
+        },
+        {
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "n_sources",
+         "type": "Int"
+        },
+        {
+         "name": "weighted",
+         "type": "Bool"
+        },
+        {
+         "name": "normalized",
+         "type": "Bool"
+        },
+        {
+         "name": "undirected",
+         "type": "Bool"
+        },
+        {
+         "name": "path_counts_exact",
+         "type": "Bool"
+        },
+        {
+         "name": "max_node",
+         "type": "Int"
+        },
+        {
+         "name": "max_value",
+         "type": "Float64"
+        },
+        {
+         "name": "values",
+         "type": "List[Float64]"
+        }
+       ],
+       "name": "BetweennessResult"
+      },
+      "ClosenessResult": {
+       "fields": [
+        {
+         "name": "status",
+         "type": "Int"
+        },
+        {
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "weighted",
+         "type": "Bool"
+        },
+        {
+         "name": "defined_count",
+         "type": "Int"
+        },
+        {
+         "name": "incomplete_count",
+         "type": "Int"
+        },
+        {
+         "name": "values",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "scaled_values",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "defined",
+         "type": "List[Bool]"
+        },
+        {
+         "name": "reached_count",
+         "type": "List[Int]"
+        },
+        {
+         "name": "sum_distance",
+         "type": "List[Float64]"
+        }
+       ],
+       "name": "ClosenessResult"
+      },
+      "DegreeCentralityResult": {
+       "fields": [
+        {
+         "name": "status",
+         "type": "Int"
+        },
+        {
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "normalized",
+         "type": "Bool"
+        },
+        {
+         "name": "parallel_edges_collapsed",
+         "type": "Int"
+        },
+        {
+         "name": "self_loops_ignored",
+         "type": "Int"
+        },
+        {
+         "name": "out_values",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "in_values",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "total_values",
+         "type": "List[Float64]"
+        }
+       ],
+       "name": "DegreeCentralityResult"
+      },
+      "EigenvectorResult": {
+       "fields": [
+        {
+         "name": "status",
+         "type": "Int"
+        },
+        {
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "max_iter",
+         "type": "Int"
+        },
+        {
+         "name": "converged",
+         "type": "Bool"
+        },
+        {
+         "name": "symmetric",
+         "type": "Bool"
+        },
+        {
+         "name": "strongly_connected",
+         "type": "Bool"
+        },
+        {
+         "name": "eigenvalue",
+         "type": "Float64"
+        },
+        {
+         "name": "residual",
+         "type": "Float64"
+        },
+        {
+         "name": "shift",
+         "type": "Float64"
+        },
+        {
+         "name": "values",
+         "type": "List[Float64]"
+        }
+       ],
+       "name": "EigenvectorResult"
+      },
+      "HarmonicResult": {
+       "fields": [
+        {
+         "name": "status",
+         "type": "Int"
+        },
+        {
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "weighted",
+         "type": "Bool"
+        },
+        {
+         "name": "normalized",
+         "type": "Bool"
+        },
+        {
+         "name": "zero_distance_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "values",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "defined",
+         "type": "List[Bool]"
+        }
+       ],
+       "name": "HarmonicResult"
+      },
+      "PageRankResult": {
+       "fields": [
+        {
+         "name": "status",
+         "type": "Int"
+        },
+        {
+         "name": "n_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "max_iter",
+         "type": "Int"
+        },
+        {
+         "name": "dangling_nodes",
+         "type": "Int"
+        },
+        {
+         "name": "dangling_redistributed",
+         "type": "Bool"
+        },
+        {
+         "name": "converged",
+         "type": "Bool"
+        },
+        {
+         "name": "damping",
+         "type": "Float64"
+        },
+        {
+         "name": "mass",
+         "type": "Float64"
+        },
+        {
+         "name": "residual",
+         "type": "Float64"
+        },
+        {
+         "name": "values",
+         "type": "List[Float64]"
+        }
+       ],
+       "name": "PageRankResult"
+      }
+     }
+    }
+   },
+   "status_names": {}
+  },
+  "excluded_functions": [
+   "topology.filtration_values",
+   "topology.persistence_diagram_0",
+   "topology.vietoris_rips_edges",
+   "trie.*"
+  ],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-graph",
+  "revision": "7247b466a11e49d2d2eeef2beb488732938e20e6",
+  "variant": "torch25-cpu-aarch64-darwin"
+ },
+ "llm": {
+  "contract": {
+   "modules": {
+    "attnk.rope": {
+     "description": "Rotary position embedding: frequency tables and application",
+     "functions": {
+      "rope_apply_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "pos"
+         ],
+         "factors": [
+          "n_tok"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "Rotate `x` in place-equivalent form. Layout is `[token][head][dim]`, row-major.",
+       "name": "rope_apply_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "cos_t",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "sin_t",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_tok",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_heads",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "pos",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "interleaved",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "RopeApplied",
+       "returns_doc": ""
+      },
+      "rope_apply_inverse_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "pos"
+         ],
+         "factors": [
+          "n_tok"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "The exact inverse rotation \u2014 negate the angle.",
+       "name": "rope_apply_inverse_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "cos_t",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "sin_t",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_tok",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_heads",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "pos",
+         "type": "List[Int]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "interleaved",
+         "type": "Bool"
+        }
+       ],
+       "return_type": "RopeApplied",
+       "returns_doc": ""
+      },
+      "rope_inv_freq": {
+       "count_relations": [],
+       "doc": "Inverse frequency per dimension pair: `theta ** (-2i / head_dim)` for i in 0..head_dim/2.",
+       "name": "rope_inv_freq",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "theta",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "rope_inv_freq_llama3": {
+       "count_relations": [],
+       "doc": "The llama-3.1 \"llama3\" rope scaling: the base inverse frequency of each dimension pair, adjusted by the standard low/high-frequency-factor interpolation.",
+       "name": "rope_inv_freq_llama3",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "theta",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "factor",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "low_freq_factor",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "high_freq_factor",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "original_max_position_embeddings",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "rope_table": {
+       "count_relations": [],
+       "doc": "Build cos/sin for every (position, pair). Row-major: `pos * n_pairs + pair`.",
+       "name": "rope_table",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "max_pos",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "theta",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "RopeTable",
+       "returns_doc": ""
+      },
+      "rope_table_freq_factors": {
+       "count_relations": [],
+       "doc": "`rope_table` with an EXPLICIT per-pair frequency factor applied to each base inverse frequency: `inv[i] = base_inv[i] / freq_factors[i]`. This is exactly how ggml consumes a GGUF `rope_freqs.weight` tensor (`theta / freq_factor` per pair, see ggml-metal's rope kernels), so a llama.cpp-exported file carrying llama3-scaled factors reproduces those frequencies WITHOUT re-deriving the llama3 parameters from metadata the format does not store. `freq_factors` must hold exactly `head_dim // 2` finite, strictly-positive values; a length mismatch or a non-positive/non-finite factor returns `ATTN_ERR_UNKNOWN_SCALING`. An empty `freq_factors` list is the caller's \"no explicit factors\" signal and returns `ATTN_ERR_LENGTH_MISMATCH` (the plain `rope_table` is the no-scaling path).",
+       "name": "rope_table_freq_factors",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "max_pos",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "theta",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "freq_factors",
+         "type": "List[Float64]"
+        }
+       ],
+       "return_type": "RopeTable",
+       "returns_doc": ""
+      },
+      "rope_table_llama3": {
+       "count_relations": [],
+       "doc": "`rope_table` with the llama-3.1 \"llama3\" frequency adjustment applied to every pair -- same Float64, row-major `pos * n_pairs + pair` contract; see `rope_inv_freq_llama3` for the formula and the typed-failure convention. Invalid scaling parameters return `ATTN_ERR_UNKNOWN_SCALING` (a wrong rope silently unscaled is exactly the failure the module docstring calls the most dangerous in the package).",
+       "name": "rope_table_llama3",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "max_pos",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "theta",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "factor",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "low_freq_factor",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "high_freq_factor",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "original_max_position_embeddings",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "RopeTable",
+       "returns_doc": ""
+      },
+      "rope_theta_agreement": {
+       "count_relations": [],
+       "doc": "Both frozen theta answers for the same extension, plus their ratio.",
+       "name": "rope_theta_agreement",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "base",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "original_context",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "target_context",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "RopeAgreement",
+       "returns_doc": ""
+      },
+      "rope_theta_for": {
+       "count_relations": [],
+       "doc": "The theta this module will use. `-1.0` for an unknown scaling code \u2014 never a silent default.",
+       "name": "rope_theta_for",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "base",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "factor",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "scaling_code",
+         "type": "Int"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      }
+     },
+     "name": "attnk.rope",
+     "status_decoder": "attnk.contract.attn_status_name",
+     "structs": {
+      "RopeAgreement": {
+       "fields": [
+        {
+         "name": "squared_convention",
+         "type": "Float64"
+        },
+        {
+         "name": "linear_convention",
+         "type": "Float64"
+        },
+        {
+         "name": "ratio",
+         "type": "Float64"
+        },
+        {
+         "name": "agree",
+         "type": "Bool"
+        }
+       ],
+       "name": "RopeAgreement"
+      },
+      "RopeApplied": {
+       "fields": [
+        {
+         "name": "values",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "n_tok",
+         "type": "Int"
+        },
+        {
+         "name": "n_heads",
+         "type": "Int"
+        },
+        {
+         "name": "head_dim",
+         "type": "Int"
+        },
+        {
+         "name": "status",
+         "type": "Int"
+        }
+       ],
+       "name": "RopeApplied"
+      },
+      "RopeTable": {
+       "fields": [
+        {
+         "name": "cos_table",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "sin_table",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "max_pos",
+         "type": "Int"
+        },
+        {
+         "name": "n_pairs",
+         "type": "Int"
+        },
+        {
+         "name": "theta",
+         "type": "Float64"
+        },
+        {
+         "name": "status",
+         "type": "Int"
+        }
+       ],
+       "name": "RopeTable"
+      }
+     }
+    },
+    "llmk.generate": {
+     "description": "Autoregressive decode primitives: greedy argmax, KV-cache append",
+     "functions": {
+      "greedy_argmax_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "logits"
+         ],
+         "factors": [
+          "n"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "The greedy next token: argmax over one row of `n` logits, via the frozen per-candidate formula `llm_sampling.greedy_token_id`.",
+       "name": "greedy_argmax_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "logits",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "GreedyResult",
+       "returns_doc": ""
+      },
+      "kv_cache_append_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "cache"
+         ],
+         "factors": [
+          "cache_len"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        },
+        {
+         "bounds": [
+          "new_vals"
+         ],
+         "factors": [
+          "n_new"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "`out = cache ++ new_vals`, exact-length on both operands (rule 1). One decode step's worth of freshly-projected, freshly-RoPE'd K (or V) rows, appended to what every earlier step (prefill included) already produced. Called twice per layer per step by `qwen3_generate.mojo` -- once for K, once for V -- never for Q, which is never cached (a decode step's query is always exactly the new token; there is nothing to look back up).",
+       "name": "kv_cache_append_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "cache",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "new_vals",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "cache_len",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_new",
+         "type": "Int"
+        }
+       ],
+       "return_type": "KvAppendResult",
+       "returns_doc": ""
+      }
+     },
+     "name": "llmk.generate",
+     "status_decoder": "llmk.contract.llmk_status_name",
+     "structs": {
+      "GreedyResult": {
+       "fields": [
+        {
+         "name": "token_id",
+         "type": "Int"
+        },
+        {
+         "name": "logit",
+         "type": "Float64"
+        },
+        {
+         "name": "status",
+         "type": "Int"
+        }
+       ],
+       "name": "GreedyResult"
+      },
+      "KvAppendResult": {
+       "fields": [
+        {
+         "name": "out",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "n",
+         "type": "Int"
+        },
+        {
+         "name": "status",
+         "type": "Int"
+        }
+       ],
+       "name": "KvAppendResult"
+      }
+     }
+    },
+    "normk.rmsnorm": {
+     "description": "RMSNorm, forward and backward, over flat row-major buffers",
+     "functions": {
+      "rmsnorm_agrees_with_frozen_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "x"
+         ],
+         "factors": [
+          "n_rows",
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        },
+        {
+         "bounds": [
+          "gamma"
+         ],
+         "factors": [
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "Re-derive the forward one element at a time through the frozen kernel and report the delta.",
+       "name": "rmsnorm_agrees_with_frozen_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "gamma",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_rows",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_cols",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "eps",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "NormAgreement",
+       "returns_doc": ""
+      },
+      "rmsnorm_bwd_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "dy",
+          "x"
+         ],
+         "factors": [
+          "n_rows",
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        },
+        {
+         "bounds": [
+          "gamma"
+         ],
+         "factors": [
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        },
+        {
+         "bounds": [
+          "rstd"
+         ],
+         "factors": [
+          "n_rows"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "Gradients of RMSNorm, given the `rstd` the matching forward returned.",
+       "name": "rmsnorm_bwd_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "dy",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "gamma",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "rstd",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_rows",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_cols",
+         "type": "Int"
+        }
+       ],
+       "return_type": "NormGrad",
+       "returns_doc": ""
+      },
+      "rmsnorm_fwd_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "x"
+         ],
+         "factors": [
+          "n_rows",
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        },
+        {
+         "bounds": [
+          "gamma"
+         ],
+         "factors": [
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "RMSNorm over `[n_rows][n_cols]` row-major, scaled by a shared `gamma` of length `n_cols`.",
+       "name": "rmsnorm_fwd_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "gamma",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_rows",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_cols",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "eps",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "NormOut",
+       "returns_doc": ""
+      },
+      "rmsnorm_gradcheck_flat": {
+       "count_relations": [
+        {
+         "bounds": [
+          "x"
+         ],
+         "factors": [
+          "n_rows",
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        },
+        {
+         "bounds": [
+          "gamma"
+         ],
+         "factors": [
+          "n_cols"
+         ],
+         "plus": 0,
+         "role": "count",
+         "scope": "length"
+        }
+       ],
+       "doc": "Compare the analytic `dx` against central differences of `sum(y)`, worst element.",
+       "name": "rmsnorm_gradcheck_flat",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "gamma",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_rows",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_cols",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "eps",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "step",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "NormAgreement",
+       "returns_doc": ""
+      }
+     },
+     "name": "normk.rmsnorm",
+     "status_decoder": "normk.contract.norm_status_name",
+     "structs": {
+      "NormAgreement": {
+       "fields": [
+        {
+         "name": "max_abs_delta",
+         "type": "Float64"
+        },
+        {
+         "name": "tolerance_at_max",
+         "type": "Float64"
+        },
+        {
+         "name": "within_tolerance",
+         "type": "Bool"
+        },
+        {
+         "name": "n_compared",
+         "type": "Int"
+        },
+        {
+         "name": "status",
+         "type": "Int"
+        }
+       ],
+       "name": "NormAgreement"
+      },
+      "NormGrad": {
+       "fields": [
+        {
+         "name": "dx",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "dgamma",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "n_rows",
+         "type": "Int"
+        },
+        {
+         "name": "n_cols",
+         "type": "Int"
+        },
+        {
+         "name": "status",
+         "type": "Int"
+        }
+       ],
+       "name": "NormGrad"
+      },
+      "NormOut": {
+       "fields": [
+        {
+         "name": "y",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "rstd",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "n_rows",
+         "type": "Int"
+        },
+        {
+         "name": "n_cols",
+         "type": "Int"
+        },
+        {
+         "name": "status",
+         "type": "Int"
+        }
+       ],
+       "name": "NormOut"
+      }
+     }
+    },
+    "text.tokenizer": {
+     "description": "Text tokenization: words, sentences, n-grams, stop words, stemming",
+     "functions": {
+      "char_ngrams": {
+       "count_relations": [],
+       "doc": "Generate character-level n-grams from text.",
+       "name": "char_ngrams",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "text",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[String]",
+       "returns_doc": ""
+      },
+      "is_stopword": {
+       "count_relations": [],
+       "doc": "Check if word is a common English stopword (35 words).",
+       "name": "is_stopword",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "word",
+         "type": "String"
+        }
+       ],
+       "return_type": "Bool",
+       "returns_doc": ""
+      },
+      "pad_sequence": {
+       "count_relations": [],
+       "doc": "Pad or truncate token list to fixed length.",
+       "name": "pad_sequence",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "tokens",
+         "type": "List[String]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "max_len",
+         "type": "Int"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "pad_token",
+         "type": "String"
+        }
+       ],
+       "return_type": "List[String]",
+       "returns_doc": ""
+      },
+      "remove_stopwords": {
+       "count_relations": [],
+       "doc": "Remove common English stopwords from token list.",
+       "name": "remove_stopwords",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "tokens",
+         "type": "List[String]"
+        }
+       ],
+       "return_type": "List[String]",
+       "returns_doc": ""
+      },
+      "sentence_tokenize": {
+       "count_relations": [],
+       "doc": "Split text into sentences on .!? followed by space or end.",
+       "name": "sentence_tokenize",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "text",
+         "type": "String"
+        }
+       ],
+       "return_type": "List[String]",
+       "returns_doc": ""
+      },
+      "stem_simple": {
+       "count_relations": [],
+       "doc": "Very simple suffix stemmer.",
+       "name": "stem_simple",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "word",
+         "type": "String"
+        }
+       ],
+       "return_type": "String",
+       "returns_doc": ""
+      },
+      "token_frequency": {
+       "count_relations": [],
+       "doc": "Compute token frequencies as [[token, count_str], ...] sorted desc.",
+       "name": "token_frequency",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "tokens",
+         "type": "List[String]"
+        }
+       ],
+       "return_type": "List[List[String]]",
+       "returns_doc": ""
+      },
+      "vocabulary_size": {
+       "count_relations": [],
+       "doc": "Count unique tokens in the list (O(n\u00b2) simple approach).",
+       "name": "vocabulary_size",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "tokens",
+         "type": "List[String]"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "word_ngrams": {
+       "count_relations": [],
+       "doc": "Generate word-level n-grams joined with '_'.",
+       "name": "word_ngrams",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "tokens",
+         "type": "List[String]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n",
+         "type": "Int"
+        }
+       ],
+       "return_type": "List[String]",
+       "returns_doc": ""
+      },
+      "word_tokenize": {
+       "count_relations": [],
+       "doc": "Split text on whitespace and punctuation, lowercase all tokens.",
+       "name": "word_tokenize",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "text",
+         "type": "String"
+        }
+       ],
+       "return_type": "List[String]",
+       "returns_doc": ""
+      }
+     },
+     "name": "text.tokenizer",
+     "structs": {}
+    }
+   },
+   "status_names": {
+    "attnk.contract.attn_status_name": {
+     "360": "ok",
+     "361": "empty_dimension",
+     "362": "head_count_mismatch",
+     "363": "gqa_heads_not_divisible",
+     "364": "length_mismatch",
+     "365": "work_budget_exceeded",
+     "366": "dimension_too_large",
+     "367": "non_finite_scalar",
+     "368": "bad_cu_seqlens",
+     "371": "non_finite_scale",
+     "372": "causal_requires_equal_seq_lengths",
+     "373": "invalid_tile_shape",
+     "374": "score_matrix_bytes_exceeded",
+     "375": "softmax_overflow",
+     "376": "output_length_mismatch"
+    },
+    "llmk.contract.llmk_status_name": {
+     "560": "llmk_ok",
+     "561": "llmk_empty_dimension",
+     "562": "llmk_a_length_mismatch",
+     "563": "llmk_b_length_mismatch",
+     "564": "llmk_dimension_too_large",
+     "566": "llmk_cache_length_mismatch",
+     "567": "llmk_new_length_mismatch",
+     "568": "llmk_logits_length_mismatch",
+     "569": "llmk_gemv_a_length_mismatch",
+     "570": "llmk_gemv_x_length_mismatch",
+     "571": "llmk_cache_capacity_exceeded"
+    },
+    "normk.contract.norm_status_name": {
+     "380": "ok",
+     "381": "empty_dimension",
+     "382": "length_mismatch",
+     "383": "dimension_too_large",
+     "384": "work_budget_exceeded",
+     "385": "non_finite_scalar",
+     "386": "bad_epsilon",
+     "387": "head_count_mismatch"
+    }
+   }
+  },
+  "excluded_functions": [],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-llm",
+  "revision": "a01e2b232875ced70b3dbd925996f913d5126370",
+  "variant": "torch25-cpu-aarch64-darwin"
+ },
+ "ml": {
+  "contract": {
+   "modules": {
+    "calibration": {
+     "description": "Probability calibration: isotonic regression (PAVA), Platt scaling, reliability curves",
+     "functions": {
+      "calibration_curve": {
+       "count_relations": [],
+       "doc": "Reliability curve: equal-width bins on [0,1].",
+       "name": "calibration_curve",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "probs",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "labels",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "n_bins",
+         "type": "Int"
+        }
+       ],
+       "return_type": "CalibrationCurve",
+       "returns_doc": ""
+      },
+      "isotonic_fit": {
+       "count_relations": [],
+       "doc": "Isotonic regression via Pool Adjacent Violators.",
+       "name": "isotonic_fit",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "y",
+         "type": "List[Float64]"
+        }
+       ],
+       "return_type": "IsotonicFit",
+       "returns_doc": ""
+      },
+      "isotonic_transform": {
+       "count_relations": [],
+       "doc": "Evaluate an isotonic fit at new points.",
+       "name": "isotonic_transform",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "thresholds",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "values",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "x_new",
+         "type": "List[Float64]"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      },
+      "platt_fit": {
+       "count_relations": [],
+       "doc": "Fit Platt sigmoid p = 1/(1+exp(a*s+b)) by Newton descent on the NLL.",
+       "name": "platt_fit",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "scores",
+         "type": "List[Float64]"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "labels",
+         "type": "List[Float64]"
+        },
+        {
+         "default": 100,
+         "has_default": true,
+         "is_mut": false,
+         "name": "max_iter",
+         "type": "Int"
+        }
+       ],
+       "return_type": "PlattParams",
+       "returns_doc": ""
+      },
+      "platt_transform": {
+       "count_relations": [],
+       "doc": "Apply the fitted Platt sigmoid: p_i = 1/(1+exp(a*s_i+b)).",
+       "name": "platt_transform",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "Float64"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "scores",
+         "type": "List[Float64]"
+        }
+       ],
+       "return_type": "List[Float64]",
+       "returns_doc": ""
+      }
+     },
+     "name": "calibration",
+     "structs": {
+      "CalibrationCurve": {
+       "fields": [
+        {
+         "name": "bin_centers",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "observed_freq",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "counts",
+         "type": "List[Int]"
+        }
+       ],
+       "name": "CalibrationCurve"
+      },
+      "IsotonicFit": {
+       "fields": [
+        {
+         "name": "thresholds",
+         "type": "List[Float64]"
+        },
+        {
+         "name": "values",
+         "type": "List[Float64]"
+        }
+       ],
+       "name": "IsotonicFit"
+      },
+      "PlattParams": {
+       "fields": [
+        {
+         "name": "a",
+         "type": "Float64"
+        },
+        {
+         "name": "b",
+         "type": "Float64"
+        }
+       ],
+       "name": "PlattParams"
+      }
+     }
+    }
+   },
+   "status_names": {}
+  },
+  "excluded_functions": [
+   "constraint.magic_square_check"
+  ],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-ml",
+  "revision": "c67aed624ae1e22398e79780d5bfc8bb66237c0c",
+  "variant": "torch25-cpu-aarch64-darwin"
+ },
+ "text": {
+  "contract": {
+   "modules": {
+    "text.fuzzy": {
+     "description": "Fuzzy matching: Levenshtein, Jaro and Jaro-Winkler similarity, Hamming distance, LCS ratio",
+     "functions": {
+      "fuzzy_ratio": {
+       "count_relations": [],
+       "doc": "Fuzzy match ratio: 2 * LCS / (len(a) + len(b)), range [0, 1].",
+       "name": "fuzzy_ratio",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "String"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "hamming_distance": {
+       "count_relations": [],
+       "doc": "Hamming distance \u2014 number of positions where characters differ.",
+       "name": "hamming_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "String"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "jaro_similarity": {
+       "count_relations": [],
+       "doc": "Jaro similarity score in [0, 1].",
+       "name": "jaro_similarity",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "String"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "jaro_winkler_similarity": {
+       "count_relations": [],
+       "doc": "Jaro-Winkler similarity: Jaro + prefix bonus.",
+       "name": "jaro_winkler_similarity",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "String"
+        },
+        {
+         "default": 0.1,
+         "has_default": true,
+         "is_mut": false,
+         "name": "prefix_weight",
+         "type": "Float64"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      },
+      "levenshtein_distance": {
+       "count_relations": [],
+       "doc": "Edit distance between two strings using Wagner-Fischer DP algorithm.",
+       "name": "levenshtein_distance",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "String"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "longest_common_subsequence": {
+       "count_relations": [],
+       "doc": "Length of the longest common subsequence via DP.",
+       "name": "longest_common_subsequence",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "String"
+        }
+       ],
+       "return_type": "Int",
+       "returns_doc": ""
+      },
+      "normalized_levenshtein": {
+       "count_relations": [],
+       "doc": "Normalized Levenshtein similarity: 1.0 - distance / max(len(a), len(b)).",
+       "name": "normalized_levenshtein",
+       "params": [
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "a",
+         "type": "String"
+        },
+        {
+         "has_default": false,
+         "is_mut": false,
+         "name": "b",
+         "type": "String"
+        }
+       ],
+       "return_type": "Float64",
+       "returns_doc": ""
+      }
+     },
+     "name": "text.fuzzy",
+     "structs": {}
+    }
+   },
+   "status_names": {}
+  },
+  "excluded_functions": [],
+  "kernels_version": "0.17.1",
+  "repo_id": "thyn-ai/algenta-text",
+  "revision": "fb2cab4558c5ace333d832d0a0c4b807ba0357f1",
+  "variant": "torch25-cpu-aarch64-darwin"
+ }
+}
