@@ -11,11 +11,19 @@ Pipeline (all additive, the frozen engine is only read):
   6. stage the library + its non-system dylib closure into <out>/_native with @loader_path/$ORIGIN
      rpaths (reusing scripts/stage_runtime_worker_package.py), delete any absolute LC_RPATH, strip
   7. verify: exports == the five ABI symbols, every dependency resolves inside <out>/_native
-  8. write <out>/_native/manifest.json (family, modules, toolchain, platform, sha256 per file, source commit)
+  8. write <out>/_native/manifest.json (family, modules, toolchain, platform, sha256 per file, source
+     commit, and for a GPU build the resident decode staging tier it was compiled for)
+
+GPU builds take `--stage-tier {default,6144,8192}`: the residentk staging ceiling is a compile-time
+presence flag (`-D ALGENTA_STAGE_6144` / `-D ALGENTA_STAGE_8192`, one binary per tier --
+mojo/engine/residentk/contract.mojo), so the flag is a build option, never a source change.
+`--print-command` prints the resolved plan (tier, define, `mojo build` argv per library) and exits
+without building.
 
 Usage:
   scripts/build_hf_kernel_family.py --family algenta-stats --out build_out/algenta-stats
   scripts/build_hf_kernel_family.py --modules stats ab_testing --name stats-spike --out /tmp/x
+  scripts/build_hf_kernel_family.py --family algenta-llm --backend metal --stage-tier 6144 --out out/llm
 """
 from __future__ import annotations
 
@@ -53,6 +61,86 @@ ABI_EXPORTS = {
 }
 CPU_MACOS_DEPLOYMENT_TARGET = "15.0"
 METAL_MACOS_DEPLOYMENT_TARGET = "26.0"
+# Resident decode staging tiers (mojo/engine/residentk/contract.mojo, RESIDENT_MAX_D_MODEL). The
+# decode kernels stage `max(d_model, h_q * d_head, d_ff)` Float32 values in shared memory, and that
+# ceiling is a compile-time presence flag: a default GPU build stages 3072 (Qwen3-0.6B-Base),
+# `-D ALGENTA_STAGE_6144` stages 6144 (Qwen3-1.7B; the largest Metal tier), `-D ALGENTA_STAGE_8192`
+# stages 8192 (Llama-3.2-1B/3B) and is CUDA-only: 32 KiB is Apple silicon's whole threadgroup budget.
+# A session for a model whose staged vectors exceed the tier is refused with
+# `resident_dimension_too_large`. The CPU build has no resident decode, so the tier does not apply.
+GPU_BACKENDS = ("metal", "cuda")
+DEFAULT_STAGE_TIER = 3072
+STAGE_TIER_DEFINES: dict[str, str | None] = {
+    "default": None,
+    "6144": "ALGENTA_STAGE_6144",
+    "8192": "ALGENTA_STAGE_8192",
+}
+METAL_MAX_STAGE_TIER = 6144
+
+
+def stage_tier_spec(backend: str, stage_tier: str) -> tuple[int | None, str | None]:
+    """(staging ceiling recorded in the manifest, Mojo define to compile with) for a backend/tier.
+
+    Refuses, with a SystemExit naming the rule, a tier on the CPU build (no resident decode there)
+    and 8192 on Metal (contract.mojo: a CUDA-only tier). A GPU build's default tier is 3072, no define.
+    """
+    if stage_tier not in STAGE_TIER_DEFINES:
+        raise SystemExit(
+            f"unknown --stage-tier {stage_tier!r}; choose one of {sorted(STAGE_TIER_DEFINES)}"
+        )
+    define = STAGE_TIER_DEFINES[stage_tier]
+    if backend not in GPU_BACKENDS:
+        if define is not None:
+            raise SystemExit(
+                f"--stage-tier {stage_tier} needs --backend metal or cuda: the resident decode "
+                f"kernels are GPU-only, so a {backend} build has no staging tier"
+            )
+        return None, None
+    ceiling = DEFAULT_STAGE_TIER if define is None else int(stage_tier)
+    if backend == "metal" and ceiling > METAL_MAX_STAGE_TIER:
+        raise SystemExit(
+            f"--stage-tier {stage_tier} is CUDA-only: {ceiling} Float32 = {ceiling * 4 // 1024} KiB "
+            f"is Apple silicon's whole 32 KiB threadgroup budget; {METAL_MAX_STAGE_TIER} is the "
+            "largest Metal tier (mojo/engine/residentk/contract.mojo)"
+        )
+    return ceiling, define
+
+
+def mojo_build_argv(
+    backend: str,
+    source: Path,
+    output: Path,
+    *,
+    system: str,
+    plat: str,
+    cuda_target: str | None = None,
+    metal_target: str | None = None,
+    stage_define: str | None = None,
+) -> list[str]:
+    """The `pixi run mojo build` argv for one family library: the CPU shared library, one CUDA
+    target's shared library, or the Metal object the clang link consumes. Pure, so the dry run
+    prints exactly what the build runs and the tests read it."""
+    argv = ["pixi", "run", "mojo", "build", "-I", str(ROOT / "mojo" / "engine"), str(source)]
+    if backend == "cpu":
+        if system == "linux" and plat.startswith("x86_64"):
+            argv[4:4] = ["--mcpu", "x86-64-v3"]  # CPU builds only; a GPU target sets its own arch
+        return [*argv, "--emit", "shared-lib", "-o", str(output)]
+    # The GPU lanes: portable GPU kernels + the backend selector. CUDA is cross-compiled by the NVPTX
+    # backend inside the pinned toolchain (no CUDA toolkit, no GPU on the build host) with
+    # ALGENTA_METAL off so the Metal shim machinery compiles out (build_mojo_binary.sh); Metal is the
+    # worker recipe's object emit. The staging tier is one more presence flag on the same command
+    # (contract.mojo, one binary per tier).
+    defines = ["-D", "ALGENTA_GPU", "-D", "ALGENTA_CUDA" if backend == "cuda" else "ALGENTA_METAL"]
+    if stage_define is not None:
+        defines += ["-D", stage_define]
+    if backend == "cuda":
+        if cuda_target is None:
+            raise SystemExit("a CUDA build needs its sm target")
+        argv[4:4] = [*defines, "--target-accelerator", cuda_target]
+        return [*argv, "--emit", "shared-lib", "-o", str(output)]
+    if metal_target is None:
+        raise SystemExit("a Metal build needs its accelerator target")
+    return [*argv, "--emit", "object", *defines, "--target-accelerator", metal_target, "-o", str(output)]
 
 
 def _run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None) -> str:
@@ -202,6 +290,9 @@ def main() -> int:
     ap.add_argument("--filters", type=Path, default=ROOT / "scripts" / "hf_kernel_filters.json")
     ap.add_argument("--backend", choices=["cpu", "metal", "cuda"], default="cpu")
     ap.add_argument("--cuda-targets", nargs="+", default=["sm_75", "sm_80", "sm_89", "sm_90"], help="one library per NVIDIA target (T4 / A100 / L4 / H100-H200); the loader picks by the device's compute capability")
+    ap.add_argument("--stage-tier", choices=sorted(STAGE_TIER_DEFINES), default="default",
+                    help="resident decode staging tier of a metal/cuda build (max(d_model, h_q*d_head, d_ff) the kernels stage): default = 3072 (Qwen3-0.6B), 6144 (Qwen3-1.7B; the largest Metal tier), 8192 (CUDA only)")
+    ap.add_argument("--print-command", action="store_true", help="dry run: print the resolved plan (tier, define, mojo build argv per library) as JSON and exit without building")
     ap.add_argument("--stub-guard", action="store_true", help="TEST ONLY: build without the count-relation guard")
     ap.add_argument("--exclude", nargs="*", default=None, help="module.function or module.* refused in-process (ad hoc; families read excluded_functions from the filter table)")
     ap.add_argument("--request-types", nargs="*", default=None, help="ad-hoc declared routes (families read request_types from the filter table)")
@@ -223,10 +314,7 @@ def main() -> int:
         excluded = a.exclude or []
 
     system, plat = _platform()
-    pixi_env = (ROOT / "mojo_env" / ".pixi" / "envs" / "default").resolve()
-    lib_root = pixi_env / "lib"
-    if not lib_root.is_dir():
-        raise SystemExit(f"pixi env missing: {lib_root} (run `cd mojo_env && pixi install`)")
+    stage_tier, stage_define = stage_tier_spec(a.backend, a.stage_tier)
     ext = ".dylib" if system == "darwin" else ".so"
     base_name = f"libalgenta_{name.replace('-', '_')}"
     # CUDA ships one library per target (sm_75 T4, sm_80 A100, sm_89 L4, sm_90 H100/H200); the primary
@@ -234,6 +322,26 @@ def main() -> int:
     cuda_targets = list(dict.fromkeys(a.cuda_targets)) if a.backend == "cuda" else []
     lib_names = [f"{base_name}.{t}{ext}" for t in cuda_targets] if a.backend == "cuda" else [f"{base_name}{ext}"]
     lib_name = lib_names[-1]
+    metal_target = os.environ.get("MOJO_BUILD_METAL_TARGET", "apple-m1")
+    if a.print_command:
+        # The plan, with the stage directory as a placeholder: nothing is generated, compiled or touched.
+        at = Path("<stage>")
+        common = {"system": system, "plat": plat, "stage_define": stage_define}
+        if a.backend == "cuda":
+            commands = [mojo_build_argv("cuda", at / "abi.mojo", at / n, cuda_target=t, **common)
+                        for t, n in zip(cuda_targets, lib_names, strict=True)]
+        elif a.backend == "metal":
+            commands = [mojo_build_argv("metal", at / "abi.mojo", at / "abi.o", metal_target=metal_target, **common)]
+        else:
+            commands = [mojo_build_argv("cpu", at / "abi.mojo", at / lib_name, system=system, plat=plat)]
+        plan = {"family": name, "backend": a.backend, "platform": plat, "libraries": lib_names,
+                "resident_stage_tier": stage_tier, "resident_stage_define": stage_define, "commands": commands}
+        print(json.dumps(plan, indent=2))
+        return 0
+    pixi_env = (ROOT / "mojo_env" / ".pixi" / "envs" / "default").resolve()
+    lib_root = pixi_env / "lib"
+    if not lib_root.is_dir():
+        raise SystemExit(f"pixi env missing: {lib_root} (run `cd mojo_env && pixi install`)")
 
     stage = Path(tempfile.mkdtemp(prefix=f".hfk-{name}-", dir=str(a.out.parent if a.out.parent.exists() else "/tmp")))
     try:
@@ -259,16 +367,8 @@ def main() -> int:
         mojo_version = _run(["pixi", "run", "mojo", "--version"], cwd=ROOT / "mojo_env").strip().splitlines()[0]
         if a.backend in ("cpu", "cuda"):
             for target, out_name in zip(cuda_targets or [None], lib_names):
-                build = ["pixi", "run", "mojo", "build", "-I", str(ROOT / "mojo" / "engine"), str(stage / "abi.mojo"),
-                         "--emit", "shared-lib", "-o", str(stage / out_name)]
-                if system == "linux" and plat.startswith("x86_64") and target is None:
-                    build[4:4] = ["--mcpu", "x86-64-v3"]  # CPU builds only; a GPU target sets its own arch
-                if target is not None:
-                    # The CUDA lane: portable GPU kernels + the CUDA backend selector, cross-compiled by the
-                    # NVPTX backend inside the pinned toolchain (no CUDA toolkit, no GPU on the build host);
-                    # ALGENTA_METAL stays off so the Metal shim machinery compiles out (build_mojo_binary.sh).
-                    build[4:4] = ["-D", "ALGENTA_GPU", "-D", "ALGENTA_CUDA", "--target-accelerator", target]
-                _run(build, cwd=ROOT / "mojo_env", env=env)
+                _run(mojo_build_argv(a.backend, stage / "abi.mojo", stage / out_name, system=system, plat=plat,
+                                     cuda_target=target, stage_define=stage_define), cwd=ROOT / "mojo_env", env=env)
         else:  # metal: the worker recipe (build_mojo_binary.sh) — object emit, ObjC shim, clang link
             if system != "darwin":
                 raise SystemExit("--backend metal needs a macOS arm64 host")
@@ -293,10 +393,8 @@ def main() -> int:
                 obj = blob_dir / (src.stem + ".o")
                 _run([clang, "-c", "-O2", "-isysroot", sdk, str(src), "-o", str(obj)], env=env)
                 blob_objects.append(obj)
-            target = os.environ.get("MOJO_BUILD_METAL_TARGET", "apple-m1")
-            _run(["pixi", "run", "mojo", "build", "-I", str(ROOT / "mojo" / "engine"), str(stage / "abi.mojo"), "--emit", "object",
-                  "-D", "ALGENTA_GPU", "-D", "ALGENTA_METAL", "--target-accelerator", target, "-o", str(stage / "abi.o")],
-                 cwd=ROOT / "mojo_env", env=env)
+            _run(mojo_build_argv("metal", stage / "abi.mojo", stage / "abi.o", system=system, plat=plat,
+                                 metal_target=metal_target, stage_define=stage_define), cwd=ROOT / "mojo_env", env=env)
             rt_libs = [f"-l{n}" for n in ("KGENCompilerRTShared", "AsyncRTRuntimeGlobals", "MSupportGlobals", "AsyncRTMojoBindings")
                        if list(lib_root.glob(f"lib{n}.*"))]
             # Only the five ABI symbols are public: the ObjC shim's C entry points resolve inside the
@@ -460,6 +558,10 @@ def main() -> int:
             "library": lib_name,
             "cuda_targets": cuda_targets,
             "cuda_libraries": {t: n for t, n in zip(cuda_targets, lib_names)},
+            # GPU builds: the decode kernels' staging ceiling (max(d_model, h_q*d_head, d_ff) a model may
+            # need) and the presence flag it was compiled with; null on the CPU build (no resident decode).
+            "resident_stage_tier": stage_tier,
+            "resident_stage_define": stage_define,
             "load_order": load_order,
             "runtime_tag": tag,
             "renamed_runtime_files": renamed,
@@ -482,7 +584,8 @@ def main() -> int:
         }
         (native / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         total = sum(v["bytes"] for v in manifest["files"].values())
-        print(f"built {name}: {len(modules)} modules -> {lib_path} ({plat}, minos {minos}); closure {len(files)} files, {total/1e6:.1f} MB; {guard_report}")
+        tier_note = f", stage tier {stage_tier}" if stage_tier is not None else ""
+        print(f"built {name}: {len(modules)} modules -> {lib_path} ({plat}, minos {minos}{tier_note}); closure {len(files)} files, {total/1e6:.1f} MB; {guard_report}")
         return 0
     finally:
         if a.keep_stage:

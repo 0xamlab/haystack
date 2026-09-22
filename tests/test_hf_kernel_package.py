@@ -149,7 +149,13 @@ def test_build_tree_ships_no_private_paths_or_build_narrative():
     for variant in _variants(Path(REPO_DIR)):
         pkg = next(d for d in variant.iterdir() if d.is_dir() and d.name.startswith("algenta_"))
         manifest = json.loads((pkg / "_native" / "manifest.json").read_text())
-        assert set(manifest) <= {"schema", "family", "backend", "abi_version", "library", "cuda_targets", "cuda_libraries", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit"}
+        # resident_stage_tier: the GPU build's decode staging ceiling (a public fact of the variant, also in
+        # metadata.json and the card); absent from CPU closures, which have no resident decode.
+        assert set(manifest) <= {"schema", "family", "backend", "abi_version", "library", "cuda_targets", "cuda_libraries", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit", "resident_stage_tier"}
+        if manifest["backend"] in ("metal", "cuda"):
+            assert isinstance(manifest.get("resident_stage_tier"), int) and manifest["resident_stage_tier"] >= 3072
+        else:
+            assert "resident_stage_tier" not in manifest
         for name in manifest["load_order"] + [manifest["library"]] + list((manifest.get("cuda_libraries") or {}).values()):
             assert name in manifest["files"] and os.path.basename(name) == name
         meta = json.loads((variant / "metadata.json").read_text())

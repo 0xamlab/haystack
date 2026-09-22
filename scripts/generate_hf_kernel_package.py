@@ -40,7 +40,18 @@ TEMPLATES = ROOT / "scripts" / "hf_kernels" / "templates"
 ENGINE = ROOT / "mojo" / "engine"
 DEFAULT_TORCH_VERSIONS = ["2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11", "2.12", "2.13", "2.14"]
 PY_TYPES = {"Int": "int", "Float64": "float", "Float32": "float", "Bool": "bool", "String": "str", "UInt8": "int", "UInt16": "int", "UInt32": "int", "UInt64": "int", "None": "None"}
-PUBLIC_MANIFEST_KEYS = ("schema", "family", "backend", "abi_version", "library", "cuda_targets", "cuda_libraries", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit")
+PUBLIC_MANIFEST_KEYS = ("schema", "family", "backend", "abi_version", "library", "cuda_targets", "cuda_libraries", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit", "resident_stage_tier")
+# Resident decode staging tier of a GPU build (build_hf_kernel_family.py --stage-tier;
+# mojo/engine/residentk/contract.mojo RESIDENT_MAX_D_MODEL): a model is accepted when
+# max(d_model, h_q*d_head, d_ff) <= tier. A GPU manifest written before the field existed is a
+# default build, which stages 3072.
+GPU_BACKENDS = ("metal", "cuda")
+DEFAULT_STAGE_TIER = 3072
+STAGE_TIER_MODELS = {
+    3072: "Qwen3-0.6B",
+    6144: "Qwen3-0.6B and Qwen3-1.7B",
+    8192: "Qwen3-0.6B, Qwen3-1.7B and Llama-3.2-1B/3B",
+}
 # CUDA builds of each PyTorch release (the loader matches the variant to torch.version.cuda exactly).
 CUDA_VERSIONS_BY_TORCH = {"2.5": ["118", "121", "124"], "2.6": ["118", "124", "126"], "2.7": ["118", "126", "128"], "2.8": ["126", "128", "129"], "2.9": ["126", "128", "130"]}
 CUDA_VERSIONS_DEFAULT = ["126", "128", "129", "130", "132"]
@@ -67,6 +78,49 @@ def variant_names(platform: str, backend: str, torch_versions: list[str]) -> lis
         else:
             out.append(f"{tag}-cxx11-{backend}-{arch}-{os_}")
     return out
+
+
+def stage_tier_of(manifest: dict) -> int | None:
+    """The staging tier a GPU closure was compiled for; None for a CPU closure (no resident decode)."""
+    if manifest.get("backend") not in GPU_BACKENDS:
+        return None
+    tier = manifest.get("resident_stage_tier")
+    return int(tier) if isinstance(tier, int) and not isinstance(tier, bool) else DEFAULT_STAGE_TIER
+
+
+def backend_metadata(backend: str, manifest: dict) -> dict:
+    """metadata.json's `backend` object: the `kernels` schema (type; CUDA archs) plus, for a GPU
+    build, `resident_stage_tier`. The `kernels` loader (0.17.1) ignores keys it does not define, so
+    the tier rides beside the variant's backend facts rather than only in the card text."""
+    if backend == "cuda":
+        info = {"type": "cuda", "archs": [f"{t[3]}.{t[4:]}" for t in manifest.get("cuda_targets", [])]}
+    else:
+        info = {"type": backend}
+    tier = stage_tier_of(manifest)
+    if tier is not None:
+        info["resident_stage_tier"] = tier
+    return info
+
+
+def stage_tier_sentence(stage_tiers: dict[str, int]) -> str:
+    """One card sentence per GPU tier present: which model sizes the GPU builds stage decode for."""
+    by_tier: dict[int, list[str]] = {}
+    for backend, tier in sorted(stage_tiers.items()):
+        by_tier.setdefault(tier, []).append(backend)
+    sentences = []
+    for tier, backends in sorted(by_tier.items()):
+        if len(by_tier) == 1:
+            who = "The GPU builds stage"
+        else:
+            names = " and ".join(b.capitalize() if b == "metal" else b.upper() for b in backends)
+            who = f"The {names} builds stage" if len(backends) > 1 else f"The {names} build stages"
+        examples = STAGE_TIER_MODELS.get(tier)
+        sentences.append(
+            f"{who} decode for models with `max(d_model, h_q*d_head, d_ff) <= {tier}`"
+            + (f", for example {examples}" if examples else "")
+            + '; a larger model is refused with `KernelError("resident_dimension_too_large")`.'
+        )
+    return " ".join(sentences)
 
 
 def digest_dir(variant_dir: Path) -> dict:
@@ -410,7 +464,7 @@ def write_package_tree(pdir: Path, modules: list[str], contract: dict, family_pk
 
 # --- card ----------------------------------------------------------------------------------------
 
-def render_card(family: str, summary: str, modules: list[str], contract: dict, variants: dict[str, list[str]], excluded: set[str], backends: list[str], has_session: bool, example_line: str | None, has_status: bool, exclusion_reasons: dict[str, str]) -> str:
+def render_card(family: str, summary: str, modules: list[str], contract: dict, variants: dict[str, list[str]], excluded: set[str], backends: list[str], has_session: bool, example_line: str | None, has_status: bool, exclusion_reasons: dict[str, str], stage_tiers: dict[str, int] | None = None) -> str:
     fn_count = sum(len(m["functions"]) for m in contract["modules"].values())
     rows = "\n".join(f"| `{m}` | {len(contract['modules'][m]['functions'])} | {contract['modules'][m]['description']} |" for m in sorted(modules))
     torch_versions = sorted({re.match(r"torch(\d)(\d+)", v).groups() for names in variants.values() for v in names}, key=lambda t: (int(t[0]), int(t[1])))
@@ -458,6 +512,10 @@ converted form (`manifest.json` + `weights.blob`) written by `prepare_model_chec
 the full record for one token. Decode needs a GPU build; on the CPU build `DecodeSession` raises
 `KernelError("gpu_build_required")`.
 """
+        if stage_tiers:
+            staged = textwrap.fill(stage_tier_sentence(stage_tiers), width=100,
+                                   break_on_hyphens=False, break_long_words=False)
+            session_block += "\n" + staged + "\n"
     excluded_block = ""
     if excluded:
         # One bullet per excluded function, wrapped at 100 columns with a hanging indent so the card
@@ -614,11 +672,22 @@ def main() -> int:
     if (out / "build").exists():
         shutil.rmtree(out / "build")
     variants_written: dict[str, list[str]] = {}
+    stage_tiers: dict[str, int] = {}
     for backend, native in natives:
         manifest = json.loads((native / "manifest.json").read_text())
         if manifest["backend"] != backend:
             raise SystemExit(f"{native} was built for backend {manifest['backend']}, not {backend}")
+        tier = stage_tier_of(manifest)
+        if tier is not None:
+            if stage_tiers.get(backend, tier) != tier:
+                raise SystemExit(
+                    f"{backend} closures disagree on resident_stage_tier ({stage_tiers[backend]} vs "
+                    f"{tier} in {native}); one tier per backend per release"
+                )
+            stage_tiers[backend] = tier
         public_manifest = {k: manifest[k] for k in PUBLIC_MANIFEST_KEYS if k in manifest}
+        if public_manifest.get("resident_stage_tier") is None:
+            public_manifest.pop("resident_stage_tier", None)  # CPU closure: no resident decode
         names = variant_names(manifest["platform"], backend, a.torch_versions)
         variants_written.setdefault(backend, []).extend(names)
         for vname in names:
@@ -645,11 +714,11 @@ def main() -> int:
                 "license": "other",
                 "python-depends": [],
                 "kernel-depends": [],
-                "backend": ({"type": "cuda", "archs": [f"{t[3]}.{t[4:]}" for t in manifest.get("cuda_targets", [])]} if backend == "cuda" else {"type": backend}),
+                "backend": backend_metadata(backend, manifest),
             }
             metadata["digest"] = digest_dir(vdir)
             (vdir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
-    (out / "README.md").write_text(render_card(a.family, fam["summary"], modules, contract, variants_written, excluded, backends_present, has_session, example_line, has_status, fam.get("exclusion_reasons", {})))
+    (out / "README.md").write_text(render_card(a.family, fam["summary"], modules, contract, variants_written, excluded, backends_present, has_session, example_line, has_status, fam.get("exclusion_reasons", {}), stage_tiers))
     shutil.copy2(ROOT / "LICENSE", out / "LICENSE")
     (out / ".gitattributes").write_text("*.dylib filter=lfs diff=lfs merge=lfs -text\n*.so filter=lfs diff=lfs merge=lfs -text\n")
     total = sum(p.stat().st_size for p in (out / "build").rglob("*") if p.is_file())

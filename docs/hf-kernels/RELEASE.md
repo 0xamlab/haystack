@@ -6,7 +6,7 @@ output. They produced the evidence rows `CAP-REBUILD-*`, `REPUBLISH-001`, `PUBLI
 
 | Step | Command | Proves |
 |---|---|---|
-| 0 | `build_hf_kernel_family.py` (macOS CPU and `--backend metal`); `linux_container_build.sh --arch arm64` / `--arch amd64`; `--backend cuda --cuda-targets <sm>`, one target per run | the artifacts, all from one source commit (`abi.mojo` unchanged) |
+| 0 | `build_hf_kernel_family.py` (macOS CPU and `--backend metal --stage-tier 6144`); `linux_container_build.sh --arch arm64` / `--arch amd64`; `--backend cuda --cuda-targets <sm> --stage-tier 6144`, one target per run. The GPU builds of `algenta-llm` ship at the 6144 staging tier (Qwen3-1.7B; `max(d_model, h_q*d_head, d_ff) <= 6144`), recorded as `resident_stage_tier` in the manifest and in `metadata.json` | the artifacts, all from one source commit (`abi.mojo` unchanged) |
 | 1 | `community_cap_redteam.py <lib> <req>` on the stats build of **each platform** (as a non-root user in containers) | the compiled Community worker cap holds (ABI §9): nine scenarios, ≤ 1.0 effective workers |
 | 2 | `record_republish.py --capture-pre pre.json` | the "before" state (old `v1` shas, privacy, commit counts) for the audit trail |
 | 3 | `republish_capped.py --mac … --linux … --hub-out hub --dry-run` | every family regenerates and passes the crash gate, the API-versioning gate (0 removed / 0 changed) and the §9 gate; CUDA targets merge |

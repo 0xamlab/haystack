@@ -94,6 +94,13 @@ def merge_cuda(target_dirs, out):
             merged["cuda_libraries"] = {}
             merged["files"] = {}
             merged["load_order"] = list(m.get("load_order", []))
+        # One staging tier per release: the loader picks a library by compute capability, so a target
+        # built at another tier would silently stage a different model ceiling on that GPU.
+        if m.get("resident_stage_tier") != merged.get("resident_stage_tier"):
+            raise SystemExit(
+                f"cuda merge: resident_stage_tier differs between targets "
+                f"({merged.get('resident_stage_tier')} vs {m.get('resident_stage_tier')} in {d})"
+            )
         for f, meta in m["files"].items():
             if f in merged["files"] and merged["files"][f] != meta:
                 raise SystemExit(f"cuda merge: {f} differs between targets")
