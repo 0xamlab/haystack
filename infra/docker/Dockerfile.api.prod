@@ -36,6 +36,7 @@ RUN test -s /build/context/packages/mcp/algenta_mcp/products.py \
  && test -s /build/context/packages/mcp/algenta_mcp/server.py \
  && test -s /build/context/apps/mcp_server/products.py \
  && test -s /build/context/apps/api_server/main.py \
+ && test -s /build/context/packages/algenta/algenta/simple.py \
  || { echo "FATAL: build context/cache corrupted a critical source file (zero-byte)"; exit 1; }
 
 # Production artifacts must not carry the HS256 dev-licence secret (secret-scanning #14). Delete the
@@ -73,8 +74,17 @@ COPY --from=builder --chown=app:app /build/context/training/ /app/training/
 COPY --from=builder --chown=app:app /build/context/scripts/ /app/scripts/
 COPY --from=builder --chown=app:app /build/context/mojo/ /app/mojo/
 COPY --from=builder --chown=app:app /build/context/packages/mcp/ /app/packages/mcp/
-# Counts-only public route /v1/runtime/library-stats reads this (docs source of truth).
-COPY --from=builder --chown=app:app /build/context/packages/algenta/algenta/runtime_library_contract.json /app/packages/algenta/algenta/runtime_library_contract.json
+# The public `algenta` SDK package (the PyPI distribution's source; Apache-2.0). The keyless
+# /v1/playground router puts /app/packages/algenta on sys.path and imports algenta.simple, whose
+# decision / optimize / simulate / forecast paths are pure-Python (stdlib math/random, no Mojo, no
+# network). Copying ONLY runtime_library_contract.json (as before 2026-09-22) left a namespace-package
+# shell at this path, so the import failed with "No module named 'algenta.simple'" and every
+# playground call 500'd in production. Copy the package directory itself -- never packages/algenta/
+# wholesale (a developer's build/ or dist/ could sit there). Besides .py files this brings the two
+# JSON contracts and _keys/*_pub.pem, the PUBLIC RSA trust anchors the PyPI wheel ships too
+# (pyproject package-data); .dockerignore's `*.pem` only matches the context root, and these are not
+# secrets. Counts-only public route /v1/runtime/library-stats reads the JSON from the same path.
+COPY --from=builder --chown=app:app /build/context/packages/algenta/algenta/ /app/packages/algenta/algenta/
 
 # Runtime-manifest source artifacts (committed under build/, ~150KB) so the public
 # /v1/runtime/manifest endpoint doesn't 500 on missing files (no tracked .dockerignore excludes build/).

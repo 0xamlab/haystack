@@ -145,6 +145,8 @@ MEANINGS = {
     "provider_key_not_found": "No BYOK provider key is configured for this backend.",
     "playground_error": "The playground request could not be processed.",
     "playground_rate_limit": "The keyless playground rate limit was hit; slow down or use an API key.",
+    "playground_invalid_input": "A playground `inputs` value cannot be modelled (expected a number, a `[min, max]` range, or `{value}`); the message names the variable.",
+    "playground_unavailable": "The algenta SDK that powers the keyless playground is not importable in this deployment; the rest of the API is up. Use an API key with `/v1/simulate`.",
     "runtime_library_metadata_missing": "The runtime library is missing required metadata.",
     "not_implemented": "This operation is not available in the current deployment.",
     "no_data": "The query matched no rows.",

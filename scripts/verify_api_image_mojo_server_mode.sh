@@ -97,6 +97,41 @@ def verify_platform_contract_manifest() -> None:
         )
 
 
+def verify_playground_sdk() -> None:
+    """The keyless POST /v1/playground runs algenta.simple in-process from /app/packages/algenta.
+
+    2026-09-22: the image carried only runtime_library_contract.json under that path, `import
+    algenta` resolved to a namespace-package shell, and every documented playground call on
+    api.algenta.ai returned 500 "No module named 'algenta.simple'" -- undetected by this smoke,
+    which is the last gate before a Fly rollout. Import it the way the router does and run one
+    real decision (pure Python, no Mojo worker) so a hollow copy fails the build, not production.
+    """
+    sdk_root = Path("/app/packages/algenta")
+    simple_py = sdk_root / "algenta" / "simple.py"
+    if not simple_py.is_file():
+        fail(
+            "playground_sdk_missing",
+            "The API image does not contain the algenta SDK package that /v1/playground imports.",
+            path=str(simple_py),
+        )
+    sys.path.insert(0, str(sdk_root))
+    try:
+        from algenta.simple import decision
+    except Exception as exc:
+        fail(
+            "playground_sdk_import_failed",
+            "The API image cannot import algenta.simple, so /v1/playground would 503.",
+            error=str(exc),
+        )
+    result = decision(runs=100, revenue=120000.0, cost=70000.0)
+    if result.action not in {"proceed", "pause", "reject"}:
+        fail(
+            "playground_sdk_bad_result",
+            "algenta.simple.decision returned an action outside the documented set.",
+            action=str(result.action),
+        )
+
+
 def recv_frame(sock: socket.socket, *, timeout_s: float) -> dict[str, object]:
     sock.settimeout(timeout_s)
     header = sock.recv(4)
@@ -128,6 +163,7 @@ def send_frame(sock: socket.socket, payload: dict[str, object]) -> None:
 def main() -> None:
     verify_platform_contract_manifest()
     verify_embedded_mcp_router()
+    verify_playground_sdk()
 
     binary = Path(os.environ.get("MOJO_BINARY_PATH", "/app/mojo_build/simulate"))
     if not binary.is_file():

@@ -7,17 +7,26 @@ and immediately feels the value. No sign-up. No API key. Just works.
   POST /v1/playground
 
 Rate limited: 10 requests / minute per IP. No auth required.
+
+Failure contract (every body is the standard {"error": {code, message}} envelope):
+  422 validation_error          — the body does not match PlaygroundRequest (FastAPI/Pydantic)
+  422 playground_invalid_input  — a well-typed body whose `inputs` values the engine cannot model
+  429 playground_rate_limit     — over 10 requests/minute from one IP
+  503 playground_unavailable    — the algenta SDK is not importable in this deployment
+  500 playground_error          — the engine itself raised
 """
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 import uuid
 from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from apps.api_server.services.public_url_policy import (
     request_origin_base_url,
@@ -61,7 +70,72 @@ def _check_ip_rate(ip: str, *, upgrade_hint: str) -> None:
         )
 
 
+# ── SDK engine ────────────────────────────────────────────────────────────────
+
+# The playground runs the public `algenta` SDK's decision / optimize / simulate / forecast paths
+# in-process. Those paths are pure Python (stdlib math/random Monte Carlo): no API key, no DB, no
+# Mojo worker, no network -- `mode="cloud"` is never passed, so algenta.privacy_profile is imported
+# but its base-URL resolution never runs. The SDK is not pip-installed in this service; it lives in
+# the monorepo at packages/algenta, and the API image copies that package to the same relative
+# location (infra/docker/Dockerfile.api.prod), so that directory goes on sys.path first.
+_SDK_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "packages", "algenta")
+)
+
+
+def _sdk_import(module: str, *names: str) -> tuple[Any, ...]:
+    """Import ``names`` from an algenta SDK module, or raise 503 playground_unavailable.
+
+    A missing SDK is a deployment defect -- neither a caller error nor an engine failure -- and
+    it must be distinguishable as such. Until 2026-09-22 the production image shipped only
+    runtime_library_contract.json under /app/packages/algenta/algenta; ``import algenta`` then
+    resolved to that namespace-package shell and every playground call surfaced as an anonymous
+    500 "No module named 'algenta.simple'". The image smoke
+    (scripts/verify_api_image_mojo_server_mode.sh) now imports algenta.simple before any rollout.
+    """
+    if _SDK_PATH not in sys.path:
+        sys.path.insert(0, _SDK_PATH)
+    try:
+        imported = __import__(module, fromlist=list(names))
+        return tuple(getattr(imported, name) for name in names)
+    except (ImportError, AttributeError) as exc:
+        logger.error(
+            "playground_sdk_unavailable", module=module, error=str(exc), sdk_path=_SDK_PATH
+        )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": {
+                    "code": "playground_unavailable",
+                    "message": (
+                        "The playground engine is not available in this deployment: the "
+                        "algenta SDK could not be imported. Retry later, or use an API key "
+                        "with /v1/simulate."
+                    ),
+                }
+            },
+        ) from exc
+
+
 # ── Request / Response ────────────────────────────────────────────────────────
+
+# Keyword parameters of algenta.simple.decision / optimize / simulate and algenta.decision.analyze.
+# `inputs` are splatted into those calls as **kwargs, so a variable with one of these names either
+# raised TypeError ("got multiple values for keyword argument 'runs'") -- a 500 -- or silently
+# re-targeted the engine (mode=..., inputs=...) instead of being modelled. Reject them up front.
+_RESERVED_INPUT_NAMES = frozenset(
+    {
+        "api_key",
+        "base_url",
+        "inputs",
+        "iterations",
+        "label",
+        "mode",
+        "objective",
+        "risk_tolerance",
+        "runs",
+    }
+)
 
 
 class PlaygroundRequest(BaseModel):
@@ -107,6 +181,16 @@ class PlaygroundRequest(BaseModel):
         description="Historical values for forecast mode (most recent last, min 3)",
     )
 
+    @field_validator("inputs")
+    @classmethod
+    def _reject_reserved_input_names(cls, inputs: dict[str, Any]) -> dict[str, Any]:
+        reserved = sorted(name for name in inputs if name in _RESERVED_INPUT_NAMES)
+        if reserved:
+            raise ValueError(
+                f"input name(s) {reserved} are reserved engine parameters; rename the variable(s)"
+            )
+        return inputs
+
 
 class PlaygroundResponse(BaseModel):
     playground_id: str
@@ -118,6 +202,58 @@ class PlaygroundResponse(BaseModel):
     details: dict[str, Any]
     latency_ms: float
     upgrade_hint: str
+
+
+# ── Input coercion (422, not 500) ─────────────────────────────────────────────
+
+
+def _invalid_input(name: str, value: Any, expected: str) -> HTTPException:
+    return HTTPException(
+        status_code=422,
+        detail={
+            "error": {
+                "code": "playground_invalid_input",
+                "message": (
+                    f"inputs[{name!r}] must be {expected}; got {type(value).__name__}: {value!r}"
+                ),
+            }
+        },
+    )
+
+
+def _as_float(name: str, value: Any, raw: Any, expected: str) -> float:
+    try:
+        return float(raw)
+    except (TypeError, ValueError) as exc:
+        raise _invalid_input(name, value, expected) from exc
+
+
+def _scalar_inputs(inputs: dict[str, Any]) -> dict[str, float]:
+    """decision / simulate: name → number, or name → {"value": number, ...}."""
+    expected = "a number or {value: number}"
+    flat: dict[str, float] = {}
+    for name, value in inputs.items():
+        raw = value.get("value") if isinstance(value, dict) else value
+        flat[name] = _as_float(name, value, raw, expected)
+    return flat
+
+
+def _range_inputs(inputs: dict[str, Any]) -> dict[str, tuple[float, float]]:
+    """optimize: name → [min, max], {"min", "max"}, or a point value widened to ±50%."""
+    expected = "[min, max], {min: number, max: number}, a number, or {value: number}"
+    ranges: dict[str, tuple[float, float]] = {}
+    for name, value in inputs.items():
+        if isinstance(value, list | tuple) and len(value) == 2:
+            lo, hi = (_as_float(name, value, bound, expected) for bound in value)
+        elif isinstance(value, dict) and "min" in value and "max" in value:
+            lo = _as_float(name, value, value["min"], expected)
+            hi = _as_float(name, value, value["max"], expected)
+        else:
+            raw = value.get("value", 100) if isinstance(value, dict) else value
+            point = _as_float(name, value, raw, expected)
+            lo, hi = point * 0.5, point * 1.5
+        ranges[name] = (lo, hi)
+    return ranges
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
@@ -148,55 +284,37 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
     mode = payload.mode.lower()
     pg_id = str(uuid.uuid4())
 
-    # Import local engine (no API key, no DB)
-    import os
-    import sys
-
-    _core_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "packages", "algenta"
+    # Deployment defects (503) and caller mistakes (422) are named BEFORE the engine runs, so the
+    # catch-all below only ever wraps a genuine engine exception.
+    _decision, _optimize, _simulate = _sdk_import(
+        "algenta.simple", "decision", "optimize", "simulate"
     )
-    if _core_path not in sys.path:
-        sys.path.insert(0, _core_path)
+    _forecast = _sdk_import("algenta.forecast", "predict")[0] if mode == "forecast" else None
+
+    if mode == "optimize":
+        variable_ranges = _range_inputs(payload.inputs) or {
+            "price": (10.0, 200.0),
+            "quantity": (100.0, 5000.0),
+        }
+    elif mode == "forecast":
+        history = payload.history
+        if not history or len(history) < 3:
+            history = [80000.0, 85000.0, 90000.0, 95000.0, 100000.0]
+    elif mode == "decision":
+        flat_inputs = _scalar_inputs(payload.inputs) or {"value": 100000.0, "cost": 70000.0}
+    else:  # simulate (default)
+        flat_inputs = _scalar_inputs(payload.inputs) or {"revenue": 120000.0, "cost": 70000.0}
 
     try:
-        from algenta.simple import decision as _decision
-        from algenta.simple import optimize as _optimize
-        from algenta.simple import simulate as _simulate
-
         if mode == "decision":
-            flat_inputs = {
-                k: (v["value"] if isinstance(v, dict) else float(v))
-                for k, v in payload.inputs.items()
-            }
-            if not flat_inputs:
-                flat_inputs = {"value": 100000.0, "cost": 70000.0}
-
             result = _decision(runs=payload.runs, **flat_inputs)
 
         elif mode == "optimize":
-            variable_ranges = {}
-            for k, v in payload.inputs.items():
-                if isinstance(v, list | tuple) and len(v) == 2:
-                    variable_ranges[k] = (float(v[0]), float(v[1]))
-                elif isinstance(v, dict) and "min" in v and "max" in v:
-                    variable_ranges[k] = (float(v["min"]), float(v["max"]))
-                else:
-                    val = float(v) if not isinstance(v, dict) else float(v.get("value", 100))
-                    variable_ranges[k] = (val * 0.5, val * 1.5)
-
-            if not variable_ranges:
-                variable_ranges = {"price": (10.0, 200.0), "quantity": (100.0, 5000.0)}
-
             result = _optimize(
                 payload.objective, iterations=min(payload.runs, 1000), **variable_ranges
             )
 
         elif mode == "forecast":
-            history = payload.history
-            if not history or len(history) < 3:
-                history = [80000.0, 85000.0, 90000.0, 95000.0, 100000.0]
-            from algenta.forecast import predict as _forecast
-
             fr = _forecast(history, horizon=6, metric="value")
             final = fr.periods[-1]
             result_val = fr.forecast_mean
@@ -228,13 +346,7 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
             )
 
         else:  # simulate (default)
-            flat = {
-                k: (v["value"] if isinstance(v, dict) else float(v))
-                for k, v in payload.inputs.items()
-            }
-            if not flat:
-                flat = {"revenue": 120000.0, "cost": 70000.0}
-            result = _simulate(runs=payload.runs, **flat)
+            result = _simulate(runs=payload.runs, **flat_inputs)
 
     except Exception as exc:
         logger.warning("playground_error", mode=mode, error=str(exc), ip=client_ip)
@@ -257,7 +369,6 @@ async def playground(request: Request, payload: PlaygroundRequest) -> Playground
         },
         latency_ms=round((time.monotonic() - t0) * 1000, 1),
         upgrade_hint=(
-            f"Playground cap: {runs_used:,} scenarios. "
-            f"Upgrade for 1,000,000+ — {dashboard_hint}"
+            f"Playground cap: {runs_used:,} scenarios. Upgrade for 1,000,000+ — {dashboard_hint}"
         ),
     )

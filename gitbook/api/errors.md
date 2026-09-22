@@ -118,7 +118,9 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `owner_grant_forbidden` | You cannot grant the owner role. |
 | `persistence_backend_unavailable` | The persistence backend is temporarily unavailable; retry. |
 | `playground_error` | The playground request could not be processed. |
+| `playground_invalid_input` | A playground `inputs` value cannot be modelled (expected a number, a `[min, max]` range, or `{value}`); the message names the variable. |
 | `playground_rate_limit` | The keyless playground rate limit was hit; slow down or use an API key. |
+| `playground_unavailable` | The algenta SDK that powers the keyless playground is not importable in this deployment; the rest of the API is up. Use an API key with `/v1/simulate`. |
 | `preview_capability_not_executable` | This capability can be previewed but not executed in preview mode. |
 | `product_not_served` | This API host serves one product's plans only and will not price a different product. Ask that product's own API host. |
 | `provider_key_not_found` | No BYOK provider key is configured for this backend. |

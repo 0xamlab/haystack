@@ -1903,6 +1903,20 @@ jobs:
           docker push "registry.fly.io/codna-api:$TAG"
           flyctl deploy -c fly.api.toml -a codna-api -i "registry.fly.io/codna-api:$TAG"
 
+      # Prove the rollout serves the docs' FIRST call, rather than trusting a green flyctl exit
+      # (fly.api.toml's /v1/health check only proves the process answers). On 2026-09-22 every
+      # POST /v1/playground on api.algenta.ai -- which fronts codna-api, see
+      # infra/cloudflare/telys/waf.tf -- returned 500 because the image lacked the algenta SDK
+      # package, and nothing in this job noticed. The body is gitbook/playground.md's cURL example
+      # verbatim; the keyless route allows 10 requests/minute per IP, so one probe is well inside.
+      - name: Verify codna-api serves the documented playground call
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 -A "ci-verify" -X POST https://api.algenta.ai/v1/playground \
+            -H "Content-Type: application/json" \
+            -d '{"mode":"decision","inputs":{"revenue":120000,"cost":70000},"runs":1000}' \
+            | tee /dev/stderr | grep -q '"mode":"decision"'
+
   # ── Deploy the CONTROL PLANE to Fly (AUTOMATIC on merge to main) ──────────
   # WHY THIS EXISTS: api.telys.ai is served by the `algenta-control-plane` Fly app, but until now
   # NOTHING deployed it automatically — it was reachable only via a manual `workflow_dispatch` of
