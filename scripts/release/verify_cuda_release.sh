@@ -168,6 +168,29 @@ gc() {
     *)       gcloud compute "$@" --project="$PROJECT" --zone="$ZONE" ;;
   esac
 }
+# ── scp WITH A DEADLINE, BECAUSE THE TRANSFER COMPLETING IS NOT THE COMMAND FINISHING ───────────
+# Measured on r1115-cert-1g over an IAP tunnel: both files arrived on the box complete and
+# byte-exact (tree 2,057,925 B, wheel 45,879,464 B) and then `gcloud compute scp` sat for 8.5
+# minutes in websocket teardown, holding the sync phase -- and therefore the cap clock -- hostage.
+# The controller has no way to tell a slow transfer from a finished-but-hung one, so it waits. Ten
+# minutes of a 50-minute window went that way before the retry logic got a clean attempt.
+# A portable watchdog rather than `timeout`: macOS ships neither timeout nor gtimeout, and a
+# controller that only works with coreutils installed is a controller that fails on the operator's
+# laptop. Kill the transfer, let the existing SYNC_TRIES loop re-probe and retry.
+SCP_TIMEOUT_S=${SCP_TIMEOUT_S:-420}
+gc_scp() {
+  gc scp "$@" &
+  scp_pid=$!
+  ( sleep "$SCP_TIMEOUT_S"; kill -9 "$scp_pid" 2>/dev/null ) &
+  wd_pid=$!
+  wait "$scp_pid"; rc=$?
+  kill "$wd_pid" 2>/dev/null
+  wait "$wd_pid" 2>/dev/null
+  if [ "$rc" != "0" ]; then
+    log "scp exited rc=$rc after ${SCP_TIMEOUT_S}s bound (a hung teardown is indistinguishable from a slow transfer, so it is treated as a failed attempt)"
+  fi
+  return $rc
+}
 
 # ── SSHD READINESS, AND WHY `status=RUNNING` IS NOT ENOUGH ────────────────────────────────────
 # GCE's RUNNING means the hypervisor scheduled the guest, not that the guest's ssh is accepting
@@ -460,8 +483,8 @@ i=1
 while [ "$i" -le "$SYNC_TRIES" ]; do
   log "sync attempt $i/$SYNC_TRIES (sshd probe first)"
   if ssh_ready; then
-    if gc scp "$TGZ" "angel@$VM:$REMOTE_DIR.tgz" >>"$LOCAL_LOG" 2>&1 && \
-       gc scp "$WHEEL" "angel@$VM:$REMOTE_DIR.whl" >>"$LOCAL_LOG" 2>&1; then
+    if gc_scp "$TGZ" "angel@$VM:$REMOTE_DIR.tgz" >>"$LOCAL_LOG" 2>&1 && \
+       gc_scp "$WHEEL" "angel@$VM:$REMOTE_DIR.whl" >>"$LOCAL_LOG" 2>&1; then
       synced=1; break
     fi
   fi
@@ -571,9 +594,10 @@ gc ssh "$VM" --command "cd $WORK && tar czf /tmp/crv_art.tgz battery.log heartbe
    PHASE clocks runs cuda-release-verdict.json gate_cuda_release.json conformance_cuda.json \
    wheel-census.json gpuless_load.txt CHAIN_EXIT \
    serve_launch.json serve_launch.txt stage.log battery.out wheel.sha256 binaries.sha256 \
+   worker_probe.out engine_runpath.txt \
    oracle7b 2>/dev/null; ls -l /tmp/crv_art.tgz" \
    >>"$LOCAL_LOG" 2>&1
-gc scp "$VM:/tmp/crv_art.tgz" "$ART/crv_art.tgz" --project="$PROJECT" --zone="$ZONE" \
+gc_scp "$VM:/tmp/crv_art.tgz" "$ART/crv_art.tgz" \
   >>"$LOCAL_LOG" 2>&1 && (cd "$ART" && tar xzf crv_art.tgz 2>/dev/null && log "artifacts extracted") \
   || log "WARNING: artifact collection incomplete — $WORK still holds them on the boot disk"
 

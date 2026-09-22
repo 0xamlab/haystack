@@ -128,6 +128,29 @@ if [ -z "${CW_DEADLINE_EPOCH:-}" ]; then
 fi
 
 mkdir -p "$RUNS" "$LOGS" "$CLK" "$SITE"
+# ── TRUNCATE THIS WINDOW'S OWN MARKERS; NEVER INHERIT THE PREVIOUS WINDOW'S ─────────────────────
+# $WORK is on the boot disk and survives the stop/start that resets the cap clock, so every file
+# below is a leftover from an earlier attempt unless this window clears it. The controller already
+# applies this rule to its OWN log, with the reason spelled out ("a marker left over from an earlier
+# attempt would satisfy them falsely -- the same class of defect as a guard that passes for the
+# wrong reason"); the remote side had no such rule, and it cost a window:
+#   * battery.log is APPENDED to, so a previous window's `BATTERY_FAILED rc=17` line was still in it.
+#     The controller greps battery.log for that marker to detect failure, found the STALE line 4
+#     seconds after launch, and closed a healthy window that was sitting in phase=load with 38
+#     minutes left. A failure detector that can fire on a previous window's failure is worse than no
+#     detector: it aborts good windows and, symmetrically, could mask a real one.
+#   * heartbeat.log likewise mixed two windows' heartbeats into one `tail -2`, so the controller's
+#     liveness view named a pid from an attempt that had already exited.
+#   * runs/ and clocks/ are WORSE than cosmetic: the verdict builds its per-cell clock table by
+#     globbing clocks/clocks_gate_*.csv and gate_any.py reads runs/*.out, so a surviving file from a
+#     previous window would be counted as a cell THIS window certified -- a verdict claiming cells it
+#     never ran. Clearing them is what makes "the cells in this verdict are this window's cells" true.
+# The previous window's evidence is not lost by this: the controller tars battery.log, heartbeat.log,
+# runs/ and clocks/ into its own local artifact dir at the end of every window.
+: > "$LOGFILE" 2>/dev/null || true
+: > "$HB" 2>/dev/null || true
+rm -rf "$RUNS" "$LOGS" "$CLK" 2>/dev/null || true
+mkdir -p "$RUNS" "$LOGS" "$CLK"
 # EXPORTED, not just assigned: the inline `bash -c` and `python3 -c` bodies below read these from the
 # environment, and a body that silently sees an empty $SITE unpacks a wheel into the home directory
 # and then reports that the worker is missing. Same rule the campaign learned the hard way — an env
@@ -335,9 +358,47 @@ run_phase unpack bash -c '
   rm -rf "$SITE" && mkdir -p "$SITE"
   "$PY314" -m zipfile -e "$WHEEL_PATH" "$SITE" || exit 1
   # zipfile does not preserve the executable bit, and a worker that is not +x cannot be launched.
+  # THE BUNDLED ENGINE NEEDS IT TOO -- and this used to chmod ONLY algenta-runtime-worker*, so the
+  # engine that #1115 put in the wheel, the one carrying the certified CUDA kernels, unpacked at
+  # 0644. serve then searched exactly the right path and refused with a typed
+  # cuda_engine_binary_unresolved whose own detail says "declared by a cuda runtime manifest but
+  # absent or not executable" -- measured on r1115-cert-1g against wheel ad2b8527..., 0.4 s into the
+  # first cell. So: every regular file in the package except the data files (.json manifest, .sig
+  # signature, .py module) gets 0755. That covers the workers, the engine, and the bundled .so
+  # closure in one rule, and cannot miss a future binary whose name nobody thought to enumerate --
+  # enumerating names is exactly how the engine got left out.
+  find "$SITE/algenta_runtime_native" -maxdepth 1 -type f \
+    ! -name "*.json" ! -name "*.sig" ! -name "*.py" -exec chmod 0755 {} +
   find "$SITE" -name "algenta-runtime-worker*" -type f -exec chmod 0755 {} +
   WORKER="$SITE/algenta_runtime_native/algenta-runtime-worker"
   [ -f "$WORKER" ] || { echo "NO WORKER IN WHEEL: $WORKER"; exit 1; }
+  # ASSERT THE MANIFEST-DECLARED ENGINE IS PRESENT AND EXECUTABLE, HERE AND NOW. Without this the
+  # only signal is a typed cuda_engine_binary_unresolved 0.4 s into the first gate cell -- after the
+  # wheel has been unpacked, censused, load-probed and the box staged -- and the message names a
+  # permission problem as though it were a missing file. Checking it in the unpack phase turns that
+  # into a one-line diagnosis at the point of cause. The name comes from the signed manifest, not
+  # from a literal, for the same reason as the census: the manifest is the authority.
+  ENG_PATH=$("$PY314" -c "
+import json, os
+pkg = os.path.join(os.environ[\"SITE\"], \"algenta_runtime_native\")
+try:
+    man = json.load(open(os.path.join(pkg, \"manifest.json\")))
+    name = (man.get(\"engine\") or {}).get(\"name\") or \"\"
+except Exception:
+    name = \"\"
+print(os.path.join(pkg, name) if name else \"\")
+")
+  if [ -n "$ENG_PATH" ]; then
+    if [ -x "$ENG_PATH" ]; then
+      echo "ENGINE_EXECUTABLE_OK: $ENG_PATH"
+    else
+      echo "ENGINE_NOT_EXECUTABLE: $ENG_PATH"
+      echo "  serve would refuse cuda_engine_binary_unresolved; the unpack chmod rule missed it"
+      exit 1
+    fi
+  else
+    echo "NOTE: this wheel manifest declares no engine name -- skipping the executable assertion"
+  fi
   sha256sum "$WHEEL_PATH" | cut -d" " -f1 > "$WORK/wheel.sha256"
   echo "WHEEL_SHA256=$(cat "$WORK/wheel.sha256")"
   echo "WHEEL_BYTES=$(stat -c %s "$WHEEL_PATH")"
