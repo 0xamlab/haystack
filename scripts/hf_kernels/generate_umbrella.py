@@ -10,15 +10,16 @@ a mixed set of family builds (plan v3, Stage 5). Its `__init__.py` fetches the d
 
     scripts/hf_kernels/generate_umbrella.py --out hub/algenta --pin thyn-ai/algenta-stats=<sha> --pin thyn-ai/algenta-llm=<sha> ...
 """
+
 from __future__ import annotations
 
 import argparse
 import base64
 import hashlib
 import json
+import re
 import shutil
 import subprocess
-import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,7 +32,11 @@ def digest_dir(variant_dir: Path) -> dict:
         if not p.is_file():
             continue
         rel = p.relative_to(variant_dir).as_posix()
-        if rel in ("metadata.json", "metadata.json.sigstore") or "__pycache__" in rel or rel.endswith(".pyc"):
+        if (
+            rel in ("metadata.json", "metadata.json.sigstore")
+            or "__pycache__" in rel
+            or rel.endswith(".pyc")
+        ):
             continue
         files[rel] = base64.b64encode(hashlib.sha256(p.read_bytes()).digest()).decode()
     return {"algorithm": "sha256", "files": files}
@@ -42,14 +47,24 @@ def attribute_name(repo_id: str) -> str:
 
 
 def render_init(pins: dict[str, str]) -> str:
-    lines = ['"""algenta — every published Algenta kernel family, pinned to exact Hub revisions."""',
-             "from kernels.deps import get_kernel_dep", ""]
+    lines = [
+        '"""algenta — every published Algenta kernel family, pinned to exact Hub revisions."""',
+        "from kernels.deps import get_kernel_dep",
+        "",
+    ]
     names = []
     for repo in pins:
         name = attribute_name(repo)
         lines.append(f"{name} = get_kernel_dep({repo!r})")
         names.append(name)
-    lines += ["", f"families = {dict((attribute_name(r), r) for r in pins)!r}", f"revisions = {pins!r}", "", f"__all__ = {sorted(names) + ['families', 'revisions']!r}", ""]
+    lines += [
+        "",
+        f"families = { {attribute_name(r): r for r in pins}!r}",
+        f"revisions = {pins!r}",
+        "",
+        f"__all__ = {sorted(names) + ['families', 'revisions']!r}",
+        "",
+    ]
     return "\n".join(lines)
 
 
@@ -58,12 +73,22 @@ def render_card(pins: dict[str, str], commit: str) -> str:
     for repo, rev in pins.items():
         fam = repo.split("/")[-1]
         spec = FILTERS.get(fam, {})
-        rows.append(f"| `{repo}` | `algenta.{attribute_name(repo)}` | {spec.get('summary', '')} | {' · '.join(b.upper() if b == 'cpu' else b.capitalize() for b in spec.get('backends', ['cpu']))} | `{rev[:8]}` |")
+        rows.append(
+            f"| `{repo}` | `algenta.{attribute_name(repo)}` | {spec.get('summary', '')} | {' · '.join(b.upper() if b == 'cpu' else b.capitalize() for b in spec.get('backends', ['cpu']))} | `{rev[:8]}` |"
+        )
     trust = ", ".join(f'"{r}"' for r in ["thyn-ai/algenta", *pins])
+    _ver = re.search(
+        r"^Version (\d+\.\d+)", (ROOT / "LICENSE").read_text(encoding="utf-8-sig"), re.M
+    )
+    if not _ver:
+        raise SystemExit(
+            "LICENSE has no 'Version X.Y' line; refusing to generate the umbrella card"
+        )
+    license_version = _ver.group(1)
     return f"""---
 library_name: kernels
 license: other
-license_name: algenta-community-license-1.0
+license_name: algenta-community-license-{license_version}
 license_link: LICENSE
 tags:
 - algenta
@@ -108,14 +133,22 @@ An umbrella release moves only when every family it pins has been re-verified to
 
 ## License
 
-Algenta Community License 1.0 (`LICENSE`). Free for personal, research and open-source use, and
+Algenta Community License {license_version} (`LICENSE`). Free for personal, research and open-source use, and
 for internal use at organizations with fewer than 50 employees and under $5M in annual revenue.
 Beyond that, a commercial license is required: https://algenta.ai/pricing.
+
+## Support
+
+Generally Available on the platforms its families list under Requirements. Within `v1`, functions are only
+added; removals or signature changes ship as `v2`. Community: https://discord.gg/w8NDsph9an or this
+repository's Community tab. Commercial licences and support: https://algenta.ai/pricing.
 """
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--pin", action="append", required=True, help="<repo-id>=<40-hex revision>")
     ap.add_argument("--kernel-version", type=int, default=1)
@@ -126,7 +159,9 @@ def main() -> int:
         if len(rev) != 40 or any(c not in "0123456789abcdef" for c in rev):
             raise SystemExit(f"{repo}: the pin must be a full 40-hex commit, got {rev!r}")
         pins[repo] = rev
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True
+    ).stdout.strip()
     out = a.out
     if (out / "build").exists():
         shutil.rmtree(out / "build")
@@ -134,7 +169,9 @@ def main() -> int:
     pkg = vdir / "algenta"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text(render_init(pins))
-    (vdir / "__init__.py").write_text('"""algenta (torch-universal)."""\nfrom .algenta import *  # noqa: F401,F403\nfrom .algenta import __all__  # noqa: F401\n')
+    (vdir / "__init__.py").write_text(
+        '"""algenta (torch-universal)."""\nfrom .algenta import *  # noqa: F401,F403\nfrom .algenta import __all__  # noqa: F401\n'
+    )
     metadata = {
         "name": "algenta",
         "id": f"_algenta_umbrella_{commit[:7]}",
