@@ -1,0 +1,12 @@
+# --- app ---
+gradio>=6.0,<7.0
+pandas>=2.2
+numpy>=1.26,<3
+
+# --- Algenta Mojo kernel wheels (manylinux x86_64, GitHub Release arena-wheels-v0.1.0) ---
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/bm25_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/sacrebleu_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+
+# --- incumbent oracles, pinned to the versions the parity claims were measured against ---
+rank_bm25==0.2.2
+sacrebleu==2.5.1

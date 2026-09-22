@@ -1,0 +1,4381 @@
+{
+ "provenance": "Tool metadata read from the published algenta-mcp 1.0.17 PyPI package (algenta_mcp.registry.TOOLS). The Algenta engine itself is proprietary; this JSON is only the public MCP surface's names and descriptions, vendored so the Space shows the real registry.",
+ "package": "algenta-mcp",
+ "package_version": "1.0.17",
+ "registry_entry": "io.github.thyn-ai/algenta",
+ "n_tools": 140,
+ "profile_tools": {
+  "observe": [
+   "get_contract",
+   "query_data",
+   "simulate",
+   "recommend"
+  ],
+  "govern": [
+   "get_contract",
+   "query_data",
+   "simulate",
+   "recommend",
+   "plan_decision",
+   "log_decision"
+  ],
+  "execute": [
+   "get_contract",
+   "query_data",
+   "simulate",
+   "recommend",
+   "plan_decision",
+   "log_decision",
+   "execute_decision"
+  ]
+ },
+ "tools": [
+  {
+   "name": "apply_repository",
+   "description": "Apply a simulated repository decision as patch_only, local_branch, or remote_pr.",
+   "required": [
+    "repository_id",
+    "decision_plan_id",
+    "simulation_id",
+    "mode"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id",
+     "decision_plan_id",
+     "simulation_id",
+     "mode"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "decision_plan_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "simulation_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "patch_only",
+       "local_branch",
+       "remote_pr"
+      ]
+     },
+     "write_permission": {
+      "type": "boolean"
+     },
+     "branch_name": {
+      "type": "string"
+     },
+     "commit_message": {
+      "type": "string"
+     },
+     "base_branch": {
+      "type": "string"
+     },
+     "pull_request_title": {
+      "type": "string"
+     },
+     "pull_request_body": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "approve_agent_run",
+   "description": "Approve an Algenta agent run waiting on manual approval.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "batch",
+   "description": "Run multiple simulation requests in one call and return per-item success or failure details.",
+   "required": [
+    "items"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      },
+      "minItems": 1,
+      "description": "Simulation requests forwarded to POST /v1/batch."
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "browse_connector",
+   "description": "Browse one saved live connector to discover files, tables, endpoints, or items.",
+   "required": [
+    "connector_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "connector_id"
+    ],
+    "properties": {
+     "connector_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "cancel_agent_run",
+   "description": "Cancel an Algenta agent run.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "cancel_job",
+   "description": "Cancel a queued or running async simulation job by id.",
+   "required": [
+    "job_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "job_id": {
+      "type": "string",
+      "description": "UUID of the async job"
+     }
+    },
+    "required": [
+     "job_id"
+    ]
+   }
+  },
+  {
+   "name": "chat_completions",
+   "description": "Run the deterministic Algenta utility chat surface. This is a tokenizer-backed utility route, not a provider-backed generative model.",
+   "required": [
+    "messages"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "messages"
+    ],
+    "properties": {
+     "model": {
+      "type": "string",
+      "default": "text.tokenizer"
+     },
+     "messages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "object",
+       "required": [
+        "role",
+        "content"
+       ],
+       "properties": {
+        "role": {
+         "type": "string",
+         "enum": [
+          "system",
+          "user",
+          "assistant",
+          "developer"
+         ]
+        },
+        "content": {
+         "type": "string"
+        }
+       },
+       "additionalProperties": false
+      }
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "compare",
+   "description": "Run named scenarios side by side and return the winner plus deltas versus the best scenario.",
+   "required": [
+    "scenarios"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "scenarios": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string"
+        },
+        "request": {
+         "type": "object"
+        }
+       },
+       "required": [
+        "name",
+        "request"
+       ],
+       "additionalProperties": false
+      },
+      "minItems": 2,
+      "description": "Named scenarios forwarded to POST /v1/compare."
+     },
+     "runs": {
+      "type": "integer"
+     },
+     "seed": {
+      "type": "integer"
+     }
+    },
+    "required": [
+     "scenarios"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "connect_data",
+   "description": "High-level data onboarding flow. Use this instead of advanced connector/source tools for normal users. Connect data once, pick the table/file/endpoint, and get a reusable dataset_id. If the result status is needs_selection, call connect_data again with connection_id and the chosen selection.",
+   "required": [
+    "dataset_name"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "dataset_name"
+    ],
+    "properties": {
+     "connection_type": {
+      "type": "string",
+      "enum": [
+       "database",
+       "api",
+       "object_storage",
+       "file_upload"
+      ],
+      "description": "Legacy compatibility field. Prefer connector.type with the canonical connector envelope."
+     },
+     "dataset_name": {
+      "type": "string",
+      "description": "Name to save and reuse later."
+     },
+     "provider": {
+      "type": "string",
+      "description": "Legacy compatibility field for provider selection. Prefer connector.type plus connector.location/auth/options."
+     },
+     "connector": {
+      "type": "object",
+      "description": "Canonical connector envelope with type/location/auth/options. Preferred when the same request shape should work across Python Runtime, TypeScript Runtime, and MCP."
+     },
+     "connection_id": {
+      "type": "string",
+      "description": "Existing saved connection_id when resuming after selection."
+     },
+     "connection_name": {
+      "type": "string",
+      "description": "Optional label for the saved connection."
+     },
+     "connection_config": {
+      "type": "object",
+      "description": "Legacy compatibility field for connector credentials/config. Prefer connector.location and connector.auth.credentials."
+     },
+     "selection": {
+      "type": "object",
+      "description": "Legacy compatibility field for chosen table/query/path. Use the selection object returned in choices when resuming a legacy connection flow."
+     },
+     "description": {
+      "type": "string"
+     },
+     "visibility": {
+      "type": "string",
+      "enum": [
+       "private",
+       "shared"
+      ],
+      "description": "Shared requires admin/owner permissions."
+     },
+     "records": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      },
+      "description": "Inline JSON records for direct file_upload datasets."
+     },
+     "csv": {
+      "type": "string",
+      "description": "Raw CSV text for direct file_upload datasets."
+     },
+     "json_str": {
+      "type": "string",
+      "description": "Raw JSON text for direct file_upload datasets."
+     },
+     "url": {
+      "type": "string",
+      "description": "URL for direct file_upload or API datasets."
+     },
+     "excel_b64": {
+      "type": "string",
+      "description": "Base64-encoded Excel payload."
+     },
+     "parquet_b64": {
+      "type": "string",
+      "description": "Base64-encoded Parquet payload."
+     }
+    }
+   }
+  },
+  {
+   "name": "count_tokens",
+   "description": "Count tokens with a supported deterministic Algenta tokenizer model.",
+   "required": [
+    "input"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "input"
+    ],
+    "properties": {
+     "model": {
+      "type": "string",
+      "default": "text.tokenizer"
+     },
+     "input": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_agent_run",
+   "description": "Create a persisted Algenta agent run lifecycle resource.",
+   "required": [
+    "task"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "properties": {
+     "task": {
+      "type": "string",
+      "minLength": 5
+     },
+     "context": {
+      "type": "object"
+     },
+     "tools": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "max_steps": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 50
+     },
+     "output_format": {
+      "type": "string",
+      "default": "text"
+     },
+     "approval_mode": {
+      "type": "string",
+      "enum": [
+       "auto",
+       "manual"
+      ],
+      "default": "auto"
+     },
+     "start_paused": {
+      "type": "boolean",
+      "default": false
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_api_key",
+   "description": "Create a new API key and return its one-time raw_key value.",
+   "required": [
+    "label"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "label"
+    ],
+    "properties": {
+     "label": {
+      "type": "string",
+      "minLength": 1
+     },
+     "expires_at": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "device_limit": {
+      "type": "integer",
+      "minimum": 0
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_billing_checkout",
+   "description": "Create a Stripe Checkout session for the active organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "plan": {
+      "type": "string",
+      "enum": [
+       "developer",
+       "pro"
+      ]
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_billing_portal",
+   "description": "Create a Stripe Billing Portal session for the active organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_capability_binding",
+   "description": "Create one capability binding for a provider/profile pair.",
+   "required": [
+    "provider_id",
+    "profile_id",
+    "binding_name"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "provider_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "profile_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "binding_name": {
+      "type": "string",
+      "minLength": 1
+     },
+     "scope": {
+      "type": "string",
+      "enum": [
+       "user",
+       "workspace",
+       "organization"
+      ]
+     },
+     "scope_ref": {
+      "type": "string"
+     },
+     "execution_owner": {
+      "type": "string",
+      "enum": [
+       "algenta_managed",
+       "client_managed"
+      ]
+     },
+     "config": {
+      "type": "object"
+     },
+     "customer_metadata": {
+      "type": "object"
+     }
+    },
+    "required": [
+     "provider_id",
+     "profile_id",
+     "binding_name"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_connector",
+   "description": "Create and save one connector configuration for later data onboarding, health checks, and schema browsing.",
+   "required": [
+    "name",
+    "connector_type"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "name",
+     "connector_type"
+    ],
+    "properties": {
+     "name": {
+      "type": "string",
+      "minLength": 1
+     },
+     "connector_type": {
+      "type": "string",
+      "minLength": 1
+     },
+     "config": {
+      "type": "object"
+     },
+     "description": {
+      "type": "string"
+     },
+     "visibility": {
+      "type": "string",
+      "enum": [
+       "private",
+       "organization",
+       "public"
+      ]
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_deployment",
+   "description": "Request a new isolated deployment for the active organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "provider": {
+      "type": "string",
+      "minLength": 1
+     },
+     "region": {
+      "type": "string",
+      "minLength": 1
+     },
+     "config": {
+      "type": "object"
+     },
+     "billing_markup_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 200
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_repository_decision_plan",
+   "description": "Create one immutable repository DecisionPlan revision from a workspace evidence bundle, resolving snapshot_id from triage when omitted.",
+   "required": [
+    "repository_id",
+    "workspace_evidence_bundle_ref"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id",
+     "workspace_evidence_bundle_ref"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "workspace_evidence_bundle_ref": {
+      "type": "string",
+      "minLength": 1
+     },
+     "model": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "create_repository_snapshot",
+   "description": "Create or reuse an immutable repository snapshot for a saved repository connector.",
+   "required": [
+    "repository_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "ref": {
+      "type": "string"
+     },
+     "include_patterns": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "exclude_patterns": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "max_files": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "max_file_size_bytes": {
+      "type": "integer",
+      "minimum": 1024
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "delete_connector",
+   "description": "Delete one saved connector by id.",
+   "required": [
+    "connector_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "connector_id"
+    ],
+    "properties": {
+     "connector_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "delete_decision",
+   "description": "Delete one decision-memory record by id.",
+   "required": [
+    "decision_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "decision_id"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "decision_id": {
+      "type": "string",
+      "description": "Decision ID to delete."
+     }
+    }
+   }
+  },
+  {
+   "name": "delete_deployment",
+   "description": "Request deprovisioning for one deployment by id.",
+   "required": [
+    "deployment_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "deployment_id"
+    ],
+    "properties": {
+     "deployment_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "delete_trigger",
+   "description": "Remove a trigger. The trigger will no longer fire automatically.",
+   "required": [
+    "trigger_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "trigger_id"
+    ],
+    "properties": {
+     "trigger_id": {
+      "type": "string",
+      "description": "Trigger ID to delete."
+     }
+    }
+   }
+  },
+  {
+   "name": "disable_skill",
+   "description": "Disable one skill binding by binding id.",
+   "required": [
+    "binding_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "binding_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "required": [
+     "binding_id"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "disconnect_data",
+   "description": "Delete a saved dataset and disconnect it from future use.",
+   "required": [
+    "dataset_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "dataset_id"
+    ],
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "description": "Dataset ID from connect_data or list_data."
+     }
+    }
+   }
+  },
+  {
+   "name": "discover_capability_binding",
+   "description": "Discover capabilities for a saved capability binding or preview-discover an unsaved one.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "binding_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "provider_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "profile_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "scope": {
+      "type": "string",
+      "enum": [
+       "user",
+       "workspace",
+       "organization"
+      ]
+     },
+     "scope_ref": {
+      "type": "string"
+     },
+     "execution_owner": {
+      "type": "string",
+      "enum": [
+       "algenta_managed",
+       "client_managed"
+      ]
+     },
+     "config": {
+      "type": "object"
+     },
+     "customer_metadata": {
+      "type": "object"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "embedding_similarity",
+   "description": "Score two caller-supplied embedding vectors with a supported similarity model.",
+   "required": [
+    "left",
+    "right"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "left",
+     "right"
+    ],
+    "properties": {
+     "model": {
+      "type": "string",
+      "default": "embeddings.cosine_similarity"
+     },
+     "left": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "number"
+      }
+     },
+     "right": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "number"
+      }
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "embeddings",
+   "description": "Generate deterministic lexical embeddings with the supported Algenta model.",
+   "required": [
+    "input"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "input"
+    ],
+    "properties": {
+     "model": {
+      "type": "string",
+      "default": "text.hash_embedding_v1"
+     },
+     "input": {
+      "oneOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      ]
+     },
+     "dimensions": {
+      "type": "integer",
+      "default": 64,
+      "minimum": 1,
+      "maximum": 4096
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "enable_skill",
+   "description": "Enable one prompt-skill as a first-class capability binding.",
+   "required": [
+    "skill_name",
+    "instruction"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "skill_name": {
+      "type": "string",
+      "minLength": 1
+     },
+     "instruction": {
+      "type": "string",
+      "minLength": 1
+     },
+     "description": {
+      "type": "string"
+     },
+     "tags": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "artifact_affinities": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "execution_owner": {
+      "type": "string",
+      "enum": [
+       "algenta_managed",
+       "client_managed"
+      ]
+     }
+    },
+    "required": [
+     "skill_name",
+     "instruction"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "execute_capability",
+   "description": "Execute one routed or known algenta_managed capability by capability id. client_managed routes must execute in the customer app or adapter path.",
+   "required": [
+    "capability_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "capability_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "binding_id": {
+      "type": "string"
+     },
+     "input": {
+      "type": "object"
+     },
+     "request_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "capability_id"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "execute_decision",
+   "description": "Dispatch a logged decision to an external webhook and persist the execution receipt.",
+   "required": [
+    "decision_id",
+    "webhook_url"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "decision_id",
+     "webhook_url"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "decision_id": {
+      "type": "string",
+      "description": "Decision ID from log_decision or list_decisions."
+     },
+     "webhook_url": {
+      "type": "string",
+      "description": "HTTPS webhook that should receive the decision payload."
+     },
+     "timeout_seconds": {
+      "type": "number",
+      "description": "Webhook timeout in seconds."
+     },
+     "force": {
+      "type": "boolean",
+      "description": "Override the idempotency gate for one re-execution."
+     },
+     "override_safety": {
+      "type": "boolean",
+      "description": "Bypass confidence and risk-floor policy gates for this execution."
+     },
+     "metadata": {
+      "type": "object",
+      "description": "Optional key-value pairs merged into the webhook payload."
+     }
+    }
+   }
+  },
+  {
+   "name": "execute_runtime_library",
+   "description": "Execute one public function from an Algenta runtime library. Call list_runtime_libraries first to discover exact module and function names.",
+   "required": [
+    "module",
+    "function"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "module",
+     "function"
+    ],
+    "properties": {
+     "module": {
+      "type": "string",
+      "minLength": 1
+     },
+     "function": {
+      "type": "string",
+      "minLength": 1
+     },
+     "args": {},
+     "request_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "fire_trigger",
+   "description": "Manually fire a trigger \u2014 evaluates its condition and runs the simulation template regardless of whether the threshold is currently met. Useful for testing triggers or forcing an immediate evaluation.",
+   "required": [
+    "trigger_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "trigger_id"
+    ],
+    "properties": {
+     "trigger_id": {
+      "type": "string",
+      "description": "Trigger ID from register_trigger or list_triggers."
+     },
+     "force": {
+      "type": "boolean",
+      "description": "When true, run simulation even if the condition is not currently met (default: false)."
+     }
+    }
+   }
+  },
+  {
+   "name": "get_agent_run",
+   "description": "Fetch a persisted Algenta agent run by run_id.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_agent_run_checkpoints",
+   "description": "Fetch persisted checkpoints for an Algenta agent run.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_agent_run_events",
+   "description": "Fetch the append-only event stream for an Algenta agent run.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer",
+      "default": 1000,
+      "minimum": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_agent_run_mission_events",
+   "description": "Fetch canonical mission-event records for an Algenta agent run.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer",
+      "default": 1000,
+      "minimum": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_agent_run_telemetry",
+   "description": "Fetch runtime telemetry batches for an Algenta agent run.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     },
+     "limit": {
+      "type": "integer",
+      "default": 1000,
+      "minimum": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_analytics",
+   "description": "Get usage analytics: simulation volume, latency p95, outcome distributions.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "days": {
+      "type": "integer",
+      "default": 30,
+      "description": "Lookback window in days"
+     }
+    }
+   }
+  },
+  {
+   "name": "get_audit_log_artifacts",
+   "description": "Get paginated immutable audit-log artifacts for the current organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+     },
+     "actor_email": {
+      "type": "string",
+      "minLength": 1
+     },
+     "action": {
+      "type": "string",
+      "minLength": 1
+     },
+     "resource_type": {
+      "type": "string",
+      "minLength": 1
+     },
+     "result": {
+      "type": "string",
+      "minLength": 1
+     },
+     "policy_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "schema_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "manifest_version": {
+      "type": "string",
+      "minLength": 1
+     },
+     "request_hash": {
+      "type": "string",
+      "minLength": 1
+     },
+     "content_hash": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_audit_logs",
+   "description": "Get paginated audit logs for the current organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+     },
+     "actor_email": {
+      "type": "string",
+      "minLength": 1
+     },
+     "action": {
+      "type": "string",
+      "minLength": 1
+     },
+     "resource_type": {
+      "type": "string",
+      "minLength": 1
+     },
+     "result": {
+      "type": "string",
+      "minLength": 1
+     },
+     "policy_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "schema_snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "manifest_version": {
+      "type": "string",
+      "minLength": 1
+     },
+     "request_hash": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_billing_info",
+   "description": "Get current billing plan and subscription info for the active organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_capability",
+   "description": "Get one unified capability by capability id.",
+   "required": [
+    "capability_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "capability_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "include_instruction": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "capability_id"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_connector",
+   "description": "Fetch one saved connector by id.",
+   "required": [
+    "connector_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "connector_id"
+    ],
+    "properties": {
+     "connector_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_contract",
+   "description": "Get the machine-readable Algenta public contract. Use this when an agent needs the canonical discovery, summary, query, batch, SQL report, governed filter rules, CLI, or MCP entrypoints before planning tool use.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_data_schema",
+   "description": "Get a saved dataset plus its schema and relationship metadata by dataset_id.",
+   "required": [
+    "dataset_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "dataset_id"
+    ],
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "description": "Dataset ID from connect_data or list_data."
+     }
+    }
+   }
+  },
+  {
+   "name": "get_data_summary",
+   "description": "Get the low-token dataset selection summary for a saved dataset_id. Use this after list_data(search=..., compact=true) before paying for the full schema payload.",
+   "required": [
+    "dataset_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "dataset_id"
+    ],
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "description": "Dataset ID from connect_data or list_data."
+     }
+    }
+   }
+  },
+  {
+   "name": "get_dataset_status",
+   "description": "Get live training status and model tier for a specific dataset. model_tier: 'none' = deterministic only, 'base' = generic model, 'schema' = fully trained schema-specific model (best quality).",
+   "required": [
+    "dataset_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "dataset_id"
+    ],
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "description": "Dataset ID from onboard_dataset or list_datasets."
+     }
+    }
+   }
+  },
+  {
+   "name": "get_decision",
+   "description": "Fetch one decision-memory record by id.",
+   "required": [
+    "decision_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "decision_id"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "decision_id": {
+      "type": "string",
+      "description": "Decision ID from log_decision or list_decisions."
+     }
+    }
+   }
+  },
+  {
+   "name": "get_deployment",
+   "description": "Fetch the current deployment for the active organization, if one exists.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_deployment_cost",
+   "description": "Get current-month cost details for one deployment by id.",
+   "required": [
+    "deployment_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "deployment_id"
+    ],
+    "properties": {
+     "deployment_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_execution_policy",
+   "description": "Get the current autonomous execution policy for the active organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_job_result",
+   "description": "Fetch the completed result payload for an async simulation job by id.",
+   "required": [
+    "job_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "job_id": {
+      "type": "string",
+      "description": "UUID of the async job"
+     }
+    },
+    "required": [
+     "job_id"
+    ]
+   }
+  },
+  {
+   "name": "get_job_status",
+   "description": "Fetch the latest async simulation job status by id.",
+   "required": [
+    "job_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "job_id": {
+      "type": "string",
+      "description": "UUID of the async job"
+     }
+    },
+    "required": [
+     "job_id"
+    ]
+   }
+  },
+  {
+   "name": "get_limits",
+   "description": "Get current plan quotas and limits for the active API key.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_me",
+   "description": "Get current user and organization identity for the active API key.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_repository_intelligence_capabilities",
+   "description": "List globally supported Repository Intelligence languages and ranked support progress.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_repository_snapshot",
+   "description": "Fetch one immutable repository snapshot by repository_id and snapshot_id.",
+   "required": [
+    "repository_id",
+    "snapshot_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id",
+     "snapshot_id"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_run",
+   "description": "Fetch a single simulation run by ID.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "run_id": {
+      "type": "string",
+      "description": "UUID of the simulation run"
+     }
+    },
+    "required": [
+     "run_id"
+    ]
+   }
+  },
+  {
+   "name": "get_runtime_benchmarks",
+   "description": "Get the authenticated Algenta runtime benchmark catalog. Use this when an agent needs benchmark classes, benchmark evidence paths, evaluation quality gates, SLO budgets, compiled artifacts, or module benchmark linkage before reasoning about runtime performance claims.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_runtime_manifest",
+   "description": "Get the signed Algenta runtime manifest. Use this when an agent needs the canonical runtime-core inventory, maturity states, proof matrix, typed failure contract, or release theorem before using runtime-backed execution paths.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_runtime_modules",
+   "description": "Get the authenticated Algenta runtime module proof catalog. Use this when an agent needs the shipping module inventory, proof-matrix entries, maturity counts, or compiled module evidence before using runtime-backed paths.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_runtime_release_validation",
+   "description": "Get the authenticated Algenta runtime release validation result. Use this when an agent needs the current manifest-listed release verdict, formal theorem conditions, or fail-closed proof status before using runtime-backed paths.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "get_source_schema",
+   "description": "Advanced tool. Get the full schema for a specific registered source: column types, cardinality, fill rates, formula relationships, and detected join keys to other sources.",
+   "required": [
+    "source_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "source_id"
+    ],
+    "properties": {
+     "source_id": {
+      "type": "string",
+      "description": "Source ID from list_sources."
+     }
+    }
+   }
+  },
+  {
+   "name": "get_usage",
+   "description": "Get current billing period usage vs quota for this API key.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {}
+   }
+  },
+  {
+   "name": "ingest_data",
+   "description": "Auto-map tabular data to a simulation payload. Detects variable distributions, polarity (revenue=positive, cost=negative), units, and builds the objective function automatically. Set run_simulation=true to execute the simulation immediately and get results. Multiple tables: auto-detects join keys and merges before analysis.",
+   "required": [
+    "tables"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "tables"
+    ],
+    "properties": {
+     "tables": {
+      "type": "array",
+      "description": "One or more data tables. First table is primary.",
+      "minItems": 1,
+      "items": {
+       "type": "object",
+       "required": [
+        "name"
+       ],
+       "properties": {
+        "name": {
+         "type": "string"
+        },
+        "records": {
+         "type": "array",
+         "items": {
+          "type": "object"
+         },
+         "description": "JSON records."
+        },
+        "csv": {
+         "type": "string",
+         "description": "Raw CSV text."
+        }
+       }
+      }
+     },
+     "run_simulation": {
+      "type": "boolean",
+      "default": false,
+      "description": "Execute the simulation immediately and return results."
+     },
+     "runs": {
+      "type": "integer",
+      "default": 10000,
+      "description": "Scenarios to evaluate (1,000\u20131,000,000)."
+     },
+     "domain": {
+      "type": "string",
+      "description": "Optional domain hint (finance, supply_chain, hr) for better field mapping."
+     }
+    }
+   }
+  },
+  {
+   "name": "ingest_metering_events",
+   "description": "Ingest an explicitly enabled managed-runtime analytics batch.",
+   "required": [
+    "device_id",
+    "events"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "device_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "object",
+       "properties": {
+        "event_type": {
+         "type": "string"
+        },
+        "module": {
+         "type": "string"
+        },
+        "function": {
+         "type": "string"
+        },
+        "engine_used": {
+         "type": "string"
+        },
+        "latency_ms": {
+         "type": "number"
+        },
+        "success": {
+         "type": "boolean"
+        },
+        "timestamp": {
+         "type": "number"
+        },
+        "request_id": {
+         "type": "string"
+        }
+       },
+       "additionalProperties": false
+      }
+     }
+    },
+    "required": [
+     "device_id",
+     "events"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "invite_team_member",
+   "description": "Invite a team member to the current organization.",
+   "required": [
+    "email"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "email": {
+      "type": "string",
+      "minLength": 3
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "owner",
+       "admin",
+       "member",
+       "viewer"
+      ]
+     }
+    },
+    "required": [
+     "email"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_agent_runs",
+   "description": "List persisted Algenta agent runs for the authenticated org.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "page": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "default": 25,
+      "minimum": 1,
+      "maximum": 200
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "running",
+       "paused",
+       "requires_approval",
+       "completed",
+       "cancelled"
+      ]
+     },
+     "request_hash": {
+      "type": "string"
+     },
+     "policy_snapshot_id": {
+      "type": "string"
+     },
+     "schema_snapshot_id": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_api_keys",
+   "description": "List active API keys for the current organization. Never returns raw secret material.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_capabilities",
+   "description": "List unified capabilities filtered by kind, provider, or binding.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "kinds": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "enum": [
+        "dataset",
+        "mcp_tool",
+        "mcp_resource",
+        "mcp_prompt",
+        "skill",
+        "native_tool",
+        "runtime_library"
+       ]
+      }
+     },
+     "provider_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "binding_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_capability_bindings",
+   "description": "List capability bindings for the current organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "provider_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "scope": {
+      "type": "string",
+      "enum": [
+       "user",
+       "workspace",
+       "organization"
+      ]
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_capability_providers",
+   "description": "List unified capability providers across data, MCP, skills, native tools, and runtime libraries.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_connectors",
+   "description": "List saved data connectors such as databases, APIs, and file-backed sources. Use this before get_connector, test_connector, or browse_connector.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 25
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "untested",
+       "live",
+       "error",
+       "all"
+      ],
+      "default": "all"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_data",
+   "description": "List visible datasets for the current user. Use search plus compact mode first for low-token dataset discovery, then get_data_schema on the chosen dataset_id.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "description": "Page number (default 1)."
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Results per page (default: all visible datasets, max 200 when set)."
+     },
+     "search": {
+      "type": "string",
+      "description": "Deterministic lexical filter over dataset_id, name, and source_names."
+     },
+     "status": {
+      "type": "string",
+      "description": "Optional dataset readiness filter such as ready or training."
+     },
+     "source_name": {
+      "type": "string",
+      "description": "Optional source-name filter for narrowed dataset discovery."
+     },
+     "compact": {
+      "type": "boolean",
+      "description": "When true, request the low-token compact dataset discovery shape."
+     }
+    }
+   }
+  },
+  {
+   "name": "list_datasets",
+   "description": "List registered datasets and their current model tier. Use search plus compact mode for low-token discovery, then poll status or use the primary data tools once you choose a dataset.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "description": "Page number (default 1)."
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Results per page (default: all visible datasets, max 200 when set)."
+     },
+     "search": {
+      "type": "string",
+      "description": "Deterministic lexical filter over dataset_id, name, and source_names."
+     },
+     "status": {
+      "type": "string",
+      "description": "Optional dataset readiness filter such as ready or training."
+     },
+     "source_name": {
+      "type": "string",
+      "description": "Optional source-name filter for narrowed dataset discovery."
+     },
+     "compact": {
+      "type": "boolean",
+      "description": "When true, request the low-token compact dataset discovery shape."
+     }
+    }
+   }
+  },
+  {
+   "name": "list_decisions",
+   "description": "Retrieve the Decision Memory audit trail \u2014 all logged decisions, most recent first. Use with_outcome_only=true to see only decisions where actual results have been recorded. outcome_delta = actual_outcome - expected_value: negative means worse than predicted.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "page": {
+      "type": "integer",
+      "description": "Page number (default 1)."
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Canonical results per page (default 20, max 200)."
+     },
+     "page_size": {
+      "type": "integer",
+      "description": "Results per page (default 20, max 100)."
+     },
+     "with_outcome_only": {
+      "type": "boolean",
+      "description": "When true, return only decisions with recorded actual outcomes."
+     }
+    }
+   }
+  },
+  {
+   "name": "list_deployment_regions",
+   "description": "List available deployment providers and regions for the current organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_devices",
+   "description": "List registered devices for the current organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_distributions",
+   "description": "List supported distribution types for the active API key.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_execution_policy_snapshots",
+   "description": "List persisted execution-policy snapshots for the active organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_jobs",
+   "description": "List async simulation jobs with pagination and optional status filtering.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 25
+     },
+     "status": {
+      "type": "string",
+      "description": "Optional job status filter such as queued or completed."
+     }
+    }
+   }
+  },
+  {
+   "name": "list_models",
+   "description": "List the current Algenta model catalog, including deterministic utility models and any provider-backed routed entries with their routing, failover, timeout, and auth metadata, including capability-specific chat and embedding auth/header readiness. Use this before calling tokenize, count_tokens, chat_completions, responses, embeddings, embedding_similarity, or rerank.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_runs",
+   "description": "List recent simulation runs with optional filters.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "limit": {
+      "type": "integer",
+      "default": 20,
+      "description": "Max results (1-100)"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "auto",
+       "expert"
+      ],
+      "description": "Filter by mode"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "completed",
+       "failed",
+       "running"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "name": "list_runtime_libraries",
+   "description": "List executable Algenta runtime libraries and their public functions. Use q to filter by module name before selecting a function.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "q": {
+      "type": "string",
+      "minLength": 1
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 1000
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_skills",
+   "description": "List skill capabilities from the unified capability plane.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_sources",
+   "description": "Advanced tool. List all registered data sources for this org with their schema summaries. Use this to discover available tables before calling query_data or register_source.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "description": "Page number (default 1)."
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Results per page (default: all visible sources, max 200 when set)."
+     }
+    }
+   }
+  },
+  {
+   "name": "list_team_members",
+   "description": "List team members for the current organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "page": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_templates",
+   "description": "List built-in simulation templates for the active API key.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "list_triggers",
+   "description": "List all registered triggers with their current status, last-checked time, and last-fired simulation result summary.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "status": {
+      "type": "string",
+      "enum": [
+       "active",
+       "paused",
+       "all"
+      ],
+      "description": "Filter by trigger status (default: all)."
+     },
+     "page": {
+      "type": "integer",
+      "description": "Page number (default 1)."
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Results per page (default: all visible triggers, max 200 when set)."
+     }
+    }
+   }
+  },
+  {
+   "name": "log_decision",
+   "description": "Persist a decision to the Decision Memory audit trail. Link to a simulation run_id to bind the full DecisionPlan context. Call record_outcome later to close the feedback loop and measure prediction accuracy. Every logged decision is immutably hashed \u2014 no tampering possible.",
+   "required": [
+    "chosen_action"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "chosen_action"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "chosen_action": {
+      "type": "string",
+      "description": "The action that was decided upon."
+     },
+     "run_id": {
+      "type": "string",
+      "description": "Simulation run_id that produced this decision (from simulate or recommend)."
+     },
+     "context": {
+      "type": "string",
+      "description": "Business context \u2014 what was the situation when this decision was made?"
+     },
+     "options_considered": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "All option names that were evaluated."
+     },
+     "expected_value": {
+      "type": "number",
+      "description": "Expected outcome value at decision time."
+     },
+     "confidence": {
+      "type": "number",
+      "description": "Confidence score (0\u20131) from the simulation."
+     },
+     "rationale": {
+      "type": "string",
+      "description": "Explanation of why this option was chosen."
+     },
+     "risk_p5": {
+      "type": "number",
+      "description": "5th-percentile downside at decision time."
+     },
+     "risk_p95": {
+      "type": "number",
+      "description": "95th-percentile upside at decision time."
+     },
+     "risk_pol": {
+      "type": "number",
+      "description": "Probability of loss (0\u20131) at decision time."
+     },
+     "request_hash": {
+      "type": "string",
+      "description": "SHA-256 input fingerprint from the simulation."
+     },
+     "result_hash": {
+      "type": "string",
+      "description": "SHA-256 output fingerprint from the simulation."
+     }
+    }
+   }
+  },
+  {
+   "name": "onboard_dataset",
+   "description": "Register a dataset for semantic querying. Pass column names, inline records, or raw CSV. The engine profiles roles automatically and starts background training. Queries work immediately via a fallback model \u2014 accuracy improves once schema-specific training completes (poll status with list_datasets).",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "name": {
+      "type": "string",
+      "description": "Human-readable name for this dataset.",
+      "default": "dataset"
+     },
+     "columns": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Column names only \u2014 fastest path, no data required."
+     },
+     "records": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      },
+      "description": "Sample rows as JSON records (list of dicts). Up to 200 rows."
+     },
+     "csv": {
+      "type": "string",
+      "description": "Raw CSV text with header row."
+     },
+     "domain_aliases": {
+      "type": "object",
+      "description": "Optional map of abbreviation \u2192 expansions. Example: {\"ppa\": [\"per\", \"person\", \"average\"]}. Auto-suggested if omitted.",
+      "additionalProperties": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "async_train": {
+      "type": "boolean",
+      "description": "Start background semantic training immediately (default: true).",
+      "default": true
+     }
+    }
+   }
+  },
+  {
+   "name": "pause_trigger",
+   "description": "Pause or resume an existing trigger without deleting it.",
+   "required": [
+    "trigger_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "trigger_id"
+    ],
+    "properties": {
+     "trigger_id": {
+      "type": "string",
+      "description": "Trigger ID to update."
+     },
+     "paused": {
+      "type": "boolean",
+      "description": "Set true to pause, false to resume (default: true)."
+     }
+    }
+   }
+  },
+  {
+   "name": "plan_decision",
+   "description": "Build a structured Algenta DecisionPlan from a validated simulation-style request. Use this when the caller needs the plan summary without the full decision envelope.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "description": "Simulation-style payload forwarded to POST /v1/decisions/plan.",
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "poll_job",
+   "description": "Wait for an async simulation job to reach a terminal state. Returns the final result when the job completes, or the terminal status when it fails, is cancelled, or times out.",
+   "required": [
+    "job_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "job_id": {
+      "type": "string",
+      "description": "UUID of the async job"
+     },
+     "timeout_seconds": {
+      "type": "number",
+      "minimum": 0.001,
+      "default": 30.0,
+      "description": "Maximum wall-clock time to wait before returning a timed_out response."
+     },
+     "poll_interval_seconds": {
+      "type": "number",
+      "minimum": 0.001,
+      "default": 2.0,
+      "description": "Delay between status checks while the job is still queued or running."
+     }
+    },
+    "required": [
+     "job_id"
+    ]
+   }
+  },
+  {
+   "name": "preview_browse_connector",
+   "description": "Browse one inline connector definition without saving it to discover files, tables, endpoints, or items.",
+   "required": [
+    "connector_type"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "connector_type"
+    ],
+    "properties": {
+     "connector_type": {
+      "type": "string",
+      "minLength": 1
+     },
+     "config": {
+      "type": "object"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "preview_test_connector",
+   "description": "Run a real connectivity test for one inline connector definition without saving it.",
+   "required": [
+    "connector_type"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "connector_type"
+    ],
+    "properties": {
+     "connector_type": {
+      "type": "string",
+      "minLength": 1
+     },
+     "config": {
+      "type": "object"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "product_agent_run",
+   "description": "Run the simple product task-execution helper and return a compact task result.",
+   "required": [
+    "task"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "task"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "task": {
+      "type": "string"
+     },
+     "context": {
+      "type": "object"
+     },
+     "tools": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "max_steps": {
+      "type": "integer"
+     },
+     "output_format": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  {
+   "name": "product_decision",
+   "description": "Run the simple product decision helper and return the chosen action plus risk summary.",
+   "required": [
+    "inputs"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "inputs"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "inputs": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      },
+      "description": "Business inputs with current value and optional low/high bounds."
+     },
+     "objective": {
+      "type": "string"
+     },
+     "risk_tolerance": {
+      "type": "string"
+     },
+     "scenarios": {
+      "type": "integer"
+     },
+     "engine": {
+      "type": "string"
+     },
+     "label": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  {
+   "name": "product_forecast",
+   "description": "Run the simple product forecast helper over a historical metric series.",
+   "required": [
+    "metric",
+    "history"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "metric",
+     "history"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "metric": {
+      "type": "string"
+     },
+     "history": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "horizon": {
+      "type": "integer"
+     },
+     "seasonality": {
+      "type": "boolean"
+     },
+     "confidence_level": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  {
+   "name": "product_optimize",
+   "description": "Run the simple product optimization helper and return the best variable values.",
+   "required": [
+    "objective",
+    "variables"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "objective",
+     "variables"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "objective": {
+      "type": "string"
+     },
+     "variables": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      }
+     },
+     "constraints": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      }
+     },
+     "iterations": {
+      "type": "integer"
+     },
+     "engine": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  {
+   "name": "product_retrieve",
+   "description": "Run the simple product retrieval helper over caller-supplied documents or a collection id.",
+   "required": [
+    "query"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "query"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "query": {
+      "type": "string"
+     },
+     "documents": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      }
+     },
+     "collection_id": {
+      "type": "string"
+     },
+     "top_k": {
+      "type": "integer"
+     },
+     "rerank": {
+      "type": "boolean"
+     }
+    }
+   }
+  },
+  {
+   "name": "query_agent_run_checkpoints",
+   "description": "Query persisted checkpoints across Algenta agent runs.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "page": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "default": 25,
+      "minimum": 1,
+      "maximum": 200
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "running",
+       "paused",
+       "requires_approval",
+       "completed",
+       "cancelled"
+      ]
+     },
+     "request_hash": {
+      "type": "string"
+     },
+     "policy_snapshot_id": {
+      "type": "string"
+     },
+     "schema_snapshot_id": {
+      "type": "string"
+     },
+     "run_id": {
+      "type": "string"
+     },
+     "checkpoint_id": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "query_agent_run_mission_events",
+   "description": "Query canonical mission-event records across persisted Algenta agent runs.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "page": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "default": 25,
+      "minimum": 1,
+      "maximum": 200
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "running",
+       "paused",
+       "requires_approval",
+       "completed",
+       "cancelled"
+      ]
+     },
+     "request_hash": {
+      "type": "string"
+     },
+     "policy_snapshot_id": {
+      "type": "string"
+     },
+     "schema_snapshot_id": {
+      "type": "string"
+     },
+     "run_id": {
+      "type": "string"
+     },
+     "event_type": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "query_agent_run_telemetry",
+   "description": "Query runtime telemetry batches across persisted Algenta agent runs.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "page": {
+      "type": "integer",
+      "default": 1,
+      "minimum": 1
+     },
+     "limit": {
+      "type": "integer",
+      "default": 25,
+      "minimum": 1,
+      "maximum": 200
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "running",
+       "paused",
+       "requires_approval",
+       "completed",
+       "cancelled"
+      ]
+     },
+     "request_hash": {
+      "type": "string"
+     },
+     "policy_snapshot_id": {
+      "type": "string"
+     },
+     "schema_snapshot_id": {
+      "type": "string"
+     },
+     "run_id": {
+      "type": "string"
+     },
+     "telemetry_kind": {
+      "type": "string"
+     },
+     "module_name": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "query_batch",
+   "description": "Execute several governed exact queries in one API call. Use this for multi-metric prompts after choosing a dataset with list_data and get_data_summary. Each item reuses the same structured query contract as query_data; defaults may provide shared dataset_id, filter, limit, and order.",
+   "required": [
+    "queries"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "queries"
+    ],
+    "properties": {
+     "defaults": {
+      "type": "object",
+      "description": "Optional shared exact-query fields applied to each item before execution.",
+      "properties": {
+       "dataset_id": {
+        "type": "string"
+       },
+       "filter": {
+        "type": "object",
+        "properties": {
+         "time_filter": {
+          "type": "string",
+          "enum": [
+           "last_quarter",
+           "this_quarter",
+           "last_month",
+           "this_month",
+           "last_year",
+           "this_year"
+          ],
+          "description": "Relative time window."
+         },
+         "conditions": {
+          "type": "array",
+          "description": "Deterministic non-time predicates applied on the metric source. Use exact column when schema is known, or dimension_hint for generic status/type/category filters. These are record predicates, not SQL clauses.",
+          "items": {
+           "type": "object",
+           "required": [
+            "op"
+           ],
+           "properties": {
+            "column": {
+             "type": "string",
+             "description": "Exact source column name for this filter."
+            },
+            "dimension_hint": {
+             "type": "string",
+             "description": "Semantic label when the exact column is not known yet."
+            },
+            "op": {
+             "type": "string",
+             "enum": [
+              "eq",
+              "in",
+              "gt",
+              "gte",
+              "lt",
+              "lte",
+              "is_null",
+              "is_not_null"
+             ]
+            },
+            "value": {
+             "description": "Scalar comparison value for eq/gt/gte/lt/lte."
+            },
+            "values": {
+             "type": "array",
+             "description": "List comparison values for in.",
+             "items": {}
+            }
+           }
+          }
+         }
+        }
+       },
+       "limit": {
+        "type": "integer"
+       },
+       "order": {
+        "type": "string",
+        "enum": [
+         "desc",
+         "asc"
+        ]
+       }
+      }
+     },
+     "queries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "object",
+       "required": [
+        "key",
+        "request"
+       ],
+       "properties": {
+        "key": {
+         "type": "string",
+         "description": "Stable identifier for this batch item."
+        },
+        "request": {
+         "type": "object",
+         "description": "Exact query_data payload for this item after defaults merge."
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "query_data",
+   "description": "Execute a structured query against connected data sources. Convert the user's question to a structured intent and call this tool \u2014 do NOT try to write SQL or parse column names yourself. The engine resolves column meaning from mathematical relationships and statistical structure only. It works on any dataset without configuration. The governed filter shape is a record-predicate contract over normalized rows, not a SQL predicate language, so it also applies to Redis and other non-SQL sources.  Structural roles (use in metric.role): - derived_measure: the main financial/operational aggregate (revenue, spend, value) - base_measure: counts, quantities, discrete amounts - unit_measure: per-unit prices, rates - ratio: percentages, margins, fill rates (0-1 range) - metric: let the engine pick the best numeric column  If clarification_required is true, or if confidence < 0.85, check the candidates list and ask the user to clarify. Never fabricate column names or SQL.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "required": [],
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "description": "Preferred path. dataset_id returned by connect_data or list_data."
+     },
+     "sources": {
+      "type": "array",
+      "description": "Data sources to query. Usually omitted when dataset_id is provided.",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string",
+         "description": "Human-readable name"
+        },
+        "dataset_id": {
+         "type": "string",
+         "description": "Dataset ID alias for a registered source."
+        },
+        "source_id": {
+         "type": "string",
+         "description": "Registered source_id (fastest \u2014 avoids re-uploading data)"
+        },
+        "table": {
+         "type": "string",
+         "description": "Registered source name (alternative to source_id)"
+        },
+        "csv": {
+         "type": "string",
+         "description": "Raw CSV text (use source_id/table for registered sources)"
+        },
+        "json_str": {
+         "type": "string",
+         "description": "Raw JSON array/object text"
+        },
+        "records": {
+         "type": "array",
+         "description": "Inline JSON records (use source_id/table for registered sources)",
+         "items": {
+          "type": "object"
+         }
+        },
+        "url": {
+         "type": "string",
+         "description": "HTTP URL for CSV/JSON source"
+        }
+       }
+      }
+     },
+     "metric": {
+      "type": "object",
+      "description": "What to measure.",
+      "required": [
+       "role"
+      ],
+      "properties": {
+       "role": {
+        "type": "string",
+        "enum": [
+         "derived_measure",
+         "base_measure",
+         "unit_measure",
+         "ratio",
+         "component",
+         "identifier",
+         "metric"
+        ],
+        "description": "Structural role of the column to aggregate."
+       },
+       "hint": {
+        "type": "string",
+        "description": "Optional weak signal from user's question (e.g. 'revenue', 'quantity'). Used only as tiebreaker."
+       }
+      }
+     },
+     "aggregation": {
+      "type": "string",
+      "enum": [
+       "sum",
+       "avg",
+       "count",
+       "max",
+       "min"
+      ],
+      "default": "sum",
+      "description": "How to aggregate the metric column."
+     },
+     "group_by": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Dimension words from the user's question (e.g. ['customer', 'region']). The engine finds the best matching column."
+     },
+     "filter": {
+      "type": "object",
+      "properties": {
+       "time_filter": {
+        "type": "string",
+        "enum": [
+         "last_quarter",
+         "this_quarter",
+         "last_month",
+         "this_month",
+         "last_year",
+         "this_year"
+        ],
+        "description": "Relative time window."
+       },
+       "conditions": {
+        "type": "array",
+        "description": "Deterministic non-time predicates applied on the metric source. Use exact column when schema is known, or dimension_hint for generic status/type/category filters. These are record predicates, not SQL clauses.",
+        "items": {
+         "type": "object",
+         "required": [
+          "op"
+         ],
+         "properties": {
+          "column": {
+           "type": "string",
+           "description": "Exact source column name for this filter."
+          },
+          "dimension_hint": {
+           "type": "string",
+           "description": "Semantic label when the exact column is not known yet."
+          },
+          "op": {
+           "type": "string",
+           "enum": [
+            "eq",
+            "in",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "is_null",
+            "is_not_null"
+           ]
+          },
+          "value": {
+           "description": "Scalar comparison value for eq/gt/gte/lt/lte."
+          },
+          "values": {
+           "type": "array",
+           "description": "List comparison values for in.",
+           "items": {}
+          }
+         }
+        }
+       }
+      }
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Top-N limit. Use for 'top 5 customers' type questions."
+     },
+     "order": {
+      "type": "string",
+      "enum": [
+       "desc",
+       "asc"
+      ],
+      "default": "desc"
+     }
+    }
+   }
+  },
+  {
+   "name": "query_repository_graph",
+   "description": "Query one persisted repository snapshot for dependency, dependent, and change-risk graph edges.",
+   "required": [
+    "repository_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "file_path": {
+      "type": "string"
+     },
+     "symbol_name": {
+      "type": "string"
+     },
+     "workspace_evidence_bundle_ref": {
+      "type": "string"
+     },
+     "direction": {
+      "type": "string",
+      "enum": [
+       "inbound",
+       "outbound",
+       "both"
+      ]
+     },
+     "max_depth": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 6
+     },
+     "max_nodes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1024
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "query_sql_report",
+   "description": "Execute a constrained read-only SQL rowset query over authorized datasets. Use this only for wide reports that do not fit the governed exact-query surface. SQL must be a single SELECT/WITH statement over the provided dataset aliases.",
+   "required": [
+    "sources",
+    "sql"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "sources",
+     "sql"
+    ],
+    "properties": {
+     "sources": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Authorized datasets made available to the SQL report.",
+      "items": {
+       "type": "object",
+       "required": [
+        "dataset_id"
+       ],
+       "properties": {
+        "dataset_id": {
+         "type": "string"
+        },
+        "alias": {
+         "type": "string",
+         "description": "Optional SQL table alias for this dataset."
+        }
+       }
+      }
+     },
+     "sql": {
+      "type": "string",
+      "description": "Single read-only SELECT or WITH statement."
+     },
+     "max_rows": {
+      "type": "integer",
+      "description": "Optional row cap, up to the API maximum."
+     }
+    }
+   }
+  },
+  {
+   "name": "recommend",
+   "description": "Compare multiple named actions/options and get a ranked recommendation. Use when you need to choose between two or more alternatives with uncertainty.",
+   "required": [
+    "actions"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "actions": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string"
+        },
+        "variables": {
+         "type": "object",
+         "description": "Variable dict: {name: {low, high}}"
+        },
+        "objective": {
+         "type": "string",
+         "default": "maximize"
+        }
+       },
+       "required": [
+        "name",
+        "variables"
+       ]
+      },
+      "description": "List of options to compare (minimum 2)",
+      "minItems": 2
+     },
+     "n_simulations": {
+      "type": "integer",
+      "default": 10000
+     }
+    },
+    "required": [
+     "actions"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "record_outcome",
+   "description": "Close the feedback loop: record what actually happened after a decision was made. Sets actual_outcome and computes outcome_delta = actual - expected. Over time this data measures prediction accuracy and reveals systematic biases.",
+   "required": [
+    "decision_id",
+    "actual_outcome"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "decision_id",
+     "actual_outcome"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "decision_id": {
+      "type": "string",
+      "description": "Decision ID from log_decision or list_decisions."
+     },
+     "actual_outcome": {
+      "type": "number",
+      "description": "The observed real-world outcome value."
+     },
+     "outcome_notes": {
+      "type": "string",
+      "description": "Optional explanation of what happened and why."
+     }
+    }
+   }
+  },
+  {
+   "name": "refresh_credits",
+   "description": "Issue a compatibility credit batch for a quota-governed managed runtime.",
+   "required": [
+    "device_id",
+    "billing_period"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "device_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "billing_period": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$"
+     },
+     "credits_used": {
+      "type": "integer",
+      "minimum": 0
+     }
+    },
+    "required": [
+     "device_id",
+     "billing_period"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "refresh_data",
+   "description": "Refresh a saved dataset from its original database/API/object-store origin.",
+   "required": [
+    "dataset_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "dataset_id"
+    ],
+    "properties": {
+     "dataset_id": {
+      "type": "string",
+      "description": "Dataset ID from connect_data or list_data."
+     }
+    }
+   }
+  },
+  {
+   "name": "register_source",
+   "description": "Advanced tool. Register a data source and get full schema profiling + join detection. Profiles every column (type, cardinality, fill rate, distribution). Detects formula relationships (A\u00d7B\u2248C) within the source. Detects join keys to every already-registered source automatically. After registration the source is queryable by name via query_data. Safe to call multiple times \u2014 re-registration is a no-op if data is unchanged.",
+   "required": [
+    "source"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "source"
+    ],
+    "properties": {
+     "source": {
+      "type": "object",
+      "description": "Data source definition. Provide exactly one of: records, csv, json_str, url.",
+      "required": [
+       "name"
+      ],
+      "properties": {
+       "name": {
+        "type": "string",
+        "description": "Human-readable label for this source."
+       },
+       "records": {
+        "type": "array",
+        "items": {
+         "type": "object"
+        },
+        "description": "Inline JSON records (fastest)."
+       },
+       "csv": {
+        "type": "string",
+        "description": "Raw CSV text with header row."
+       },
+       "json_str": {
+        "type": "string",
+        "description": "Raw JSON array or object text."
+       },
+       "url": {
+        "type": "string",
+        "description": "HTTP(S) URL; format auto-detected."
+       },
+       "connection": {
+        "type": "object",
+        "description": "Connector config for databases, S3, REST APIs. Example: {\"type\": \"sql\", \"connection_string\": \"postgresql://...\", \"query\": \"SELECT ...\"}"
+       }
+      }
+     },
+     "description": {
+      "type": "string",
+      "description": "Optional human description of this source."
+     }
+    }
+   }
+  },
+  {
+   "name": "register_trigger",
+   "description": "Register a real-time trigger that watches a data source for a threshold condition. When the condition is met, the engine auto-runs the simulation template and optionally fires a webhook. Examples: 'alert me when monthly revenue drops below $80k', 'simulate expansion if Downtown revenue exceeds $200k'.",
+   "required": [
+    "name",
+    "condition",
+    "simulation_template"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "name",
+     "condition",
+     "simulation_template"
+    ],
+    "properties": {
+     "name": {
+      "type": "string",
+      "description": "Human-readable trigger name."
+     },
+     "condition": {
+      "type": "object",
+      "description": "Threshold condition to watch.",
+      "required": [
+       "source_id",
+       "metric_hint",
+       "threshold",
+       "direction"
+      ],
+      "properties": {
+       "source_id": {
+        "type": "string",
+        "description": "Data source to watch."
+       },
+       "metric_hint": {
+        "type": "string",
+        "description": "Column or metric name to evaluate (for example 'net_sales' or 'revenue')."
+       },
+       "threshold": {
+        "type": "number",
+        "description": "Numeric threshold value."
+       },
+       "direction": {
+        "type": "string",
+        "enum": [
+         "above",
+         "below",
+         "change"
+        ],
+        "description": "'above' fires when metric > threshold; 'below' when < threshold; 'change' fires on any significant change."
+       },
+       "aggregation": {
+        "type": "string",
+        "enum": [
+         "sum",
+         "avg",
+         "max",
+         "min",
+         "count"
+        ],
+        "description": "Aggregation to apply before comparing to threshold (default: sum)."
+       }
+      }
+     },
+     "simulation_template": {
+      "type": "object",
+      "description": "SimulateRequest-compatible payload to run when trigger fires."
+     },
+     "webhook_url": {
+      "type": "string",
+      "description": "Optional HTTPS URL to POST results to when the trigger fires."
+     },
+     "execution_webhook_url": {
+      "type": "string",
+      "description": "Optional HTTPS URL to POST the DecisionPlan execution payload to when auto_execute is enabled."
+     },
+     "auto_execute": {
+      "type": "boolean",
+      "description": "When true, automatically dispatch the decision plan to execution_webhook_url after the trigger fires."
+     },
+     "description": {
+      "type": "string",
+      "description": "Human-readable description of what this trigger monitors."
+     }
+    }
+   }
+  },
+  {
+   "name": "remove_team_member",
+   "description": "Remove one team member from the current organization by user id.",
+   "required": [
+    "user_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "user_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "required": [
+     "user_id"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "rerank",
+   "description": "Rerank caller-supplied document embeddings deterministically.",
+   "required": [
+    "query_embedding",
+    "documents"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "query_embedding",
+     "documents"
+    ],
+    "properties": {
+     "model": {
+      "type": "string",
+      "default": "embeddings.cosine_similarity"
+     },
+     "query_embedding": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "number"
+      }
+     },
+     "documents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "embedding"
+       ],
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "embedding": {
+         "type": "array",
+         "minItems": 1,
+         "items": {
+          "type": "number"
+         }
+        },
+        "text": {
+         "type": "string"
+        },
+        "metadata": {
+         "type": "object"
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "top_n": {
+      "type": "integer",
+      "minimum": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "resolve_artifact_bridge",
+   "description": "Resolve a Hugging Face artifact path through the Algenta compatibility-ring artifact bridge. Defaults to cache-only lookup and never downloads unless local_files_only=false.",
+   "required": [
+    "repo_id",
+    "filename"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repo_id",
+     "filename"
+    ],
+    "properties": {
+     "repo_id": {
+      "type": "string"
+     },
+     "filename": {
+      "type": "string"
+     },
+     "revision": {
+      "type": "string"
+     },
+     "local_files_only": {
+      "type": "boolean",
+      "default": true
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "responses",
+   "description": "Run the unified Algenta utility response surface over deterministic tokenization or lexical embeddings.",
+   "required": [
+    "input"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "input"
+    ],
+    "properties": {
+     "model": {
+      "type": "string",
+      "default": "text.tokenizer"
+     },
+     "input": {
+      "oneOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      ]
+     },
+     "dimensions": {
+      "type": "integer",
+      "default": 64,
+      "minimum": 1,
+      "maximum": 4096
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "resume_agent_run",
+   "description": "Resume a paused Algenta agent run.",
+   "required": [
+    "run_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "run_id"
+    ],
+    "properties": {
+     "run_id": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "retrain_dataset",
+   "description": "Re-trigger semantic training for a dataset. Use after schema changes, alias updates, or to force a fresh model build.",
+   "required": [
+    "dataset_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "dataset_id"
+    ],
+    "properties": {
+     "dataset_id": {
+      "type": "string"
+     },
+     "epochs": {
+      "type": "integer",
+      "default": 80
+     }
+    }
+   }
+  },
+  {
+   "name": "revoke_api_key",
+   "description": "Revoke one API key by id.",
+   "required": [
+    "key_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "key_id"
+    ],
+    "properties": {
+     "key_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "revoke_device",
+   "description": "Revoke one registered device by registration id for the current organization.",
+   "required": [
+    "registration_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "registration_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "required": [
+     "registration_id"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "route_capabilities",
+   "description": "Route an objective to the best unified capability with fallbacks and an authoritative execution_owner.",
+   "required": [
+    "objective"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "objective": {
+      "type": "string",
+      "minLength": 1
+     },
+     "binding_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "provider_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "kinds": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "execution_owners": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "artifact_affinities": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "tags": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "max_fallbacks": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+     }
+    },
+    "required": [
+     "objective"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "run_repository_fix",
+   "description": "Run repository pipeline then apply the result, returning the canonical repository envelope.",
+   "required": [
+    "repository_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "pipeline": {
+      "type": "object"
+     },
+     "apply": {
+      "type": "object"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "run_repository_pipeline",
+   "description": "Run the repository snapshot->triage->plan->simulate chain and return the canonical repository envelope.",
+   "required": [
+    "repository_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot": {
+      "type": "object"
+     },
+     "signals": {
+      "type": "object"
+     },
+     "max_evidence_items": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "max_snippet_lines": {
+      "type": "integer",
+      "minimum": 5
+     },
+     "token_budget": {
+      "type": "integer",
+      "minimum": 256
+     },
+     "model": {
+      "type": "string"
+     },
+     "runs": {
+      "type": "integer",
+      "minimum": 100
+     },
+     "seed": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "stop_after": {
+      "type": "string",
+      "enum": [
+       "snapshot",
+       "triage",
+       "plan",
+       "simulate"
+      ]
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "score",
+   "description": "Score a single simulation request with explicit weights and return the decision envelope plus score breakdown.",
+   "required": [
+    "request"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "request": {
+      "type": "object",
+      "description": "Simulation request forwarded to POST /v1/score."
+     },
+     "scoring_weights": {
+      "type": "object",
+      "description": "Optional expected_value/downside_risk weights."
+     }
+    },
+    "required": [
+     "request"
+    ],
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "simulate",
+   "description": "Run a Monte Carlo simulation and get a structured decision recommendation. Use for: quantifying risk in a decision, comparing expected outcomes, getting probability-weighted recommendations.",
+   "required": [
+    "variables"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "mode": {
+      "type": "string",
+      "enum": [
+       "auto",
+       "expert"
+      ],
+      "default": "auto",
+      "description": "auto = minimal setup; expert = full distribution control"
+     },
+     "objective": {
+      "type": "string",
+      "enum": [
+       "maximize_net_value",
+       "maximize_revenue",
+       "minimize_cost",
+       "minimize_risk",
+       "maximize_score"
+      ],
+      "default": "maximize_net_value",
+      "description": "Auto-mode objective. For expert mode, use objective_function."
+     },
+     "objective_function": {
+      "type": "string",
+      "description": "Expert-mode expression, for example 'revenue - cost'. Required when mode='expert'."
+     },
+     "n_simulations": {
+      "type": "integer",
+      "default": 10000,
+      "description": "Monte Carlo iteration count. Auto mode accepts 100\u2013100,000; expert mode accepts 100\u20131,000,000."
+     },
+     "variables": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string"
+        },
+        "low": {
+         "type": "number"
+        },
+        "mode": {
+         "type": "number"
+        },
+        "high": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "name",
+        "low",
+        "high"
+       ]
+      },
+      "description": "Input variables as triangular distributions (low, most-likely, high)"
+     }
+    },
+    "required": [
+     "variables"
+    ]
+   }
+  },
+  {
+   "name": "simulate_repository",
+   "description": "Simulate repository patch risk and return the gated DecisionEnvelope, resolving snapshot_id from the decision plan when omitted.",
+   "required": [
+    "repository_id",
+    "decision_plan_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id",
+     "decision_plan_id"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "decision_plan_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "runs": {
+      "type": "integer",
+      "minimum": 100
+     },
+     "seed": {
+      "type": "integer",
+      "minimum": 0
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "simulate_repository_patch",
+   "description": "Simulate an in-flight repository patch and return the canonical repository envelope.",
+   "required": [
+    "repository_id",
+    "snapshot_id",
+    "patch_diff"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id",
+     "snapshot_id",
+     "patch_diff"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "patch_diff": {
+      "type": "string",
+      "minLength": 1
+     },
+     "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "submit_job",
+   "description": "Submit a long-running async simulation job. Use for n_simulations > 500,000 or when you need a callback. Returns a job_id \u2014 poll with get_job_status.",
+   "required": [
+    "variables"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "variables": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      }
+     },
+     "objective": {
+      "type": "string",
+      "default": "maximize"
+     },
+     "n_simulations": {
+      "type": "integer",
+      "default": 1000000
+     },
+     "callback_url": {
+      "type": "string",
+      "description": "Webhook URL for completion notification"
+     }
+    },
+    "required": [
+     "variables"
+    ]
+   }
+  },
+  {
+   "name": "test_capability_binding",
+   "description": "Test a saved capability binding or preview-test an unsaved one.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "binding_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "provider_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "profile_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "scope": {
+      "type": "string",
+      "enum": [
+       "user",
+       "workspace",
+       "organization"
+      ]
+     },
+     "scope_ref": {
+      "type": "string"
+     },
+     "execution_owner": {
+      "type": "string",
+      "enum": [
+       "algenta_managed",
+       "client_managed"
+      ]
+     },
+     "config": {
+      "type": "object"
+     },
+     "customer_metadata": {
+      "type": "object"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "test_connector",
+   "description": "Run a real connectivity test for one saved connector and persist its live/error status.",
+   "required": [
+    "connector_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "connector_id"
+    ],
+    "properties": {
+     "connector_id": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "test_webhook_delivery",
+   "description": "Send a test webhook payload to a callback URL and return the delivery result.",
+   "required": [
+    "callback_url"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "callback_url": {
+      "type": "string",
+      "description": "URL that should receive the test webhook payload."
+     }
+    },
+    "required": [
+     "callback_url"
+    ]
+   }
+  },
+  {
+   "name": "tokenize",
+   "description": "Tokenize UTF-8 text with a supported deterministic Algenta tokenizer model.",
+   "required": [
+    "input"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "input"
+    ],
+    "properties": {
+     "model": {
+      "type": "string",
+      "default": "text.tokenizer"
+     },
+     "input": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "triage_repository",
+   "description": "Triage a repository snapshot into a bounded workspace evidence bundle with suspect files and symbols.",
+   "required": [
+    "repository_id",
+    "snapshot_id",
+    "signals"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "repository_id",
+     "snapshot_id",
+     "signals"
+    ],
+    "properties": {
+     "repository_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "signals": {
+      "type": "object"
+     },
+     "max_evidence_items": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "max_snippet_lines": {
+      "type": "integer",
+      "minimum": 5
+     },
+     "token_budget": {
+      "type": "integer",
+      "minimum": 256
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "update_connector",
+   "description": "Update one saved connector name, description, visibility, or config.",
+   "required": [
+    "connector_id"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "required": [
+     "connector_id"
+    ],
+    "properties": {
+     "connector_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "name": {
+      "type": "string",
+      "minLength": 1
+     },
+     "description": {
+      "type": "string"
+     },
+     "visibility": {
+      "type": "string",
+      "enum": [
+       "private",
+       "organization",
+       "public"
+      ]
+     },
+     "config": {
+      "type": "object"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "update_execution_policy",
+   "description": "Update one or more execution-policy thresholds for the active organization.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "min_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+     },
+     "risk_floor": {
+      "type": "number",
+      "minimum": 0
+     },
+     "require_calibration": {
+      "type": "boolean"
+     },
+     "allow_reexecution": {
+      "type": "boolean"
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "update_me",
+   "description": "Update the current user name and or organization name for the active API key.",
+   "required": [],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string",
+      "minLength": 1
+     },
+     "org_name": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "additionalProperties": false
+   }
+  },
+  {
+   "name": "update_team_member_role",
+   "description": "Update one current organization team member role by user id.",
+   "required": [
+    "user_id",
+    "role"
+   ],
+   "inputSchema": {
+    "type": "object",
+    "properties": {
+     "user_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "owner",
+       "admin",
+       "member",
+       "viewer"
+      ]
+     }
+    },
+    "required": [
+     "user_id",
+     "role"
+    ],
+    "additionalProperties": false
+   }
+  }
+ ]
+}

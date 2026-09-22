@@ -1,0 +1,12 @@
+# --- flagship app (CPython 3.14 — required by the signed runtime) ---
+gradio>=6.0,<7.0
+numpy>=1.26,<3
+pandas>=2.2
+
+# --- Algenta: public wrapper + signed native Mojo runtime (manylinux_2_35_x86_64, cp314) ---
+algenta==1.0.18
+algenta-runtime-native==1.0.5
+
+# --- governed engine adapter (hosted mode) + the live MCP registry surface ---
+algenta-sdk==1.0.18
+algenta-mcp==1.0.18

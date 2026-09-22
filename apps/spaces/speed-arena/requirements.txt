@@ -1,0 +1,36 @@
+# --- arena app ---
+gradio>=6.0,<7.0
+pandas>=2.2
+numpy>=1.26,<3
+
+# --- Algenta Mojo kernel wheels (manylinux x86_64, GitHub Release arena-wheels-v0.1.0) ---
+# bm25-mojo is pinned to the v0.1.1-dev drop instead: it carries the Xeon
+# warm-margin fixes (round 1: flat batch packing + cheap FFI marshal; round 2:
+# native vocab map + string-token batch path for the eviction-bound M cell).
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.1-dev/bm25_mojo-0.1.4.dev1-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/cclib_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/croniter_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/motmetrics_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/nuscenes_eval_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.manylinux_2_38_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/obspy_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/oletools_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/pefile_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/pydicom_mojo-0.1.2-py3-none-manylinux1_x86_64.manylinux_2_35_x86_64.manylinux_2_5_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/pykalman_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/ruptures_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/vol_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+
+# --- incumbent oracles, pinned to the versions the parity claims were measured against ---
+rank_bm25==0.2.2
+bm25s==0.3.11
+numba==0.67.0
+pykalman==0.11.2
+volatility3==2.28.2
+pefile==2024.8.26
+oletools==0.60.2
+ruptures==1.1.10
+croniter==6.2.4
+obspy==1.5.1
+pydicom==3.0.2
+nuscenes-devkit==1.2.0
+motmetrics==1.4.0

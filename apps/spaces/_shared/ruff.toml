@@ -1,0 +1,4 @@
+# The shared package runs on CPython 3.12 (the arena venv) and 3.14 (the Space
+# image), so it is linted against the lower floor. Rules come from the repo.
+extend = "../../../pyproject.toml"
+target-version = "py312"

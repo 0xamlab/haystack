@@ -1,0 +1,20 @@
+# --- app ---
+gradio>=6.0,<7.0
+numpy>=1.26,<3
+jsonschema>=4.23,<5
+huggingface_hub>=1.30,<2
+
+# --- live inference: HF Inference Providers (streamed, org-billed) ---
+# no local model runtime needed — the model is served by the provider;
+# governance, kernels and receipts run locally (below).
+
+# --- Algenta Mojo kernel wheels (manylinux x86_64, GitHub Release arena-wheels-v0.1.0) ---
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/bm25_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+https://github.com/thyn-ai/mojo-kernels/releases/download/arena-wheels-v0.1.0/sacrebleu_mojo-0.1.2-py3-none-manylinux_2_35_x86_64.whl
+
+# --- oracle cross-check for the scoring tool ---
+sacrebleu==2.5.1
+
+# --- signed runtime for the simulate tool (CPython 3.14 only) ---
+algenta==1.0.17
+algenta-runtime-native==1.0.5

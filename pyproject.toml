@@ -2,6 +2,12 @@
 line-length = 100
 target-version = "py314"
 extend-exclude = [
+    # Space app sources copied verbatim from the live Hub Spaces (docs/spaces/README.md): each joins
+    # the lint gate when it is migrated onto apps/spaces/_shared in M2; _retired is deleted then.
+    "apps/spaces/_retired",
+    "apps/spaces/algenta",
+    "apps/spaces/speed-arena",
+    "apps/spaces/governed-agent",
     ".codex",
     "apps/api-server",
     "apps/runtime/proto",
@@ -35,6 +41,7 @@ ignore = [
 "apps/api_server/alembic/**/*.py" = ["E501", "UP007", "UP035"]
 "apps/cli/*.py" = ["T20"]
 "apps/platform_contract_constants.py" = ["E501"]
+"apps/spaces/tools/*.py" = ["T20"]
 "benchmarks/**/*.py" = ["S311", "T20"]
 "benchmarks/tpcds_derived/**/*.py" = ["E501", "S608", "S108"]
 "packages/algenta/algenta/cli.py" = ["T20"]

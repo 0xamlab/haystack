@@ -36,14 +36,22 @@ def _write(root: Path, rel: str, body: str) -> None:
 def test_raw_egress_detects_new(tmp_path: Path):
     _write(tmp_path, "apps/x.py", "import httpx\n\ndef f():\n    return httpx.get('http://x')\n")
     # an allowed wrapper is exempt
-    _write(tmp_path, "apps/api_server/services/egress_guard.py", "import httpx\nhttpx.get('http://ok')\n")
+    _write(
+        tmp_path,
+        "apps/api_server/services/egress_guard.py",
+        "import httpx\nhttpx.get('http://ok')\n",
+    )
     found = {v.path for v in GUARDS["raw_egress"].scan(tmp_path)}
     assert "apps/x.py" in found
     assert "apps/api_server/services/egress_guard.py" not in found
 
 
 def test_boundary_imports_detects_new(tmp_path: Path):
-    _write(tmp_path, "scripts/x.py", "from apps.api_server.services import repository_intelligence_core\n")
+    _write(
+        tmp_path,
+        "scripts/x.py",
+        "from apps.api_server.services import repository_intelligence_core\n",
+    )
     _write(tmp_path, "scripts/ok.py", "from decision_engine import AsyncAlgentaClient\n")
     found = {v.path for v in GUARDS["boundary_imports"].scan(tmp_path)}
     assert "scripts/x.py" in found
@@ -51,7 +59,11 @@ def test_boundary_imports_detects_new(tmp_path: Path):
 
 
 def test_sync_sidecar_detects_new(tmp_path: Path):
-    _write(tmp_path, "apps/api_server/routers/repositories.py", "def h():\n    r = run_agent(spec)\n    return r\n")
+    _write(
+        tmp_path,
+        "apps/api_server/routers/repositories.py",
+        "def h():\n    r = run_agent(spec)\n    return r\n",
+    )
     found = {v.path for v in GUARDS["sync_sidecar"].scan(tmp_path)}
     assert "apps/api_server/routers/repositories.py" in found
 
@@ -76,3 +88,17 @@ def test_github_workflows_flags_dangerous_only(tmp_path: Path):
     assert ".github/workflows/safe.yml" not in found
     # github_workflows is never baselined — any hit is fatal
     assert GUARDS["github_workflows"].baselined is False
+
+
+def test_raw_egress_skips_the_spaces_plane(tmp_path):
+    """apps/spaces/** (Hub-hosted Space apps + their tooling) is outside the api_server egress policy."""
+    from scripts.reliability_guards.guards import raw_egress
+
+    spaces = tmp_path / "apps" / "spaces" / "tools"
+    server = tmp_path / "apps" / "api_server"
+    spaces.mkdir(parents=True)
+    server.mkdir(parents=True)
+    (spaces / "verify_remote.py").write_text("import urllib.request\nurllib.request.urlopen(url)\n")
+    (server / "leak.py").write_text("import httpx\nhttpx.get(url)\n")
+    found = raw_egress._scan(tmp_path)
+    assert [v.path for v in found] == ["apps/api_server/leak.py"]

@@ -26,7 +26,7 @@ from scripts.reliability_guards.guards.egress_sdk_clients import _RE
         "return storage.Client(project=config.get('project_id'))",
         "return GraphDatabase.driver(uri, auth=auth)",
         "conn = await asyncpg.connect(dsn)",
-        'service = BlobServiceClient(account_url=url, credential=None)',
+        "service = BlobServiceClient(account_url=url, credential=None)",
         "service = BlobServiceClient.from_connection_string(cs)",
         "svc = AsyncBlobServiceClient.from_connection_string(cs)",  # Async-prefixed alias still flags
         "with smtplib.SMTP(host, port) as server:",

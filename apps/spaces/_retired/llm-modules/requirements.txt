@@ -1,0 +1,7 @@
+# --- app ---
+gradio>=6.0,<7.0
+numpy>=1.26,<3
+
+# --- Algenta: public wrapper + signed native Mojo runtime (manylinux_2_35_x86_64, cp314) ---
+algenta==1.0.17
+algenta-runtime-native==1.0.5

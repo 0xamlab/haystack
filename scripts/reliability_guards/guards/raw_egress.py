@@ -19,6 +19,11 @@ _ALLOWED = {
     # analogue of egress_guard — must not import the api_server egress_guard.
     "apps/runtime/privacy_guard.py",
 }
+# Hugging Face Space apps and their operator tooling (apps/spaces/**) are a separate deployment
+# plane: they run on the Hub, not inside the self-hosted API, and talk to the Hub, our hosted API
+# and inference providers by design -- the fail-closed egress policy of the api_server does not
+# govern them (docs/spaces/README.md). Everything else under apps/ stays in scope.
+_EXCLUDED_PREFIXES = ("apps/spaces/",)
 _RE = re.compile(
     r"\b("
     r"httpx\.(?:get|post|put|delete|patch|stream|request|Client|AsyncClient)"
@@ -34,7 +39,7 @@ def _scan(root: Path) -> list[Violation]:
     out: list[Violation] = []
     for p in iter_py(root, "apps"):
         rel = p.relative_to(root).as_posix()
-        if rel in _ALLOWED:
+        if rel in _ALLOWED or rel.startswith(_EXCLUDED_PREFIXES):
             continue
         for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
             if _RE.search(line) or _IMPORT_REQUESTS.search(line):
@@ -44,7 +49,9 @@ def _scan(root: Path) -> list[Violation]:
 
 GUARD = Guard(
     name="raw_egress",
-    description="raw httpx/urllib/requests/boto3 outside egress_guard/storage_service/connector_egress",
+    description=(
+        "raw httpx/urllib/requests/boto3 outside egress_guard/storage_service/connector_egress"
+    ),
     scan=_scan,
     fix_wave="B2/B10",
 )
