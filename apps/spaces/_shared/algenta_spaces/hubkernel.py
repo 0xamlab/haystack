@@ -419,7 +419,7 @@ def load_card_examples(path: Path | str | None = None) -> dict[str, CardExample]
     )
     examples: dict[str, CardExample] = {
         family: CardExample(m, f, copy.deepcopy(a))
-        for family, (m, f, a) in {**EXTRA_CARD_EXAMPLES, **FROZEN_CARD_EXAMPLES}.items()
+        for family, (m, f, a) in {**FROZEN_CARD_EXAMPLES, **EXTRA_CARD_EXAMPLES}.items()
     }
     if target is None or not target.is_file():
         return examples

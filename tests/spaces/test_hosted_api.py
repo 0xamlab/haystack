@@ -603,3 +603,31 @@ def test_default_factory_builds_the_real_client_with_every_allow_listed_method()
     assert client.base_url.startswith("https://api.algenta.ai")
     for method in hosted_api.DEFAULT_ALLOW:
         assert callable(getattr(client, method)), method
+
+
+def test_concurrent_calls_are_not_serialised_behind_the_client_lock():
+    """The lock guards client construction only: two slow calls must overlap (codna, PR #1142)."""
+    import threading
+    import time
+
+    class SlowClient(FakeClient):
+        def recommend(self, actions: Any, **kwargs: Any) -> Any:
+            time.sleep(0.25)
+            return super().recommend(actions, **kwargs)
+
+    hg = HostedGoverned(
+        lambda api_key, base_url: SlowClient(
+            api_key, base_url, responses={"recommend": dict(RECOMMEND_BODY)}
+        ),
+        env={"ALGENTA_API_KEY": "k"},
+    )
+    started = time.perf_counter()
+    threads = [threading.Thread(target=lambda: hg._call("recommend", ["a", "b"])) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    wall = time.perf_counter() - started
+    assert wall < 0.45, (
+        f"two 0.25 s calls took {wall:.2f} s: the network call is still under the lock"
+    )

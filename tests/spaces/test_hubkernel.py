@@ -670,3 +670,14 @@ def test_error_hierarchy_carries_codes():
     assert issubclass(hk.HubKernelUnavailable, hk.HubKernelError)
     with pytest.raises(ValueError):
         hk.HubKernelError(" ", "no code")
+
+
+def test_verified_extra_card_examples_win_over_the_frozen_table(monkeypatch):
+    """EXTRA_CARD_EXAMPLES carries verified warm-up calls and must override FROZEN on a collision."""
+    family = next(iter(hk.EXTRA_CARD_EXAMPLES))
+    frozen = dict(hk.FROZEN_CARD_EXAMPLES)
+    frozen[family] = ("wrong.module", "wrong_function", [0])
+    monkeypatch.setattr(hk, "FROZEN_CARD_EXAMPLES", frozen)
+    table = hk.load_card_examples(Path("/nonexistent/module_descriptions.json"))
+    m, f, _args = hk.EXTRA_CARD_EXAMPLES[family]
+    assert (table[family].module, table[family].function) == (m, f)

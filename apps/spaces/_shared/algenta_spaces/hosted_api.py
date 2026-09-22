@@ -487,9 +487,11 @@ class HostedGoverned:
 
     def _call(self, method: str, *args: Any, **kwargs: Any) -> Any:
         client = self._client_for(method)
+        # The lock guards lazy client construction only (see _client_for); the SDK client is
+        # thread-safe for concurrent calls, and holding a process-wide lock across a network
+        # round-trip would serialise every visitor's governed call behind the slowest one.
         try:
-            with self._lock:
-                return getattr(client, method)(*args, **kwargs)
+            return getattr(client, method)(*args, **kwargs)
         except HostedError:
             raise
         except Exception as exc:
