@@ -121,6 +121,15 @@ class Space:
 
     @property
     def space_url(self) -> str:
+        """The host that serves the Space itself.
+
+        Gradio/Docker Spaces answer on ``<subdomain>.hf.space``; static Spaces are served from
+        ``<subdomain>.static.hf.space`` (the Hub page iframes ``.../index.html`` there) and the
+        ``.hf.space`` host answers 404 for them -- the first real deploy of the redirect stubs
+        (2026-09-22, run 35750231203) uploaded fine and failed only this check.
+        """
+        if self.sdk == "static":
+            return f"https://{self.subdomain}.static.hf.space"
         return f"https://{self.subdomain}.hf.space"
 
     @property

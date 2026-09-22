@@ -243,3 +243,17 @@ def test_live_space_sources_match_the_manifest(apps_spaces_dir: Path) -> None:
         front = _frontmatter(mf.source_dir(space.name) / "README.md")
         assert front["sdk"] == "static" == space.sdk
         assert not (mf.source_dir(space.name) / "Dockerfile").exists()
+
+
+def test_static_spaces_are_served_from_the_static_host():
+    """Static stubs live on <subdomain>.static.hf.space; app Spaces on <subdomain>.hf.space."""
+    from manifest import load_manifest
+
+    m = load_manifest()
+    static = [s for s in m.spaces.values() if s.sdk == "static"]
+    apps = [s for s in m.spaces.values() if s.sdk != "static"]
+    assert static and apps
+    for s in static:
+        assert s.space_url == f"https://{s.subdomain}.static.hf.space"
+    for s in apps:
+        assert s.space_url == f"https://{s.subdomain}.hf.space"
