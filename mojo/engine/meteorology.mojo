@@ -13,7 +13,7 @@ Public API:
   precipitable_water       — integrated column water (mm)
   visibility_extinction    — Beer-Lambert extinction of visibility
 """
-from std.math import exp, log, pow
+from std.math import atan, exp, log, pow, sqrt
 
 
 def dew_point(temperature: Float64, relative_humidity: Float64) -> Float64:
@@ -47,10 +47,11 @@ def wet_bulb_temperature(temperature: Float64, relative_humidity: Float64) -> Fl
     if relative_humidity < 0.0 or relative_humidity > 100.0:
         return temperature
     var rh = relative_humidity
-    return (temperature * (0.151977 * (rh + 8.313659) ** 0.5)
-            + (temperature + rh) ** 0.5 * 0.0 # placeholder simplification
-            + 0.00391838 * rh ** 1.5 * (temperature - 1.676331)
-            - 0.023101 * temperature * rh
+    # Stull (2011), J. Appl. Meteor. Climatol. 50:2267, eq. 1 — T in °C, RH in %.
+    return (temperature * atan(0.151977 * sqrt(rh + 8.313659))
+            + atan(temperature + rh)
+            - atan(rh - 1.676331)
+            + 0.00391838 * rh ** 1.5 * atan(0.023101 * rh)
             - 4.686035)
 
 

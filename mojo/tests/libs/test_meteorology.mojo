@@ -1,4 +1,4 @@
-"""test_meteorology.mojo — auto-generated tests for meteorology."""
+"""test_meteorology.mojo — known-value tests for meteorology."""
 from std.math import isnan, isinf
 from meteorology import dew_point, wet_bulb_temperature, pressure_altitude, relative_humidity, absolute_humidity, wind_chill, heat_index, potential_temperature, precipitable_water, visibility_extinction
 
@@ -48,6 +48,12 @@ def main() raises:
     var _v_wet_bulb_temperature = wet_bulb_temperature(0.5, 0.5)
     if is_finite(_v_wet_bulb_temperature): passed += 1; print("  ✅ meteorology::wet_bulb_temperature =", _v_wet_bulb_temperature)
     else: failed += 1; print("  ❌ meteorology::wet_bulb_temperature → non-finite:", _v_wet_bulb_temperature)
+    # Stull (2011) reference point: T=20 °C, RH=50 % → Tw ≈ 13.7 °C (paper eq. 1).
+    var _v_wet_bulb_stull = wet_bulb_temperature(20.0, 50.0)
+    var _wet_bulb_err = _v_wet_bulb_stull - 13.7
+    if _wet_bulb_err < 0.0: _wet_bulb_err = -_wet_bulb_err
+    if _wet_bulb_err < 0.1: passed += 1; print("  ✅ meteorology::wet_bulb_temperature(20,50) =", _v_wet_bulb_stull, "≈ 13.7 (Stull 2011)")
+    else: failed += 1; print("  ❌ meteorology::wet_bulb_temperature(20,50) =", _v_wet_bulb_stull, "expected ≈ 13.7 (Stull 2011)")
     var _v_pressure_altitude = pressure_altitude(0.5)
     if is_finite(_v_pressure_altitude): passed += 1; print("  ✅ meteorology::pressure_altitude =", _v_pressure_altitude)
     else: failed += 1; print("  ❌ meteorology::pressure_altitude → non-finite:", _v_pressure_altitude)

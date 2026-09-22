@@ -90,6 +90,7 @@ HANDWRITTEN_TESTS = frozenset(
         "test_hmm.mojo",
         "test_imbalance.mojo",
         "test_linear_models.mojo",
+        "test_meteorology.mojo",
         "test_mixture_models.mojo",
         "test_model_compare.mojo",
         "test_model_selection.mojo",
