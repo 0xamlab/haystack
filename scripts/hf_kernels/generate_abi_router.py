@@ -40,6 +40,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--request-types", nargs="+", required=True)
     ap.add_argument("--output", required=True)
+    ap.add_argument("--backend", default="cpu", choices=["cpu", "metal", "cuda"], help="cuda: the qwen3 decode routes bind hfkernel's CUDA session registry (same wire format)")
     a = ap.parse_args()
     types = list(dict.fromkeys(a.request_types))
     unknown = [t for t in types if t not in KNOWN]
@@ -61,7 +62,10 @@ def main() -> int:
     if need_streams:
         lines.append("from algenta_runtime.stream import ResidentStreams")
     if need_qwen3:
-        lines.append("from algenta_runtime.qwen3_decode_session import Qwen3DecodeSessions")
+        if a.backend == "cuda":
+            lines.append("from cuda_decode_session import CudaDecodeSessions as Qwen3DecodeSessions")
+        else:
+            lines.append("from algenta_runtime.qwen3_decode_session import Qwen3DecodeSessions")
     lines += ["", "", "struct RouterState(Movable):", '    """Per-handle resident state; only what this family\'s declared routes need."""', "    var declared: List[String]"]
     if need_datasets:
         lines.append("    var datasets: ResidentDatasets")

@@ -61,7 +61,7 @@ The generated `session.py` exposes exactly one session kind, mapped onto the eng
 `qwen3_decode_open` / `qwen3_decode_next` / `qwen3_decode_close` routes:
 
 - `DecodeSession(checkpoint_dir, prompt_token_ids, *, max_new_tokens)` validates its arguments
-  before any native call (`invalid_arguments`) and raises `metal_required` on a build that is not
+  before any native call (`invalid_arguments`) and raises `gpu_build_required` on a build that is not
   Metal, before touching the library.
 - The session is a real iterator: `next(session)` and `for token in session` yield generated token
   ids; `session.step()` returns the full record `{token_id, position, done, stopped_on_eos}`.

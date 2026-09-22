@@ -36,9 +36,28 @@ def test_every_executable_module_lands_in_exactly_one_filter():
     assert FILTERS["module_count"] == len(modules)
 
 
-def test_excluded_functions_are_python_interop_only():
-    excluded = {e for f in FILTERS["filters"].values() for e in f.get("excluded_functions", [])}
-    assert excluded == {"datetime.now_epoch"}
+def test_every_exclusion_is_a_known_safe_category():
+    """A function is excluded from the manifest only for a documented reason: the Python-bridge
+    interop function (datetime.now_epoch / the env module), or a crash-gate finding whose reason is
+    recorded in the filter table. No function is excluded silently."""
+    import importlib.util as _ilu  # noqa: PLC0415
+    _spec = _ilu.spec_from_file_location("_gen_filters", ROOT / "scripts" / "hf_kernels" / "generate_filters.py")
+    _gf = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_gf)
+    UNSAFE_IN_PROCESS = _gf.UNSAFE_IN_PROCESS
+
+    interop = {"datetime.now_epoch"}
+    for slug, f in FILTERS["filters"].items():
+        reasons = f.get("exclusion_reasons", {})
+        for e in f.get("excluded_functions", []):
+            assert e in interop or e in UNSAFE_IN_PROCESS, (slug, e)
+            if e not in interop:
+                assert e in reasons and reasons[e], (slug, e, "crash-gate exclusion has no recorded reason")
+    # the crash-gate set is real, not empty, and each entry lands in exactly the family that owns its module
+    assert len(UNSAFE_IN_PROCESS) >= 10
+    for full in UNSAFE_IN_PROCESS:
+        mod = full[:-2] if full.endswith(".*") else full.rsplit(".", 1)[0]
+        homes = [slug for slug, f in FILTERS["filters"].items() if any(m == mod or m.startswith(mod + ".") for m in f["modules"])]
+        assert len(homes) == 1 and full in FILTERS["filters"][homes[0]].get("excluded_functions", []), (full, homes)
     assert FILTERS["filters"]["algenta-host-interop"]["modules"] == ["env"]
     assert FILTERS["filters"]["algenta-host-interop"]["status"] == "excluded-v1"
 
@@ -130,8 +149,8 @@ def test_build_tree_ships_no_private_paths_or_build_narrative():
     for variant in _variants(Path(REPO_DIR)):
         pkg = next(d for d in variant.iterdir() if d.is_dir() and d.name.startswith("algenta_"))
         manifest = json.loads((pkg / "_native" / "manifest.json").read_text())
-        assert set(manifest) <= {"schema", "family", "backend", "abi_version", "library", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit"}
-        for name in manifest["load_order"] + [manifest["library"]]:
+        assert set(manifest) <= {"schema", "family", "backend", "abi_version", "library", "cuda_targets", "cuda_libraries", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit"}
+        for name in manifest["load_order"] + [manifest["library"]] + list((manifest.get("cuda_libraries") or {}).values()):
             assert name in manifest["files"] and os.path.basename(name) == name
         meta = json.loads((variant / "metadata.json").read_text())
         assert meta["id"].endswith(manifest["source_commit"][:7])
@@ -209,7 +228,7 @@ def test_decode_session_is_an_iterator_and_gated_on_metal(monkeypatch):
     session_mod = sys.modules[pkg.__name__ + ".session"]
     with pytest.raises(pkg.KernelError) as exc:
         pkg.DecodeSession("/tmp/x", [1, 2], max_new_tokens=2)
-    assert exc.value.code == "metal_required"
+    assert exc.value.code == "gpu_build_required"
     script = iter([{"session": "qd_1", "n_prompt": 2}, {"token_id": 5, "position": 3, "done": False}, {"token_id": 7, "position": 4, "done": True, "stopped_on_eos": True}, {"closed": True}])
     monkeypatch.setattr(session_mod, "_BACKEND", "metal")
     monkeypatch.setattr(session_mod, "execute", lambda request: next(script))
@@ -279,11 +298,21 @@ def test_loads_through_a_symlinked_hub_cache(tmp_path):
             shutil.copy2(p, blob)
             dest = snap / p.relative_to(variant); dest.parent.mkdir(parents=True, exist_ok=True)
             dest.symlink_to(os.path.relpath(blob, dest.parent))
+    # Exercise a real native call through the symlinked closure without assuming any particular
+    # family: load, then call the first contract function (a KernelError is fine — a crash or an
+    # import/load failure is not).
     code = f"""
 from pathlib import Path
 from kernels import get_local_kernel
 k = get_local_kernel(Path({str(snap)!r}), backend="cpu")
-print(k.execute("ab_testing", "is_significant", [0.03, 0.05]) if "ab_testing" in k.modules else k.embeddings.cosine_similarity([1.0, 0.0], [1.0, 1.0]))
+assert k.modules, "no modules"
+mod = sorted(k.CONTRACT["modules"])[0]
+fn = sorted(k.CONTRACT["modules"][mod]["functions"])[0]
+try:
+    k.execute(mod, fn, [])
+except k.KernelError:
+    pass
+print("loaded", len(k.modules), "modules via symlinked cache")
 """
     r = subprocess.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=300)
     assert r.returncode == 0, r.stderr[-800:]

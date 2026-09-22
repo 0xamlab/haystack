@@ -83,6 +83,61 @@ def _verified_path(native_dir: str, name: str, files: dict) -> str:
     return real
 
 
+def _cuda_capability() -> tuple[int, int]:
+    """(major, minor) of device 0 through the NVIDIA driver library (no CUDA toolkit needed)."""
+    cuda = None
+    for candidate in ("libcuda.so.1", "libcuda.so"):
+        try:
+            cuda = ctypes.CDLL(candidate)
+            break
+        except OSError:
+            continue
+    if cuda is None:
+        raise NativeUnavailable("gpu_unavailable", "libcuda.so.1 was not found; the CUDA build needs the NVIDIA driver (580 or later)")
+    if cuda.cuInit(0) != 0:
+        raise NativeUnavailable("gpu_unavailable", "the NVIDIA driver reported no usable device (cuInit failed)")
+    device = ctypes.c_int(0)
+    if cuda.cuDeviceGet(ctypes.byref(device), 0) != 0:
+        raise NativeUnavailable("gpu_unavailable", "no NVIDIA device 0")
+    major, minor = ctypes.c_int(0), ctypes.c_int(0)
+    cuda.cuDeviceGetAttribute(ctypes.byref(major), 75, device)  # CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR
+    cuda.cuDeviceGetAttribute(ctypes.byref(minor), 76, device)  # CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR
+    return major.value, minor.value
+
+
+def _select_library(manifest: dict) -> str:
+    """The primary library, or for CUDA the build matching the device: the exact `sm_<cc>` when it
+    was built, else the newest built target of the same major generation not above the device."""
+    libraries = manifest.get("cuda_libraries") or {}
+    if _BACKEND != "cuda" or not libraries:
+        return manifest["library"]
+    forced = os.environ.get("ALGENTA_CUDA_ARCH")
+    if forced:
+        if forced not in libraries:
+            raise NativeUnavailable("gpu_unsupported", f"ALGENTA_CUDA_ARCH={forced!r} is not one of the built targets {sorted(libraries)}")
+        return libraries[forced]
+    major, minor = _cuda_capability()
+    # Every shipped NVIDIA compute capability has a single-digit minor (…, 8.9, 9.0, 10.0, 12.0),
+    # which makes the `sm_<major><minor>` spelling and the `major*10+minor` ordinal agree with the
+    # `sm_NNN` manifest keys (compared as int(key[3:])). Refuse a hypothetical two-digit minor
+    # rather than silently conflate it with the next major generation.
+    if not 0 <= minor <= 9:
+        raise NativeUnavailable("gpu_unsupported", f"unexpected compute-capability minor in {major}.{minor}")
+    device_cc = major * 10 + minor
+    exact = f"sm_{major}{minor}"
+    if exact in libraries:
+        return libraries[exact]
+    # Every Algenta CUDA build embeds PTX for its --target-accelerator sm_N (NVPTX backend; verified
+    # by a `.target sm_N` section in each .so), and PTX is forward-compatible: it JIT-runs on any
+    # device of capability >= N. So pick the highest built target not above the device (an sm_80
+    # build serves A100, L4 sm_89, H100/H200 sm_90). A SASS-only build would break this, but the
+    # toolchain path used here always emits PTX.
+    usable = sorted(int(t[3:]) for t in libraries if t.startswith("sm_") and t[3:].isdigit() and int(t[3:]) <= device_cc)
+    if usable:
+        return libraries[f"sm_{usable[-1]}"]
+    raise NativeUnavailable("gpu_unsupported", f"this build's oldest CUDA target is above the device's compute capability {major}.{minor}; it carries {', '.join(sorted(libraries))}")
+
+
 def _dlopen(real: str, name: str) -> ctypes.CDLL:
     try:
         return ctypes.CDLL(real)
@@ -102,7 +157,9 @@ class _Runtime:
         # dependency explicitly lets it satisfy the kernel library's references from images already
         # in the process (matched by install name).
         self._closure = [_dlopen(_verified_path(native_dir, name, files), name) for name in manifest["load_order"]]
-        lib = _dlopen(_verified_path(native_dir, manifest["library"], files), manifest["library"])
+        chosen = _select_library(manifest)
+        lib = _dlopen(_verified_path(native_dir, chosen, files), chosen)
+        self.library = chosen
         try:
             version_fn = lib.algenta_runtime_version
             init_fn = lib.algenta_runtime_init
@@ -110,7 +167,7 @@ class _Runtime:
             free_fn = lib.algenta_runtime_free
             shutdown_fn = lib.algenta_runtime_shutdown
         except AttributeError as exc:
-            raise NativeUnavailable("abi_mismatch", f"{manifest['library']} does not export the Algenta ABI v{ABI_VERSION}") from exc
+            raise NativeUnavailable("abi_mismatch", f"{chosen} does not export the Algenta ABI v{ABI_VERSION}") from exc
         version_fn.restype = ctypes.c_int32
         version_fn.argtypes = []
         init_fn.argtypes = [ctypes.c_void_p]

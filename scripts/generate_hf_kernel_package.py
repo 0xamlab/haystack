@@ -29,7 +29,9 @@ import json
 import keyword
 import pprint
 import re
+import platform
 import shutil
+import sys
 import textwrap
 from pathlib import Path
 
@@ -38,7 +40,10 @@ TEMPLATES = ROOT / "scripts" / "hf_kernels" / "templates"
 ENGINE = ROOT / "mojo" / "engine"
 DEFAULT_TORCH_VERSIONS = ["2.5", "2.6", "2.7", "2.8", "2.9", "2.10", "2.11", "2.12", "2.13", "2.14"]
 PY_TYPES = {"Int": "int", "Float64": "float", "Float32": "float", "Bool": "bool", "String": "str", "UInt8": "int", "UInt16": "int", "UInt32": "int", "UInt64": "int", "None": "None"}
-PUBLIC_MANIFEST_KEYS = ("schema", "family", "backend", "abi_version", "library", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit")
+PUBLIC_MANIFEST_KEYS = ("schema", "family", "backend", "abi_version", "library", "cuda_targets", "cuda_libraries", "platform", "minos", "load_order", "files", "runtime_tag", "mojo_version", "source_commit")
+# CUDA builds of each PyTorch release (the loader matches the variant to torch.version.cuda exactly).
+CUDA_VERSIONS_BY_TORCH = {"2.5": ["118", "121", "124"], "2.6": ["118", "124", "126"], "2.7": ["118", "126", "128"], "2.8": ["126", "128", "129"], "2.9": ["126", "128", "130"]}
+CUDA_VERSIONS_DEFAULT = ["126", "128", "129", "130", "132"]
 STATUS_CODE_SCAN = 4096
 _LITERAL = re.compile(r"^(-?\d+(\.\d+)?([eE][-+]?\d+)?|True|False|\"[^\"]*\")$")
 
@@ -56,6 +61,9 @@ def variant_names(platform: str, backend: str, torch_versions: list[str]) -> lis
         tag = "torch" + tv.replace(".", "")
         if os_ == "darwin":
             out.append(f"{tag}-{backend}-{arch}-{os_}")
+        elif backend == "cuda":
+            for cu in CUDA_VERSIONS_BY_TORCH.get(tv, CUDA_VERSIONS_DEFAULT):
+                out.append(f"{tag}-cxx11-cu{cu}-{arch}-{os_}")
         else:
             out.append(f"{tag}-cxx11-{backend}-{arch}-{os_}")
     return out
@@ -402,23 +410,30 @@ def write_package_tree(pdir: Path, modules: list[str], contract: dict, family_pk
 
 # --- card ----------------------------------------------------------------------------------------
 
-def render_card(family: str, summary: str, modules: list[str], contract: dict, variants: dict[str, list[str]], excluded: set[str], backends: list[str], has_session: bool, example_line: str | None, has_status: bool) -> str:
+def render_card(family: str, summary: str, modules: list[str], contract: dict, variants: dict[str, list[str]], excluded: set[str], backends: list[str], has_session: bool, example_line: str | None, has_status: bool, exclusion_reasons: dict[str, str]) -> str:
     fn_count = sum(len(m["functions"]) for m in contract["modules"].values())
     rows = "\n".join(f"| `{m}` | {len(contract['modules'][m]['functions'])} | {contract['modules'][m]['description']} |" for m in sorted(modules))
     torch_versions = sorted({re.match(r"torch(\d)(\d+)", v).groups() for names in variants.values() for v in names}, key=lambda t: (int(t[0]), int(t[1])))
     torch_range = f"PyTorch {torch_versions[0][0]}.{torch_versions[0][1]} to {torch_versions[-1][0]}.{torch_versions[-1][1]}" if torch_versions else "PyTorch"
-    darwin = any("darwin" in v for names in variants.values() for v in names)
+    all_variants = [v for names in variants.values() for v in names]
+    darwin = any(v.endswith("-aarch64-darwin") for v in all_variants)
+    linux_arches = sorted({v.rsplit("-", 2)[1] for v in all_variants if v.endswith("-linux")})
     req_lines = []
     if darwin:
         req_lines.append("- Apple silicon: macOS 15 or later for the CPU build" + (", macOS 26 or later for Metal." if "metal" in variants else "."))
-    else:
-        req_lines.append("- Linux x86-64 or arm64, glibc 2.35 or later.")
+    if linux_arches:
+        arch_words = " and ".join({"x86_64": "x86-64", "aarch64": "arm64"}.get(x, x) for x in linux_arches)
+        req_lines.append(f"- Linux {arch_words}, glibc 2.35 or later.")
+    if "cuda" in variants:
+        req_lines.append("- NVIDIA: driver 580 or later; the build carries kernels for T4 (sm_75), A100 (sm_80), L4 (sm_89) and H100/H200 (sm_90) and picks the one matching your GPU.")
     req_lines.append(f"- `kernels` 0.17 or later and {torch_range}. PyTorch has to be installed: the loader picks the build for your PyTorch version. The kernel itself never imports it.")
     req_lines = [textwrap.fill(line, width=100, subsequent_indent="  ") for line in req_lines]
     metal = "metal" in backends
-    backend_arg = "" if metal else '    backend="cpu",\n'
-    backend_note = ("On macOS 26 the loader picks the Metal build. On macOS 15, add `backend=\"cpu\"`."
-                    if metal else "`backend=\"cpu\"` selects the CPU build. On a Mac the loader otherwise looks for a Metal build, which this family does not ship.")
+    cuda = "cuda" in backends
+    backend_arg = "" if (metal or cuda) else '    backend="cpu",\n'
+    backend_note = (("On macOS 26 the loader picks the Metal build. On macOS 15, add `backend=\"cpu\"`." if metal else "")
+                    + (" On a Linux host with an NVIDIA GPU and a CUDA build of PyTorch the loader picks the CUDA build." if cuda else "")
+                    if (metal or cuda) else "`backend=\"cpu\"` selects the CPU build. On a Mac the loader otherwise looks for a Metal build, which this family does not ship.")
     example = example_line or 'kernel.execute("<module>", "<function>", [...])'
     first_dotted = next((m for m in sorted(modules) if "." in m), None)
     escape_hatch_target = first_dotted or sorted(modules)[0]
@@ -429,8 +444,8 @@ def render_card(family: str, summary: str, modules: list[str], contract: dict, v
         session_block = """
 ## Resident decode
 
-The Metal build runs greedy Qwen3-family decode on the GPU. One session is open at a time; each
-step blocks until its token is computed and returns the token id.
+The Metal and CUDA builds run greedy Qwen3-family decode on the GPU. One session is open at a time;
+each step blocks until its token is computed and returns the token id.
 
 ```python
 with kernel.DecodeSession("/path/to/converted-checkpoint", prompt_token_ids, max_new_tokens=32) as session:
@@ -440,18 +455,20 @@ with kernel.DecodeSession("/path/to/converted-checkpoint", prompt_token_ids, max
 `prompt_token_ids` come from the checkpoint's own tokenizer. The checkpoint directory is the
 converted form (`manifest.json` + `weights.blob`) written by `prepare_model_checkpoint()` in the
 `algenta` package. `kernel.decode(...)` runs a whole session in one call; `session.step()` returns
-the full record for one token. Decode needs the Metal build; on the CPU build `DecodeSession`
-raises `KernelError("metal_required")`.
+the full record for one token. Decode needs a GPU build; on the CPU build `DecodeSession` raises
+`KernelError("gpu_build_required")`.
 """
     excluded_block = ""
     if excluded:
-        excluded_block = "\n## Not included\n\n" + "\n".join(f"- `{e}` needs the host Python interpreter and is served by the Algenta runtime instead." for e in sorted(excluded)) + "\n"
+        excluded_block = "\n## Not included\n\n" + "\n".join(f"- `{e}` \u2014 {exclusion_reasons.get(e, 'served by the Algenta runtime, not this in-process build')}." for e in sorted(excluded)) + "\n"
     backend_word = " · ".join(b.upper() if b == "cpu" else b.capitalize() for b in backends)
     wrap = lambda text: textwrap.fill(" ".join(text.split()), width=100)  # noqa: E731
     intro = wrap(f"{backend_note} `trust_remote_code` names the repositories you allow; Hugging Face's trusted publishers load without it.")
     contract_paragraph = wrap("Plain Python in, plain Python out. Lists, tuples, buffers and tensors are accepted wherever the contract expects a list; structured results are dictionaries. Some functions take a list and the number of elements to use from it, which may not exceed the list's length; multi-dimensional data is passed flattened, row-major, with its dimensions. Functions that update an argument do so in place, as `help()` says. Every call is checked against the published contract before it reaches native code. An invalid call raises `KernelError` with a stable `code`, never a crash." + status_sentence)
     escape_paragraph = f'Any function can also be called by name, with `args` as a list or a dict of parameter names:\n\n```python\nkernel.execute("{escape_hatch_target}", "{escape_fn}", [...])\n```'
     help_target = next((m for m in sorted(modules) if "." not in m), sorted(modules)[0].split(".")[0])
+    missing = [w for w, present in (("Linux x86-64", "x86_64" in linux_arches), ("Linux arm64", "aarch64" in linux_arches), ("macOS", darwin)) if not present]
+    platform_note = ("Windows is not supported." if not missing else ", ".join(missing) + (" builds follow" if len(missing) > 1 else " builds follow") + " from the same source. Windows is not supported.")
     headline = wrap(f"{summary}. Compiled Mojo, loaded in-process.")
     return f"""---
 library_name: kernels
@@ -506,7 +523,7 @@ kernel = get_kernel(
 
 {chr(10).join(req_lines)}
 
-Linux x86-64 and arm64 builds ship from the Algenta release pipeline. Windows is not supported.
+{platform_note}
 
 ## Notes
 
@@ -540,17 +557,22 @@ def main() -> int:
     modules = fam["modules"]
     excluded = set(fam.get("excluded_functions", []))
     pkg = a.family.replace("-", "_")
-    natives = {}
+    natives: list[tuple[str, Path]] = []  # (backend, staged closure); several platforms per backend are normal
     for spec in a.native:
         backend, _, path = spec.partition("=")
-        natives[backend] = Path(path)
+        natives.append((backend, Path(path)))
+    backends_present = sorted({b for b, _ in natives})
     contract = build_contract(modules, excluded, fam.get("module_descriptions", {}))
     missing = [m for m in modules if not contract["modules"][m]["description"]]
     if missing:
         raise SystemExit(f"modules without a card description: {missing}")
     has_session = "qwen3_decode_open" in fam.get("request_types", [])
 
-    probe_native = natives.get("cpu") or next(iter(natives.values()))
+    host = f"{'aarch64' if platform.machine() in ('arm64', 'aarch64') else 'x86_64'}-{'darwin' if sys.platform == 'darwin' else 'linux'}"
+    loadable = [(b, n) for b, n in natives if json.loads((n / "manifest.json").read_text()).get("platform") == host]
+    probe_native = next((n for b, n in loadable if b == "cpu"), None) or (loadable[0][1] if loadable else None)
+    if probe_native is None:
+        raise SystemExit(f"no staged closure for this host ({host}); the generator runs the card example and reads the status vocabularies through a loadable build")
     probe = _NativeProbe(probe_native)
     try:
         contract["status_names"] = status_tables(probe, contract)
@@ -570,13 +592,13 @@ def main() -> int:
     if (out / "build").exists():
         shutil.rmtree(out / "build")
     variants_written: dict[str, list[str]] = {}
-    for backend, native in natives.items():
+    for backend, native in natives:
         manifest = json.loads((native / "manifest.json").read_text())
         if manifest["backend"] != backend:
             raise SystemExit(f"{native} was built for backend {manifest['backend']}, not {backend}")
         public_manifest = {k: manifest[k] for k in PUBLIC_MANIFEST_KEYS if k in manifest}
         names = variant_names(manifest["platform"], backend, a.torch_versions)
-        variants_written[backend] = names
+        variants_written.setdefault(backend, []).extend(names)
         for vname in names:
             vdir = out / "build" / vname
             pdir = vdir / pkg
@@ -601,11 +623,11 @@ def main() -> int:
                 "license": "other",
                 "python-depends": [],
                 "kernel-depends": [],
-                "backend": {"type": backend},
+                "backend": ({"type": "cuda", "archs": [f"{t[3]}.{t[4:]}" for t in manifest.get("cuda_targets", [])]} if backend == "cuda" else {"type": backend}),
             }
             metadata["digest"] = digest_dir(vdir)
             (vdir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
-    (out / "README.md").write_text(render_card(a.family, fam["summary"], modules, contract, variants_written, excluded, sorted(natives), has_session, example_line, has_status))
+    (out / "README.md").write_text(render_card(a.family, fam["summary"], modules, contract, variants_written, excluded, backends_present, has_session, example_line, has_status, fam.get("exclusion_reasons", {})))
     shutil.copy2(ROOT / "LICENSE", out / "LICENSE")
     (out / ".gitattributes").write_text("*.dylib filter=lfs diff=lfs merge=lfs -text\n*.so filter=lfs diff=lfs merge=lfs -text\n")
     total = sum(p.stat().st_size for p in (out / "build").rglob("*") if p.is_file())

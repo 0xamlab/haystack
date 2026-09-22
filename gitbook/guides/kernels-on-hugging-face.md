@@ -57,7 +57,7 @@ with llm.DecodeSession("/path/to/converted-checkpoint", prompt_token_ids, max_ne
 converted form written by `prepare_model_checkpoint()`, described in
 [Model-agnostic LLM inference](run-qwen3-family-inference.md). `llm.decode(...)` runs a whole
 session in one call; `session.step()` returns the full record for one token. Decode needs the
-Metal build; on the CPU build `DecodeSession` raises `KernelError("metal_required")`.
+Metal or CUDA build; on the CPU build `DecodeSession` raises `KernelError("gpu_build_required")`.
 
 ## Requirements
 

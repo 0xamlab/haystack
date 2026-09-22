@@ -20,6 +20,29 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts" / "docs"))
 
+# Functions that abort or hang the host on a contract-valid call because they carry a precondition
+# no count relation can express (a rectangular/square matrix, a valid graph, a parseable string, a
+# bounded allocation). The crash-hunting gate (scripts/hf_kernels/family_smoke.py) found each one;
+# they are refused at the ABI boundary (function_unsupported_in_process) and listed on the card.
+UNSAFE_IN_PROCESS = {
+    "column_rank.run_column_rank": "takes a full JSON request string; reached through the column-ranking session, not a plain in-process call",
+    "combinatorial.tsp_greedy": "reads its distance argument as a square matrix; a non-square nested list is not expressible as a length rule",
+    "contest_strategy.option_board": "requires its per-entrant arrays to share one length; a mismatch is not expressible as a length rule",
+    "dimensionality.power_iteration": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "dependency.dependency_depth": "walks an adjacency list that must be acyclic and in range; not expressible as a length rule",
+    "gbdt.gbdt_predict": "walks a tree encoding that must be well-formed; a malformed tree is not expressible as a length rule",
+    "svm_kernel.is_positive_semidefinite": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "svm_kernel.kernel_center": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "topology.filtration_values": "requires a consistent distance/simplex structure; not expressible as a length rule",
+    "topology.persistence_diagram_0": "requires a consistent distance/simplex structure; not expressible as a length rule",
+    "topology.vietoris_rips_edges": "requires a square distance matrix; a non-square nested list is not expressible as a length rule",
+    "trie.*": "the trie functions take a Trie structure that a plain in-process call cannot build; use the SDK for tries",
+    "constraint.magic_square_check": "reads its grid argument as square; a non-square nested list is not expressible as a length rule",
+    "compression.huffman.generate_codes": "allocates from a frequency table whose size it trusts; an ill-formed table is not expressible as a length rule",
+    "matrix_decomp.lu_decompose": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+    "matrix_decomp.trace": "reads the diagonal of a square matrix; a non-square nested list is not expressible as a length rule",
+}
+
 GPU_BEARING_PREFIXES = ("residentk.", "metaldispatch.", "accel.", "attnk.", "gemm.", "llmk.", "normk.", "lossk.", "mlpk.", "tensorx.")
 
 SLUGS = {
@@ -155,19 +178,33 @@ def main() -> int:
             chunks = [mods[i : i + a.general_chunk] for i in range(0, len(mods), a.general_chunk)]
             for i, chunk in enumerate(chunks):
                 slug = f"algenta-general-{chr(ord('a') + i)}"
-                filters[slug] = {"title": f"{cat} ({chunk[0]} .. {chunk[-1]})", "summary": "General and domain kernels, alphabetical chunk", "modules": chunk}
+                words = lambda m: m.split(".")[-1].replace("_", " ")  # noqa: E731
+                filters[slug] = {"title": f"{cat} ({chunk[0]} .. {chunk[-1]})", "summary": f"Domain kernels from {words(chunk[0])} to {words(chunk[-1])}", "modules": chunk}
     if quarantine:
         filters["algenta-host-interop"] = {"title": "Host-interpreter interop modules (not shipped in v1)", "summary": "Every function needs the host Python bridge and SIGSEGVs in-process (Stage 2, RQ-G); served by the algenta runtime worker instead", "modules": quarantine, "status": "excluded-v1"}
+    curated_path = ROOT / "scripts" / "hf_kernels" / "module_descriptions.json"
+    curated = json.loads(curated_path.read_text()) if curated_path.is_file() else {"descriptions": {}, "card_examples": {}, "card_example_notes": {}}
+    all_descriptions = {**curated["descriptions"], **MODULE_DESCRIPTIONS}
+    all_examples = {**curated["card_examples"], **CARD_EXAMPLES}
+    all_notes = {**curated["card_example_notes"], **CARD_EXAMPLE_NOTES}
     for slug, f in filters.items():
         f.setdefault("status", "planned")
-        if slug in CARD_EXAMPLES:
-            f["card_example"] = CARD_EXAMPLES[slug]
-        if slug in CARD_EXAMPLE_NOTES:
-            f["card_example_note"] = CARD_EXAMPLE_NOTES[slug]
-        descriptions = {m: MODULE_DESCRIPTIONS[m] for m in f["modules"] if m in MODULE_DESCRIPTIONS}
+        if slug in all_examples:
+            f["card_example"] = all_examples[slug]
+        if slug in all_notes:
+            f["card_example_note"] = all_notes[slug]
+        descriptions = {m: all_descriptions[m] for m in f["modules"] if m in all_descriptions}
         if descriptions:
             f["module_descriptions"] = descriptions
-        f["excluded_functions"] = ["datetime.now_epoch"] if "datetime" in f["modules"] else []
+        fam_excluded = ["datetime.now_epoch"] if "datetime" in f["modules"] else []
+        fam_reasons = {}
+        for full, reason in UNSAFE_IN_PROCESS.items():
+            if full.rsplit(".", 1)[0] in f["modules"] or ".".join(full.split(".")[:2]) in f["modules"]:
+                fam_excluded.append(full)
+                fam_reasons[full] = reason
+        f["excluded_functions"] = sorted(set(fam_excluded))
+        if fam_reasons:
+            f["exclusion_reasons"] = fam_reasons
         f["request_types"] = ["library_execute"]
         if slug == "algenta-llm":
             f["request_types"] = ["library_execute", "dataset_open", "dataset_close", "dataset_list", "batch_execute", "pipeline_execute", "query_execute", "stream_open", "stream_next", "stream_close", "qwen3_decode_open", "qwen3_decode_next", "qwen3_decode_close"]

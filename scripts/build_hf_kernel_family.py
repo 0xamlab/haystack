@@ -37,6 +37,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from stage_runtime_worker_package import (  # noqa: E402
     StageError,
+    _is_system_dependency,
     _is_relative_to,
     linked_dependencies,
     relink_artifacts,
@@ -88,7 +89,37 @@ def _exports(lib: Path, system: str) -> set[str]:
     return {line.split()[-1] for line in out.splitlines() if " T " in line}
 
 
-def _collect_closure(lib: Path, lib_root: Path, out_dir: Path, system: str) -> list[Path]:
+# libcuda.so.1 is the NVIDIA driver: linked by libMGPRT but resolved by a runtime dlopen of the
+# host's driver, never bundled (build_mojo_binary.sh). On a build host without the driver `ldd`
+# exits non-zero on it, so the CUDA closure scan tolerates its absence and drops it.
+HOST_PROVIDED_LIBS = ("libcuda.so", "libcuda.so.1")
+
+
+def _deps_tolerant(path: Path, system: str, search_roots: tuple[Path, ...]) -> list[Path]:
+    """linked_dependencies, but for a CUDA build on a driver-less host: run ldd, keep whatever it
+    resolves even when it exits non-zero on the host-provided driver, and never return libcuda."""
+    if system != "linux":
+        return list(linked_dependencies(path, system, search_roots=search_roots))
+    env = os.environ.copy()
+    if search_roots:
+        env["LD_LIBRARY_PATH"] = os.pathsep.join(str(r.resolve()) for r in search_roots)
+    else:
+        env.pop("LD_LIBRARY_PATH", None)
+    proc = subprocess.run(["ldd", str(path)], env=env, capture_output=True, text=True)
+    out = []
+    for raw in proc.stdout.splitlines():
+        line = raw.strip()
+        if not line or "not a dynamic executable" in line:
+            continue
+        if os.path.basename(line.split(" ", 1)[0]) in HOST_PROVIDED_LIBS or "libcuda.so" in line:
+            continue  # host driver: not bundled, its "=> not found" is expected off a GPU host
+        token = line.split("=>", 1)[1].strip().split(" ", 1)[0] if "=>" in line else line.split(" ", 1)[0]
+        if token.startswith("/") and not _is_system_dependency(token):
+            out.append(Path(token))
+    return out
+
+
+def _collect_closure(lib: Path, lib_root: Path, out_dir: Path, system: str, tolerant: bool = False) -> list[Path]:
     """Copy `lib` and every linked non-system dependency from `lib_root` into `out_dir`.
 
     Same policy as stage_runtime_worker_package.collect_runtime_closure (dependencies outside
@@ -103,7 +134,8 @@ def _collect_closure(lib: Path, lib_root: Path, out_dir: Path, system: str) -> l
     queue = [lib.resolve()]
     while queue:
         current = queue.pop()
-        for dep in linked_dependencies(current, system, search_roots=(current.parent, lib_root, out_dir)):
+        deps = _deps_tolerant(current, system, (current.parent, lib_root, out_dir)) if tolerant else linked_dependencies(current, system, search_roots=(current.parent, lib_root, out_dir))
+        for dep in deps:
             resolved = dep.resolve()
             if resolved in seen or _is_relative_to(resolved, out_dir):
                 continue
@@ -154,6 +186,7 @@ def main() -> int:
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--filters", type=Path, default=ROOT / "scripts" / "hf_kernel_filters.json")
     ap.add_argument("--backend", choices=["cpu", "metal", "cuda"], default="cpu")
+    ap.add_argument("--cuda-targets", nargs="+", default=["sm_75", "sm_80", "sm_89", "sm_90"], help="one library per NVIDIA target (T4 / A100 / L4 / H100-H200); the loader picks by the device's compute capability")
     ap.add_argument("--stub-guard", action="store_true", help="TEST ONLY: build without the count-relation guard")
     ap.add_argument("--exclude", nargs="*", default=None, help="module.function or module.* refused in-process (ad hoc; families read excluded_functions from the filter table)")
     ap.add_argument("--request-types", nargs="*", default=None, help="ad-hoc declared routes (families read request_types from the filter table)")
@@ -173,8 +206,6 @@ def main() -> int:
         name = a.name or "-".join(a.modules)[:60]
         request_types = a.request_types or ["library_execute"]
         excluded = a.exclude or []
-    if a.backend == "cuda":
-        raise SystemExit("--backend cuda is Stage 6 work (cross-compile on Linux); not implemented in this revision")
 
     system, plat = _platform()
     pixi_env = (ROOT / "mojo_env" / ".pixi" / "envs" / "default").resolve()
@@ -182,7 +213,12 @@ def main() -> int:
     if not lib_root.is_dir():
         raise SystemExit(f"pixi env missing: {lib_root} (run `cd mojo_env && pixi install`)")
     ext = ".dylib" if system == "darwin" else ".so"
-    lib_name = f"libalgenta_{name.replace('-', '_')}{ext}"
+    base_name = f"libalgenta_{name.replace('-', '_')}"
+    # CUDA ships one library per target (sm_75 T4, sm_80 A100, sm_89 L4, sm_90 H100/H200); the primary
+    # `library` is the newest target, the loader selects by the device's compute capability.
+    cuda_targets = list(dict.fromkeys(a.cuda_targets)) if a.backend == "cuda" else []
+    lib_names = [f"{base_name}.{t}{ext}" for t in cuda_targets] if a.backend == "cuda" else [f"{base_name}{ext}"]
+    lib_name = lib_names[-1]
 
     stage = Path(tempfile.mkdtemp(prefix=f".hfk-{name}-", dir=str(a.out.parent if a.out.parent.exists() else "/tmp")))
     try:
@@ -196,20 +232,28 @@ def main() -> int:
             guard_cmd += ["--exclude", *excluded]
         guard_report = _run(guard_cmd).strip()
         router_report = _run([sys.executable, str(ROOT / "scripts" / "hf_kernels" / "generate_abi_router.py"),
-                              "--request-types", *request_types, "--output", str(stage / "hf_abi_router_generated.mojo")]).strip()
+                              "--request-types", *request_types, "--backend", a.backend, "--output", str(stage / "hf_abi_router_generated.mojo")]).strip()
         shutil.copy2(ROOT / "mojo" / "hfkernel" / "abi.mojo", stage / "abi.mojo")
+        if a.backend == "cuda":
+            shutil.copy2(ROOT / "mojo" / "hfkernel" / "cuda_decode_session.mojo", stage / "cuda_decode_session.mojo")
         _run(["bash", str(ROOT / "scripts" / "shadow_max_pkg_name_collisions.sh"), str(lib_root)])
 
         env = os.environ.copy()
         deployment_target = METAL_MACOS_DEPLOYMENT_TARGET if a.backend == "metal" else CPU_MACOS_DEPLOYMENT_TARGET
         env["MACOSX_DEPLOYMENT_TARGET"] = deployment_target
         mojo_version = _run(["pixi", "run", "mojo", "--version"], cwd=ROOT / "mojo_env").strip().splitlines()[0]
-        if a.backend == "cpu":
-            build = ["pixi", "run", "mojo", "build", "-I", str(ROOT / "mojo" / "engine"), str(stage / "abi.mojo"),
-                     "--emit", "shared-lib", "-o", str(stage / lib_name)]
-            if system == "linux" and plat.startswith("x86_64"):
-                build[5:5] = ["--mcpu", "x86-64-v3"]
-            _run(build, cwd=ROOT / "mojo_env", env=env)
+        if a.backend in ("cpu", "cuda"):
+            for target, out_name in zip(cuda_targets or [None], lib_names):
+                build = ["pixi", "run", "mojo", "build", "-I", str(ROOT / "mojo" / "engine"), str(stage / "abi.mojo"),
+                         "--emit", "shared-lib", "-o", str(stage / out_name)]
+                if system == "linux" and plat.startswith("x86_64") and target is None:
+                    build[4:4] = ["--mcpu", "x86-64-v3"]  # CPU builds only; a GPU target sets its own arch
+                if target is not None:
+                    # The CUDA lane: portable GPU kernels + the CUDA backend selector, cross-compiled by the
+                    # NVPTX backend inside the pinned toolchain (no CUDA toolkit, no GPU on the build host);
+                    # ALGENTA_METAL stays off so the Metal shim machinery compiles out (build_mojo_binary.sh).
+                    build[4:4] = ["-D", "ALGENTA_GPU", "-D", "ALGENTA_CUDA", "--target-accelerator", target]
+                _run(build, cwd=ROOT / "mojo_env", env=env)
         else:  # metal: the worker recipe (build_mojo_binary.sh) — object emit, ObjC shim, clang link
             if system != "darwin":
                 raise SystemExit("--backend metal needs a macOS arm64 host")
@@ -271,9 +315,15 @@ def main() -> int:
         if native.exists():
             shutil.rmtree(native)
         native.mkdir(parents=True)
-        artifacts = _collect_closure(stage / lib_name, lib_root, native, system)
+        own_names = set(lib_names)
+        artifacts: list[Path] = []
+        for out_name in lib_names:
+            for art in _collect_closure(stage / out_name, lib_root, native, system, tolerant=(a.backend == "cuda")):
+                if art.name not in {x.name for x in artifacts}:
+                    artifacts.append(art)
         relink_artifacts(tuple(artifacts), lib_root, native, system)
         own = native / lib_name
+        own_libs = [native / n for n in lib_names]
         # Dependency-first load order for the Python loader: the Hub cache materialises every file as a
         # symlink into blobs/, and dyld resolves @loader_path from the blob's REAL directory, where the
         # siblings are not. The loader therefore dlopens each runtime dylib by real path first; dyld then
@@ -286,7 +336,7 @@ def main() -> int:
         tag = "mojo" + re.sub(r"[^0-9A-Za-z]+", "_", mojo_version.split()[1]) if len(mojo_version.split()) > 1 else "mojo"
         renamed: dict[str, str] = {}
         for art in list(artifacts):
-            if art.name != lib_name:
+            if art.name not in own_names:
                 new_name = _tagged_name(art.name, tag)
                 art.rename(art.parent / new_name)
                 renamed[art.name] = new_name
@@ -312,7 +362,7 @@ def main() -> int:
         for art in artifacts:
             deps_of[art.name] = {d.name for d in linked_dependencies(art, system, search_roots=(native,)) if d.name in closure_names and d.name != art.name}
         load_order: list[str] = []
-        remaining = {n for n in closure_names if n != lib_name}
+        remaining = {n for n in closure_names if n not in own_names}
         while remaining:
             ready = sorted(n for n in remaining if not (deps_of.get(n, set()) & remaining))
             if not ready:
@@ -323,13 +373,14 @@ def main() -> int:
             for art in artifacts:
                 for rp in _absolute_rpaths(art):
                     _run(["install_name_tool", "-delete_rpath", rp, str(art)])
-                if art.name != lib_name:
+                if art.name not in own_names:
                     _run(["install_name_tool", "-id", f"@rpath/{art.name}", str(art)])
                 for dep in closure_names:
                     if dep != art.name:
                         _run(["install_name_tool", "-change", f"@loader_path/{dep}", f"@rpath/{dep}", str(art)])
-            # Strip only our own library; the Modular runtime dylibs ship as-is.
-            _run(["strip", "-x", str(own)])
+            # Strip only our own libraries; the Modular runtime dylibs ship as-is.
+            for lib in own_libs:
+                _run(["strip", "-x", str(lib)])
             # install_name_tool/strip invalidate the plain ad-hoc signatures of the copied Modular
             # dylibs (only linker-signed files re-sign themselves); on Apple silicon dyld then
             # kills the loading process (exit 137). Re-sign every artifact ad hoc, then verify.
@@ -338,12 +389,14 @@ def main() -> int:
             for art in artifacts:
                 _run(["codesign", "--verify", "--verbose=1", str(art)])
         else:
-            _run(["strip", "--strip-unneeded", str(own)])
+            for lib in own_libs:
+                _run(["strip", "--strip-unneeded", str(lib)])
 
         lib_path = native / lib_name
-        exports = _exports(lib_path, system)
-        if exports != ABI_EXPORTS:
-            raise SystemExit(f"export set mismatch: {sorted(exports)}")
+        for lib in own_libs:
+            exports = _exports(lib, system)
+            if exports != ABI_EXPORTS:
+                raise SystemExit(f"export set mismatch in {lib.name}: {sorted(exports)}")
         if system == "darwin":
             leftovers = [rp for art in artifacts for rp in _absolute_rpaths(art)]
             if leftovers:
@@ -359,8 +412,13 @@ def main() -> int:
                 if "minos" in line:
                     minos = line.split()[-1]
                     break
-        commit = _run(["git", "rev-parse", "HEAD"], cwd=ROOT).strip()
-        dirty = bool(_run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT).strip())
+        # Container builds work from an exported tree without .git: the exporter records the commit.
+        if os.environ.get("ALGENTA_SOURCE_COMMIT"):
+            commit = os.environ["ALGENTA_SOURCE_COMMIT"]
+            dirty = os.environ.get("ALGENTA_SOURCE_DIRTY", "0") == "1"
+        else:
+            commit = _run(["git", "rev-parse", "HEAD"], cwd=ROOT).strip()
+            dirty = bool(_run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT).strip())
         files = sorted(p for p in native.iterdir() if p.is_file() and p.name != "manifest.json")
         manifest = {
             "schema": 1,
@@ -371,6 +429,8 @@ def main() -> int:
             "request_types": request_types,
             "excluded_functions": list(excluded),
             "library": lib_name,
+            "cuda_targets": cuda_targets,
+            "cuda_libraries": {t: n for t, n in zip(cuda_targets, lib_names)},
             "load_order": load_order,
             "runtime_tag": tag,
             "renamed_runtime_files": renamed,

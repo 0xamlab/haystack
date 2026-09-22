@@ -5,7 +5,7 @@ from ._native import _BACKEND, KernelError, execute
 
 
 class DecodeSession:
-    """A resident greedy decode session on the GPU.
+    """A resident greedy decode session on the GPU (Apple Metal or NVIDIA CUDA).
 
     Open it with a converted checkpoint directory (the `manifest.json` + `weights.blob` form
     written by `prepare_model_checkpoint()` in the `algenta` package) and the prompt as token ids
@@ -18,13 +18,13 @@ class DecodeSession:
     context manager or call `close()`; a closed session raises `KernelError("session_closed")`.
 
     Attributes: `id` (the native session id), `n_prompt` (prompt length in tokens),
-    `max_new_tokens`, `done`. Needs the Metal build; on other builds the constructor raises
-    `KernelError("metal_required")` before touching the native library.
+    `max_new_tokens`, `done`. Needs the Metal or CUDA build; on the CPU build the constructor raises
+    `KernelError("gpu_build_required")` before touching the native library.
     """
 
     def __init__(self, checkpoint_dir: str, prompt_token_ids: list[int], *, max_new_tokens: int) -> None:
-        if _BACKEND != "metal":
-            raise KernelError("metal_required", f"DecodeSession needs the Metal build; this is the {_BACKEND} build. Load the kernel on macOS 26 or later with backend=\"metal\".")
+        if _BACKEND not in ("metal", "cuda"):
+            raise KernelError("gpu_build_required", f"DecodeSession needs the Metal or CUDA build; this is the {_BACKEND} build. Load the kernel with backend=\"metal\" (macOS 26 or later) or on a CUDA host.")
         if not isinstance(checkpoint_dir, str) or not checkpoint_dir:
             raise KernelError("invalid_arguments", "checkpoint_dir must be a non-empty string (a converted checkpoint directory)")
         ids = list(prompt_token_ids) if isinstance(prompt_token_ids, (list, tuple)) else None

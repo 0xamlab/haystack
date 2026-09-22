@@ -17,6 +17,24 @@
         "time_zone"
       ],
       "status": "planned",
+      "card_example": [
+        "number_theory",
+        "prime_factors",
+        [
+          360
+        ]
+      ],
+      "card_example_note": "prime factors",
+      "module_descriptions": {
+        "agent_runtime": "AI-agent scoring: tool-call cost and ranking, retry decision, discounted action value, budgets",
+        "bitops": "Bit operations: popcount, leading and trailing zeros, powers of two, rotates, bit flags, FNV-1a",
+        "datetime": "UTC dates from Unix epoch seconds: ISO 8601 parse and format, day of week, leap years, day math",
+        "discrete_event.calendar": "Deterministic event calendar: heap replay ordered by time, priority and insertion, with audits",
+        "number_theory": "Number theory: Miller-Rabin primality, GCD, LCM, modular power and inverse, totient, sieve",
+        "sentiment": "Lexicon sentiment analysis: polarity from -1 to +1, labels, subjectivity, signed word counts",
+        "stateful_runtime": "Memory scoring for stateful agents: Ebbinghaus decay, prioritized replay, consolidation",
+        "time_zone": "Fixed-offset time zones: eleven zone offsets, simple DST, conversion, business-hour overlap"
+      },
       "excluded_functions": [
         "datetime.now_epoch"
       ],
@@ -45,6 +63,26 @@
         "perceptual_hash"
       ],
       "status": "planned",
+      "card_example": [
+        "crypto.crc32",
+        "crc32_hex",
+        [
+          "hello"
+        ]
+      ],
+      "card_example_note": "CRC-32 as hex",
+      "module_descriptions": {
+        "crypto.aes_sbox": "AES core steps: S-box and inverse S-box lookups, SubBytes, ShiftRows, key mixing by XOR",
+        "crypto.base64": "Base64 encoding and decoding (RFC 4648): standard with padding, and URL-safe without",
+        "crypto.chacha20": "ChaCha20 stream cipher: 64-byte keystream blocks and XOR encryption and decryption of bytes",
+        "crypto.crc32": "CRC-32 checksums (zlib polynomial) as integers or hex, and combining two checksums",
+        "crypto.hash_chain": "Hash chains and Merkle trees over a non-cryptographic FNV-1a style hash: roots, proofs, checks",
+        "crypto.hmac": "HMAC-SHA256 message authentication codes (RFC 2104) with constant-time verification",
+        "crypto.pbkdf2": "PBKDF2 key derivation with HMAC-SHA256 (RFC 2898), plus SHA-256 and HMAC over raw bytes",
+        "crypto.uuid": "Random version 4 UUIDs (RFC 4122) as a dashed 36-character string or 32 hex characters",
+        "feature_hashing": "Hashing trick for categorical and text features: seeded FNV-1a buckets, signs, collision odds",
+        "perceptual_hash": "Perceptual image hashes: average, difference and DCT hashes, Hamming distance, duplicate check"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -65,6 +103,22 @@
         "option_pricing"
       ],
       "status": "planned",
+      "card_example": [
+        "finance",
+        "cagr",
+        [
+          100,
+          200,
+          10
+        ]
+      ],
+      "card_example_note": "compound annual growth rate",
+      "module_descriptions": {
+        "accounting": "Accounting: straight-line, declining-balance and sum-of-years depreciation, ratios, break-even",
+        "finance": "Finance: NPV, IRR, payback period, annuity payment, Sharpe ratio, max drawdown, CAGR, WACC",
+        "option_greeks_batch": "Black-Scholes price, delta, gamma, vega and theta for a whole option chain in one pass",
+        "option_pricing": "Options: Black-Scholes call and put prices, greeks, CRR binomial tree, implied volatility"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -77,7 +131,7 @@
     },
     "algenta-general-a": {
       "title": "General & domain modules (actuarial .. encryption_modes)",
-      "summary": "General and domain kernels, alphabetical chunk",
+      "summary": "Domain kernels from actuarial to encryption modes",
       "modules": [
         "actuarial",
         "adhesives",
@@ -181,7 +235,131 @@
         "encryption_modes"
       ],
       "status": "planned",
-      "excluded_functions": [],
+      "card_example": [
+        "allocation",
+        "kelly_criterion",
+        [
+          0.6,
+          2
+        ]
+      ],
+      "card_example_note": "Kelly fraction of capital to stake",
+      "module_descriptions": {
+        "actuarial": "Actuarial math: present and future value, annuities, mortality and survival rates, loss ratios",
+        "adhesives": "Adhesives: lap shear and peel strength, Arrhenius viscosity, cure and pot life vs temperature",
+        "aerospace": "Aerospace: dynamic pressure, lift and drag, Mach, Tsiolkovsky rocket equation, Hohmann delta-v",
+        "agriculture": "Crop management: growing degree days, crop water need, fertilizer and seed rates, harvest index",
+        "agronomy": "Agronomy: Penman reference ET, radiation-use yield, water stress index, organic matter decay",
+        "allocation": "Portfolio weights: equal, inverse variance, risk parity, Kelly criterion, two-asset frontier",
+        "anomaly": "Outlier detection: z-score, IQR, modified z-score via MAD, isolation forest, Grubbs statistic",
+        "antenna": "Antenna and RF links: half-wave dipole, Friis path loss, EIRP, received power, link margin",
+        "apiculture": "Beekeeping: honey yield per hive, colony strength, varroa infestation, syrup ratio, winter feed",
+        "aquaculture": "Fish farming: stocking density, feed conversion ratio, specific growth rate, carrying capacity",
+        "archaeology": "Archaeology: radiocarbon age, linear calibration, artifact density, S\u00f8rensen & Margalef indices",
+        "arima": "AR/MA fitting: Yule-Walker via Durbin-Levinson, innovations algorithm, CSS log-likelihood",
+        "astrobiology": "Astrobiology: habitable zone edges, stellar luminosity, equilibrium temperature, Q10 metabolism",
+        "astronomy": "Astronomy: Julian date, sidereal time, solar declination, day length, Kepler solver, magnitudes",
+        "atmospheric_chemistry": "Atmospheric chemistry: Dobson units, photolysis rate, steady-state OH, CO2 forcing, OH lifetime",
+        "auction": "Auctions: first- and second-price winners, English, Dutch and all-pay revenue, VCG, bid shading",
+        "autograd_ops": "Backpropagation primitives: gradients of add, multiply, exp, log, ReLU, sigmoid, tanh, power",
+        "automl": "Hyperparameter search: successive halving, Hyperband brackets, top-k promotion, Latin hypercube",
+        "autonomous_vehicles": "Driving safety: safe following and braking distance, time to collision, headway, GPS HDOP error",
+        "aviation": "Aircraft performance: lift and drag, Breguet range and endurance, indicated vs true airspeed",
+        "battery": "Batteries: state of charge, C-rate, Peukert capacity, cycle degradation, internal resistance",
+        "behavioral_economics": "Behavioral economics: prospect theory, Prelec weighting, hyperbolic and beta-delta discounting",
+        "bioinformatics": "Sequence basics: GC content, Wallace-rule melting temperature, Phred quality, coverage depth",
+        "biomechanics": "Biomechanics: joint torque, limb inertia, stride length, walking energy cost, Hill muscle force",
+        "biomedical": "Clinical formulas: cardiac output, mean arterial pressure, Du Bois BSA, Cockcroft-Gault GFR",
+        "blockchain": "Blockchain metrics: reward halving, mining difficulty, gas cost, attack odds, TPS, staking APY",
+        "bloom_counting": "Counting Bloom filter: add, remove, membership, count estimate, false-positive rate, optimal k",
+        "boolean_algebra": "Boolean logic: AND/OR/XOR/implies/iff, truth tables, DNF and CNF evaluation, majority, parity",
+        "brewing": "Beer brewing: gravity to Plato, ABV, attenuation, Tinseth IBU, Morey SRM color, strike water",
+        "bryology": "Moss and peatland ecology: Sphagnum water holding, growth rate, carbon and peat accumulation",
+        "cache": "Time-to-live cache: put/get with expiry, oldest-entry eviction at capacity, hit-rate tracking",
+        "cardiology": "Cardiac physiology: cardiac output, stroke volume, ejection fraction, MAP, SVR, Fick principle",
+        "category_theory": "Functional list combinators: map, filter, left/right fold, compose, zip, scan, take/drop while",
+        "causal": "Causal inference: ATE/ATT, propensity scores, IPW, difference-in-differences, RD, IV, Cohen's d",
+        "cellular": "Cellular automata: Conway's Game of Life, Wolfram elementary rules, density, still-life test",
+        "ceramics": "Ceramics and glass: Weibull failure probability, thermal shock, porosity, Archimedes density",
+        "chaos": "Chaos theory: logistic, H\u00e9non and tent maps, Lorenz orbits, Lyapunov exponent, bifurcations",
+        "checksum": "Checksums and check digits: Adler-32, Fletcher-16, Luhn, Verhoeff, ISBN, XOR, parity, Internet",
+        "climate": "Weather formulas: Rothfusz heat index, NWS wind chill, Magnus dew point, Tetens vapor pressure",
+        "clustering_metrics": "Clustering quality: Davies-Bouldin, Calinski-Harabasz, adjusted Rand index, purity, inertia",
+        "color": "Color conversion: RGB to HSL/HSV and back, hex encode and decode, blending, distance, grayscale",
+        "color_check": "WCAG text accessibility: relative luminance, contrast ratio, AA pass/fail, text over images",
+        "color_science": "Colorimetry: CIE76 delta E, Lab to LCh, WCAG luminance and contrast, colour temperature, CRI",
+        "column_rank": "Column-name matching: ranks candidates against a hint by edit and Dice similarity, word overlap",
+        "combinatorial": "Combinatorial optimization: 0/1 knapsack, greedy TSP, first-fit bins, Kadane, LIS, coin change",
+        "combustion": "Combustion: stoichiometric air-fuel, equivalence ratio, flame temperature, Carnot efficiency",
+        "composites": "Composite materials: rule of mixtures, Halpin-Tsai, fiber volume fraction, void content",
+        "concrete": "Concrete mix and strength: Abrams' law, water-cement ratio, Nurse-Saul maturity, ACI modulus",
+        "conformal": "Split conformal prediction: calibration quantile, symmetric and normalized intervals, coverage",
+        "contest_strategy": "Motorsport pit strategy: Monte Carlo race simulation with common random numbers, podium odds",
+        "continuous_batching": "LLM serving: KV-cache admission, preemption scores, chunked prefill, time to first token",
+        "contrastive_learning": "Self-supervised losses: InfoNCE, NT-Xent, triplet margin, VICReg, Barlow Twins, MoCo/BYOL EMA",
+        "control": "PID and bang-bang control; first-order step and ramp response, settling time, overshoot",
+        "convex": "Gradient descent, box-projected descent, Adam, Armijo backtracking, L1 soft-thresholding",
+        "copula": "Gaussian copula sampling, Spearman and Kendall tau-b rank correlation, normal CDF and quantile",
+        "correlation": "Cholesky correlated-normal draws; inverse CDFs (normal, triangular, lognormal, Weibull) for LHS",
+        "corrosion": "Corrosion and pitting rates, Nernst and Tafel equations, cathodic protection, service life",
+        "cosmology": "Hubble distances, redshift, lookback time, critical density, Schwarzschild radius, Wien peak",
+        "cost_router": "Inference routing: latency-cost tradeoff, GPU or CPU, quantized or full, MoE or dense, cascade",
+        "counter_rng": "Philox4x64-10 counter-based random numbers: uniform, Bernoulli, exponential, Box-Muller normal",
+        "cryogenics": "Cryogenics: Joule-Thomson cooling, Carnot COP, liquefaction yield, boil-off rate, heat leak",
+        "cryology": "Permafrost and ice: Stefan active-layer depth, frozen-soil conductivity, thermokarst subsidence",
+        "cryptanalysis": "Classical ciphers: index of coincidence, Friedman key length, Kasiski, chi-squared, entropy",
+        "currency": "Time value of money: compound and continuous interest, annuities, amortization, EAR, rule of 72",
+        "cytology": "Cell biology: nuclear-cytoplasmic ratio, doubling time, mitotic index, viability, apoptosis",
+        "cytometry": "Flow cytometry: percent positive, staining index, CD4/CD8 ratio, spillover compensation, LOD",
+        "data.dataframe": "Columnar data frame: select, filter, sort, group-by aggregates, inner merge, describe, CSV/JSON",
+        "database": "In-memory tables: insert, where filters, sum/mean/min/max/count, sort, inner join, group-by",
+        "decision_analysis": "Decision criteria: expected value and utility, maximin, maximax, Hurwicz, minimax regret, EVPI",
+        "degradation_state": "Two-state Kalman filter for race pace and tyre-degradation slope from lap times, fuel-corrected",
+        "dendrochronology": "Tree rings: ring-width index, exponential detrending, EPS, mean sensitivity, crossdating t-test",
+        "dendrology": "Trees: hypsometer height, crown area, competition factor, form quotient, allometric biomass",
+        "dentistry": "Dental indices: DMFT, plaque and gingival index, attachment and bone loss, anesthesia dosing",
+        "dependency": "Dependency graphs: Kahn topological sort, cycle detection, transitive closure, conflicts",
+        "differentiate": "Finite differences: forward, backward and central, second derivative, polynomial derivative",
+        "diffusion_models": "Diffusion noise schedules: linear and cosine, DDPM posterior, DDIM step, SNR, EDM scaling",
+        "dimensionality": "Principal component analysis by power iteration with deflation, plus covariance and projection",
+        "dimensions": "Unit typing for table columns (count, currency, rate, ratio); checks formulas and aggregates",
+        "discrete_event.contract": "Shared checks for discrete-event simulation: finiteness, tolerances, event order, limits",
+        "discrete_event.queue_sim": "Seeded M/M/1 and M/M/c queue simulation with exponential draws, plus exact steady-state values",
+        "discrete_event.replicate": "Independent replications with Student-t confidence intervals, checked against exact M/M/1",
+        "discrete_event.resource": "Deterministic multi-server priority queue: replays arrivals and service times, reports waits",
+        "discrete_event.warmup": "Warm-up truncation by MSER batch means, with a before/after audit of initialization bias",
+        "distillation": "Distillation column design: relative volatility, Underwood, Fenske, Gilliland, McCabe-Thiele",
+        "distributed_collectives": "Multi-GPU communication estimates: ring and tree all-reduce steps, alpha-beta latency, overlap",
+        "document_layout": "Page layout from ink masks: text line and column boxes, density grid, column and table scores",
+        "dosimetry": "Radiation dose: absorbed, equivalent and effective dose, decay, kerma, tenth-value layer",
+        "drones": "Drone sizing: thrust-to-weight, hover power, flight time, range, disk loading, tip speed",
+        "earth": "Great-circle geodesy: haversine distance, bearing, midpoint, destination point, bounding box",
+        "ecohydrology": "Water and ecosystems: Gash interception, Priestley-Taylor transpiration, baseflow index, runoff",
+        "ecology": "Population and community ecology: logistic growth, Lotka-Volterra, Shannon, Simpson, Jaccard",
+        "economic_indicators": "Macro indicators: GDP growth, inflation, Gini, Phillips curve, Okun's law, Fisher equation, PPP",
+        "ecophysiology": "Animal energetics: Kleiber scaling, Q10, heat conductance, Fick cardiac output, aerobic scope",
+        "election": "Voting methods: plurality, Borda count, Condorcet, Copeland, instant runoff, approval voting",
+        "electrical": "Circuit basics: Ohm's law, series and parallel resistance, RC and RLC circuits, power factor",
+        "electrochemistry": "Electrochemical cells: Nernst potential, Faraday deposition, Tafel slope, corrosion, capacity",
+        "electrostatics": "Electrostatics: Coulomb force, point-charge field and potential, capacitance, flux, dielectrics",
+        "elevator": "Elevator sizing: trip time, handling capacity, probable stops, motor power, rope safety factor",
+        "encoding": "Categorical encoders: label, one-hot, ordinal, binary and frequency encoding with vocabularies",
+        "encryption_modes": "Block cipher modes: ECB, CBC, CTR and GCM sizes, PKCS#7 padding, AEAD overhead, throughput"
+      },
+      "excluded_functions": [
+        "column_rank.run_column_rank",
+        "combinatorial.tsp_greedy",
+        "contest_strategy.option_board",
+        "dependency.dependency_depth",
+        "dimensionality.power_iteration"
+      ],
+      "exclusion_reasons": {
+        "column_rank.run_column_rank": "takes a full JSON request string; reached through the column-ranking session, not a plain in-process call",
+        "combinatorial.tsp_greedy": "reads its distance argument as a square matrix; a non-square nested list is not expressible as a length rule",
+        "contest_strategy.option_board": "requires its per-entrant arrays to share one length; a mismatch is not expressible as a length rule",
+        "dimensionality.power_iteration": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+        "dependency.dependency_depth": "walks an adjacency list that must be acyclic and in range; not expressible as a length rule"
+      },
       "request_types": [
         "library_execute"
       ],
@@ -193,7 +371,7 @@
     },
     "algenta-general-b": {
       "title": "General & domain modules (ensembles .. model_compare)",
-      "summary": "General and domain kernels, alphabetical chunk",
+      "summary": "Domain kernels from ensembles to model compare",
       "modules": [
         "ensembles",
         "entomology",
@@ -297,7 +475,122 @@
         "model_compare"
       ],
       "status": "planned",
-      "excluded_functions": [],
+      "card_example": [
+        "epidemiology",
+        "herd_immunity_threshold",
+        [
+          4
+        ]
+      ],
+      "card_example_note": "herd immunity threshold, 1 - 1/R0",
+      "module_descriptions": {
+        "ensembles": "Model ensembling: majority and weighted voting, prediction blending, ridge stacking",
+        "entomology": "Insect science: degree days, exponential growth, generation time, Simpson diversity, biocontrol",
+        "epidemiology": "Epidemic models: SIR and SEIR steps, R0, herd immunity threshold, final size, doubling time",
+        "ergonomics": "Ergonomics: NIOSH lifting equation, noise dose, decibel addition, Fitts' and Hick's laws, BMI",
+        "esrnn.bias_correction": "Forecast bias correction: mean of holdout residuals, added as a constant to every forecast step",
+        "esrnn.global_residual": "Forecast residual correction: Holt, damped or Theta base by in-sample MAE, scaled windows",
+        "esrnn.per_frequency": "Ridge-regression forecast correction fitted per data frequency over pooled residual windows",
+        "etiology": "Risk and diagnostics: relative risk, odds ratio, attributable risk, NNT, sensitivity, PPV, NPV",
+        "evaluation.binning": "Calibration binning: equal-width and equal-count bins, per-bin counts, assignments and edges",
+        "evaluation.contract": "Status codes, input validation, binning policy names and work budget for calibration metrics",
+        "evaluation.gates": "Release gates: metric regression with tolerance and direction, population stability index drift",
+        "evaluation.resample": "Seeded percentile bootstrap confidence intervals for Brier, log-loss, accuracy and ECE",
+        "evaluation.scores": "Brier score with Murphy decomposition, log-loss, ECE and MCE, reliability diagram data",
+        "evaluation_feedback": "Model monitoring: rolling accuracy, KS and PSI drift terms, prediction shift, streaming AUC",
+        "evolutionary_search": "Seeded genetic algorithm: elitism, tournament selection, uniform crossover, Gaussian mutation",
+        "exactnum.eft": "Error-free transformations and double-double arithmetic: two-sum, two-product, compensated sums",
+        "exactnum.lstsq": "Least squares by Householder QR in double-double precision, polynomial fits, float64 controls",
+        "execution_planner": "Serving heuristics: op fusion score, roofline device placement, KV eviction, batching, prefetch",
+        "explainability": "Model explanations: permutation importance, partial dependence, KernelSHAP coalition weights",
+        "fault_tolerance": "Training fault tolerance: optimal checkpoint interval, failure probability, gradient staleness",
+        "feature_engineering": "Feature transforms: min-max, z-score, robust scaling, Box-Cox, Yeo-Johnson, target encoding",
+        "feature_selection": "Feature selection: variance threshold, correlation filter, F-test, info gain, forward selection",
+        "fermentation": "Fermentation: Gay-Lussac ethanol yield, ABV from gravity, Monod growth, oxygen transfer rate",
+        "filepath.pathlib": "Path strings: join, basename, dirname, extension, stem, split, normalize; no filesystem access",
+        "fire_safety": "Fire safety: fire load density, heat release rate, Thomas flashover, smoke layer, egress time",
+        "fisheries": "Fish stocks: CPUE, Schaefer surplus production and MSY, mortality rates, von Bertalanffy growth",
+        "fluid": "Fluid flow: Reynolds and Mach numbers, Bernoulli, Darcy-Weisbach loss, drag, buoyancy, Stokes",
+        "food_science": "Food science: water activity, pH, Q10 shelf life, D and z value thermal death time, moisture",
+        "forecast_metrics": "Forecast scoring: Brier skill score, log loss, reliability bins, ECE, Murphy decomposition",
+        "forecasting.backtest": "Rolling-origin backtests over expanding or sliding windows; MAE, RMSE, MAPE, sMAPE and MASE",
+        "forecasting.bagging": "Bagged forecasts (Bergmeir-Hyndman): moving-block bootstrap of the remainder, refit and average",
+        "forecasting.contract": "Shared forecasting input checks: series, horizon, period, parameters, tolerances, quantiles",
+        "forecasting.fitted": "Fitted smoothing: Holt and damped trend with fitted initial state, seasonal ETS, Theta, DOTM",
+        "forecasting.hierarchy": "Hierarchical forecast reconciliation: bottom-up and proportional top-down, plus coherence audit",
+        "forecasting.intermittent": "Intermittent demand: Croston, SBA and SBJ rate forecasts, Syntetos-Boylan demand classification",
+        "forecasting.origin_select": "Method selection by paired rolling-origin errors, with a paired-t tournament that blends ties",
+        "forecasting.point": "Point forecasts: simple, Holt and seasonal exponential smoothing, Theta, Yule-Walker AR, naive",
+        "forecasting.pool": "Holdout-scored pool of SES, Holt, damped, Theta, ETS and naive forecasts: pick best or blend",
+        "forecasting.select": "Per-series choice among SES, damped trend and Theta by in-sample error, or inverse-MAE blend",
+        "forensics": "Forensics: Newton cooling time of death, Widmark blood alcohol, bullet drop, bloodstain angle",
+        "formal_logic": "Propositional logic: connectives, modus ponens and tollens, syllogisms, tautology checks",
+        "fused_kernels": "Fused transformer math: masked attention scores, softmax, LayerNorm, bias plus ReLU/GELU, RoPE",
+        "fuzzy_logic": "Fuzzy logic: triangular, trapezoidal and Gaussian membership, min/max operators, defuzzifiers",
+        "game_physics": "Game physics: Euler and Verlet motion, elastic collisions, restitution, projectiles, springs",
+        "game_theory": "Game theory: 2x2 mixed Nash equilibrium, minimax, dominated strategies, iterated PD, Shapley",
+        "gaussian_process": "Exact Gaussian process regression, RBF or Matern 3/2 kernel: Cholesky fit, mean and variance",
+        "gbdt": "Gradient-boosted regression trees with squared loss, depth-limited splits and row subsampling",
+        "generation_loop": "Token sampling for text generation: temperature, top-k, top-p, min-p, typical, eta, penalties",
+        "genomics": "Genome statistics: GC content, coverage depth, N50, SNP density, indel rate, Phred error rate",
+        "glaciology": "Glaciers: mass balance, Glen's flow law, basal shear stress, degree-day melt, sea-level rise",
+        "greenhouse": "Greenhouse climate: conduction heat loss, solar gain, ventilation, CO2 enrichment, light hours",
+        "hematology": "Blood indices: hematocrit, MCV, MCH, MCHC, RDW, INR, oxygen capacity, relative viscosity, ESR",
+        "hmm": "Hidden Markov models: log-space forward-backward, Viterbi decoding, Baum-Welch (EM) training",
+        "horticulture": "Crop physiology: light-response photosynthesis, growth and assimilation rates, VPD, chill hours",
+        "hvac": "HVAC loads: sensible and latent heat, cooling tons, air changes, duct velocity, degree days",
+        "hybrid_reasoning": "ML and simulation blending, feasibility gating, rule penalties, rollout values, uncertainty",
+        "hydraulics": "Fluid power: Pascal's law, cylinder force and velocity, pump displacement, accumulator sizing",
+        "hydrology": "Hydrology and hydraulics: Manning, Darcy-Weisbach, rational method, SCS curve number",
+        "hydrometeorology": "Rainfall-runoff: SCS curve number, Green-Ampt infiltration, Palmer drought index, Gumbel floods",
+        "hydroponics": "Hydroponic nutrients and lighting: EC/TDS conversion, ppm dosing, pH acid dose, DLI, VPD, ROI",
+        "imbalance": "Imbalanced-class resampling: SMOTE, seeded random over- and undersampling, balanced weights",
+        "immunology": "Immunology: antibody titer, binding equilibrium, T-cell growth, vaccine efficacy, herd immunity",
+        "information_theory": "Shannon entropy, joint and conditional entropy, mutual information, KL divergence, BSC capacity",
+        "insurance": "Actuarial pricing: pure and gross premium, loss and combined ratios, Buhlmann credibility",
+        "integrate": "Numerical integration: trapezoid, Simpson, Romberg, cumulative trapezoid, Gauss-Legendre",
+        "interpolate": "Interpolation: linear, nearest neighbor, natural cubic spline, Lagrange, linear extrapolation",
+        "inventory": "Inventory planning: EOQ, reorder point, safety stock, newsvendor, ABC classification, fill rate",
+        "kalman": "Kalman filter predict and update steps, a 1D smoother, and small dense matrix utilities",
+        "laundry": "Laundry science: water and detergent dosing, wash heating energy, spin g-force, drying time",
+        "lidar": "Airborne LiDAR geometry: time-of-flight range, swath width, footprint, density, canopy height",
+        "lidar_mapping": "LiDAR mapping: canopy height model, leaf area index, ground filtering, beam footprint, RMSE",
+        "limnochemistry": "Freshwater chemistry: alkalinity, ionic strength, Davies activity, calcite saturation, redox pe",
+        "limnology": "Lake science: retention time, flushing rate, Carlson trophic state, Secchi depth, DO saturation",
+        "linear_models": "Logistic regression by Newton (IRLS) with standard errors, elastic net by coordinate descent",
+        "linear_programming": "Two-variable linear programs by vertex enumeration, RHS sensitivity, northwest corner transport",
+        "linguistics": "Readability (Flesch, Gunning fog, ARI, Coleman-Liau), TTR, Yule's K, Heaps' and Zipf's laws",
+        "logging.logger": "Structured logging: one JSON line per event with debug, info, warning and error levels",
+        "logic_circuit": "Digital logic: basic gates, half, full and ripple-carry adders, 2:1 multiplexer, 2-to-4 decoder",
+        "logistics": "Supply-chain metrics: fill rate, perfect orders, inventory turns, days of supply, on-time rate",
+        "lora_adapters": "LoRA, QLoRA, DoRA, prefix and prompt tuning: forward terms, merged weights, gradients, scaling",
+        "lottery": "Lottery math: combinations, permutations, odds, expected value, house edge, annuity vs lump sum",
+        "marine": "Oceanography: seawater density, wave speed and period, Coriolis, Ekman depth, stratification",
+        "materials": "Materials: elastic moduli, stress, strain, thermal expansion, Basquin fatigue, beam deflection",
+        "metabolomics": "Metabolomics: log2 fold change, pathway enrichment, Tanimoto similarity, flux ratios, VIP",
+        "metallurgy": "Metallurgy: Hall-Petch, Johnson-Cook, carbon equivalent, Jominy, Avrami, Hollomon-Jaffe",
+        "meteorology": "Weather: Magnus dew point, wet-bulb estimate, heat index, wind chill, potential temperature",
+        "metrics_agg": "Metrics: counters, gauges, histograms with exact percentiles, rates, throughput, latency stats",
+        "microbiology": "Microbial growth and inactivation: doubling time, Monod kinetics, CFU, MIC, D-value, z-value",
+        "mineralogy": "Mineralogy: density, specific gravity, Bragg d-spacing, formula weight, saturation index, Mohs",
+        "mining": "Mining: ore grade, strip ratio, recovery, Bond work index, cut-off grade, net smelter return",
+        "mixture_models": "Gaussian mixture models: EM with k-means++ seeding, 1D and diagonal fits, responsibilities, BIC",
+        "mixture_of_experts": "Mixture-of-experts routing: gate scores, load-balance and z-loss, capacity, dispatch, Soft-MoE",
+        "ml.classifiers": "L1 and L2 distances, cosine similarity, sigmoid, softmax, k-nearest-neighbour voting, k-means",
+        "ml.clustering": "K-means clustering (Lloyd's algorithm): centroids, labels, inertia and silhouette score",
+        "ml.knn": "K-nearest neighbours: majority and weighted voting, regression, leave-one-out choice of k",
+        "ml.metrics": "Model evaluation: accuracy, confusion matrix, precision, recall, F1, MSE, RMSE, MAE, R\u00b2",
+        "ml.preprocessing": "Scaling (min-max, z-score, robust), one-hot encoding, polynomial features, train/test split",
+        "ml.random_forest": "Random forest regression over bootstrapped stumps: out-of-bag R\u00b2, permutation importance",
+        "model_abi": "Model layout arithmetic: tensor strides, data-type byte widths, offsets, head dims, GQA, RoPE",
+        "model_compare": "Paired model comparison: bootstrap CIs (means, Sharpe), exact McNemar, Diebold-Mariano"
+      },
+      "excluded_functions": [
+        "gbdt.gbdt_predict"
+      ],
+      "exclusion_reasons": {
+        "gbdt.gbdt_predict": "walks a tree encoding that must be well-formed; a malformed tree is not expressible as a length rule"
+      },
       "request_types": [
         "library_execute"
       ],
@@ -309,7 +602,7 @@
     },
     "algenta-general-c": {
       "title": "General & domain modules (model_interop .. risk)",
-      "summary": "General and domain kernels, alphabetical chunk",
+      "summary": "Domain kernels from model interop to risk",
       "modules": [
         "model_interop",
         "model_parallel",
@@ -413,6 +706,118 @@
         "risk"
       ],
       "status": "planned",
+      "card_example": [
+        "operations_research",
+        "eoq_quantity",
+        [
+          1000,
+          50,
+          2
+        ]
+      ],
+      "card_example_note": "economic order quantity, units",
+      "module_descriptions": {
+        "model_interop": "Model file math: safetensors offsets, GGUF metadata size, ONNX FLOPs, RoPE scaling, perplexity",
+        "model_parallel": "Parallel training math: pipeline bubble, ring all-reduce bytes, ZeRO-3 memory, DDP overhead",
+        "model_router": "Model routing: request fit, endpoint load, fallback triggers, ensemble weights, latency tiers",
+        "model_selection": "Cross-validation splits: k-fold, stratified k-fold, walk-forward, purged/embargoed windows",
+        "moe_production": "Mixture-of-experts serving: token drop rate, expert load imbalance, routing entropy, capacity",
+        "moe_routing": "Mixture-of-experts gating: noisy top-k, Switch top-1, smooth top-2, expert-choice, cosine",
+        "multi_objective": "Multi-objective ranking: Pareto dominance and fronts, weighted sums, TOPSIS, ideal and nadir",
+        "multimodal": "Vision and audio math: ViT patches, image tokens, mel scale, STFT magnitude, CLIP similarity",
+        "museum": "Collection care: lux-hours, UV exposure, preservation index, climate stability, valuation",
+        "music_theory": "Music theory: MIDI-to-Hz, cents and semitones, scale membership, just intonation, tempo",
+        "mycology": "Mycology: spore dispersal, mycelial growth, Vanderplank epidemic rate, germination probability",
+        "nanotechnology": "Nanoscale physics: surface-to-volume, quantum confinement, mean free path, Stokes-Einstein",
+        "nephrology": "Kidney function: CKD-EPI eGFR, Cockcroft-Gault, FENa, TTKG, osmolar and free-water clearance",
+        "neuropharmacology": "CNS drug action: brain receptor occupancy, Cheng-Prusoff Ki, brain-to-plasma ratios, Emax dose",
+        "neurophysics": "Neuron biophysics: Nernst and Goldman potentials, leaky integrate-and-fire, 1/f spectral power",
+        "nlp": "Text basics: tokenization, n-grams, TF-IDF, cosine and Jaccard similarity, word counts",
+        "nuclear": "Nuclear physics: decay and half-life, activity, mass defect, Q-value, dose fall-off, shielding",
+        "numerical_stability": "Stable numerics: log-sum-exp, softmax, Kahan summation, Welford mean and variance, softplus",
+        "numismatics": "Coin collecting: melt value and premium, troy-ounce bullion, scarcity, survival, annual return",
+        "numpy_ops": "Element-wise math: clip, stable log(1+x) and exp(x)-1, sign, Heaviside step, sinc, hypotenuse",
+        "nutrition": "Nutrition: BMI, Mifflin-St Jeor BMR, TDEE, caloric deficit, macro split, ideal weight, VO2max",
+        "observability": "Serving telemetry: p99 latency, throughput EMA, cache miss rate, drift alert, health score",
+        "ode": "ODE solvers: Euler and RK4 integration, plus exact exponential decay and logistic growth",
+        "online_learning": "Streaming updates: EMA, online SGD, perceptron, passive-aggressive, AdaGrad, FTRL, DDM drift",
+        "operations_research": "Operations research: EOQ, newsvendor critical ratio, Little's law, M/M/1 queue length and wait",
+        "ophthalmology": "Eye optics: Snellen acuity, lensmaker's equation, Goldmann pressure, Ferry-Porter flicker",
+        "optics": "Optics: Snell's law, critical and Brewster angles, thin lens, Fresnel reflectance, Airy limit",
+        "optimization.assignment": "Assignment problem: Hungarian shortest augmenting paths with dual proofs, forbidden pairs",
+        "optimization.explain": "Linear program diagnostics: binding rows, shadow prices, infeasibility cores, cost breakdown",
+        "optimization.flow": "Network flow: Dinic max flow with min cut, min-cost flow by successive shortest paths",
+        "optimization.integer": "Mixed-integer linear programs: branch and bound on LP relaxations, 0/1 knapsack",
+        "optimization.linear": "Linear programming: tableau simplex with Bland's rule, duals, reduced costs, RHS ranging",
+        "optimization.model": "Optimization models: bounded continuous, integer and binary variables, expression trees",
+        "optimization.multiobjective": "Multi-objective: nondominated sort, crowding, NSGA-II, Monte Carlo hypervolume, lexicographic",
+        "optimization.quadratic": "Convex quadratic programming: active-set solve, KKT verification, convexity check, bounds",
+        "optimization.robust": "Robust linear programs: scenario sampling, wait-and-see optima with CVaR, min-max, chance rates",
+        "optimization.routing": "Vehicle routing: TSP 2-opt, Or-opt and iterated local search, capacity and time-window VRP",
+        "optimization.scheduling": "Scheduling: job-shop tabu search, RCPSP serial schedule generation, critical-path bounds",
+        "optimization_meta": "Simulated annealing, particle swarm, hill climbing and random search on built-in test functions",
+        "optimize": "Scalar optimization: golden section, Brent, bisection, Newton, gradient descent, line fit",
+        "optmodel.formulation": "LP and MILP formulations: dimension and bound checks, lowering to nonnegative variables, audits",
+        "optmodel.judge": "Benchmark judging: solve a formulation and compare its objective to a known optimum",
+        "optmodel.solve": "Formulation solving: simplex or branch and bound, optimality certificates, infeasibility cores",
+        "orthodontics": "Orthodontics: tooth movement rate, wire beam forces, Bolton ratio, Pont's index, force decay",
+        "packaging": "Packaging: box geometry, McKee compression, stacking load, cushion G, Arrhenius shelf life",
+        "paleontology": "Paleontology: C-14, K-Ar and U-Pb dating, Margalef diversity, extinction rates, femur body mass",
+        "palynology": "Palynology: exotic-spike pollen concentration, accumulation rate, tree pollen ratio, R-values",
+        "pandas_groupby": "Group aggregation: Welford mean and variance updates, running min, max, sum, approximate median",
+        "paper_science": "Paper and pulp: basis weight, bulk, tear, tensile and burst indices, kappa lignin, pulp yield",
+        "pattern": "String utilities: glob matching, template substitution, split, join, trim, pad, replace, count",
+        "pde": "Heat and wave equations in 1D by explicit finite differences, 2D Laplace by Jacobi, CFL limits",
+        "pedology": "Soil formation indices: base saturation, clay illuviation, Munsell redness, profile development",
+        "pension": "Retirement planning: replacement ratio, defined benefit, defined contribution, annuity factor",
+        "perfumery": "Fragrance formulation: concentration, dilution, note durations, accord balance, cost per ml",
+        "persistence": "In-memory key-value store, integer keys to numeric values: put, get, delete, snapshot, restore",
+        "pest_control": "Integrated pest management: economic threshold, injury level, trap catch rate, residual decay",
+        "pharmacology": "Pharmacokinetics and dose-response: Hill equation, therapeutic index, clearance, loading dose",
+        "photonics": "Optics: Snell's law, critical and Brewster angles, Fresnel reflectance, Beer-Lambert, Rayleigh",
+        "photovoltaics": "Solar PV: cell efficiency, fill factor, temperature correction, energy yield, performance ratio",
+        "physics": "Classical mechanics: kinematics, energy, momentum, projectile motion, work, elastic collisions",
+        "phytochemistry": "Plant assays: Folin-Ciocalteu phenolics, AlCl3 flavonoids, pH-differential anthocyanins, DPPH",
+        "pipeline": "List processing primitives: map, filter, reduce, batch, sliding window, flatten, zip, unique",
+        "pipelines": "Preprocessing chains: standardize, min-max, log1p, clip, median imputation, inverse transform",
+        "plasma_physics": "Plasma physics: Debye length, plasma frequency, Larmor radius, Alfv\u00e9n speed, Lawson criterion",
+        "pls": "Partial least squares regression (PLS1) by NIPALS: fit, predict, R-squared",
+        "plumbing": "Pipe hydraulics: Reynolds number, Darcy-Weisbach head loss, pump power, sizing, water hammer",
+        "pneumatics": "Compressed air: Boyle's law, orifice flow, compressor power, cylinder force, receiver volume",
+        "polymer": "Polymer science: molecular weight averages, PDI, Mark-Houwink, Fox equation, Flory-Huggins",
+        "polynomial": "Polynomials: Horner evaluation, multiply, derivative, integral, composition, quadratic roots",
+        "population": "Population dynamics: exponential, logistic, Lotka-Volterra predator-prey and competition models",
+        "positional_encoding": "Transformer position encodings: sinusoidal, RoPE, ALiBi, T5 relative buckets, xPos scaling",
+        "power_systems": "AC power: active, reactive and apparent power, power factor, transformer ratio, line loss",
+        "printing": "Print production: DPI to LPI, pixel count, bleed area, spine width, ink coverage, CIE76 delta E",
+        "privacy": "Differential privacy: Laplace and Gaussian noise, exponential mechanism, randomized response",
+        "procurement": "Procurement: EOQ, reorder point, safety stock, inventory turnover, cost of ownership, scoring",
+        "progexec.contract": "Operation codes, operand kinds and status names for the FinQA arithmetic program executor",
+        "progexec.exec": "FinQA program execution: arithmetic, greater-than, table max/min/sum/average, step references",
+        "progexec.roundexact": "Exact half-to-even decimal quantization at a power-of-ten scale, matching Python bit for bit",
+        "project_management": "Earned value management (SV, CV, SPI, CPI, EAC, ETC, VAC, TCPI), PERT estimate, schedule float",
+        "proteomics": "Protein mass spectrometry: molecular weight, pI, extinction, m/z, coverage, PAI, emPAI, FDR",
+        "protocol": "Protocol Buffers wire format: base-128 varints, ZigZag integers, tagged fields, message codec",
+        "psychometrics": "Test theory and IRT: item difficulty, KR-20, Cronbach's alpha, SEM, z, T and stanine, 1PL, 2PL",
+        "pulmonology": "Lung function: minute and alveolar ventilation, FEV1/FVC, alveolar gas equation, compliance",
+        "quantum": "Qubit state vectors: Hadamard, Pauli X and Z gates, measurement, Bloch sphere, Bell state",
+        "quantum_computing": "Quantum computing estimates: gate error, surface-code qubits, quantum volume, Grover, Shor",
+        "queue_ds": "Min-heap priority queue and fixed-capacity circular buffer with push, pop and peek",
+        "queueing": "Queueing theory: M/M/1 and M/M/c metrics, Erlang B blocking, Erlang C waiting, Little's law",
+        "radar": "Radar: range equation, Doppler shift, unambiguous range and velocity, resolution, gain, noise",
+        "radiometry": "Radiometry: Planck spectral radiance, Stefan-Boltzmann, photon energy and flux, solid angle",
+        "random_utils": "Random sampling: weighted choice, Fisher-Yates shuffle, permutation, bootstrap, stratified",
+        "real_estate": "Real estate metrics: cap rate, GRM, cash-on-cash, DSCR, LTV, NOI, mortgage payment, break-even",
+        "recommender": "Collaborative filtering: user cosine similarity, k-NN rating prediction, popularity, RMSE",
+        "refrigeration": "Refrigeration cycles: COP and Carnot limits, superheat, subcooling, compressor work, EER, SEER",
+        "regex_engine": "Regex matching with wildcards, quantifiers, anchors and character classes; search, find, split",
+        "reinforcement": "Reinforcement learning: Q-learning, SARSA, value iteration, policy evaluation, epsilon-greedy",
+        "reliability": "Reliability: exponential and Weibull survival, MTBF, availability, series, parallel, k-of-n",
+        "rerank_eval": "Ranking metrics: precision, recall, hit rate, MRR, MAP and NDCG at k, pairwise margin accuracy",
+        "reservoir": "Streaming samplers: Vitter's Algorithm R, Efraimidis-Spirakis weighted reservoir, bootstrap",
+        "rheology": "Rheology: shear stress and rate, power-law and Bingham fluids, Maxwell relaxation, creep",
+        "risk": "Portfolio risk: VaR, CVaR, drawdown, Sharpe, Sortino, Calmar, information ratio, beta, alpha"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -425,7 +830,7 @@
     },
     "algenta-general-d": {
       "title": "General & domain modules (rlhf_dpo .. wind_energy)",
-      "summary": "General and domain kernels, alphabetical chunk",
+      "summary": "Domain kernels from rlhf dpo to wind energy",
       "modules": [
         "rlhf_dpo",
         "robotics",
@@ -529,7 +934,135 @@
         "wind_energy"
       ],
       "status": "planned",
-      "excluded_functions": [],
+      "card_example": [
+        "set_ops",
+        "jaccard_index",
+        [
+          [
+            1,
+            2,
+            3,
+            4
+          ],
+          [
+            3,
+            4,
+            5,
+            6
+          ]
+        ]
+      ],
+      "card_example_note": "Jaccard similarity",
+      "module_descriptions": {
+        "rlhf_dpo": "RLHF losses: DPO, IPO, ORPO, PPO clipping, Bradley-Terry reward, GAE and GRPO advantages",
+        "robotics": "Two-link arm kinematics, one Jacobian entry, PID control, dead reckoning, odometry, diff drive",
+        "robustness": "Sensitivity on built-in test functions: one-at-a-time, Morris, Sobol first-order, tornado data",
+        "root_finding": "Scalar roots of built-in test functions: bisection, Newton, secant, regula falsi, bracketing",
+        "rubber": "Elastomer tests: Shore A to modulus, tensile and compression set, rebound, crosslink density",
+        "scheduler_ops": "Queue scheduling: fair priority, WFQ credit, token bucket, backpressure, backoff with jitter",
+        "scheduling_algo": "CPU scheduling: FCFS, SJF, priority, time-quantum cycling, plus wait and throughput metrics",
+        "scipy_optimize_ops": "Optimizer steps: BFGS update term, Fletcher-Reeves and Polak-Ribiere CG, Armijo and Wolfe tests",
+        "scoring": "Credit scoring: logit, weight of evidence, information value, Gini from AUC, KS, score bands",
+        "security_governance": "Governance heuristics: prompt and output safety, PII sensitivity, Gaussian DP noise scale, RBAC",
+        "sedimentology": "Sediment transport: Stokes settling, Shields stress, Meyer-Peter Muller bedload, Rouse profile",
+        "seismology": "Earthquakes: Richter and moment magnitude, energy, P and S travel times, PGA, Gutenberg-Richter",
+        "semiconductors": "Device physics: carrier density, drift, resistivity, depletion width, diode and MOSFET currents",
+        "seq_nn": "LSTM and GRU cells with exact forward and backward passes, parameter counts, seeded Xavier init",
+        "series": "Forecasts: moving average, OLS trend, exponential smoothing, seasonal naive, drift, MAE, RMSE",
+        "set_ops": "Sorted-integer sets: union, intersection, difference, subset tests, Jaccard index, membership",
+        "sheet.api": "Recalculate an extracted Excel workbook and compare every formula cell against its cached value",
+        "sheet.engine": "Demand-driven topological recalculation of spreadsheet formulas with named circular references",
+        "sheet.formula": "Tokenizer and recursive-descent parser for Excel formula text with Excel operator precedence",
+        "sheet.grid": "Loads extracted workbook text into sheets, defined names, constant cells and shared formulas",
+        "sheet.refs": "A1 cell and range references: column letters, packed coordinates, absolute markers, parsing",
+        "sheet.values": "Typed cell values: Excel errors, 15-digit number formatting, wildcard and case-insensitive text",
+        "silviculture": "Forest stand metrics: basal area, site index, Scribner volume, Reineke SDI, increment, thinning",
+        "simulation": "Discrete-event simulation: schedule, pop and cancel events, run to a deadline, M/M/1 queue",
+        "sketch": "Probabilistic sketches: Count-Min Sketch frequency and HyperLogLog cardinality estimates",
+        "soil_mechanics": "Geotechnics: Terzaghi bearing capacity, consolidation, Mohr-Coulomb shear, Rankine Ka, Hazen k",
+        "soil_science": "Soil physics: porosity, water content, field capacity, wilting point, CEC, Horton infiltration",
+        "solar_energy": "Solar PV: irradiance, panel output, NOCT cell temperature, sun position, capacity factor, LCOE",
+        "sorting": "Sorting: quicksort, mergesort, heapsort, insertion, selection, bubble and counting sort",
+        "sparse": "Sparse COO matrices: from dense, matrix-vector product, addition, transpose, density, trace",
+        "sparse_numerics.csr": "CSR and CSC sparse layouts: build from triplets or dense, validate, merge duplicates, transpose",
+        "sparse_numerics.diagnostics": "Sparse matrix health: density, duplicates, NaN/Inf entries, symmetry defect, condition estimate",
+        "sparse_numerics.factor": "Direct sparse solves: pivoted LU, Cholesky for SPD systems, triangular solves, least squares",
+        "sparse_numerics.iterative": "Krylov solvers on CSR: CG, Jacobi or Gauss-Seidel preconditioned CG, CGLS, restarted GMRES",
+        "sparse_numerics.spmv": "CSR kernels: transpose and Kahan-compensated matvec, Gustavson SpGEMM, add, Frobenius norm",
+        "sparse_vector": "Sparse vectors as index/value lists: dot product, merge-add, scale, L2 norm, cosine similarity",
+        "special_functions": "Gamma, beta, digamma, incomplete gamma, erf, erfc, Bessel J0, factorials, binomial coefficients",
+        "speculative_decoding": "Speculative decoding: acceptance, expected tokens, speedup, Medusa, grammar mask, watermarking",
+        "speleology": "Cave science: calcite saturation, stalactite growth, karst spring discharge, U-Th age, radon",
+        "sports_analytics": "Sports stats: OBP, SLG, OPS, ERA, WHIP, NFL passer rating, Pythagorean wins, Elo, TS%, PER",
+        "stochastic": "Simulated paths: random walks, Brownian motion, GBM, Poisson, Ornstein-Uhlenbeck, birth-death",
+        "strategy.contract": "Strategy comparison vocabulary: status names, tolerances, shape and budget checks, RNG streams",
+        "strategy.crn": "Common random numbers: shared scenario tapes, paired policy evaluation, pairing audits",
+        "strategy.equilibrium": "Normal-form games: pure and 2x2 mixed Nash, regret matching, fictitious play, exploitability",
+        "strategy.policy": "Policies: constant, threshold, tabular, mixed and linear rules, greedy from Q, MDP evaluation",
+        "strategy.tournament": "Strategy ranking: paired t-tests, percentile bootstrap, Bonferroni, Holm or BH corrections",
+        "streaming.contract": "Sketch building blocks: keyed Philox hashing, HyperLogLog, Count-Min and KLL error bounds",
+        "streaming.distinct": "HyperLogLog distinct counting: ingest, estimate, register-wise merge, flat snapshot and restore",
+        "streaming.drift": "Stream change detection: resumable two-sided Page-Hinkley and Drift Detection Method (DDM)",
+        "streaming.frequency": "Count-Min sketch: weighted ingest, count queries with bounds, heavy hitters, merge, snapshot",
+        "streaming.quantiles": "Streaming quantiles with a KLL sketch: add, merge, rank, quantile lookup, snapshots, min/max",
+        "streaming.windows": "Rolling windows: mean, standard deviation, min, max, range, EWMA, EW variance, window summary",
+        "structs.containers": "Histogram bin counts over a value range and sorted unique values",
+        "structural": "Structural analysis: bending, shear, axial stress, beam deflection, Euler buckling, von Mises",
+        "structured_output": "Structured output scoring: JSON token validity, SQL clause order, XML depth, field recall",
+        "supply_chain": "Supply chain: bullwhip ratio, MAE, MAPE, bias, tracking signal, EPQ, fill rate, moving average",
+        "survival": "Survival analysis: Kaplan-Meier, Nelson-Aalen, log-rank test, smoothed hazard, RMST, life table",
+        "survival_analysis.base": "Right-censored survival data: validation, time ordering, risk tables, Greenwood terms, z values",
+        "survival_analysis.competing": "Competing risks: Aalen-Johansen cumulative incidence per cause, with step-function lookup",
+        "survival_analysis.cox": "Cox proportional hazards: Newton-Raphson fit with Efron ties, relative risk, Breslow baseline",
+        "survival_analysis.hazard": "Nelson-Aalen cumulative hazard with Aalen variance, log-scale band and Epanechnikov smoothing",
+        "survival_analysis.km": "Kaplan-Meier with Greenwood standard errors, log-log confidence band, median, RMST, step lookup",
+        "survival_analysis.parametric": "Weibull and lognormal maximum likelihood under right censoring: profile likelihood, EM",
+        "sustainability": "ESG metrics: transport carbon, GHG scopes 1 to 3, energy and water intensity, waste diversion",
+        "svm_kernel": "SVM kernels: linear, RBF, polynomial, sigmoid, Gram matrix, centering, alignment, PSD heuristic",
+        "svm_solver": "Support vector machine training by simplified SMO (Platt), linear and RBF kernels, prediction",
+        "taphonomy": "Fossil preservation: soft-tissue decay, bone density loss, completeness, hydraulic sorting, C:N",
+        "telecommunications": "Telecom links: Shannon capacity, Erlang-B blocking, BPSK bit error rate, noise, link margin",
+        "thermodynamics": "Thermodynamics: ideal gas law, Carnot efficiency, entropy, adiabatic and isothermal processes",
+        "timber": "Wood science: board feet, moisture content, allowable stress, moment capacity, fire charring",
+        "toxicology": "Toxicology risk: LD50 dosing, therapeutic index, hazard quotient, cancer risk, Hill response",
+        "transform": "Feature transforms: log, Box-Cox, z-score, min-max, robust and quantile scaling, rank, clamp",
+        "transportation": "Traffic analysis: density, capacity, Webster signal delay, stopping distance, headway, crashes",
+        "tribochemistry": "Sliding contacts: Archard wear, Hertz contact, flash temperature, EHD film, lambda ratio",
+        "tribology": "Friction and wear: Coulomb friction, Hertz pressure, Archard wear, Sommerfeld number, Stribeck",
+        "ultrasonics": "Ultrasound physics: impedance, reflection, attenuation, Doppler shift, PRF, resolution, TI",
+        "units": "Unit conversion for length, mass, temperature, time, area, volume, speed and data sizes",
+        "urban_planning": "Urban planning ratios: density, floor area ratio, lot coverage, walk decay, V/C, affordability",
+        "vector_search": "Approximate nearest-neighbour math: HNSW levels, IVF and PQ distances, LSH buckets, recall@k",
+        "vector_similarity": "Distance and similarity from precomputed sums: cosine, Euclidean, Minkowski, Hamming, Jaccard",
+        "veterinary": "Veterinary dosing and fluids: mg/kg dose, fluid deficit and rate, RER calories, MAC, gestation",
+        "video_accessibility": "WCAG AA text checks for video frames and subtitle bands: worst-case contrast, colour, backplate",
+        "video_color": "Clip colour features: frame and clip mean RGB, dominant colour, saturation, warm ratio, drift",
+        "video_features": "Scene-change scores from frame differences, cut count and rate, peak-motion frame, keyframes",
+        "video_gate": "Routing for video requests: cache reuse, quality and flicker checks, static test, keyframes",
+        "video_ops": "Frame-buffer basics: frame count, mean intensity, frame differences, static ratio, sampling",
+        "video_quality": "Clip usability score from sampled per-frame quality and brightness flicker, plus stability",
+        "video_regions": "Motion regions between frames: difference masks, connected-component boxes, peak and union",
+        "video_similarity": "Clip-to-clip duplicate detection: aligned frame scores, dHash Hamming distance, temporal match",
+        "video_storyboard": "Scene spans from cut detection: start, end and length per scene, midpoint frames, storyboard",
+        "virology": "Virology: R0 and herd immunity threshold, doubling time, PFU titre, burst size, NT50, IC50",
+        "viticulture": "Grape growing and winemaking: Brix to alcohol, chaptalization, GDD, Ravaz index, molecular SO2",
+        "volcanology": "Volcanology: VEI energy, lava and lahar speed, eruption column height, tephra, viscosity",
+        "voting": "Voting methods: plurality, Borda, Condorcet pairwise, approval, Droop and Hare quotas, Banzhaf",
+        "wastewater": "Wastewater treatment: BOD removal, HRT and SRT, F/M ratio, SVI, oxygen demand, CT disinfection",
+        "watchmaking": "Mechanical watch maths: gear ratios, beats per hour, balance period, mainspring torque, reserve",
+        "water_chemistry": "Water quality: pH and hydrogen ion, hardness and alkalinity as CaCO3, Langelier index, TDS",
+        "weight_loader": "Checkpoint maths: file offsets, safetensors header size, GGUF block bytes, LoRA merge, hash",
+        "welding": "Welding: heat input, IIW carbon equivalent, cooling rate, dilution, fillet throat, crack risk",
+        "wind_energy": "Wind energy: available power, Betz limit, Cp, tip-speed ratio, capacity factor, Jensen wake"
+      },
+      "excluded_functions": [
+        "svm_kernel.is_positive_semidefinite",
+        "svm_kernel.kernel_center"
+      ],
+      "exclusion_reasons": {
+        "svm_kernel.is_positive_semidefinite": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+        "svm_kernel.kernel_center": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule"
+      },
       "request_types": [
         "library_execute"
       ],
@@ -541,12 +1074,25 @@
     },
     "algenta-general-e": {
       "title": "General & domain modules (wood_science .. workflow_engine)",
-      "summary": "General and domain kernels, alphabetical chunk",
+      "summary": "Domain kernels from wood science to workflow engine",
       "modules": [
         "wood_science",
         "workflow_engine"
       ],
       "status": "planned",
+      "card_example": [
+        "wood_science",
+        "moisture_content",
+        [
+          120,
+          100
+        ]
+      ],
+      "card_example_note": "moisture content, percent",
+      "module_descriptions": {
+        "wood_science": "Wood properties: moisture content, shrinkage, bending strength, charring depth, Janka hardness",
+        "workflow_engine": "Workflow scheduling: DAG readiness, retry backoff, critical-path priority, parallel efficiency"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -576,6 +1122,32 @@
         "hydrogeology"
       ],
       "status": "planned",
+      "card_example": [
+        "geodesy",
+        "haversine_distance",
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "card_example_note": "great-circle distance, km",
+      "module_descriptions": {
+        "biogeochemistry": "Element cycling: net ecosystem production, Langmuir P sorption, first-order carbon turnover",
+        "geochemistry": "Geochemistry: batch melting, chondrite-normalised REE, isotope mixing, CIA weathering index",
+        "geodesy": "Geodesy: haversine and Vincenty distance, bearing, destination point, cross-track, ECEF",
+        "geometry": "2D geometry: ray-cast point in polygon, shoelace area, monotone-chain convex hull, centroid",
+        "geophysics": "Geophysics: Bouguer and free-air gravity corrections, seismic P and S wave speeds, isostasy",
+        "geospatial.contract": "Coordinate frame tags, per-axis range checks, longitude wrapping and status names for geodata",
+        "geospatial.frame": "Frame-checked distance in metres, polyline length, local metre projection, antimeridian checks",
+        "geospatial.index": "Uniform grid spatial index: rectangular window queries and exact k-nearest neighbours",
+        "geospatial.join": "Radius and point-in-ring spatial joins on a grid index, crow-flies and Dijkstra route matrices",
+        "geospatial.mapmatch": "Map matching: snap a GPS track to a polyline network by dynamic programming; segment distance",
+        "geospatial.polygon": "Point in ring as inside, outside or on boundary, signed ring area, Sutherland-Hodgman clipping",
+        "geotechnical": "Terzaghi bearing capacity, effective stress, Rankine earth pressure, settlement, slope safety",
+        "hydrogeology": "Aquifers: Darcy flux, transmissivity, storativity, Theis drawdown, Dupuit discharge, leakance"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -615,7 +1187,53 @@
         "trie"
       ],
       "status": "planned",
-      "excluded_functions": [],
+      "card_example": [
+        "topology",
+        "euler_characteristic",
+        [
+          4,
+          6,
+          4
+        ]
+      ],
+      "card_example_note": "Euler characteristic V - E + F",
+      "module_descriptions": {
+        "autograd_graph": "Autodiff step formulas: gradient accumulation, JVP and VJP terms, loss scaling, norm clipping",
+        "cartography": "Map scale and representative fraction, UTM zone, Mercator and equirectangular, great circles",
+        "cellular_automata": "Cellular automata: Wolfram elementary rules, Game of Life, totalistic rules, Langton's ant",
+        "chromatography": "Chromatography: retention factor, selectivity, plate count, resolution, van Deemter, Kovats",
+        "crystallography": "Crystallography: Bragg angle, cubic d-spacing, cell volumes, packing factors, Scherrer size",
+        "demographics": "Demographic rates: crude birth and death, fertility, infant mortality, dependency, doubling",
+        "graph.algorithms": "Adjacency-list graphs: Dijkstra, BFS, DFS, Kahn topological sort, connected components, paths",
+        "graph.weighted": "Weighted edge lists: Kruskal spanning tree, Floyd-Warshall, Bellman-Ford, Dijkstra, union-find",
+        "graph_algorithms": "Per-step network formulas: edge relaxation, PageRank step, centralities, clustering, density",
+        "graph_analytics.adjacency": "Compressed sparse row graphs: build, validate, degrees, reverse, dedupe, Dijkstra, BFS levels",
+        "graph_analytics.centrality": "Centrality on sparse graphs: Brandes betweenness, closeness, harmonic, eigenvector, PageRank",
+        "graph_analytics.community": "Community detection: multi-level Louvain, label propagation, Newman-Girvan modularity",
+        "graph_analytics.temporal": "Time-stamped graphs: earliest-arrival and fastest journeys, reachability, windows, burstiness",
+        "graph_compiler": "Computation-graph optimization scores: fusion benefit, dead ops, constant folding, broadcasting",
+        "graph_decision": "Routing and flow arithmetic: weighted relaxation, residual capacity, decayed weights, utility",
+        "heap": "Min and max heaps: heapify, push, pop, k smallest and largest, k-way merge, running median",
+        "oceanography": "Ocean physics: seawater density, buoyancy frequency, geostrophic velocity, Ekman depth, waves",
+        "rag_retrieval": "Retrieval scoring: reciprocal rank fusion, BM25 and vector blend, cross-encoder logit, MMR",
+        "retrieval.fuse": "Reciprocal rank fusion across any number of ranked lists, with per-list rank attribution",
+        "retrieval.score": "Ranking over candidate lists: hybrid dense-sparse scores, greedy MMR selection, quality ratios",
+        "stratigraphy": "Rock layers and dating: sedimentation rate, radiometric and radiocarbon ages, isotope delta",
+        "topology": "Topological data analysis: Vietoris-Rips edges, Betti 0, persistence and bottleneck distance",
+        "trie": "Prefix trie over strings: insert, exact search, prefix test, word and node counts, word listing"
+      },
+      "excluded_functions": [
+        "topology.filtration_values",
+        "topology.persistence_diagram_0",
+        "topology.vietoris_rips_edges",
+        "trie.*"
+      ],
+      "exclusion_reasons": {
+        "topology.filtration_values": "requires a consistent distance/simplex structure; not expressible as a length rule",
+        "topology.persistence_diagram_0": "requires a consistent distance/simplex structure; not expressible as a length rule",
+        "topology.vietoris_rips_edges": "requires a square distance matrix; a non-square nested list is not expressible as a length rule",
+        "trie.*": "the trie functions take a Trie structure that a plain in-process call cannot build; use the SDK for tries"
+      },
       "request_types": [
         "library_execute"
       ],
@@ -829,7 +1447,52 @@
           1.0
         ]
       ],
-      "excluded_functions": [],
+      "card_example_note": "learning rate at that step",
+      "module_descriptions": {
+        "activations": "Neural network activations: GELU, Swish/SiLU, SwiGLU, Mish, ELU, SELU, hard swish, ReLU6",
+        "bayesian_inference": "Bayesian basics: posterior update, ELBO, mean-field steps, Laplace approximation, Gaussian KL",
+        "calibration": "Probability calibration: isotonic regression (PAVA), Platt scaling, reliability curves",
+        "causal_inference.base": "Shared checks for causal estimators: binary treatment, finite values, size limits, sort orders",
+        "causal_inference.dag": "Causal graphs: acyclicity check, ancestors, descendants, d-separation, backdoor adjustment sets",
+        "causal_inference.estimators": "Treatment effects: naive and stratified ATE, outcome regression, doubly robust AIPW, bootstrap",
+        "causal_inference.panel": "Panel causal methods: difference-in-differences with pre-trend slope, synthetic control weights",
+        "causal_inference.sensitivity": "Unmeasured confounding: E-values, robustness value, omitted variable bias, Rosenbaum bounds",
+        "causal_inference.uplift": "Uplift modeling: treatment effect by score-ranked bins, Qini curve and Qini coefficient",
+        "config.toml_parser": "TOML config parsing: sections, nested tables, strings, numbers, booleans, arrays, dotted paths",
+        "config.yaml_parser": "YAML config parsing: nested maps, lists, scalars, and dotted-path lookups with defaults",
+        "constraint": "Constraint solving: backtracking, N-Queens, graph coloring, Sudoku and magic square validation",
+        "decision_ml_fusion": "Decision scoring: mean-variance utility, regret, UCB1, Chebyshev scalarization, reward shaping",
+        "gradient_descent": "Optimizer steps: SGD, momentum, Adam, AdamW, RMSProp, AdaGrad, LARS, Lion, clipping, cosine LR",
+        "inference.assume": "Tests with assumption verdicts: Welch t, two-proportion z, chi-squared, Levene, Shapiro-Wilk",
+        "inference.core": "Student t and F tail probabilities, t quantiles, incomplete beta, weighted least squares solver",
+        "inference.glm": "Generalized linear models: logistic and Poisson regression by IRLS, refusing separated data",
+        "inference.multiplicity": "Multiple testing: Bonferroni, Holm step-down, Benjamini-Hochberg false discovery rate control",
+        "inference.power": "Power and sample size for a two-sample mean comparison, normal and Student t, one- or two-sided",
+        "inference.resample": "Seeded percentile bootstrap intervals for mean, median or SD, and a two-sample permutation test",
+        "inference.robust": "Huber robust regression by iteratively reweighted least squares, with MAD scale and weights",
+        "inference_cost_latency": "LLM serving estimates: token counts, KV-cache bytes, attention FLOPs, latency, cost, queueing",
+        "inference_engine": "LLM serving metrics: batching priority, KV-cache hit rate, throughput, p99 latency, decode time",
+        "inference_security": "LLM safety risk scores: prompt injection, jailbreaks, toxicity, PII exposure, data leakage",
+        "latency_optimizer": "LLM latency heuristics: early exit, adaptive depth, layer and attention skipping, speculation",
+        "loss_functions": "Losses: binary and categorical cross-entropy, focal, Huber, KL, contrastive, triplet, MSE, MAE",
+        "ml_metrics_extended": "ML metrics: trapezoid AUC, average precision, NDCG, F-beta, MCC, Cohen's kappa, ECE, Brier",
+        "nn_layers": "Neural net basics: dense layer, ReLU, sigmoid, tanh, softmax, dropout, batch norm, Xavier init",
+        "normalization_layers": "Normalization: LayerNorm, RMSNorm, batch, group, instance and spectral norm, AdaLN, DeepNorm",
+        "optimization_constrained": "Constrained optimization: exterior penalty, interior barrier and augmented Lagrangian methods",
+        "optimizer_full": "Optimizers: L-BFGS scaling, Adadelta, Nadam, Sophia, Prodigy, Adan, schedule-free SGD, Muon",
+        "quantization": "INT8 and INT4 quantization: symmetric and asymmetric quantize and dequantize, scale, zero point",
+        "quantization_stack": "Quantization: absmax and percentile scales, SmoothQuant, GPTQ Hessian, AWQ, double quant, STE",
+        "seq2_trainer": "Two-layer LSTM regressor training: mini-batch Adam, backprop through time, dropout, early stop",
+        "seq_training": "Single-layer LSTM forecasting: sliding windows, full-batch backprop through time with Adam",
+        "state_space_models": "State space model steps: zero-order-hold discretization, S4 kernel, Mamba scan, HiPPO, RetNet",
+        "training_stability": "Training stability: dynamic loss scaling, warmup and cosine schedules, EMA weights, NaN guards"
+      },
+      "excluded_functions": [
+        "constraint.magic_square_check"
+      ],
+      "exclusion_reasons": {
+        "constraint.magic_square_check": "reads its grid argument as square; a non-square nested list is not expressible as a length rule"
+      },
       "request_types": [
         "library_execute"
       ],
@@ -860,6 +1523,31 @@
         "toxicokinetics"
       ],
       "status": "planned",
+      "card_example": [
+        "net.url",
+        "url_encode",
+        [
+          "hello world"
+        ]
+      ],
+      "card_example_note": "percent-encoded",
+      "module_descriptions": {
+        "compiler_theory": "Compiler heuristics: LL(1) and LR conflict checks, AST metrics, register pressure, IPC",
+        "epigenetics": "Epigenetics: CpG methylation index, Horvath-style clock age, histone ratios, accessibility",
+        "genetic": "Genetic algorithm: tournament selection, uniform and one-point crossover, Gaussian mutation",
+        "kinetics": "Chemical kinetics: reaction rates, Arrhenius, half-lives, activation energy, Michaelis-Menten",
+        "magnetism": "Magnetism: Biot-Savart, solenoid and toroid fields, flux, inductance, cyclotron radius, Hall",
+        "memory_system": "Memory sizing: pool fragmentation, slab waste, cache-line padding, training memory, NUMA",
+        "net.url": "URL handling: parse and rebuild URLs, percent-encode and decode, parse and build query strings",
+        "network_analysis": "Graph analytics: degree, density, PageRank, closeness, clustering coefficients, BFS, components",
+        "network_protocol": "HTTP helpers: status reason phrases and classes, MIME types, content-type header, query strings",
+        "paleomagnetism": "Paleomagnetism: paleolatitude from inclination, paleointensity, reversal rate, Koenigsberger",
+        "petri_net": "Small Petri nets: transition enabling and firing, deadlock, place bounds, coverability, siphons",
+        "pharmacokinetics": "Pharmacokinetics: one-compartment IV and oral curves, half-life, clearance, dosing, AUC",
+        "population_genetics": "Population genetics: Hardy-Weinberg, drift, selection, effective size, Tajima's D, FST",
+        "social_network": "Directed networks: in/out degree, reciprocity, independent cascade, label propagation, density",
+        "toxicokinetics": "Toxicokinetics: internal dose, Cmax and Tmax, AUC, half-life, clearance, margin of exposure"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -893,7 +1581,45 @@
         "serialization_io"
       ],
       "status": "planned",
-      "excluded_functions": [],
+      "card_example": [
+        "compression.delta",
+        "delta_encode",
+        [
+          [
+            1,
+            4,
+            9,
+            16,
+            25
+          ]
+        ]
+      ],
+      "card_example_note": "first value, then differences",
+      "module_descriptions": {
+        "compression.delta": "Delta coding of integer and float sequences: plain, XOR, zigzag and double delta, savings ratio",
+        "compression.huffman": "Huffman coding: byte frequency counts, tree building, code lengths, bit encoding and decoding",
+        "compression.lz77": "LZ77 sliding-window compression: longest-match search, token encoding and decoding, ratio",
+        "compression.rle": "Run-length encoding of byte arrays and strings, with decoding and compression ratio",
+        "data.csv_parser": "RFC 4180 CSV parsing: quoted fields and escaped quotes, typed field access, CSV to JSON array",
+        "data_feedback_loop": "Retraining-loop heuristics: sample informativeness, drift z-score, freshness decay, A/B z-stat",
+        "data_pipeline": "Training-data heuristics: packing efficiency, MinHash band match, curriculum score, DoReMi mix",
+        "data_quality.contract": "Data-quality helpers: status names, bit-pattern float equality, tolerances, decimal grid, masks",
+        "data_quality.duplicates": "Duplicate rows: hash grouping on chosen key columns, by exact bits or a set number of decimals",
+        "data_quality.expect": "Column expectations: greater, less, equal, between, not-null, finite, reported per failing row",
+        "data_quality.leakage": "Target leakage: exact copy, affine relation, high Pearson correlation, missingness, timestamps",
+        "data_quality.profile": "Column census: null, NaN, infinite, zero, sign and distinct counts, mean, min, max, constants",
+        "json.parser": "JSON field extraction from raw text without a DOM: keys, nested objects, arrays, base64 bytes",
+        "json.writer": "JSON building: escaped strings, integer, float, boolean, null, array fields, objects from pairs",
+        "model_serialization": "Model sizing: checkpoint bytes, LoRA parameters, forward FLOPs, sparsity, pruning speedup",
+        "serialization.msgpack": "MessagePack: encode scalars, nil, array and map headers; decode integers, floats and strings",
+        "serialization_io": "Bit-exact text serialization of named float arrays, strict parsing back, FNV-1a checksum"
+      },
+      "excluded_functions": [
+        "compression.huffman.generate_codes"
+      ],
+      "exclusion_reasons": {
+        "compression.huffman.generate_codes": "allocates from a frequency table whose size it trusts; an ill-formed table is not expressible as a length rule"
+      },
       "request_types": [
         "library_execute"
       ],
@@ -920,6 +1646,27 @@
         "wavelet"
       ],
       "status": "planned",
+      "card_example": [
+        "audio",
+        "midi_to_frequency",
+        [
+          69
+        ]
+      ],
+      "card_example_note": "Hz of MIDI note 69, concert A",
+      "module_descriptions": {
+        "acoustics": "Acoustics: sound levels in dB, decibel addition, Doppler shift, Sabine reverberation time",
+        "audio": "Audio basics: amplitude to dB, MIDI to Hz, sine generation, RMS, zero-crossing rate, envelope",
+        "fft": "Fast Fourier transform: radix-2 Cooley-Tukey FFT and inverse, magnitude and power spectrum",
+        "psychoacoustics": "Psychoacoustics: phon to sone loudness, Bark scale, critical bandwidth, masking, A-weighting",
+        "signal.dsp": "Signal basics: moving and exponential averages, convolution, autocorrelation, detrending, peaks",
+        "signal.filter": "Digital filters: EMA low, high and band-pass, median, Savitzky-Golay, first-order IIR, SNR, RMS",
+        "signal_processing": "Hann, Hamming and Blackman windows, peak detection, zero crossings, spectral centroid, flatness",
+        "spectral": "Spectral analysis: periodogram PSD, cross-spectrum, coherence, centroid, rolloff, entropy",
+        "spectroscopy": "Spectroscopy: wavenumber and wavelength, absorbance, Beer-Lambert law, Raman and Stokes shifts",
+        "traffic_signal": "Traffic signal timing: Webster cycle length, lane capacity, uniform delay, level of service",
+        "wavelet": "Haar wavelet transform: forward and inverse, multi-level, hard and soft thresholding, denoising"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -1014,7 +1761,48 @@
         "vector_kernels.table"
       ],
       "status": "planned",
-      "excluded_functions": [],
+      "card_example": [
+        "linalg",
+        "vec_cross",
+        [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0
+          ]
+        ]
+      ],
+      "card_example_note": "cross product",
+      "module_descriptions": {
+        "eigen_full": "Symmetric eigendecomposition by cyclic Jacobi rotations, plus thin SVD of tall matrices",
+        "gpu_kernels": "GPU kernel estimates: tile size, warp occupancy, roofline throughput, coalescing, launch cost",
+        "linalg": "Dense matrices: product, determinant, inverse, LU, Gaussian-elimination solve, dot and cross",
+        "linalg_ext": "QR by modified Gram-Schmidt, power iteration, Frobenius and infinity norms, condition number",
+        "matrix_decomp": "LU with partial pivoting, Cholesky, 2x2 eigenpairs, 2x2 and 3x3 determinants, triangular solves",
+        "matrix_ops": "Kronecker and Hadamard products, matrix power by squaring, Taylor exponential, Gram-Schmidt",
+        "tensor": "1D arrays: ranges, evenly spaced values, element-wise arithmetic, sum, mean, argmax, dot, norm",
+        "tensor2d": "Dense 2D matrices: matrix and matrix-vector products, transpose, add, scale, row/column access",
+        "tensor_ops": "Tensor index math: row-major strides, flat and transposed indices, broadcasting, softmax terms",
+        "time_series_decompose": "Time-series decomposition: moving-average trend, seasonal means, STL-like, period detection",
+        "vector_kernels.batch_ranker": "Turns a column-ranking result into a decision: best column id, score, confidence, ambiguity",
+        "vector_kernels.dot": "64-dim float32 SIMD dot product, inverse L2 norm, cosine similarity, bigram text vectors",
+        "vector_kernels.ranker": "Column-name matching: bigram cosine plus token Jaccard, role and source boosts, ambiguity flag",
+        "vector_kernels.repo_ranker": "Ranks repository files against query terms by bigram cosine plus token Jaccard, top-k by score",
+        "vector_kernels.table": "Column-candidate table setup: bigram query vectors, source and role ids, table built from JSON"
+      },
+      "excluded_functions": [
+        "matrix_decomp.lu_decompose",
+        "matrix_decomp.trace"
+      ],
+      "exclusion_reasons": {
+        "matrix_decomp.lu_decompose": "reads its matrix argument as square; a non-square nested list is not expressible as a length rule",
+        "matrix_decomp.trace": "reads the diagonal of a square matrix; a non-square nested list is not expressible as a length rule"
+      },
       "request_types": [
         "library_execute"
       ],
@@ -1036,6 +1824,23 @@
         "textile"
       ],
       "status": "planned",
+      "card_example": [
+        "text.fuzzy",
+        "levenshtein_distance",
+        [
+          "kitten",
+          "sitting"
+        ]
+      ],
+      "card_example_note": "edit distance",
+      "module_descriptions": {
+        "string_distance": "Damerau-Levenshtein distance, Soundex codes, edit similarity, Dice and overlap on bigrams",
+        "text.column_scorer": "Scores a text hint against a column name: Jaccard token overlap, n-gram Dice, prefix fraction",
+        "text.fuzzy": "Fuzzy matching: Levenshtein, Jaro and Jaro-Winkler similarity, Hamming distance, LCS ratio",
+        "text.regex": "Regex match, search, find-all, replace and split: classes, anchors, alternation, quantifiers",
+        "text.string_utils": "String basics: split, join, replace, pad, center, trim, case conversion, count, truncate",
+        "textile": "Yarn and fabric metrics: tex/denier, yarn count, twist, GSM, cover factor, shrinkage, tenacity"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
@@ -1064,6 +1869,40 @@
         "vision_gate"
       ],
       "status": "planned",
+      "card_example": [
+        "image_morphology",
+        "foreground_area_ratio_flat",
+        [
+          [
+            0,
+            255,
+            255,
+            0,
+            255,
+            0,
+            0,
+            255
+          ],
+          4,
+          2,
+          128
+        ]
+      ],
+      "card_example_note": "share of pixels at or above 128",
+      "module_descriptions": {
+        "document_vision": "Document scans: Otsu and local-mean binarization, ink projections, skew angle, quality score",
+        "endocrinology": "Hormone physiology: clearance from AUC, HOMA-IR, free T4 and testosterone, cortisol rhythm",
+        "geomorphology": "Geomorphology: stream power, Shields parameter, Stokes settling, drainage density, sinuosity",
+        "image_features": "Image features: Sobel edge density, RGB histogram comparison, dominant colours, saliency grid",
+        "image_morphology": "Binary morphology: erode, dilate, open, close, fill holes, connected components, distance map",
+        "image_ops": "Grayscale basics: 2D convolution, Sobel and Gaussian kernels, histogram, threshold, brightness",
+        "image_palette": "Palette analysis: dominant colours, entropy, mean saturation, warm ratio, monochrome check",
+        "image_quality": "Image quality: Laplacian blur score, brightness, contrast, entropy, MAD noise, composite score",
+        "image_regions": "Region boxes: Otsu mask, connected-component boxes, largest box, saliency crop, box IoU",
+        "image_resize": "Grayscale downscaling: box-average and bilinear resize, hash thumbnails, integral image sums",
+        "image_similarity": "Image similarity: MSE, MAE, PSNR, normalized cross-correlation, global SSIM, duplicate score",
+        "vision_gate": "Image routing: reuse duplicates, reject blurry or badly exposed images, flag text-heavy images"
+      },
       "excluded_functions": [],
       "request_types": [
         "library_execute"
