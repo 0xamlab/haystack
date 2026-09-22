@@ -44,6 +44,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _GATE_PATH = _REPO_ROOT / "scripts" / "release" / "cuda_publish_gate.py"
 _WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "build-runtime.yml"
 
+# The gate's real invocation inside publish-pypi. Spelled with its `"${GATE_ARGS[@]}"` tail so that
+# ordering assertions below match the COMMAND and not the prose in the job's comments, which name
+# the same script several times -- a bare filename made an earlier version of these guards match a
+# comment and pass for the wrong reason.
+_GATE_CALL = 'cuda_publish_gate.py "${GATE_ARGS[@]}"'
+
 # The runtime wheel's real filename shape: `algenta_runtime_native-<ver>-py3-none-<platform>.whl`.
 # The CUDA-variant and CPU-variant builds produce the SAME name -- that collision is the reason
 # this gate has to stage deterministically instead of letting twine's glob order decide.
@@ -398,8 +404,10 @@ def test_publish_job_downloads_the_cuda_artifact_by_explicit_name() -> None:
     assert "cuda_publish_gate.py" in publish, "publish-pypi must call the gate"
     # The gate must run BEFORE twine, or it stages nothing that the upload can see. Matched on the
     # real command line, not on "twine upload": the job's own header comment says those words too,
-    # and index() would find the comment first and make this assertion meaningless.
-    assert publish.index("cuda_publish_gate.py") < publish.index("twine upload --non-interactive")
+    # and index() would find the comment first and make this assertion meaningless. _GATE_CALL
+    # carries the argument expansion for the same reason.
+    assert _GATE_CALL in publish, "publish-pypi must invoke the gate as a real command"
+    assert publish.index(_GATE_CALL) < publish.index("twine upload --non-interactive")
 
 
 def test_publish_job_waits_for_the_cuda_artifact_but_never_on_its_success() -> None:
@@ -421,6 +429,74 @@ def test_publish_job_waits_for_the_cuda_artifact_but_never_on_its_success() -> N
     )
     assert "needs.build-linux-cuda.result" not in publish, (
         "the compile gate must stay OFF the release critical path: it is a floor, not a blocker"
+    )
+
+
+def test_publish_job_checks_out_the_repo_before_running_the_gate() -> None:
+    """REGRESSION -- build-runtime.yml runs 35650281651 and 35634239235. publish-pypi downloaded
+    artifacts and ran twine but NEVER checked the repository out, so the gate died on a script that
+    was not on the runner:
+        python3: can't open file '.../scripts/release/cuda_publish_gate.py': [Errno 2] No such file
+        ##[error]Process completed with exit code 2.
+    Run 35634239235 had build-linux-cuda GREEN and still failed here, which is the proof that this
+    was not a consequence of the CUDA lane: the publish job could not run its own gate at all. A
+    gate that cannot be found is indistinguishable from a gate that refuses, and it took the whole
+    release train down with it either way."""
+    publish = _workflow_text().split("\n  publish-pypi:\n", 1)[1]
+    assert "actions/checkout@" in publish, (
+        "publish-pypi must check the repo out: the release-verify gate runs a script FROM the repo"
+    )
+    # And checked out BEFORE the gate runs, not merely somewhere in the job. Matched on the real
+    # invocation -- the `"${GATE_ARGS[@]}"` tail is what prose in the job's comments cannot
+    # reproduce, so a comment that merely names the script cannot satisfy the ordering by accident.
+    assert publish.index("actions/checkout@") < publish.index(_GATE_CALL)
+
+
+def test_publish_job_only_invokes_repo_scripts_that_exist() -> None:
+    """The general form of the bug above. Every repo-relative `scripts/*.py` that a publish-pypi
+    step hands to an interpreter must exist in the checkout -- asserted from the workflow text so a
+    rename or a deletion breaks THIS test off-CI, instead of breaking a release train on main."""
+    import re
+
+    publish = _workflow_text().split("\n  publish-pypi:\n", 1)[1]
+    referenced = sorted(set(re.findall(r"\bscripts/[A-Za-z0-9_./-]+\.py\b", publish)))
+    assert referenced, "publish-pypi is expected to invoke at least the cuda publish gate"
+    missing = [path for path in referenced if not (_REPO_ROOT / path).is_file()]
+    assert not missing, f"publish-pypi invokes repo scripts that do not exist: {missing}"
+
+
+def test_cuda_lane_failure_degrades_to_a_cpu_only_publish() -> None:
+    """The degradation chain, link by link: when build-linux-cuda fails, publish-pypi must still
+    run, still tolerate the absent CUDA artifact, and still publish the CPU wheels -- with the
+    gate's own `cuda_wheel_absent` notice as the only trace of the CUDA lane. Any link that
+    hard-fails turns a compile-gate break into a release outage, which is what happened on main.
+
+    Link 1 (the job runs at all despite the failed `needs` entry) is pinned by
+    test_publish_job_waits_for_the_cuda_artifact_but_never_on_its_success; link 3's exit-0 arm is
+    pinned behaviourally by test_cuda_artifact_absent_excludes_even_with_a_matching_verdict. This
+    test covers the two wiring links in between."""
+    import re
+
+    publish = _workflow_text().split("\n  publish-pypi:\n", 1)[1]
+
+    # Link 2: the CUDA artifact download is fail-open. `if-no-files-found` alone is NOT enough --
+    # an artifact that was never uploaded is a hard error in download-artifact, and only
+    # continue-on-error absorbs it (observed: "Artifact not found for name: ...-cuda").
+    steps = re.split(r"^      - ", publish, flags=re.M)
+    cuda_steps = [step for step in steps if "algenta-runtime-native-linux-x86_64-cuda" in step]
+    assert cuda_steps, "publish-pypi must have a step that fetches the CUDA artifact"
+    assert any("continue-on-error: true" in step for step in cuda_steps), (
+        "the CUDA artifact download must be fail-open, or a build-linux-cuda failure fails publish"
+    )
+
+    # Link 4: the upload is not conditioned on the CUDA decision. An exclude has to leave the
+    # publish set at today's CPU-only shape, not gate it.
+    assert "steps.cuda-gate.outputs" not in publish, (
+        "twine must not be conditioned on the CUDA decision: exclude means publish without the "
+        "cuda wheel, never 'do not publish'"
+    )
+    assert publish.index(_GATE_CALL) < publish.index("twine upload --non-interactive"), (
+        "the gate must stage before the upload globs dist-pypi"
     )
 
 
@@ -451,3 +527,99 @@ def test_workflow_documents_what_the_gate_does_not_claim() -> None:
     assert "cuda-release-verdict.json" in text
     assert "wheel_sha256" in lowered
     assert "verify_cuda_release.sh" in text, "the workflow must name what produces a verdict"
+
+
+# ── engine-binary fallback: the certification attaches to the certified artifact ────────
+# The wheel zip is a container (version metadata + public CPU shards); the engine binary
+# inside it is what the oracle gates ran. A verdict whose wheel sha names an older
+# container but whose engine digest matches this wheel's signed manifest still certifies
+# THESE bytes; anything less excludes.
+
+
+def _zip_wheel_with_engine(path: Path, engine_sha: str) -> Path:
+    import zipfile
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    manifest = json.dumps(
+        {
+            "format_version": 1,
+            "platform": "linux-x86_64",
+            "build_variant": "cuda",
+            "engine": {"name": "conform_generate_cuda", "sha256": engine_sha, "size_bytes": 1},
+            "artifacts": [],
+        }
+    ).encode()
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("algenta_runtime_native/manifest.json", manifest)
+        archive.writestr("algenta_runtime_native/worker", b"shards")
+    return path
+
+
+def _verdict_with_engine(path: Path, *, wheel_sha256: str, engine_sha: str, shape: str) -> Path:
+    payload: dict[str, object] = {
+        "schema_version": 1,
+        "verdict": "pass",
+        "rc": 0,
+        "scope_statement": "certifies the engine binary; not a benchmark win",
+        "issued_utc": "2026-10-01T00:00:00Z",
+        "wheel": {"filename": _RUNTIME_WHEEL, "sha256": wheel_sha256},
+    }
+    if shape == "flat":
+        payload["engine"] = {"name": "conform_generate_cuda", "sha256": engine_sha}
+    else:
+        payload["binaries"] = {
+            "engine_binaries": [{"name": "conform_generate_cuda", "sha256": engine_sha, "bytes": 1}]
+        }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize("shape", ["flat", "binaries"])
+def test_engine_digest_match_includes_when_the_container_moved(publish, shape, tmp_path):
+    engine_sha = _sha256(b"the certified engine bytes")
+    _zip_wheel_with_engine(publish["cuda"] / _RUNTIME_WHEEL, engine_sha)
+    _verdict_with_engine(
+        publish["verdict"],
+        wheel_sha256=_sha256(b"an older container with the same engine"),
+        engine_sha=engine_sha,
+        shape=shape,
+    )
+    decision = _GATE.decide(
+        cuda_dir=publish["cuda"], publish_dir=publish["publish"], verdict_path=publish["verdict"]
+    )
+    assert decision["decision"] == "include"
+    assert decision["reason"] == _GATE.REASON_VERIFIED_ENGINE
+    assert decision["engine_match"] is True
+
+
+def test_engine_digest_mismatch_excludes(publish):
+    _zip_wheel_with_engine(publish["cuda"] / _RUNTIME_WHEEL, _sha256(b"engine in this wheel"))
+    _verdict_with_engine(
+        publish["verdict"],
+        wheel_sha256=_sha256(b"some other container"),
+        engine_sha=_sha256(b"a DIFFERENT engine"),
+        shape="flat",
+    )
+    decision = _GATE.decide(
+        cuda_dir=publish["cuda"], publish_dir=publish["publish"], verdict_path=publish["verdict"]
+    )
+    assert decision["decision"] == "exclude"
+    assert decision["reason"] == _GATE.REASON_SHA_MISMATCH
+
+
+def test_non_zip_wheel_cannot_claim_the_engine_fallback(publish):
+    # Plain-bytes fixture: no manifest to read, so the fallback must not fire even though
+    # the verdict carries a perfectly formed engine digest.
+    _verdict_with_engine(
+        publish["verdict"],
+        wheel_sha256=_sha256(b"not these bytes"),
+        engine_sha=_sha256(b"any engine"),
+        shape="flat",
+    )
+    decision = _GATE.decide(
+        cuda_dir=publish["cuda"], publish_dir=publish["publish"], verdict_path=publish["verdict"]
+    )
+    assert decision["decision"] == "exclude"
+    assert decision["reason"] == _GATE.REASON_SHA_MISMATCH
+    assert decision["engine_match"] is None

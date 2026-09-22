@@ -169,6 +169,26 @@ fi
 # conda's activate.d and dies with "unable to locate module 'std'"). Absolute .so paths rather than
 # -Xlinker -L: every in-repo recipe puts -L AFTER the -l flags, which GNU ld does not apply
 # retroactively, and that only ever worked because the race VMs had the toolkit on a default path.
+#
+# THE rpath FORM IS LOAD-BEARING — read before "simplifying" it back to -Wl,. `-Xlinker X` hands X
+# to the linker VERBATIM as ONE token; it does not go through gcc/clang's -Wl, comma splitting. So
+# `-Xlinker "-Wl,-rpath,$ORIGIN"` handed ld the single literal option `-Wl,-rpath,$ORIGIN`, and
+# `-Wl,` is a DRIVER prefix ld has never understood. The link died:
+#   /usr/bin/ld: unrecognized option '-Wl,-rpath,$ORIGIN'
+#   collect2: error: ld returned 1 exit status
+#   mojo: error: failed to link executable
+# (build-runtime.yml run 35650281651, job "build bundled runtime wheel (linux-x86_64, CUDA compile
+# gate)"). `collect2` in that trace names the path: mojo links through the container's gcc, gcc runs
+# collect2, collect2 runs /usr/bin/ld — and an -Xlinker token is forwarded down that chain unsplit,
+# so nothing ever strips the -Wl,. `-Wl,-rpath,$ORIGIN` expands to EXACTLY two ld tokens, `-rpath`
+# and `$ORIGIN`, which is what the two -Xlinker flags below pass; same linker command line, no
+# driver prefix to strip. This is also the campaign's own convention — the race recipes in
+# benchmarks/llm_smoke/REALRACE_RESULTS.md spell `-framework Metal` as
+# `-Xlinker -framework -Xlinker Metal`, one linker token per -Xlinker.
+# The `\$ORIGIN` escape keeps the dollar out of the shell: it must reach the ELF DT_RUNPATH as the
+# literal string the dynamic loader expands at load time, exactly as the failing log showed it
+# arriving. `-Xlinker -ldl` stays one token on purpose — GNU ld accepts `-l<namespec>` directly,
+# so unlike -Wl, it needs no splitting.
 MOJO_DEFINES=()
 for define in "${DEFINES[@]}"; do MOJO_DEFINES+=(-D "$define"); done
 ENGINE_BIN="$OUT_DIR/$ENGINE_NAME"

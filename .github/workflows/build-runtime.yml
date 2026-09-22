@@ -234,6 +234,21 @@ jobs:
     permissions:
       contents: read
     steps:
+      # ── THE CHECKOUT IS NOT OPTIONAL ─────────────────────────────────────────────────────────
+      # The release-verify gate below runs `python3 scripts/release/cuda_publish_gate.py` from the
+      # job's working directory. Until this step existed the job downloaded artifacts and ran twine
+      # but NEVER checked the repository out, so on a real run the gate died with
+      #   python3: can't open file '/home/runner/work/algenta/algenta/scripts/release/cuda_publish_gate.py':
+      #   [Errno 2] No such file or directory
+      #   ##[error]Process completed with exit code 2.
+      # -- and because that step has no continue-on-error (deliberately: a non-zero from the gate
+      # means the publish set is indeterminate, which IS worth stopping for), the whole job failed.
+      # That halted every release train on main that reached this job, whatever the CUDA lane did:
+      # run 35634239235 proves it, with build-linux-cuda GREEN and publish-pypi still red on the
+      # same missing file, and run 35650281651 shows the same failure stacked on top of the CUDA
+      # link break. Both artifacts-download steps write into subdirectories of the workspace, so
+      # this must run FIRST; a later checkout would be a no-op on an already-populated tree.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       # EXPLICIT artifact names, not the historical `algenta-runtime-native-*` glob: the CUDA
       # compile-gate job above uploads algenta-runtime-native-linux-x86_64-cuda, whose wheel
       # carries the SAME filename as the shipped linux wheel (same package, same platform tag —

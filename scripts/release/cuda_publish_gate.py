@@ -64,6 +64,7 @@ import json
 import os
 import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 SUPPORTED_SCHEMA_VERSION = 1
@@ -82,6 +83,7 @@ REASON_NOT_PASS = "verdict_is_not_a_pass"  # noqa: S105 - a gate verdict, not a 
 REASON_WHEEL_ABSENT = "cuda_wheel_absent"
 REASON_WHEEL_AMBIGUOUS = "cuda_wheel_ambiguous"
 REASON_SHA_MISMATCH = "wheel_sha256_mismatch"
+REASON_VERIFIED_ENGINE = "verdict_pass_and_engine_sha256_matches"
 REASON_NO_SHA_IN_VERDICT = "verdict_carries_no_wheel_sha256"
 REASON_COLLISION_REFUSED = "same_name_collision_refused"
 
@@ -113,6 +115,64 @@ def _verdict_wheel_sha256(verdict: object) -> str | None:
         nested = wheel.get("sha256")
         if isinstance(nested, str) and len(nested) == 64:
             return nested.lower()
+    return None
+
+
+def _verdict_engine_sha256(verdict: object) -> str | None:
+    """The certified ENGINE binary digest a verdict carries, from either emitter shape.
+
+    `verify_cuda_release.sh` records the bundled engine under `binaries.engine_binaries`
+    (a list, the entry named `conform_generate_cuda`); a verdict re-derived from a signed
+    manifest may carry the flat `engine` block instead. The engine binary is the artifact
+    the oracle gates actually ran; the wheel zip around it is a container.
+    """
+    if not isinstance(verdict, dict):
+        return None
+    engine = verdict.get("engine")
+    if isinstance(engine, dict):
+        sha = engine.get("sha256")
+        if isinstance(sha, str) and len(sha) == 64:
+            return sha.lower()
+    binaries = verdict.get("binaries")
+    if isinstance(binaries, dict):
+        entries = binaries.get("engine_binaries")
+        if isinstance(entries, list):
+            named = [e for e in entries if isinstance(e, dict) and e.get("name") == "conform_generate_cuda"]
+            for entry in named or [e for e in entries if isinstance(e, dict)]:
+                sha = entry.get("sha256")
+                if isinstance(sha, str) and len(sha) == 64:
+                    return sha.lower()
+    return None
+
+
+def _wheel_engine_sha256(wheel: Path) -> str | None:
+    """The engine digest from the signed-manifest block INSIDE the wheel, if readable.
+
+    The bundle manifest ships in the wheel as `manifest.json` beside `manifest.sig`
+    (`scripts/generate_runtime_bundle_manifest.py`); its `engine.sha256` is cross-checked
+    against the real file at generation and again by `validate_runtime_release.py`, so it
+    is the wheel's own statement of which engine binary it carries. A wheel that is not a
+    zip (test fixtures, a truncated download) yields None: the gate then falls back to the
+    wheel-sha rule alone, never to a guess.
+    """
+    try:
+        with zipfile.ZipFile(wheel) as archive:
+            for name in archive.namelist():
+                if not name.endswith("manifest.json"):
+                    continue
+                try:
+                    payload = json.loads(archive.read(name))
+                except ValueError:
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+                engine = payload.get("engine")
+                if isinstance(engine, dict):
+                    sha = engine.get("sha256")
+                    if isinstance(sha, str) and len(sha) == 64:
+                        return sha.lower()
+    except (OSError, zipfile.BadZipFile):
+        return None
     return None
 
 
@@ -161,6 +221,7 @@ def decide(
         "cuda_dir": str(cuda_dir),
         "publish_dir": str(publish_dir),
         "verdict_path": str(verdict_path) if verdict_path else None,
+        "engine_match": None,
         "staged": None,
         "displaced": None,
         "cuda_wheel": None,
@@ -248,12 +309,31 @@ def decide(
         "sha256_16": got_sha[:16],
         "bytes": wheel.stat().st_size,
     }
+    engine_match: bool | None = None
     if got_sha != want_sha:
-        return exclude(
-            REASON_SHA_MISMATCH,
-            f"the run-verified verdict names wheel sha256 {want_sha} but the wheel this run "
-            f"built is {got_sha} ({wheel.name}). A verdict certifies BYTES, not a commit or a "
-            "date, so it does not travel to a rebuild; publishing without the CUDA wheel.",
+        # The wheel zip is a CONTAINER: version metadata and the public CPU shards move on
+        # any rebuild, while the certified artifact -- the engine binary the oracle gates
+        # actually ran -- is content-addressed inside it via the signed manifest. Matching
+        # that digest keeps the certification attached to the bytes it certified without
+        # demanding the container be byte-identical across runs. Engine-source drift
+        # changes the digest and excludes, exactly as a wheel-sha mismatch does.
+        want_engine = _verdict_engine_sha256(verdict)
+        got_engine = _wheel_engine_sha256(wheel)
+        if want_engine is None or got_engine is None or want_engine != got_engine:
+            return exclude(
+                REASON_SHA_MISMATCH,
+                f"the run-verified verdict names wheel sha256 {want_sha} but the wheel this run "
+                f"built is {got_sha} ({wheel.name}), and the engine-binary fallback does not "
+                f"match either (verdict engine {want_engine or 'absent'} vs wheel engine "
+                f"{got_engine or 'unreadable'}). A verdict certifies BYTES, not a commit or a "
+                "date, so it does not travel to a rebuild; publishing without the CUDA wheel.",
+            )
+        engine_match = True
+        notices.append(
+            f"wheel zip sha256 differs from the verdict ({got_sha[:16]} vs {want_sha[:16]}) but "
+            f"the CERTIFIED ENGINE BINARY matches byte-for-byte (sha256 {got_engine[:16]}): the "
+            "container moved (version metadata / CPU shards), the certified artifact did not. "
+            "Including on the engine digest."
         )
 
     # ── 3. include: stage it, deterministically ───────────────────────────────
@@ -300,7 +380,8 @@ def decide(
             )
     shutil.copy2(wheel, dest)
     decision["decision"] = "include"
-    decision["reason"] = REASON_VERIFIED
+    decision["reason"] = REASON_VERIFIED_ENGINE if engine_match else REASON_VERIFIED
+    decision["engine_match"] = engine_match
     decision["staged"] = {
         "filename": dest.name,
         "sha256": got_sha,
@@ -311,8 +392,12 @@ def decide(
     decision["displaced"] = displaced
     notices.append(
         f"INCLUDING the run-verified CUDA wheel {wheel.name} (sha256 {got_sha[:16]}, "
-        f"{dest.stat().st_size} bytes) in the publish set: the attached verdict names these exact "
-        "bytes."
+        f"{dest.stat().st_size} bytes) in the publish set: the attached verdict names "
+        + (
+            "this wheel's certified engine binary byte-for-byte (the zip container differs)."
+            if engine_match
+            else "these exact bytes."
+        )
     )
     notices.append(
         "ONE-SLOT NOTICE: because the CUDA wheel carries the shipped linux wheel's filename, this "
