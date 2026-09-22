@@ -123,6 +123,11 @@ SERVE_MAX_NEW_TOKENS=${SERVE_MAX_NEW_TOKENS:-16}
 SSH_IAP=${SSH_IAP:-0}
 IAP_FLAG=""
 [ "$SSH_IAP" = "1" ] && IAP_FLAG="--tunnel-through-iap"
+# Zones worth trying for THIS machine type, in order, for the stockout message above. The default is
+# the a3-highgpu-1g set (1x H100 80GB, sm_90 -- the cheapest box that can run the sm_90a engine):
+# us-central1-a then us-central1-b, because both offer the machine type AND sit behind this
+# project's Cloud NAT. Override it when the machine type changes.
+ZONE_CANDIDATES=${ZONE_CANDIDATES:-us-central1-a,us-central1-b}
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -249,6 +254,49 @@ print(h.hexdigest())' "$WHEEL") || { log "PRE-FLIGHT FAILED: could not hash $WHE
 LOCAL_WHEEL_BYTES=$(python3 -c 'import os,sys;print(os.path.getsize(sys.argv[1]))' "$WHEEL")
 log "wheel: $(basename "$WHEEL") sha256=$LOCAL_WHEEL_SHA bytes=$LOCAL_WHEEL_BYTES"
 
+# ── RUNPATH PRE-FLIGHT: THE ONE CHECK THAT COSTS NOTHING HERE AND A WHOLE WINDOW ON THE BOX ─────
+# The engine is linked with `-Xlinker -rpath -Xlinker $ORIGIN` so it finds the libcudart.so.12 the
+# wheel bundles BESIDE it. Nothing in CI verifies that landed: the pipeline has no readelf assertion
+# at all, and a silently-dropped rpath produces a wheel that hashes fine, validates fine, and then
+# fails to load libcudart on the GPU box -- discovered at the most expensive possible moment. So the
+# dynamic section is read HERE, on the operator's machine, from the same bytes about to be shipped.
+# Non-fatal when no ELF reader is installed (the battery re-asserts on the box, where readelf always
+# exists); FATAL when a reader IS available and $ORIGIN is absent, because that wheel cannot work.
+ELF_TOOL=""
+for t in llvm-readelf readelf greadelf llvm-objdump objdump gobjdump; do
+  command -v "$t" >/dev/null 2>&1 && { ELF_TOOL="$t"; break; }
+done
+if [ -z "$ELF_TOOL" ]; then
+  log "NOTE: no readelf/objdump on this host -- skipping the RUNPATH pre-flight. The battery"
+  log "      re-asserts \$ORIGIN on the box, where readelf is always present."
+else
+  RUNPATH_FOUND=$(WHEEL="$WHEEL" ELF_TOOL="$ELF_TOOL" python3 -c '
+import os, subprocess, sys, tempfile, zipfile
+wheel, tool = os.environ["WHEEL"], os.environ["ELF_TOOL"]
+z = zipfile.ZipFile(wheel)
+eng = [n for n in z.namelist()
+       if n.startswith("algenta_runtime_native/") and n.endswith("conform_generate_cuda")]
+if not eng:
+    print("NO_ENGINE_MEMBER"); raise SystemExit(0)
+with tempfile.NamedTemporaryFile(delete=False, suffix=".engine") as fh:
+    fh.write(z.read(eng[0])); path = fh.name
+os.chmod(path, 0o755)
+args = [tool, "-d", path] if "readelf" in tool else [tool, "--private-headers", path]
+out = subprocess.run(args, capture_output=True, text=True, errors="replace").stdout
+dyn = [ln for ln in out.splitlines() if "PATH" in ln.upper() and "ORIGIN" in ln]
+print(("RUNPATH_OK " + eng[0] + " :: " + dyn[0].strip()) if dyn else "RUNPATH_MISSING")
+' 2>/dev/null || echo "RUNPATH_CHECK_ERROR")
+  case "$RUNPATH_FOUND" in
+    RUNPATH_OK*) log "$RUNPATH_FOUND (via $ELF_TOOL)" ;;
+    NO_ENGINE_MEMBER) log "NOTE: no conform_generate_cuda member in this wheel -- is it the cuda variant?" ;;
+    RUNPATH_CHECK_ERROR) log "NOTE: the RUNPATH pre-flight errored; the battery re-asserts on the box" ;;
+    *) log "*** RUNPATH PRE-FLIGHT: \$ORIGIN was NOT found in the engine's dynamic section ($ELF_TOOL)."
+       log "    This wheel's engine cannot locate the libcudart.so.12 bundled beside it, so it will"
+       log "    fail to load on the box. Refusing BEFORE any VM-on minutes are spent."
+       exit 8 ;;
+  esac
+fi
+
 # The tree that gets synced must be clean and PUSHED: the measured binaries have to be traceable to a
 # commit that exists upstream. The one path this must not trip on is `mojo_env/.pixi`, a documented
 # never-commit local symlink (round 19's first window died on it 5 s after the instance came up).
@@ -296,8 +344,18 @@ if [ "$st" != "RUNNING" ]; then
       log "SPOT STOCKOUT ($stockouts consecutive) in $ZONE"
       if [ "$stockouts" -ge 2 ]; then
         log "TWO CONSECUTIVE STOCKOUTS — stopping and waiting, per the owner's rule. No further"
-        log "  retries this session. Candidate zones: us-west1-c (current), asia-south1-b,"
-        log "  asia-south2-c. The VM is left TERMINATED."
+        log "  retries this session. The VM is left TERMINATED."
+        # WHICH ZONES ARE EVEN CANDIDATES IS A FACT ABOUT THE MACHINE TYPE AND THE NETWORK, not a
+        # free-text suggestion. The list this message used to print was wrong for a3-highgpu-1g in
+        # two independent ways, both verified with gcloud rather than assumed:
+        #   * us-west1-c does not OFFER a3-highgpu-1g at all (`machine-types describe` -> "was not
+        #     found"), so naming it sends the next operator to a zone that cannot create the box;
+        #   * asia-south1-b has the machine type but NO Cloud NAT -- this project's only two routers
+        #     (gw-router, dev-network-router) are both in us-central1 -- so a box there has no
+        #     internet egress and cannot fetch the HF snapshot the 7B stage needs.
+        # ZONE_CANDIDATES is overridable because the right list depends on the machine type in use.
+        log "  Remaining candidates for this machine type: $ZONE_CANDIDATES"
+        log "  (a zone qualifies only if it OFFERS the machine type AND has egress for staging)"
         exit 4
       fi
       sleep 90

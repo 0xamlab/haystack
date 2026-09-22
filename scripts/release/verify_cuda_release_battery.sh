@@ -245,12 +245,64 @@ log "gate scope=[$GATE_PROMPTS] specs=[$GATE_SPECS] ckpt=$CKPT hf=$HF_CKPT"
 
 # A python 3.14 interpreter, because the wheel declares `requires-python >=3.14,<3.15` and the
 # shipped path is what must run. The box has one inside the campaign's pixi env; PY314 overrides.
-if [ -z "$PY314" ]; then
-  for candidate in "$HOME/algenta/mojo_env/.pixi/envs/default/bin/python3.14" \
-                   "$HOME/algenta/mojo_env/.pixi/envs/default/bin/python" \
-                   "$(command -v python3.14 2>/dev/null || true)"; do
-    if [ -n "$candidate" ] && [ -x "$candidate" ]; then PY314="$candidate"; break; fi
+#
+# ── AND ON A FRESH BOX, BUILDING THAT ENV IS PART OF STAGING, NOT A PRECONDITION ────────────────
+# The probe used to look in exactly two places: the campaign checkout at $HOME/algenta/mojo_env/.pixi,
+# and `command -v python3.14`. Both exist on a box the campaign has used and NEITHER exists on a
+# freshly created one, so a fresh box died with `FATAL: no python3.14 interpreter found` (finish 12)
+# before unpacking the wheel -- having already paid for the boot. The controller's sync tar also
+# excludes `.pixi` (deliberately: it is hundreds of MB and a warm box already has it), so the synced
+# tree carries mojo_env/pixi.toml and NOTHING else of the env. Hence: probe the synced tree first,
+# then the campaign checkout, then bootstrap pixi and `pixi install` the manifest we just synced,
+# then re-probe -- each step capped and logged, because a window that spends its whole cap installing
+# a toolchain has bought nothing and must say so.
+PIXI_BOOTSTRAP_MIN=${PIXI_BOOTSTRAP_MIN:-20}
+pixi_candidates() {
+  for candidate in \
+    "$SRC_TREE/mojo_env/.pixi/envs/default/bin/python3.14" \
+    "$SRC_TREE/mojo_env/.pixi/envs/default/bin/python" \
+    "$HOME/algenta/mojo_env/.pixi/envs/default/bin/python3.14" \
+    "$HOME/algenta/mojo_env/.pixi/envs/default/bin/python" \
+    "$(command -v python3.14 2>/dev/null || true)"; do
+    if [ -n "$candidate" ] && [ -x "$candidate" ]; then echo "$candidate"; return 0; fi
   done
+  return 1
+}
+if [ -z "$PY314" ]; then PY314=$(pixi_candidates || true); fi
+if [ -z "$PY314" ]; then
+  log "no python3.14 on this box -- bootstrapping the pixi env from the SYNCED mojo_env/pixi.toml"
+  budget_or_die "$PIXI_BOOTSTRAP_MIN" pixi_bootstrap
+  set_phase pixi_bootstrap
+  if ! command -v pixi >/dev/null 2>&1; then
+    [ -x "$HOME/.pixi/bin/pixi" ] && PATH="$HOME/.pixi/bin:$PATH" && export PATH
+  fi
+  if ! command -v pixi >/dev/null 2>&1; then
+    log "pixi not installed -- installing it (capped at ${PIXI_BOOTSTRAP_MIN}m for the whole bootstrap)"
+    timeout $(( PIXI_BOOTSTRAP_MIN * 30 )) \
+      bash -c 'curl -fsSL https://pixi.sh/install.sh | bash' >>"$LOGFILE" 2>&1 \
+      || log "WARNING: the pixi installer did not complete cleanly"
+    [ -x "$HOME/.pixi/bin/pixi" ] && PATH="$HOME/.pixi/bin:$PATH" && export PATH
+  fi
+  if command -v pixi >/dev/null 2>&1; then
+    log "pixi $(pixi --version 2>&1 | head -1) -- installing $SRC_TREE/mojo_env (this is the slow step)"
+    ( cd "$SRC_TREE/mojo_env" && timeout $(( PIXI_BOOTSTRAP_MIN * 60 )) pixi install ) \
+      >>"$LOGFILE" 2>&1 && log "pixi install: OK" || log "WARNING: pixi install did not exit 0"
+    PY314=$(pixi_candidates || true)
+  else
+    log "WARNING: pixi is still not on PATH after the installer"
+  fi
+fi
+if [ -z "$PY314" ]; then
+  # LAST RESORT: a wrapper that routes through `pixi run`, for an env that installed but whose bin
+  # dir is not where this script looks. It satisfies both `"$PY314" script.py` and `"$PY314" -c ...`.
+  if command -v pixi >/dev/null 2>&1 || [ -x "$HOME/.pixi/bin/pixi" ]; then
+    export PATH="$HOME/.pixi/bin:$PATH"
+    PY314="$WORK/py314-via-pixi"
+    printf '#!/bin/bash\nexec pixi run --manifest-path %s python3.14 "$@"\n' \
+      "$SRC_TREE/mojo_env/pixi.toml" > "$PY314"
+    chmod +x "$PY314"
+    "$PY314" -V >/dev/null 2>&1 || { log "the pixi-run wrapper does not yield a python3.14"; PY314=""; }
+  fi
 fi
 [ -n "$PY314" ] || { log "FATAL: no python3.14 interpreter found (set PY314=)"; finish 12; }
 log "python: $PY314 ($("$PY314" -V 2>&1))"
@@ -337,6 +389,32 @@ run_phase load bash -c '
     echo "--- nvidia-smi ---"
     nvidia-smi --query-gpu=index,name,driver_version,clocks.current.sm --format=csv,noheader 2>&1
   } > "$OUTTXT" 2>&1
+  # THE BUNDLED ENGINE MUST CARRY AN $ORIGIN RUNPATH. It is linked that way so it finds the
+  # libcudart.so.12 the wheel bundles beside it; if that rpath were ever dropped, the engine would
+  # fail to load at exactly the moment this window is measuring, and the failure would read as a GPU
+  # or driver problem rather than as a packaging one. Asserted here on the box (readelf always
+  # exists on Linux) as well as in the controller pre-flight, because the two read the same bytes in
+  # different places and a mismatch between them is itself worth knowing about.
+  ENG="$SITE/algenta_runtime_native/conform_generate_cuda"
+  if [ -f "$ENG" ]; then
+    readelf -d "$ENG" 2>&1 | grep -E "RPATH|RUNPATH" > "$WORK/engine_runpath.txt" 2>&1 || true
+    echo "--- engine RUNPATH ---" >> "$OUTTXT"
+    cat "$WORK/engine_runpath.txt" >> "$OUTTXT" 2>&1 || true
+    if grep -qF "\$ORIGIN" "$WORK/engine_runpath.txt" 2>/dev/null; then
+      echo "ENGINE_RUNPATH_OK: the bundled engine resolves its libraries relative to itself" \
+        | tee -a "$OUTTXT"
+    else
+      echo "ENGINE_RUNPATH_MISSING: no \$ORIGIN in the bundled engine dynamic section" \
+        | tee -a "$OUTTXT"
+      exit 1
+    fi
+    echo "--- engine ldd (libcudart must resolve from the bundle, libcublas must NOT be bundled) ---" \
+      >> "$OUTTXT"
+    LD_LIBRARY_PATH="$SITE/algenta_runtime_native" ldd "$ENG" >> "$OUTTXT" 2>&1 || true
+  else
+    echo "NOTE: no conform_generate_cuda in the wheel -- cannot assert the engine RUNPATH" \
+      | tee -a "$OUTTXT"
+  fi
   SOCK=/tmp/crv_probe_$$.sock
   timeout 120 "$W" --server "$SOCK" >/dev/null 2>&1 &
   pid=$!
