@@ -76,7 +76,7 @@ jobs:
     runs-on: thyn-8c
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build linux runtime in an amd64 container
         env:
           ALGENTA_SIGNING_KEY: ${{ secrets.ALGENTA_SIGNING_KEY }}
@@ -123,7 +123,7 @@ jobs:
     runs-on: thyn-8c
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # ── THE CUDA ENGINE COMPILE GATE ────────────────────────────────────────────────────────
       # WHY THIS STEP EXISTS. The wheel this job builds ships only the 643 public JSON-callable
       # `modules` shards. Every racing kernel is a private leading-underscore symbol (the #854
@@ -197,7 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: algenta-runtime-native-linux-x86_64
@@ -248,7 +248,7 @@ jobs:
       # same missing file, and run 35650281651 shows the same failure stacked on top of the CUDA
       # link break. Both artifacts-download steps write into subdirectories of the workspace, so
       # this must run FIRST; a later checkout would be a no-op on an already-populated tree.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # EXPLICIT artifact names, not the historical `algenta-runtime-native-*` glob: the CUDA
       # compile-gate job above uploads algenta-runtime-native-linux-x86_64-cuda, whose wheel
       # carries the SAME filename as the shipped linux wheel (same package, same platform tag —

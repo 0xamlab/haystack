@@ -37,7 +37,7 @@ jobs:
     outputs:
       list: ${{ steps.pick.outputs.list }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           persist-credentials: false
       - id: pick
@@ -64,11 +64,11 @@ jobs:
     container: ${{ matrix.leg.container }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           persist-credentials: false
       - name: Toolchain (pixi-pinned Mojo)
-        uses: prefix-dev/setup-pixi@ba3bb36eb2066252b2363392b7739741bb777659 # v0.8.10
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.8.10
         with:
           manifest-path: mojo_env/pixi.toml
           cache: true
@@ -80,7 +80,7 @@ jobs:
       - name: Record artifact identity
         run: |
           uname -m; python3 -c "import json;print(json.load(open('build_out/${{ matrix.family }}/cpu/_native/manifest.json'))['platform'])"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-${{ matrix.family }}-cpu-${{ matrix.leg.name }}
           path: build_out/${{ matrix.family }}/cpu/_native
@@ -92,10 +92,10 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           persist-credentials: false
-      - uses: prefix-dev/setup-pixi@ba3bb36eb2066252b2363392b7739741bb777659 # v0.8.10
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.8.10
         with:
           manifest-path: mojo_env/pixi.toml
           cache: true
@@ -106,7 +106,7 @@ jobs:
           xcrun -sdk macosx --find metal
       - name: Build algenta-llm (Metal)
         run: python3 scripts/build_hf_kernel_family.py --family algenta-llm --backend metal --out build_out/algenta-llm/metal
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-algenta-llm-metal-darwin-aarch64
           path: build_out/algenta-llm/metal/_native
@@ -120,10 +120,10 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: natives
       - name: Generate Hub repositories
@@ -150,7 +150,7 @@ jobs:
           for m in hub/*/build/*/metadata.json; do
             python3 -m sigstore sign --bundle "$m.sigstore" --overwrite "$m"
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: hub-repositories
           path: hub
@@ -166,10 +166,10 @@ jobs:
           - { runs-on: macos-26, variant: torch214-metal-aarch64-darwin }
     runs-on: ${{ matrix.leg.runs-on }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: hub-repositories
           path: hub
@@ -202,10 +202,10 @@ jobs:
       contents: read
     environment: hf-kernels-publish
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: hub-repositories
           path: hub
