@@ -96,7 +96,11 @@ class _MCPToolCallAuthChallengeASGIApp:
                     "id": payload.get("id"),
                     "error": {
                         "code": -32001,
-                        "message": "Authentication required: sign in to run Algenta tools.",
+                        "message": (
+                            "Authentication required: executing tools needs a free "
+                            "community login — device registration at algenta.ai (free). "
+                            "Introspection (initialize/tools/list) needs no credentials."
+                        ),
                     },
                 },
             )

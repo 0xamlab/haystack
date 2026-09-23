@@ -21,6 +21,12 @@ pipx install algenta-mcp
 `pip install algenta-mcp` is also supported. The package includes its MCP transport dependencies;
 users do not install or manage a separate protocol package.
 
+## Auth model
+
+Introspection (`initialize`/`tools/list`) needs no credentials. Executing tools requires a free
+community login — device registration at algenta.ai (free): run `algenta login`, or create a key
+at https://app.algenta.ai/dashboard/api-keys, then set `ALGENTA_API_KEY`.
+
 ## Configure
 
 ```bash

@@ -127,9 +127,12 @@ def _headers() -> dict[str, str]:
     api_key = _resolve_api_key()
     if not api_key:
         raise UnsupportedMCPAuthConfigurationError(
-            "ALGENTA_API_KEY / DE_API_KEY environment variables are not set "
-            "and no request API key was provided. "
-            "Set ALGENTA_API_KEY / DE_API_KEY or connect with Authorization: Bearer <key>."
+            "ALGENTA_API_KEY is not set. "
+            "Introspection (initialize/tools/list) needs no credentials, but executing "
+            "tools requires a free community login — device registration at algenta.ai "
+            "(free): run `algenta login` or create a key at "
+            "https://app.algenta.ai/dashboard/api-keys, then set ALGENTA_API_KEY "
+            "(or connect with Authorization: Bearer <key>)."
         )
     return {
         "Authorization": f"Bearer {api_key}",

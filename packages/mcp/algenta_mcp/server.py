@@ -11,8 +11,13 @@ Usage:
   python -m algenta_mcp.server --mode http --port 9000
 
 Environment variables:
-  ALGENTA_API_KEY /      — required; legacy DE_API_KEY remains accepted for
-  DE_API_KEY               compatibility. Use Cloud Managed API keys only in
+  ALGENTA_API_KEY /      — required for executing tools. Introspection
+  DE_API_KEY               (initialize/tools/list) needs no credentials.
+                           Free community login — device registration at
+                           algenta.ai (free): run `algenta login`, or create a
+                           key at https://app.algenta.ai/dashboard/api-keys.
+                           Legacy DE_API_KEY remains accepted for
+                           compatibility. Use Cloud Managed API keys only in
                            Cloud Managed. In self_hosted and air_gapped, use
                            the key provisioned by your self-hosted operator deployment
   ALGENTA_BASE_URL /     — default: https://api.algenta.ai in Cloud Managed.

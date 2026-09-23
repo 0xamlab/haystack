@@ -174,7 +174,8 @@ only `client_managed` capabilities. Full route and execution examples are in
 
 ## Authentication
 
-`algenta login` stores API and license credentials only in the operating-system
+`algenta login` registers this device under your free community license (required,
+free) and stores API and license credentials only in the operating-system
 credential store. If no secure keyring backend is available, storage fails
 explicitly; set `ALGENTA_API_KEY` in the process environment instead.
 

@@ -58,6 +58,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any, TypedDict
 
+from algenta_mcp.errors import InvalidArgumentsError, UnknownToolError
 from algenta_mcp.tools import (
     account,
     agent_runs,
@@ -594,16 +595,93 @@ def get_tool_specs(allowed: frozenset[str] | None = None) -> list[ToolSpec]:
     return [entry["spec"] for name, entry in TOOLS.items() if name in allowed]
 
 
+def _json_type_matches(value: Any, schema_type: str) -> bool:
+    """Exact JSON-Schema ``type`` check for the six primitive/composite types.
+
+    Booleans are deliberately excluded from integer/number (``True`` is an ``int`` in
+    Python but not in JSON Schema); an integral float counts as ``integer`` per the spec.
+    An unrecognized type string never rejects — the validator must not fail calls on
+    schema constructs it does not understand.
+    """
+    if schema_type == "string":
+        return isinstance(value, str)
+    if schema_type == "integer":
+        return (isinstance(value, int) and not isinstance(value, bool)) or (
+            isinstance(value, float) and value.is_integer()
+        )
+    if schema_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if schema_type == "boolean":
+        return isinstance(value, bool)
+    if schema_type == "array":
+        return isinstance(value, list)
+    if schema_type == "object":
+        return isinstance(value, dict)
+    if schema_type == "null":
+        return value is None
+    return True
+
+
+def _validate_arguments(name: str, input_schema: Any, arguments: Any) -> None:
+    """Reject calls that break the tool's published inputSchema, before dispatch.
+
+    Deliberately shallow and conservative: ``arguments`` must be a JSON object, every
+    top-level ``required`` field must be present, and declared property ``type``s are
+    checked exactly. Anything the schema cannot state at this depth (anyOf/oneOf/$ref,
+    nested properties, additionalProperties) is left to the handler — this gate exists
+    so a missing or ill-typed argument surfaces as ``invalid_arguments`` (400) instead
+    of a handler ``KeyError`` that the error serializer misreported as ``unknown_tool``
+    (404), and so that precedence no longer depends on argument shape.
+    """
+    if not isinstance(arguments, dict):
+        raise InvalidArgumentsError(tool_name=name, problem="arguments must be a JSON object")
+    if not isinstance(input_schema, dict):
+        return
+    required = input_schema.get("required")
+    if isinstance(required, list):
+        for field in required:
+            if isinstance(field, str) and field not in arguments:
+                raise InvalidArgumentsError(
+                    tool_name=name,
+                    problem=f"missing required argument '{field}'",
+                    field=field,
+                )
+    properties = input_schema.get("properties")
+    if isinstance(properties, dict):
+        for field, prop_schema in properties.items():
+            if field not in arguments or not isinstance(prop_schema, dict):
+                continue
+            schema_type = prop_schema.get("type")
+            if isinstance(schema_type, str) and not _json_type_matches(
+                arguments[field], schema_type
+            ):
+                raise InvalidArgumentsError(
+                    tool_name=name,
+                    problem=f"argument '{field}' must be of type {schema_type}",
+                    field=field,
+                )
+
+
 async def call_tool(
     name: str, arguments: dict[str, Any], allowed: frozenset[str] | None = None
 ) -> str:
-    """Dispatch a tool call by name. Raises KeyError for unknown tools.
+    """Dispatch a tool call by name.
 
-    When ``allowed`` is provided, a tool outside that visible set is rejected as if
-    it did not exist (fail closed) — a product edition is a hard boundary, not a
-    hint the caller can bypass.
+    Error precedence is deterministic, in exactly this order:
+      1. Dispatch miss — the name is not registered, or is outside ``allowed`` (a
+         product edition is a hard boundary, not a hint the caller can bypass; it fails
+         closed, as if the tool did not exist) → ``UnknownToolError`` (unknown_tool, 404).
+      2. Argument validation against the tool's inputSchema — runs BEFORE the handler,
+         and therefore before the auth pre-flight inside the keyed client
+         (``UnsupportedMCPAuthConfigurationError``) → ``InvalidArgumentsError``
+         (invalid_arguments, 400). A malformed call is malformed whether or not the
+         caller is authenticated.
+      3. Handler failures — auth pre-flight, upstream API errors, domain errors.
     """
     if allowed is not None and name not in allowed:
-        raise KeyError(name)
-    entry = TOOLS[name]
+        raise UnknownToolError(name)
+    entry = TOOLS.get(name)
+    if entry is None:
+        raise UnknownToolError(name)
+    _validate_arguments(name, entry["spec"].get("inputSchema"), arguments)
     return await entry["handler"](arguments)

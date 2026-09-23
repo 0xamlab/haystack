@@ -129,8 +129,8 @@ def test_mcp_registry_manifest_matches_packaged_version() -> None:
         {
             "name": "Authorization",
             "description": (
-                "Bearer <ALGENTA_API_KEY>. Create a key in the Algenta dashboard "
-                "or authenticate with `algenta login`."
+                "Bearer <ALGENTA_API_KEY>. Free community login — device registration "
+                "at algenta.ai: `algenta login`, or the dashboard."
             ),
             "placeholder": "Bearer <ALGENTA_API_KEY>",
             "isRequired": True,

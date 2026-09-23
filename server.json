@@ -16,7 +16,7 @@
       "headers": [
         {
           "name": "Authorization",
-          "description": "Bearer <ALGENTA_API_KEY>. Create a key in the Algenta dashboard or authenticate with `algenta login`.",
+          "description": "Bearer <ALGENTA_API_KEY>. Free community login — device registration at algenta.ai: `algenta login`, or the dashboard.",
           "placeholder": "Bearer <ALGENTA_API_KEY>",
           "isRequired": true,
           "isSecret": true
@@ -35,7 +35,7 @@
       "environmentVariables": [
         {
           "name": "ALGENTA_API_KEY",
-          "description": "Your Algenta API key. Create one in the Algenta dashboard or authenticate with `algenta login`.",
+          "description": "Your Algenta API key (free community login — device registration at algenta.ai: `algenta login`, or the dashboard). Legacy DE_API_KEY is also accepted.",
           "isRequired": true,
           "isSecret": true
         },

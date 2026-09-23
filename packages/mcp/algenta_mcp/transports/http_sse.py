@@ -98,7 +98,11 @@ class _MCPToolCallAuthChallengeASGIApp:
                     "id": payload.get("id"),
                     "error": {
                         "code": -32001,
-                        "message": "Authentication required: sign in to run Algenta tools.",
+                        "message": (
+                            "Authentication required: executing tools needs a free "
+                            "community login — device registration at algenta.ai (free). "
+                            "Introspection (initialize/tools/list) needs no credentials."
+                        ),
                     },
                 },
             )
@@ -426,6 +430,7 @@ def _build_http_app() -> ASGIApp:
         async def handle_call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
             name = params.name
             arguments = params.arguments
+            is_error = False
             request = ctx.request
             scope = request.scope if request is not None and hasattr(request, "scope") else {}
             try:
@@ -447,7 +452,10 @@ def _build_http_app() -> ASGIApp:
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
                 result = serialize_tool_error(exc, tool_name=name)
-            return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
+                # The payload is a serialized error: mark the envelope so MCP
+                # clients/agents treat it as a failed call, not successful output.
+                is_error = True
+            return CallToolResult(content=[TextContent(type="text", text=result)], isError=is_error)
 
         return Server(
             "algenta-mcp",
@@ -667,6 +675,7 @@ def _build_fastapi_router() -> APIRouter | None:
         async def _call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
             name = params.name
             arguments = params.arguments
+            is_error = False
             request = ctx.request
             scope = request.scope if request is not None and hasattr(request, "scope") else {}
             try:
@@ -688,7 +697,10 @@ def _build_fastapi_router() -> APIRouter | None:
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
                 result = serialize_tool_error(exc, tool_name=name)
-            return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
+                # The payload is a serialized error: mark the envelope so MCP
+                # clients/agents treat it as a failed call, not successful output.
+                is_error = True
+            return CallToolResult(content=[TextContent(type="text", text=result)], isError=is_error)
 
         return Server(
             "algenta-mcp",

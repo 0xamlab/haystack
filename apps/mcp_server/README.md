@@ -561,8 +561,8 @@ mcp-server:
 
 ## Troubleshooting
 
-**`ALGENTA_API_KEY / DE_API_KEY environment variables are not set`**
-→ Set `export ALGENTA_API_KEY=<YOUR_ALGENTA_API_KEY>` or `export DE_API_KEY=<YOUR_LEGACY_DECISION_ENGINE_API_KEY>` before running
+**`ALGENTA_API_KEY is not set`**
+→ Executing tools requires a free community login — device registration at algenta.ai (free): run `algenta login`, or create a key at `https://app.algenta.ai/dashboard/api-keys`, then `export ALGENTA_API_KEY=<YOUR_ALGENTA_API_KEY>` before running
 
 **`mcp package not installed`**
 → Source contributors should restore `requirements-mcp.txt`; packaged users should reinstall or upgrade `algenta-mcp`.

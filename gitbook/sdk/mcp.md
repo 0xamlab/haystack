@@ -21,6 +21,8 @@ The package installs a single console script, `algenta-mcp`. It depends on the p
 
 ## Configure
 
+Introspection (`initialize`/`tools/list`) needs no credentials. Executing tools requires a free community login — device registration at algenta.ai (free): run `algenta login`, or create a key at https://app.algenta.ai/dashboard/api-keys, then set `ALGENTA_API_KEY`.
+
 Point the server at your deployment with two environment variables:
 
 ```bash title=".env"
@@ -464,7 +466,7 @@ Both routes **404** when neither Entra nor generic OIDC is configured — this g
 
 | Symptom | Resolution |
 |---------|------------|
-| `ALGENTA_API_KEY / DE_API_KEY environment variables are not set` | Export `ALGENTA_API_KEY` (or pass `Authorization: Bearer <key>` over HTTP) before launching. |
+| `ALGENTA_API_KEY is not set` | Executing tools requires a free community login — device registration at algenta.ai (free): run `algenta login`, or create a key at `https://app.algenta.ai/dashboard/api-keys`, then export `ALGENTA_API_KEY` (or pass `Authorization: Bearer <key>` over HTTP) before launching. |
 | `mcp package not installed` | Reinstall or upgrade `algenta-mcp`; its declared dependencies include the MCP protocol library. Do not install a side dependency separately. |
 | `API error 401` | Rotate the key at `https://app.algenta.ai/dashboard/api-keys` (Cloud Managed) or in your operator deployment (self-hosted). |
 | `API error 429` | Inspect the structured code for an endpoint abuse control, upstream provider limit, or operator policy; Algenta editions have no request meter. |

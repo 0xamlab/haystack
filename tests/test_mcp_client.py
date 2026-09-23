@@ -24,7 +24,10 @@ def test_request_overrides_supply_api_key_and_base_url(monkeypatch):
 
     with pytest.raises(UnsupportedMCPAuthConfigurationError) as excinfo:
         mcp_client._headers()
-    assert "ALGENTA_API_KEY / DE_API_KEY" in str(excinfo.value)
+    message = str(excinfo.value)
+    assert "ALGENTA_API_KEY is not set" in message
+    assert "free community login" in message
+    assert "algenta login" in message
 
     with mcp_client.request_overrides(
         api_key="de_test_override",
