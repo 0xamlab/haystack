@@ -140,7 +140,8 @@ Beyond that, a commercial license is required: https://algenta.ai/pricing.
 ## Support
 
 Generally Available on the platforms its families list under Requirements. Within `v1`, functions are only
-added; removals or signature changes ship as `v2`. Community: https://discord.gg/w8NDsph9an or this
+added; removals or signature changes ship as `v2`. Documentation: https://docs.algenta.ai (the kernels guide:
+https://docs.algenta.ai/guides/kernels-on-hugging-face). Community: https://discord.gg/w8NDsph9an or this
 repository's Community tab. Commercial licences and support: https://algenta.ai/pricing.
 """
 

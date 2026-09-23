@@ -284,7 +284,7 @@ def test_vendored_count_guard_agrees_with_the_sdk_guard():
 @pytest.mark.skipif(not REPO_DIR, reason="HF_KERNEL_REPO_DIR not set")
 def test_card_reads_for_an_external_user():
     card = (Path(REPO_DIR) / "README.md").read_text()
-    for needle in ("pip install kernels torch", "trust_remote_code=[", "## What's inside", "## Requirements", "## License", "algenta.ai/pricing"):
+    for needle in ("pip install kernels torch", "trust_remote_code=[", "## What's inside", "## Requirements", "## License", "algenta.ai/pricing", "https://docs.algenta.ai", "discord.gg/w8NDsph9an"):
         assert needle in card, needle
     for banned in ("Built from", "serialized within a process", "count relation", "Decision Engine", "thyn-ai/algenta`", "Kernels Hub"):
         assert banned not in card, banned
@@ -322,3 +322,19 @@ print("loaded", len(k.modules), "modules via symlinked cache")
 """
     r = subprocess.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=300)
     assert r.returncode == 0, r.stderr[-800:]
+
+
+def test_card_templates_link_the_docs():
+    """Every kernel card (family and umbrella) points at the docs beside Discord and pricing —
+    added 2026-09-23 when the Hub started reporting downloads. Source-level so it runs without
+    a generated package; the external-user card test checks the rendered card."""
+    import re as _re
+    root = Path(__file__).resolve().parents[1]
+    for rel in ("scripts/generate_hf_kernel_package.py", "scripts/hf_kernels/generate_umbrella.py"):
+        text = (root / rel).read_text()
+        support = text[text.index("## Support"):]
+        support = support[: support.index('"""')]
+        for needle in ("https://docs.algenta.ai", "https://docs.algenta.ai/guides/kernels-on-hugging-face", "discord.gg/w8NDsph9an", "algenta.ai/pricing"):
+            assert needle in support, (rel, needle)
+        assert not _re.search(r"@algenta\.ai", support), rel
+        assert max(len(line) for line in support.splitlines()) <= 110, rel
