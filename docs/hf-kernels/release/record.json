@@ -1,16 +1,16 @@
 {
  "schema": 1,
- "created": "2026-09-22T18:44:48+00:00",
+ "created": "2026-09-23T13:59:54+00:00",
  "source": {
   "repository": "thyn-ai/algenta",
-  "commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0"
+  "commit": "49e0203facbf9991926b3097d69e771936275091"
  },
  "inputs": {
   "runtime_library_contract_sha256": "11a54187eecb0da5dc135853455a05954091158fd166a0f3561f02ec1dde0c62",
   "hf_kernel_filters_sha256": "ec5c8f0db0eec1afeeb9e3a53c938a4c1624133f135ef9afe1f7ae6f80b4a441",
   "abi_sha256": "7b7fce5800b2879bf561315fa919afc631c034c55e0e78d5425eaa5c9cdc38a5",
   "cuda_decode_session_sha256": "691ce89eb3751ef559b75e2fbe2e9dced354586fb66af285bfa2130d5352af82",
-  "generator_sha256": "7b99beca6c943da50c50a68cfe1c7e4ce5db15a0ab7cb90271da5fafa75fa0b8",
+  "generator_sha256": "e3cd4a9cca88ef249268477b2bc5177686e092bf84e1705e2bc9e43cc6fd25fc",
   "builder_sha256": "bf2c3dbf90b228a47637cbe88e9cbd1eb96d5764d3e9d3341fce2658120ae405",
   "templates_sha256": {
    "_native.py": "1592188589200668ec0f0f4372920aea8bd0f731441c68c5ab02188edd6528c3",
@@ -23,11 +23,29 @@
   "pixi_lock_sha256": "af6a7387f60d40995fd1b56bd5dd515cea0001ff3eee293d2ce5e39e56dd2bf0"
  },
  "families": {
+  "algenta": {
+   "repo": "thyn-ai/algenta",
+   "revisions": {
+    "v1": "452241e9bcb06a820521532b3338565cf7882e64",
+    "main": "480c0b3381a580377e7b721d59f34ba369974cfe"
+   },
+   "variants": {
+    "torch-universal": {
+     "metadata_id": "_algenta_umbrella_49e0203",
+     "metadata_sha256": "36d75774f642a6925dfaadeae3cd402df4636bdf04741a4e56d159caef94fd2d",
+     "backend": {
+      "type": "cpu"
+     },
+     "native": {}
+    }
+   },
+   "card_sha256": "405f5a06eb7f01d6aa4d1e9561316774b099ede597a7cec4bf768601e0df1b34"
+  },
   "algenta-bits-time": {
    "repo": "thyn-ai/algenta-bits-time",
    "revisions": {
-    "v1": "199dff6cf340d61d1d10da026e27288fc0b88dff",
-    "main": "f4839305c5c2f0f0a3d9a90120c6c162f1dcc1a7"
+    "v1": "974b9ba8807732e8073a5b9b15893da26053acdb",
+    "main": "e4a63a208487e8b9cbb2eccd1a959e8a956b8088"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -761,13 +779,13 @@
      }
     }
    },
-   "card_sha256": "d0a901576fb748211a6a9e2052ce7e93c16f525a58cf6b59b124ac54df1bf8e7"
+   "card_sha256": "16fd3a7c004927ee29f684226b6774f85eef23a0f21e257107ed2d6848edcef8"
   },
   "algenta-crypto": {
    "repo": "thyn-ai/algenta-crypto",
    "revisions": {
-    "v1": "944dadd434e2d92f357454e560000f541be7d86c",
-    "main": "afa99ade8c95640c74f85edf0fb15273dcdae123"
+    "v1": "cc201045a6ecf8e2374ad87ea02e5927ddf5f0c8",
+    "main": "6f63dfeb0d5f7ee26b12a0ea53a487798ca15773"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -1501,13 +1519,13 @@
      }
     }
    },
-   "card_sha256": "43f42b38de9c08bd94824bd1c6f69b705512fc2baf7a996ce91a4a7b23339eb0"
+   "card_sha256": "95910918a6b663a0b0dba734d3a3cf9a447d0cb9f11ed5dded2ba1c3224ee9dc"
   },
   "algenta-finance": {
    "repo": "thyn-ai/algenta-finance",
    "revisions": {
-    "v1": "a646c590c67ff78a29f51b768dd58d32f475a139",
-    "main": "3d04e8e92b8e50c36bc48322e3fe691e0dad9a73"
+    "v1": "b394ebf406e8eb22f9df174f47f4100842997d46",
+    "main": "082d03dbcc6a8d9918fd89da1554972125f19c9f"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -2241,13 +2259,13 @@
      }
     }
    },
-   "card_sha256": "270c4ec821f1a80ec432a672c054eb6baa51ce62c38079e92eed0f2ef1113080"
+   "card_sha256": "13671f6aeb139470153ea2dcfed4339f5f50f03df39751d319835b83a5bc9c25"
   },
   "algenta-general-a": {
    "repo": "thyn-ai/algenta-general-a",
    "revisions": {
-    "v1": "34fa002a1a2374c8cce73a70423b5d36fe4793ce",
-    "main": "be2a026a8e9480a61fb79ad39ad728ff94546ff2"
+    "v1": "15a5ceafdb2c8f25376f7e2dba2a958876079939",
+    "main": "7f49868e7134525ef92d8d60e0180ed425038289"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -2981,13 +2999,13 @@
      }
     }
    },
-   "card_sha256": "7ba31c2c3cda6f3d8504d479ef6781602a4bca417f2c5b7e640f08c4f2042d56"
+   "card_sha256": "c8838e884046ae744041f9a9ebe9bc7ca3dbcdfbcc4374c31f2ce0553b995bd5"
   },
   "algenta-general-b": {
    "repo": "thyn-ai/algenta-general-b",
    "revisions": {
-    "v1": "a2ffcc4eb1c7b6db5f087f74e75c77e9d09dfc2b",
-    "main": "81511f105233ba305e59a161b12b0eb0f6947ff7"
+    "v1": "e8651f53028c1a490157a26b832df2915cb50197",
+    "main": "8b2241cbb67189fe86511008c355cc7690b07010"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -3721,13 +3739,13 @@
      }
     }
    },
-   "card_sha256": "b637515de690ac9bd3ec221fd16f420789b959bd18b64d02df62a06717ce32f9"
+   "card_sha256": "9da96935aab174b148f7eca3bbd37d305394150e5ff25401be8c4cb95b2a3a28"
   },
   "algenta-general-c": {
    "repo": "thyn-ai/algenta-general-c",
    "revisions": {
-    "v1": "8c2dd0491f8b3faae59e7e8215144665a59d0fc0",
-    "main": "08e827ee5a57e0a7cc869e4dbb9176e80a5452a2"
+    "v1": "7887fbb8811641857d4075a65e259a3a74a60dff",
+    "main": "8e50f949f2228cc51c5d36776e153107e143bff5"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -4461,13 +4479,13 @@
      }
     }
    },
-   "card_sha256": "b6fec65e77148242c304b37f453bbca41f3ba5ad5a4fc94aeac8c03886fafe43"
+   "card_sha256": "21f29923c4e994d36f9bea9d81f3d6655dd1eaaeb99621418e5902f29b04fc32"
   },
   "algenta-general-d": {
    "repo": "thyn-ai/algenta-general-d",
    "revisions": {
-    "v1": "d2eb31c5032da4b3779fdac9439d78fcc376d42e",
-    "main": "b9fbf8c843d76172a3d9cf1099d7609e58ac9350"
+    "v1": "f2992ee184ff462e7355710893d032c97900d0dd",
+    "main": "bdb15fb25f41196f8496724111c9690394bb6922"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -5201,13 +5219,13 @@
      }
     }
    },
-   "card_sha256": "98dd4dd1635a1b0a59f9785c93f1902977da0135b872463299ad60b3cb6555e9"
+   "card_sha256": "23722caac3b9a45ded7e4873030762755112b37e70df94411881fc2515634737"
   },
   "algenta-general-e": {
    "repo": "thyn-ai/algenta-general-e",
    "revisions": {
-    "v1": "022f029f19f7e213b0293da11751a2c471f3277d",
-    "main": "6237c7b02f44614199f30d3e262abd2572f4b3e9"
+    "v1": "428d073ff5f482e0a3bd0420c4f79b94576af3b0",
+    "main": "14f44cabc99a1d91885a15e652392a063cb2c42d"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -5941,13 +5959,13 @@
      }
     }
    },
-   "card_sha256": "34fb322f2b65b6e2b8119d4a176334e752d88eef848035f82fccff8fd255f550"
+   "card_sha256": "ce13999e096a69744e1023ea5f5481092f5f4d422d848decc251d87505145c65"
   },
   "algenta-geometry": {
    "repo": "thyn-ai/algenta-geometry",
    "revisions": {
-    "v1": "54b91d902d9a38a244c8a5f093aa7bfd2824d6dd",
-    "main": "090136fdd4d060453691a0a94db8d71d824f3e52"
+    "v1": "561f825f900678a528060bae69830cd475ec37ea",
+    "main": "5e31452bbd06f1dce36ebcdc1075a52fb2626702"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -6681,13 +6699,13 @@
      }
     }
    },
-   "card_sha256": "649196b5b48fe0c636ecb17bd9390c2bba7e939520530cceda4049bb97469b78"
+   "card_sha256": "9d4f9d26c4ce85b9256f6c8916f44cd61d426ccacb0a79f11cca09b7c2bbe9c6"
   },
   "algenta-graph": {
    "repo": "thyn-ai/algenta-graph",
    "revisions": {
-    "v1": "7247b466a11e49d2d2eeef2beb488732938e20e6",
-    "main": "5aa775c1eaf262bc7bc9da92847f9c8214408b3f"
+    "v1": "02382050f9e5bd16f7b62e05894aa9022280398b",
+    "main": "933060fae6d979c7eb5e793dc4ed87a75304b8cf"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -7421,13 +7439,13 @@
      }
     }
    },
-   "card_sha256": "fb31f91bc9e7c76d7c5f6e0fff31196b08f8c619f26648bf1bcd877d1ba7c668"
+   "card_sha256": "231d6e367fecd7988e64bd540936c9c32469df8ee798e467bde7d6588e5d60fe"
   },
   "algenta-llm": {
    "repo": "thyn-ai/algenta-llm",
    "revisions": {
-    "v1": "92ef06d7b01116a70d8a8a6179c492aac5462146",
-    "main": "1097541a9aea4954dfdfc84690c98efde6c18e2a"
+    "v1": "f20940168a20cc9c67637dcc7960492f4cc329da",
+    "main": "176eafa5572951c54df1c44c97ac098471f6dcad"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -10011,13 +10029,13 @@
      }
     }
    },
-   "card_sha256": "4abdedceae2b1ef0d0749f3ad138f6d7d3b2644661b7c323bd6c2d575b1399e6"
+   "card_sha256": "f398b8a85b5b13eda2d62a3795e960b4798ab31231d0265329c977ab2050895d"
   },
   "algenta-ml": {
    "repo": "thyn-ai/algenta-ml",
    "revisions": {
-    "v1": "c67aed624ae1e22398e79780d5bfc8bb66237c0c",
-    "main": "768cfe5a0cac93abab12e999d6fc60398e63398d"
+    "v1": "21bb3a2d31c6861a8a537dc893029179b1240e43",
+    "main": "6714f8bdf9601ea0dd01854830b7205e8fa279bb"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -10751,13 +10769,13 @@
      }
     }
    },
-   "card_sha256": "f27af0036ef0809e9fabe52c1e2917394c77b791a6825c14ed4771305bd3bd3b"
+   "card_sha256": "96f7154aacb632536482ee9f94ef49e9f0de22581eda10200e4df16aaa427bfd"
   },
   "algenta-networking": {
    "repo": "thyn-ai/algenta-networking",
    "revisions": {
-    "v1": "11ada7623e74dbbeb3a4f004648d58fe40cd1d9b",
-    "main": "ab54ccac269610837b3b307840435863de843d93"
+    "v1": "6dae3e18749d9cf5601c1d0f2ecc8024d38697d6",
+    "main": "fa34220a4c7836577033a75bd640b0f4b003f7c0"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -11491,13 +11509,13 @@
      }
     }
    },
-   "card_sha256": "e6c2c57315c8d3f5c57f4a511dc240076aa23529482f561d5d4b1bc09810ab62"
+   "card_sha256": "8e94079e209102536b8bd274b2058da0fb408fcba23e426908ab90cc616ebfd8"
   },
   "algenta-serialization": {
    "repo": "thyn-ai/algenta-serialization",
    "revisions": {
-    "v1": "12109d34d242a4fb702d8b78419a9aff195dc91d",
-    "main": "db0381f1854872fa11d9bfde598c395a10eec94f"
+    "v1": "abfe437a6f7b6c0152248d04764ccc99126417e8",
+    "main": "c6a2e4e5298e6c63264403e9e2f595fdf4ab6268"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -12231,13 +12249,13 @@
      }
     }
    },
-   "card_sha256": "ca2c1493cacac4fc33ea1eec8f2f92f6c423adcf5e23550fa1d528e95834766c"
+   "card_sha256": "b342a93db4c22874c84b7fe88dea849121afd6d02efa836d0a13660ee3748efd"
   },
   "algenta-signal": {
    "repo": "thyn-ai/algenta-signal",
    "revisions": {
-    "v1": "a770d6fe3be1bbf6f08accc70902490a85cbf00f",
-    "main": "4689ce6a71f92a2d0464b4de8223cec5e37e05f6"
+    "v1": "d0072720ccee067f3adfa9c0a161f04b6f09c0b8",
+    "main": "052b482a9ea1398170088def0b039883de3a8335"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -12971,13 +12989,13 @@
      }
     }
    },
-   "card_sha256": "c35a3c15366566008c44fc02febb6fca75124ae4e5a193bfc545cd0dbf9036fa"
+   "card_sha256": "48f61872b0234e745e5a63d4fe3ad9cd273f877be6f487ce2c453d98ed24c4cf"
   },
   "algenta-stats": {
    "repo": "thyn-ai/algenta-stats",
    "revisions": {
-    "v1": "ac35ffe20385f0eb7d2a1d2f1f935dc3a287c886",
-    "main": "57b49f81cec7240e5f5b98e439d45e220248771e"
+    "v1": "218e79f223dec7a684311690393b8f5102dd5b46",
+    "main": "b7b1373c31aac2526af7bc6608a752cb7f445944"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -13711,13 +13729,13 @@
      }
     }
    },
-   "card_sha256": "61fc9fb07f3880e1267aa16642a3c2864ce01a88e0224e2023d054f2013540d0"
+   "card_sha256": "19e4240c52aa9290f365ce0c9ec879e2e0632c82c1439b875da5233e7aa9a89a"
   },
   "algenta-tensors": {
    "repo": "thyn-ai/algenta-tensors",
    "revisions": {
-    "v1": "e1a96bbad9bedcd71afce08a4c648ffec55576e6",
-    "main": "c96c51f535c5a868ff801d180c118ea327515a39"
+    "v1": "3d86dbcd975fc7cafdbdb5976beae02308d63d6b",
+    "main": "98a6830f4d9751abab7f92bcc04a008bbd3c0fc2"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -14451,13 +14469,13 @@
      }
     }
    },
-   "card_sha256": "583a93a26d46fd487a8ec8ee835c5648ccbed80539ea46ddba9c6d415b0064dc"
+   "card_sha256": "bff6f8d484af08ce893230e28ac36ae4485bcff7176b10d80667f8c603e673d2"
   },
   "algenta-text": {
    "repo": "thyn-ai/algenta-text",
    "revisions": {
-    "v1": "fb2cab4558c5ace333d832d0a0c4b807ba0357f1",
-    "main": "d22c45585f785953e145af1cb3e0e8070ce827c5"
+    "v1": "c7f66f4f62fc05e6c08e3f83b62162c59166d8dc",
+    "main": "6394d8fc88b3c0ebbb1af824b012f8b93041e719"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -15191,13 +15209,13 @@
      }
     }
    },
-   "card_sha256": "e1ddaaf81601fdd0fb1dbe6656c433842ddac03aa263c5234d6ccc23cdbf964e"
+   "card_sha256": "3a6a0606ba133fb776b46c72e7542acd490f3110c891d9fb1c6d844a868bfa5b"
   },
   "algenta-vision": {
    "repo": "thyn-ai/algenta-vision",
    "revisions": {
-    "v1": "ebad076f3be6255d77fee9f279c2af5728ea973e",
-    "main": "d5d5efbb893a82d2bfc0dcc3c8ee22f3e2d1cf34"
+    "v1": "52fc46db1b5b604907d42ed8178ca0cbf01e1516",
+    "main": "29a94a5acd72f9fdced483fbfea6617abe894030"
    },
    "variants": {
     "torch210-cpu-aarch64-darwin": {
@@ -15931,93 +15949,93 @@
      }
     }
    },
-   "card_sha256": "672e6d49422dd62f5d6130fd9eedb3631bab89850d04972a9d5d3a9e272b7f8a"
+   "card_sha256": "bdffcea18bbb9e949f71773d7731a0216c18714356e7486f80ec889a6edfaa13"
   }
  },
  "umbrella": {
   "repo": "thyn-ai/algenta",
   "revisions": {
-   "v1": "5063de83c1c6637c0f749edf6a57a684981df7f0",
-   "main": "1b6604f9b79b70e01af895847a8e6d18c285162d"
+   "v1": "452241e9bcb06a820521532b3338565cf7882e64",
+   "main": "480c0b3381a580377e7b721d59f34ba369974cfe"
   },
   "kernel_depends": [
    {
     "repo-id": "thyn-ai/algenta-bits-time",
-    "revision": "199dff6cf340d61d1d10da026e27288fc0b88dff"
+    "revision": "974b9ba8807732e8073a5b9b15893da26053acdb"
    },
    {
     "repo-id": "thyn-ai/algenta-crypto",
-    "revision": "944dadd434e2d92f357454e560000f541be7d86c"
+    "revision": "cc201045a6ecf8e2374ad87ea02e5927ddf5f0c8"
    },
    {
     "repo-id": "thyn-ai/algenta-finance",
-    "revision": "a646c590c67ff78a29f51b768dd58d32f475a139"
+    "revision": "b394ebf406e8eb22f9df174f47f4100842997d46"
    },
    {
     "repo-id": "thyn-ai/algenta-general-a",
-    "revision": "34fa002a1a2374c8cce73a70423b5d36fe4793ce"
+    "revision": "15a5ceafdb2c8f25376f7e2dba2a958876079939"
    },
    {
     "repo-id": "thyn-ai/algenta-general-b",
-    "revision": "a2ffcc4eb1c7b6db5f087f74e75c77e9d09dfc2b"
+    "revision": "e8651f53028c1a490157a26b832df2915cb50197"
    },
    {
     "repo-id": "thyn-ai/algenta-general-c",
-    "revision": "8c2dd0491f8b3faae59e7e8215144665a59d0fc0"
+    "revision": "7887fbb8811641857d4075a65e259a3a74a60dff"
    },
    {
     "repo-id": "thyn-ai/algenta-general-d",
-    "revision": "d2eb31c5032da4b3779fdac9439d78fcc376d42e"
+    "revision": "f2992ee184ff462e7355710893d032c97900d0dd"
    },
    {
     "repo-id": "thyn-ai/algenta-general-e",
-    "revision": "022f029f19f7e213b0293da11751a2c471f3277d"
+    "revision": "428d073ff5f482e0a3bd0420c4f79b94576af3b0"
    },
    {
     "repo-id": "thyn-ai/algenta-geometry",
-    "revision": "54b91d902d9a38a244c8a5f093aa7bfd2824d6dd"
+    "revision": "561f825f900678a528060bae69830cd475ec37ea"
    },
    {
     "repo-id": "thyn-ai/algenta-graph",
-    "revision": "7247b466a11e49d2d2eeef2beb488732938e20e6"
+    "revision": "02382050f9e5bd16f7b62e05894aa9022280398b"
    },
    {
     "repo-id": "thyn-ai/algenta-llm",
-    "revision": "92ef06d7b01116a70d8a8a6179c492aac5462146"
+    "revision": "f20940168a20cc9c67637dcc7960492f4cc329da"
    },
    {
     "repo-id": "thyn-ai/algenta-ml",
-    "revision": "c67aed624ae1e22398e79780d5bfc8bb66237c0c"
+    "revision": "21bb3a2d31c6861a8a537dc893029179b1240e43"
    },
    {
     "repo-id": "thyn-ai/algenta-networking",
-    "revision": "11ada7623e74dbbeb3a4f004648d58fe40cd1d9b"
+    "revision": "6dae3e18749d9cf5601c1d0f2ecc8024d38697d6"
    },
    {
     "repo-id": "thyn-ai/algenta-serialization",
-    "revision": "12109d34d242a4fb702d8b78419a9aff195dc91d"
+    "revision": "abfe437a6f7b6c0152248d04764ccc99126417e8"
    },
    {
     "repo-id": "thyn-ai/algenta-signal",
-    "revision": "a770d6fe3be1bbf6f08accc70902490a85cbf00f"
+    "revision": "d0072720ccee067f3adfa9c0a161f04b6f09c0b8"
    },
    {
     "repo-id": "thyn-ai/algenta-stats",
-    "revision": "ac35ffe20385f0eb7d2a1d2f1f935dc3a287c886"
+    "revision": "218e79f223dec7a684311690393b8f5102dd5b46"
    },
    {
     "repo-id": "thyn-ai/algenta-tensors",
-    "revision": "e1a96bbad9bedcd71afce08a4c648ffec55576e6"
+    "revision": "3d86dbcd975fc7cafdbdb5976beae02308d63d6b"
    },
    {
     "repo-id": "thyn-ai/algenta-text",
-    "revision": "fb2cab4558c5ace333d832d0a0c4b807ba0357f1"
+    "revision": "c7f66f4f62fc05e6c08e3f83b62162c59166d8dc"
    },
    {
     "repo-id": "thyn-ai/algenta-vision",
-    "revision": "ebad076f3be6255d77fee9f279c2af5728ea973e"
+    "revision": "52fc46db1b5b604907d42ed8178ca0cbf01e1516"
    }
   ],
-  "metadata_id": "_algenta_umbrella_4c6fe5e"
+  "metadata_id": "_algenta_umbrella_49e0203"
  }
 }

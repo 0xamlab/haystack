@@ -1463,6 +1463,23 @@
       "owner": "maintainer",
       "accessed": "2026-09-22",
       "contradicts": ""
+    },
+    {
+      "id": "REPUBLISH-005",
+      "question": "Were all 19 families and the umbrella republished from the capped final-source builds, with the uncapped history removed?",
+      "claim": "Card rollout 2026-09-23: every kernel card (19 families + the umbrella) now links the documentation (https://docs.algenta.ai and the kernels guide https://docs.algenta.ai/guides/kernels-on-hugging-face, PR #1152) beside Discord and pricing — the Hub started reporting downloads that day. Regenerated from the same natives as REPUBLISH-002/004 (macOS CPU cap5, Metal 6144-tier cap7, Linux cap8 CPU + CUDA sm_75/80/89/90): binaries byte-identical, cards and metadata regenerated; every family re-passed family_smoke and the API-versioning gate (0 removed, 0 changed), published to v1 and main and squashed to one commit each; the umbrella re-pinned to the new v1 shas. Live checks: 20-repo health, anonymous consumer verification from a fresh cache (§9 red-team 9/9 held), the docs link on the live cards. The release record was regenerated from the published metadata, manifests and cards mirrored from the Hub after the local generated tree was lost to a restart. Yes. Each family: generated from the final macOS/Linux/CUDA natives, passed family_smoke and the API-versioning gate against its previously published v1 (0 removed, 0 changed), uploaded to v1 and main with stale build/** deleted, then super_squash_history on both branches — one commit each. Umbrella regenerated with kernel-depends pinned to the post-squash v1 shas and squashed. Release record regenerated from the published tree.",
+      "kind": "measurement",
+      "source": "scripts/hf_kernels/republish_capped.py (republish_report.json); huggingface_hub live state",
+      "result": "thyn-ai/algenta-bits-time: 199dff6c -> 974b9ba8 (v1 1 commit, main 1, private=False); thyn-ai/algenta-crypto: 944dadd4 -> cc201045 (v1 1 commit, main 1, private=False); thyn-ai/algenta-finance: a646c590 -> b394ebf4 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-a: 34fa002a -> 15a5ceaf (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-b: a2ffcc4e -> e8651f53 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-c: 8c2dd049 -> 7887fbb8 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-d: d2eb31c5 -> f2992ee1 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-e: 022f029f -> 428d073f (v1 1 commit, main 1, private=False); thyn-ai/algenta-geometry: 54b91d90 -> 561f825f (v1 1 commit, main 1, private=False); thyn-ai/algenta-graph: 7247b466 -> 02382050 (v1 1 commit, main 1, private=False); thyn-ai/algenta-llm: 92ef06d7 -> f2094016 (v1 1 commit, main 1, private=False); thyn-ai/algenta-ml: c67aed62 -> 21bb3a2d (v1 1 commit, main 1, private=False); thyn-ai/algenta-networking: 11ada762 -> 6dae3e18 (v1 1 commit, main 1, private=False); thyn-ai/algenta-serialization: 12109d34 -> abfe437a (v1 1 commit, main 1, private=False); thyn-ai/algenta-signal: a770d6fe -> d0072720 (v1 1 commit, main 1, private=False); thyn-ai/algenta-stats: ac35ffe2 -> 218e79f2 (v1 1 commit, main 1, private=False); thyn-ai/algenta-tensors: e1a96bba -> 3d86dbcd (v1 1 commit, main 1, private=False); thyn-ai/algenta-text: fb2cab45 -> c7f66f4f (v1 1 commit, main 1, private=False); thyn-ai/algenta-vision: ebad076f -> 52fc46db (v1 1 commit, main 1, private=False); thyn-ai/algenta: 5063de83 -> 452241e9 (v1 1 commit, main 1, private=False)",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "accepted-constraint",
+      "capability_scope": "all 20 repositories",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "eng",
+      "accessed": "2026-09-23",
+      "contradicts": []
     }
   ]
 }
