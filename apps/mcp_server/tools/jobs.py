@@ -6,14 +6,18 @@ import asyncio
 import json
 from typing import Any
 
-from apps.mcp_server.client import api, api_with_status
+from apps.mcp_server.client import api
 
 SUBMIT_JOB_SPEC: dict[str, Any] = {
     "name": "submit_job",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Submit a long-running async simulation job. "
         "Use for n_simulations > 500,000 or when you need a callback. "
-        "Returns a job_id — poll with get_job_status."
+        "Returns a job_id — poll with get_job_status. Submitting persists the job "
+        "under the active API key's organization; when callback_url is set, "
+        "completion is delivered to it by outbound webhook."
     ),
     "inputSchema": {
         "type": "object",
@@ -32,7 +36,13 @@ SUBMIT_JOB_SPEC: dict[str, Any] = {
 
 GET_JOB_STATUS_SPEC: dict[str, Any] = {
     "name": "get_job_status",
-    "description": "Fetch the latest async simulation job status by id.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Fetch the latest async simulation job status by id. Read-only and non-destructive; "
+        "not separately rate-limited. Use poll_job to block until a terminal state. Returns "
+        "the job record with status, progress, timestamps, and poll_url."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -44,9 +54,13 @@ GET_JOB_STATUS_SPEC: dict[str, Any] = {
 
 POLL_JOB_SPEC: dict[str, Any] = {
     "name": "poll_job",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Wait for an async simulation job to reach a terminal state. "
-        "Returns the final result when the job completes, or the terminal status when it fails, is cancelled, or times out."
+        "Wait for an async simulation job to reach a terminal state. Returns the final "
+        "result when the job completes, or the terminal status when it fails, is cancelled, "
+        "or times out. Read-only: it polls the job's status endpoints and changes nothing. "
+        "Use get_job_status for a single non-blocking check."
     ),
     "inputSchema": {
         "type": "object",
@@ -71,7 +85,13 @@ POLL_JOB_SPEC: dict[str, Any] = {
 
 GET_JOB_RESULT_SPEC: dict[str, Any] = {
     "name": "get_job_result",
-    "description": "Fetch the completed result payload for an async simulation job by id.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Fetch the completed result payload for an async simulation job by id. Read-only "
+        "and non-destructive; not separately rate-limited. Use get_job_status to check "
+        "progress before the job completes. Returns the completed job's result payload."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -83,15 +103,37 @@ GET_JOB_RESULT_SPEC: dict[str, Any] = {
 
 LIST_JOBS_SPEC: dict[str, Any] = {
     "name": "list_jobs",
-    "description": "List async simulation jobs with pagination and optional status filtering.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "List the organization's async simulation jobs, newest first, with pagination "
+        "(defaults page 1, limit 25, max 200) and an optional status filter such as "
+        "queued, running, completed, failed, or cancelled. Each entry carries the job "
+        "id, status, progress, and poll URL. Use get_job_status or poll_job to follow "
+        "one job and get_job_result for its output. Read-only. Returns jobs plus "
+        "total, page, limit, and pages."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "page": {"type": "integer", "minimum": 1, "default": 1},
-            "limit": {"type": "integer", "minimum": 1, "default": 25},
+            "page": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1,
+                "description": "1-based page number; defaults to 1.",
+            },
+            "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 25,
+                "description": "Jobs per page, up to 200; defaults to 25.",
+            },
             "status": {
                 "type": "string",
-                "description": "Optional job status filter such as queued or completed.",
+                "description": (
+                    "Optional job status filter such as queued, running, completed, "
+                    "failed, or cancelled."
+                ),
             },
         },
     },
@@ -99,7 +141,13 @@ LIST_JOBS_SPEC: dict[str, Any] = {
 
 CANCEL_JOB_SPEC: dict[str, Any] = {
     "name": "cancel_job",
-    "description": "Cancel a queued or running async simulation job by id.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Cancel a queued or running async simulation job by id. Use this for queued or "
+        "running jobs; list_jobs shows their states. Returns the updated job record with "
+        "its terminal status."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -111,7 +159,16 @@ CANCEL_JOB_SPEC: dict[str, Any] = {
 
 TEST_WEBHOOK_DELIVERY_SPEC: dict[str, Any] = {
     "name": "test_webhook_delivery",
-    "description": "Send a test webhook payload to a callback URL and return the delivery result.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
+    "description": (
+        "Send one real test webhook payload (event webhook.test with a sample message) "
+        "to a callback URL and return the delivery result. This makes an actual "
+        "outbound HTTP POST from the Algenta API to the given URL, with no retries. "
+        "Use it to verify a receiver before wiring callback_url into submit_job or "
+        "register_trigger. Returns success, the receiver's HTTP status_code, and a "
+        "message."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -186,18 +243,15 @@ async def poll_job_handler(arguments: dict[str, Any]) -> str:
     last_status: dict[str, Any] | None = None
 
     while True:
-        status_code, status_payload = await api_with_status("GET", status_path)
-        if status_code >= 400:
-            raise RuntimeError(f"API error {status_code}: {status_payload}")
+        # api() raises a redacted MCPAPIError on >=400 (no raw-body leak); returns payload on 200.
+        status_payload = await api("GET", status_path)
         if not isinstance(status_payload, dict):
-            raise RuntimeError(f"API error 500: unexpected job status payload: {status_payload}")
+            raise RuntimeError("Algenta API returned an unexpected job status payload type.")
 
         last_status = status_payload
         terminal_status = str(status_payload.get("status", "")).strip().lower()
         if terminal_status == "completed":
-            result_code, result_payload = await api_with_status("GET", result_path)
-            if result_code >= 400:
-                raise RuntimeError(f"API error {result_code}: {result_payload}")
+            result_payload = await api("GET", result_path)
             return json.dumps({"job": status_payload, "result": result_payload}, indent=2)
 
         if terminal_status in {"failed", "cancelled"}:

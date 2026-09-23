@@ -84,6 +84,22 @@ def test_mcp_serverinfo_fallback_version_is_aligned() -> None:
     )
 
 
+def test_embedded_mcp_server_version_matches_package() -> None:
+    # apps/mcp_server/config.py::VERSION is what the hosted api.algenta.ai/mcp mount reports
+    # as serverInfo.version. It is a literal (never a runtime import — see the comment above
+    # it), so nothing at runtime keeps it honest: this guard plus its row in
+    # scripts/bump_sdk_version.py's LOCKSTEP table do. It drifted once already — the hosted
+    # endpoint reported 1.0.4 while the package shipped 1.0.28 — which is why the hosted
+    # surface fell behind the package in the first place.
+    embedded_src = (_REPO_ROOT / "apps" / "mcp_server" / "config.py").read_text("utf-8")
+    match = re.search(r'(?m)^VERSION: Final\[str\] = "([^"]+)"$', embedded_src)
+    assert match, "VERSION literal not found in apps/mcp_server/config.py"
+    expected = _py_meta("mcp")["version"]
+    assert match.group(1) == expected, (
+        f"apps/mcp_server VERSION {match.group(1)} != mcp pyproject version {expected}"
+    )
+
+
 def test_public_package_descriptions_use_algenta_branding_and_agent_discovery() -> None:
     descriptions = {
         pkg: str(_py_meta(pkg)["description"]) for pkg in _PYPROJECT_PKGS

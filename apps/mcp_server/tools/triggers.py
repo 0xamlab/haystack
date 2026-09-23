@@ -20,11 +20,15 @@ from apps.mcp_server.client import api
 
 REGISTER_TRIGGER_SPEC: dict[str, Any] = {
     "name": "register_trigger",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Register a real-time trigger that watches a data source for a threshold condition. "
-        "When the condition is met, the engine auto-runs the simulation template and optionally "
-        "fires a webhook. Examples: 'alert me when monthly revenue drops below $80k', "
-        "'simulate expansion if Downtown revenue exceeds $200k'."
+        "When the condition is met, the engine auto-runs the simulation template and "
+        "optionally fires a webhook. Examples: 'alert me when monthly revenue drops below "
+        "$80k', 'simulate expansion if Downtown revenue exceeds $200k'. Use fire_trigger to "
+        "test it immediately and delete_trigger to remove it. Returns trigger_id, name, "
+        "status, condition, and created_at."
     ),
     "inputSchema": {
         "type": "object",
@@ -95,9 +99,15 @@ REGISTER_TRIGGER_SPEC: dict[str, Any] = {
 
 LIST_TRIGGERS_SPEC: dict[str, Any] = {
     "name": "list_triggers",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List all registered triggers with their current status, "
-        "last-checked time, and last-fired simulation result summary."
+        "List all registered triggers with their current status, last-checked time, and "
+        "last-fired simulation result summary. Read-only and non-destructive; not "
+        "separately rate-limited. Use register_trigger to add one and pause_trigger to "
+        "silence one without deleting. Returns triggers with trigger_id, name, status, "
+        "condition, last_checked_at, last_fired_at, and last_result_summary, plus count, "
+        "total, page, limit, and pages."
     ),
     "inputSchema": {
         "type": "object",
@@ -120,10 +130,14 @@ LIST_TRIGGERS_SPEC: dict[str, Any] = {
 
 FIRE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "fire_trigger",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Manually fire a trigger — evaluates its condition and runs the simulation template "
-        "regardless of whether the threshold is currently met. "
-        "Useful for testing triggers or forcing an immediate evaluation."
+        "regardless of whether the threshold is currently met. Useful for testing triggers "
+        "or forcing an immediate evaluation. Use pause_trigger to stop automatic firing "
+        "without deleting the trigger. Returns trigger_id, condition_met, fired, "
+        "simulation_run_id, recommended_action, expected_value, confidence, and fired_at."
     ),
     "inputSchema": {
         "type": "object",
@@ -146,19 +160,35 @@ FIRE_TRIGGER_SPEC: dict[str, Any] = {
 
 DELETE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "delete_trigger",
-    "description": "Remove a trigger. The trigger will no longer fire automatically.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Delete one trigger by trigger_id (find ids with list_triggers). The trigger "
+        "is removed immediately and will no longer fire automatically; its "
+        "registration cannot be recovered from this tool. To stop a trigger "
+        "temporarily instead, use pause_trigger. An unknown trigger_id fails with "
+        "not_found. Returns trigger_id with deleted: true."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["trigger_id"],
         "properties": {
-            "trigger_id": {"type": "string", "description": "Trigger ID to delete."},
+            "trigger_id": {
+                "type": "string",
+                "description": "Trigger ID to delete.",
+            },
         },
     },
 }
 
 PAUSE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "pause_trigger",
-    "description": "Pause or resume an existing trigger without deleting it.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Pause or resume an existing trigger without deleting it. Returns trigger_id and "
+        "the updated status."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["trigger_id"],

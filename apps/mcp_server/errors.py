@@ -79,20 +79,51 @@ class MCPPrivacyConfigurationError(MCPToolError):
         )
 
 
+class InvalidArgumentsError(MCPToolError):
+    """A tool call failed input-schema validation before dispatch.
+
+    Raised only by ``registry.call_tool``'s pre-dispatch validation, so a missing or
+    ill-typed argument can never again surface as ``unknown_tool`` (the old bare-KeyError
+    mapping) or as a handler KeyError whose precedence over the auth pre-flight depended
+    on argument shape.
+    """
+
+    def __init__(self, *, tool_name: str, problem: str, field: str | None = None) -> None:
+        super().__init__(
+            error_code="invalid_arguments",
+            message=f"Invalid arguments for tool '{tool_name}': {problem}.",
+            status_code=400,
+            details=(
+                [{"argument": field, "problem": problem}] if field is not None else None
+            ),
+        )
+
+
+class UnknownToolError(MCPToolError, KeyError):
+    """A genuine dispatch miss: no registered (or visible) tool by that name.
+
+    Also a ``KeyError`` so existing ``except KeyError`` callers keep working; the
+    ``__str__`` override neutralizes ``KeyError.__str__`` (which would repr-wrap the
+    message in quotes) so ``to_payload`` keeps the plain message.
+    """
+
+    def __init__(self, tool_name: str) -> None:
+        super().__init__(
+            error_code="unknown_tool",
+            message=f"Unknown tool: {tool_name}",
+            status_code=404,
+        )
+
+    def __str__(self) -> str:
+        return BaseException.__str__(self)
+
+
 def serialize_tool_error(exc: Exception, *, tool_name: str | None = None) -> str:
     if isinstance(exc, MCPToolError):
         return json.dumps(exc.to_payload(), sort_keys=True)
-    if isinstance(exc, KeyError):
-        return json.dumps(
-            {
-                "error": {
-                    "code": "unknown_tool",
-                    "message": f"Unknown tool: {tool_name or 'unknown'}",
-                    "status_code": 404,
-                }
-            },
-            sort_keys=True,
-        )
+    # A bare KeyError is NOT a dispatch miss: only UnknownToolError (raised by
+    # registry.call_tool's dispatch lookup) means "unknown tool". Any other KeyError
+    # escaping a handler is an internal failure and falls through to tool_error/500.
     return json.dumps(
         {
             "error": {

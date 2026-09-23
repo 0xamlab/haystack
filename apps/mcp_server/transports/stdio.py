@@ -16,7 +16,7 @@ logger = structlog.get_logger(__name__)
 async def run_stdio_server() -> None:
     """Run the MCP server over stdio."""
     try:
-        from mcp.server import NotificationOptions, Server
+        from mcp.server import Server
         from mcp.server.models import InitializationOptions
         from mcp.server.stdio import stdio_server
         from mcp.types import (
@@ -81,6 +81,7 @@ async def run_stdio_server() -> None:
                     name=spec["name"],
                     description=spec["description"],
                     inputSchema=spec["inputSchema"],
+                    annotations=spec.get("annotations"),
                 )
                 for spec in get_tool_specs(allowed)
             ]
@@ -89,12 +90,16 @@ async def run_stdio_server() -> None:
     async def handle_call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
         name = params.name
         arguments = params.arguments
+        is_error = False
         try:
             result = await call_tool(name, arguments or {}, allowed)
         except Exception as exc:
             logger.error("tool_error", tool=name, error=str(exc))
             result = serialize_tool_error(exc, tool_name=name)
-        return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
+            # The payload is a serialized error: mark the envelope so MCP clients/agents
+            # treat it as a failed call instead of acting on it as successful output.
+            is_error = True
+        return CallToolResult(content=[TextContent(type="text", text=result)], isError=is_error)
 
     server = Server(
         "algenta-mcp",
@@ -108,7 +113,7 @@ async def run_stdio_server() -> None:
             server_name="algenta-mcp",
             server_version=config.VERSION,
             capabilities=server.get_capabilities(
-                notification_options=NotificationOptions(),
+                notification_options=None,
                 experimental_capabilities={},
             ),
         )

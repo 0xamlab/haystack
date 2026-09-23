@@ -2960,7 +2960,13 @@ def test_mcp_streamable_http_contract():
     )
     assert status == 200, data
     assert data["result"]["protocolVersion"] == "2025-11-25"
-    assert data["result"]["serverInfo"]["version"] == "1.0.4"
+    # Tracks apps/mcp_server/config.py's lockstep VERSION literal (kept equal to the
+    # published algenta-mcp package version by scripts/bump_sdk_version.py + the
+    # test_sdk_package_metadata guard) — never a hand-maintained literal here: a
+    # hardcoded "1.0.4" is exactly how the hosted version drift went unnoticed.
+    from apps.mcp_server import config as mcp_config
+
+    assert data["result"]["serverInfo"]["version"] == mcp_config.VERSION
 
 
 check("POST /mcp → MCP 2025-11-25 Streamable HTTP", test_mcp_streamable_http_contract)

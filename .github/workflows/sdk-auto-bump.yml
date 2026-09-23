@@ -139,7 +139,7 @@ jobs:
           git config user.email "algenta-sdk-sync[bot]@users.noreply.github.com"
           git add -A -- packages/python-sdk/pyproject.toml packages/python-sdk/decision_engine/__init__.py \
             packages/algenta/pyproject.toml packages/algenta/algenta/__init__.py packages/mcp/pyproject.toml \
-            packages/mcp/algenta_mcp/config.py \
+            packages/mcp/algenta_mcp/config.py apps/mcp_server/config.py \
             packages/ts-sdk/package.json packages/ts-sdk/package-lock.json server.json
           git commit -m "chore(release): SDK ${new}" -m "Automatic lockstep bump after a merge that changed SDK source (sdk-auto-bump.yml). auto-tag-sdk.yml tags this commit; release-sdks.yml publishes it."
           git config --local --unset-all http.https://github.com/.extraheader || true

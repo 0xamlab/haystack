@@ -159,10 +159,13 @@ async def test_inmemory_official_sdk_call_tool_without_credential_surfaces_real_
         async with ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool("list_decisions", {})
-            # Algenta's transports always return isError=False, embedding the structured error as
-            # the tool's own text content (apps/mcp_server/errors.py::serialize_tool_error) -- real,
-            # existing, intentional behavior; asserted here rather than assumed.
-            assert result.is_error is False
+            # Since the algenta-mcp 1.0.28 error-envelope contract (PR #1154, ported to this
+            # embedded copy in the apps/mcp_server re-sync), the serialize_tool_error path
+            # marks the envelope isError=True so agents read a failure as a failure; the
+            # structured error JSON in content[0].text is unchanged from before. (This pin
+            # previously asserted isError=False as "intentional" — that was the bug the
+            # 1.0.28 contract fixed.)
+            assert result.is_error is True
             assert "unsupported_mcp_auth_configuration" in result.content[0].text
             assert "ALGENTA_API_KEY" in result.content[0].text
 

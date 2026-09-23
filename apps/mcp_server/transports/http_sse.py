@@ -332,7 +332,7 @@ def _embedded_downstream_base_url(scope: Scope) -> str:
 
 
 def _scope_product(scope: Scope) -> str | None:
-    """The ``X-Algenta-Product`` routing hint selects an Algenta edition."""
+    """Read the ``X-Algenta-Product`` routing hint that selects an edition."""
     return _scope_headers(scope).get("x-algenta-product", "").strip() or None
 def _deployment_product() -> str | None:
     """The edition THIS deployment presents as, when the caller sent no ``X-Algenta-Product`` hint.
@@ -468,6 +468,7 @@ def _build_http_app() -> ASGIApp:
                         name=spec["name"],
                         description=spec["description"],
                         inputSchema=spec["inputSchema"],
+                        annotations=spec.get("annotations"),
                     )
                     for spec in get_tool_specs(allowed)
                 ]
@@ -476,6 +477,7 @@ def _build_http_app() -> ASGIApp:
         async def handle_call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
             name = params.name
             arguments = params.arguments
+            is_error = False
             request = ctx.request
             scope = request.scope if request is not None and hasattr(request, "scope") else {}
             try:
@@ -497,7 +499,10 @@ def _build_http_app() -> ASGIApp:
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
                 result = serialize_tool_error(exc, tool_name=name)
-            return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
+                # The payload is a serialized error: mark the envelope so MCP
+                # clients/agents treat it as a failed call, not successful output.
+                is_error = True
+            return CallToolResult(content=[TextContent(type="text", text=result)], isError=is_error)
 
         return Server(
             "algenta-mcp",
@@ -708,6 +713,7 @@ def _build_fastapi_router() -> APIRouter | None:
                         name=spec["name"],
                         description=spec["description"],
                         inputSchema=spec["inputSchema"],
+                        annotations=spec.get("annotations"),
                     )
                     for spec in get_tool_specs(allowed)
                 ]
@@ -716,6 +722,7 @@ def _build_fastapi_router() -> APIRouter | None:
         async def _call_tool(ctx: Any, params: CallToolRequestParams) -> CallToolResult:
             name = params.name
             arguments = params.arguments
+            is_error = False
             request = ctx.request
             scope = request.scope if request is not None and hasattr(request, "scope") else {}
             try:
@@ -737,7 +744,10 @@ def _build_fastapi_router() -> APIRouter | None:
             except Exception as exc:
                 logger.error("tool_error", tool=name, error=str(exc))
                 result = serialize_tool_error(exc, tool_name=name)
-            return CallToolResult(content=[TextContent(type="text", text=result)], isError=False)
+                # The payload is a serialized error: mark the envelope so MCP
+                # clients/agents treat it as a failed call, not successful output.
+                is_error = True
+            return CallToolResult(content=[TextContent(type="text", text=result)], isError=is_error)
 
         return Server(
             "algenta-mcp",

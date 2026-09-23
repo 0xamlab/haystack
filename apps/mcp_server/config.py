@@ -9,7 +9,16 @@ from apps.platform_contract_constants import API_BASE_URL
 from apps.platform_contract_constants import MCP_PROTOCOL_VERSION as _MCP_PROTOCOL_VERSION_LEGACY
 from apps.privacy_policy import policy_from_environment
 
-VERSION: Final[str] = "1.0.4"
+# serverInfo.version reported by the embedded MCP mount. Deliberately a literal (never a
+# runtime import of algenta_mcp / importlib.metadata): the API image ships packages/mcp as
+# source, not an installed distribution, and the mount must answer `initialize` even when the
+# package tree is absent. The literal CANNOT drift from the published package version:
+# scripts/bump_sdk_version.py rewrites this exact line in the same lockstep commit that bumps
+# packages/mcp (added to its LOCKSTEP table), and
+# tests/test_sdk_package_metadata.py::test_mcp_serverinfo_fallback_version_is_aligned fails CI
+# if the two ever disagree. (The 1.0.4-era drift — embedded VERSION stuck while the package
+# moved on — is exactly what that pair exists to prevent.)
+VERSION: Final[str] = "1.0.28"
 
 # The legacy Streamable HTTP handshake version this server negotiates for an `initialize`-opened
 # connection (unchanged; re-exported from the generated platform contract so there is one source

@@ -22,6 +22,8 @@ class RuntimeLibraryInfo(TypedDict):
 
 LIST_RUNTIME_LIBRARIES_SPEC: dict[str, Any] = {
     "name": "list_runtime_libraries",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List executable local-runtime Mojo libraries. "
         "Use this when you need the runtime-backed compute catalog rather than the "
@@ -44,6 +46,8 @@ LIST_RUNTIME_LIBRARIES_SPEC: dict[str, Any] = {
 
 EXECUTE_RUNTIME_LIBRARY_SPEC: dict[str, Any] = {
     "name": "execute_runtime_library",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Execute one local-runtime Mojo library function by module and function name. "
         "Pass args as either a JSON object, array, scalar, or null. "

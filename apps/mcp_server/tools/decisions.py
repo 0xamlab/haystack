@@ -18,9 +18,17 @@ from apps.mcp_server.client import api
 
 PLAN_DECISION_SPEC: dict[str, Any] = {
     "name": "plan_decision",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Build a structured Algenta DecisionPlan from a validated simulation-style request. "
-        "Use this when the caller needs the plan summary without the full decision envelope."
+        "Run a validated simulation-style request (the same payload contract as "
+        "simulate) but return only the structured DecisionPlan summary — the compact "
+        "plan object with recommended action and calibrated confidence, without the "
+        "full DecisionEnvelope metrics. Use this when the caller needs the plan "
+        "summary for a dashboard or a follow-up plan_decision-to-log_decision flow; "
+        "use simulate for the full envelope. Synchronous deterministic compute "
+        "governed by the plan's per-minute rate limit and monthly quota; nothing "
+        "is persisted."
     ),
     "inputSchema": {
         "type": "object",
@@ -31,11 +39,14 @@ PLAN_DECISION_SPEC: dict[str, Any] = {
 
 LOG_DECISION_SPEC: dict[str, Any] = {
     "name": "log_decision",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
-        "Persist a decision to the Decision Memory audit trail. "
-        "Link to a simulation run_id to bind the full DecisionPlan context. "
-        "Call record_outcome later to close the feedback loop and measure prediction accuracy. "
-        "Every logged decision is immutably hashed — no tampering possible."
+        "Persist a decision to the Decision Memory audit trail. Link to a simulation run_id "
+        "to bind the full DecisionPlan context. Call record_outcome later to close the "
+        "feedback loop and measure prediction accuracy. Every logged decision is immutably "
+        "hashed — no tampering possible. Returns decision_id, chosen_action, "
+        "expected_value, confidence, and created_at."
     ),
     "inputSchema": {
         "type": "object",
@@ -101,10 +112,16 @@ LOG_DECISION_SPEC: dict[str, Any] = {
 
 LIST_DECISIONS_SPEC: dict[str, Any] = {
     "name": "list_decisions",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Retrieve the Decision Memory audit trail — all logged decisions, most recent first. "
-        "Use with_outcome_only=true to see only decisions where actual results have been recorded. "
-        "outcome_delta = actual_outcome - expected_value: negative means worse than predicted."
+        "Retrieve the Decision Memory audit trail — all logged decisions, most recent "
+        "first. Use with_outcome_only=true to see only decisions where actual results have "
+        "been recorded. outcome_delta = actual_outcome - expected_value: negative means "
+        "worse than predicted. Read-only and non-destructive; not separately rate-limited. "
+        "Returns decisions with id, chosen_action, expected_value, actual_outcome, "
+        "outcome_delta, confidence, context, created_at, and outcome_recorded_at, plus "
+        "total, page, limit, pages, and an accuracy_summary when outcomes exist."
     ),
     "inputSchema": {
         "type": "object",
@@ -129,7 +146,14 @@ LIST_DECISIONS_SPEC: dict[str, Any] = {
 
 GET_DECISION_SPEC: dict[str, Any] = {
     "name": "get_decision",
-    "description": "Fetch one decision-memory record by id.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Fetch one decision-memory record by id. Read-only and non-destructive; not "
+        "separately rate-limited. Use list_decisions to find decision ids. Returns the full "
+        "decision record including context, options_considered, risk fields, integrity "
+        "hashes, and outcome fields when recorded."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["decision_id"],
@@ -145,10 +169,15 @@ GET_DECISION_SPEC: dict[str, Any] = {
 
 RECORD_OUTCOME_SPEC: dict[str, Any] = {
     "name": "record_outcome",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Close the feedback loop: record what actually happened after a decision was made. "
-        "Sets actual_outcome and computes outcome_delta = actual - expected. "
-        "Over time this data measures prediction accuracy and reveals systematic biases."
+        "Sets actual_outcome and computes outcome_delta = actual - expected. Over time this "
+        "data measures prediction accuracy and reveals systematic biases. Recording updates "
+        "the persisted decision record in place; repeat calls with the same value converge. "
+        "Returns decision_id, chosen_action, expected_value, actual_outcome, outcome_delta, "
+        "and a summary line."
     ),
     "inputSchema": {
         "type": "object",
@@ -173,8 +202,14 @@ RECORD_OUTCOME_SPEC: dict[str, Any] = {
 
 EXECUTE_DECISION_SPEC: dict[str, Any] = {
     "name": "execute_decision",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
-        "Dispatch a logged decision to an external webhook and persist the execution receipt."
+        "Dispatch a logged decision to an external webhook and persist the execution "
+        "receipt. Use record_outcome instead when reporting a result rather than "
+        "dispatching an action. Returns the delivery receipt: decision_id, webhook_url, "
+        "execution_status, response_code, executed_at, and the policy and schema snapshot "
+        "ids."
     ),
     "inputSchema": {
         "type": "object",
@@ -211,7 +246,12 @@ EXECUTE_DECISION_SPEC: dict[str, Any] = {
 
 DELETE_DECISION_SPEC: dict[str, Any] = {
     "name": "delete_decision",
-    "description": "Delete one decision-memory record by id.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Delete one decision-memory record by id. Deletion is permanent; review with "
+        "list_decisions first. Returns the deletion confirmation for the decision_id."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["decision_id"],

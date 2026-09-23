@@ -34,6 +34,12 @@ LOCKSTEP: tuple[tuple[str, tuple[str, ...]], ...] = (
     # install (run 35463050651, 1.0.14 -> 1.0.15) failed that guard and never pushed.
     ("packages/mcp/algenta_mcp/config.py",
      (r'(?m)^_FALLBACK_VERSION: Final\[str\] = "([^"]+)"$',)),
+    # The embedded MCP mount (apps/mcp_server, served at api.algenta.ai/mcp) reports this
+    # literal as its serverInfo.version; the same guard requires it to equal the package
+    # version. Absent from this table, it drifted once already (stuck at 1.0.4 while the
+    # package shipped 1.0.28) and the hosted endpoint misreported itself for weeks.
+    ("apps/mcp_server/config.py",
+     (r'(?m)^VERSION: Final\[str\] = "([^"]+)"$',)),
     ("packages/ts-sdk/package.json", (r'(?m)^  "version": "([^"]+)",$',)),
     # lockfile v3: the root "version" and packages[""].version. The latter is matched INSIDE the
     # `"": {` block (every dependency entry also has an indent-6 "version" line -- 226 of them).

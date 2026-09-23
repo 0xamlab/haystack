@@ -15,12 +15,17 @@ def _strip_none(value: dict[str, Any]) -> dict[str, Any]:
 
 CONNECT_SPEC: dict[str, Any] = {
     "name": "connect_data",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
-        "High-level data onboarding flow. "
-        "Use this instead of advanced connector/source tools for normal users. "
-        "Connect data once, pick the table/file/endpoint, and get a reusable dataset_id. "
-        "If the result status is needs_selection, call connect_data again with "
-        "connection_id and the chosen selection."
+        "High-level data onboarding flow. Use this instead of advanced connector/source "
+        "tools for normal users. Connect data once, pick the table/file/endpoint, and get a "
+        "reusable dataset_id. If the result status is needs_selection, call connect_data "
+        "again with connection_id and the chosen selection. Creating a connection persists "
+        "it and the dataset under the active API key's organization, and live sources are "
+        "dialed during this call; no separate per-route rate limit applies. Returns status "
+        "with dataset_id and connection_id on success, or status needs_selection with the "
+        "choices array to pick from."
     ),
     "inputSchema": {
         "type": "object",
@@ -104,10 +109,15 @@ CONNECT_SPEC: dict[str, Any] = {
 
 LIST_SPEC: dict[str, Any] = {
     "name": "list_data",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List visible datasets for the current user. "
-        "Use search plus compact mode first for low-token dataset discovery, "
-        "then get_data_schema on the chosen dataset_id."
+        "List visible datasets for the current user. Use search plus compact mode first for "
+        "low-token dataset discovery, then get_data_schema on the chosen dataset_id. "
+        "Read-only and non-destructive; lists only the active API key's organization and is "
+        "not separately rate-limited. Returns the datasets array (dataset_id, name, status, "
+        "source_names, connection_type, row_count, column_count, refreshable) plus count, "
+        "total, matched_total, page, limit, and pages."
     ),
     "inputSchema": {
         "type": "object",
@@ -143,7 +153,15 @@ LIST_SPEC: dict[str, Any] = {
 
 GET_SCHEMA_SPEC: dict[str, Any] = {
     "name": "get_data_schema",
-    "description": "Get a saved dataset plus its schema and relationship metadata by dataset_id.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get a saved dataset plus its schema and relationship metadata by dataset_id. "
+        "Read-only and non-destructive; reads only the active API key's organization and is "
+        "not separately rate-limited. Use get_data_summary first for a low-token look. "
+        "Returns the dataset record and its schema: row_count, columns, roles_summary, "
+        "formulas, and query_hints."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["dataset_id"],
@@ -158,10 +176,14 @@ GET_SCHEMA_SPEC: dict[str, Any] = {
 
 GET_SUMMARY_SPEC: dict[str, Any] = {
     "name": "get_data_summary",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Get the low-token dataset selection summary for a saved dataset_id. "
-        "Use this after list_data(search=..., compact=true) before paying for "
-        "the full schema payload."
+        "Get the low-token dataset selection summary for a saved dataset_id. Use this after "
+        "list_data(search=..., compact=true) before paying for the full schema payload. "
+        "Read-only and non-destructive; reads only the active API key's organization and is "
+        "not separately rate-limited. Returns dataset_id, name, status, source_names, "
+        "row_count, column_count, registered_at, and query_hints."
     ),
     "inputSchema": {
         "type": "object",
@@ -177,7 +199,16 @@ GET_SUMMARY_SPEC: dict[str, Any] = {
 
 REFRESH_SPEC: dict[str, Any] = {
     "name": "refresh_data",
-    "description": "Refresh a saved dataset from its original database/API/object-store origin.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
+    "description": (
+        "Re-pull a saved dataset from its original database, API, or object-store "
+        "origin using the stored connection and selection, and return the same "
+        "envelope as connect_data (status, schema_summary, refreshable). Only datasets "
+        "created from a live connection can refresh — an inline upload fails with "
+        "not_refreshable (check the refreshable flag in list_data first), and an "
+        "unknown dataset_id fails with not_found."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["dataset_id"],
@@ -192,7 +223,17 @@ REFRESH_SPEC: dict[str, Any] = {
 
 DISCONNECT_SPEC: dict[str, Any] = {
     "name": "disconnect_data",
-    "description": "Delete a saved dataset and disconnect it from future use.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Delete a saved dataset and disconnect it from future use. When no other "
+        "dataset in the workspace still uses the backing saved connection, that "
+        "connection is deleted too and connection_deleted is true in the response. "
+        "Requires manage permission on the dataset (access_scope_denied otherwise); "
+        "an unknown dataset_id fails with not_found. Use list_data to confirm the "
+        "dataset first — deletion is immediate. Returns dataset_id, status 'deleted', "
+        "and connection_deleted."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["dataset_id"],

@@ -100,22 +100,24 @@ async def test_poll_job_handler_waits_until_completion_and_fetches_result(
     calls: list[tuple[str, str]] = []
     status_attempts = 0
 
-    async def _fake_api_with_status(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+    # The 1.0.28 handler goes through api() (redacted MCPAPIError on >=400), not
+    # api_with_status + a raw-body RuntimeError — the fake returns bare payloads.
+    async def _fake_api(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
         nonlocal status_attempts
         calls.append((method, path))
         if (method, path) == ("GET", "/v1/jobs/job_123"):
             status_attempts += 1
             if status_attempts == 1:
-                return 200, {"job_id": "job_123", "status": "queued"}
-            return 200, {"job_id": "job_123", "status": "completed"}
+                return {"job_id": "job_123", "status": "queued"}
+            return {"job_id": "job_123", "status": "completed"}
         if (method, path) == ("GET", "/v1/jobs/job_123/result"):
-            return 200, {"status": "completed", "best_action": "expand_capacity"}
+            return {"status": "completed", "best_action": "expand_capacity"}
         raise AssertionError(f"unexpected call {(method, path)}")
 
     async def _fake_sleep(_: float) -> None:
         return None
 
-    monkeypatch.setattr(jobs, "api_with_status", _fake_api_with_status)
+    monkeypatch.setattr(jobs, "api", _fake_api)
     monkeypatch.setattr(jobs.asyncio, "sleep", _fake_sleep)
 
     payload = json.loads(
@@ -146,14 +148,14 @@ async def test_poll_job_handler_returns_timeout_summary(monkeypatch: pytest.Monk
         def time(self) -> float:
             return next(self._times, 0.02)
 
-    async def _fake_api_with_status(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
+    async def _fake_api(method: str, path: str, **kwargs):  # type: ignore[no-untyped-def]
         assert (method, path) == ("GET", "/v1/jobs/job_123")
-        return 200, {"job_id": "job_123", "status": "queued"}
+        return {"job_id": "job_123", "status": "queued"}
 
     async def _fake_sleep(_: float) -> None:
         raise AssertionError("sleep should not be reached after timeout")
 
-    monkeypatch.setattr(jobs, "api_with_status", _fake_api_with_status)
+    monkeypatch.setattr(jobs, "api", _fake_api)
     monkeypatch.setattr(jobs.asyncio, "get_running_loop", lambda: _FakeLoop())
     monkeypatch.setattr(jobs.asyncio, "sleep", _fake_sleep)
 

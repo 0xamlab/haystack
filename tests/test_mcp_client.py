@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 
 import httpx
 import pytest
@@ -10,6 +11,7 @@ from apps.mcp_server.errors import (
     MCPAPIError,
     MCPPrivacyConfigurationError,
     MCPUpstreamUnavailableError,
+    UnknownToolError,
     UnsupportedMCPAuthConfigurationError,
     serialize_tool_error,
 )
@@ -370,4 +372,34 @@ def test_serialize_tool_error_returns_contract_payloads() -> None:
     assert "repository_model_unavailable" in serialize_tool_error(
         api_error, tool_name="create_repository_decision_plan"
     )
-    assert "unknown_tool" in serialize_tool_error(KeyError("nope"), tool_name="nope")
+    # Only a genuine dispatch miss (UnknownToolError, raised by registry.call_tool) serializes
+    # as unknown_tool/404. A bare KeyError escaping a handler is an internal failure and now
+    # falls through to tool_error/500 — the 1.0.28 contract killed the old bare-KeyError →
+    # unknown_tool mapping, which had misreported missing-argument handler crashes as 404s.
+    unknown_payload = json.loads(serialize_tool_error(UnknownToolError("nope"), tool_name="nope"))
+    assert unknown_payload["error"]["code"] == "unknown_tool"
+    assert unknown_payload["error"]["status_code"] == 404
+    assert unknown_payload["error"]["message"] == "Unknown tool: nope"
+    bare_payload = json.loads(serialize_tool_error(KeyError("nope"), tool_name="nope"))
+    assert bare_payload["error"]["code"] == "tool_error"
+    assert bare_payload["error"]["status_code"] == 500
+
+
+def test_api_error_message_redacts_key_material() -> None:
+    # An upstream that reflects the request (or mints a key into a 4xx body) must never turn
+    # our error message — logged and returned to the MCP client — into a credential leak.
+    payload = {
+        "error": {
+            "code": "invalid_api_key",
+            "message": "key de_live_abc123XYZ789 is not valid for Bearer de_test_DEF456ghi012",
+        }
+    }
+    exc = mcp_client._api_error_from_status_payload(401, payload)
+    message = str(exc)
+    assert "de_live_abc123XYZ789" not in message
+    assert "de_test_DEF456ghi012" not in message
+    assert message.count("[redacted]") == 2
+    # The structured payload is preserved verbatim for programmatic handling; only the
+    # human/log-facing message string is scrubbed.
+    assert exc.payload is payload
+    assert exc.error_code == "invalid_api_key"

@@ -15,12 +15,16 @@ from apps.mcp_server.client import api
 
 ONBOARD_SPEC: dict[str, Any] = {
     "name": "onboard_dataset",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
-        "Register a dataset for semantic querying. "
-        "Pass column names, inline records, or raw CSV. "
-        "The engine profiles roles automatically and starts background training. "
-        "Queries work immediately via a fallback model — accuracy improves "
-        "once schema-specific training completes (poll status with list_datasets)."
+        "Register a dataset for semantic querying. Pass column names, inline records, or "
+        "raw CSV. The engine profiles roles automatically and starts background training. "
+        "Queries work immediately via a fallback model — accuracy improves once "
+        "schema-specific training completes (poll status with list_datasets). Registration "
+        "persists the dataset under the active API key's organization. Use connect_data for "
+        "live connections instead of inline rows. Returns dataset_id, schema_hash, status, "
+        "model_tier, column_count, and suggested_aliases."
     ),
     "inputSchema": {
         "type": "object",
@@ -68,10 +72,15 @@ ONBOARD_SPEC: dict[str, Any] = {
 
 LIST_SPEC: dict[str, Any] = {
     "name": "list_datasets",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List registered datasets and their current model tier. "
-        "Use search plus compact mode for low-token discovery, then poll "
-        "status or use the primary data tools once you choose a dataset."
+        "List registered datasets and their current model tier. Use search plus compact "
+        "mode for low-token discovery, then poll status or use the primary data tools once "
+        "you choose a dataset. Read-only and non-destructive; lists only the active API "
+        "key's organization and is not separately rate-limited. Returns the datasets array "
+        "with dataset_id, name, status, model_tier, source_names, column_count, and "
+        "registered_at, plus count, total, page, limit, and pages."
     ),
     "inputSchema": {
         "type": "object",
@@ -189,10 +198,16 @@ async def list_handler(arguments: dict[str, Any]) -> str:
 
 STATUS_SPEC: dict[str, Any] = {
     "name": "get_dataset_status",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Get live training status and model tier for a specific dataset. "
-        "model_tier: 'none' = deterministic only, 'base' = generic model, "
-        "'schema' = fully trained schema-specific model (best quality)."
+        "Get the live training status and model tier of one dataset: whether semantic "
+        "training is still running or the dataset is ready, and which model serves "
+        "queries — model_tier 'none' = deterministic fallback only, 'base' = generic "
+        "model, 'schema' = fully trained schema-specific model (best quality). Poll "
+        "this after onboard_dataset until training completes, and use retrain_dataset "
+        "after schema or alias changes. Read-only; an unknown dataset_id fails with "
+        "not_found. Also returns name, column_count, source_names, and updated_at."
     ),
     "inputSchema": {
         "type": "object",
@@ -208,16 +223,30 @@ STATUS_SPEC: dict[str, Any] = {
 
 RETRAIN_SPEC: dict[str, Any] = {
     "name": "retrain_dataset",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
-        "Re-trigger semantic training for a dataset. "
-        "Use after schema changes, alias updates, or to force a fresh model build."
+        "Re-trigger background semantic training for one dataset and return "
+        "immediately with status and a confirmation message — the build runs "
+        "asynchronously, so poll get_dataset_status until model_tier reaches "
+        "'schema'. Use after schema changes, alias updates, or to force a fresh "
+        "model build. epochs (default 80, range 5-500) controls training length. "
+        "An unknown dataset_id fails with not_found; a dataset whose training "
+        "backend is unavailable fails with semantic_training_unavailable."
     ),
     "inputSchema": {
         "type": "object",
         "required": ["dataset_id"],
         "properties": {
-            "dataset_id": {"type": "string"},
-            "epochs": {"type": "integer", "default": 80},
+            "dataset_id": {
+                "type": "string",
+                "description": "Dataset ID from onboard_dataset or list_datasets.",
+            },
+            "epochs": {
+                "type": "integer",
+                "default": 80,
+                "description": "Training epochs, 5-500; defaults to 80.",
+            },
         },
     },
 }

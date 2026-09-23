@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextvars
 import json
 import os
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -164,6 +165,16 @@ def _extract_structured_error_payload(payload: Any) -> dict[str, Any] | None:
     return None
 
 
+# Defense-in-depth: an error message interpolates the verbatim upstream body, which is also logged
+# (str(exc)) and returned to the MCP client. A misbehaving upstream that reflects the request (or a
+# minted key in a 4xx body) must never turn our error into a credential leak — scrub key material.
+_SECRET_RE = re.compile(r"de_(?:live|test)_[A-Za-z0-9._\-]{6,}|[Bb]earer\s+[A-Za-z0-9._\-]{6,}")
+
+
+def _redact_secrets(text: str) -> str:
+    return _SECRET_RE.sub("[redacted]", text)
+
+
 def _api_error_from_status_payload(status_code: int, payload: Any) -> MCPAPIError:
     error_payload = _extract_structured_error_payload(payload) or {}
     error_code = str(error_payload.get("code") or "api_error").strip() or "api_error"
@@ -173,7 +184,7 @@ def _api_error_from_status_payload(status_code: int, payload: Any) -> MCPAPIErro
         if isinstance(details_raw, list)
         else None
     )
-    message = f"API error {status_code}: {_serialize_payload(payload)}"
+    message = f"API error {status_code}: {_redact_secrets(_serialize_payload(payload))}"
     return MCPAPIError(
         error_code=error_code,
         message=message,

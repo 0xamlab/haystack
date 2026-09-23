@@ -9,7 +9,14 @@ from apps.mcp_server.client import api
 
 GET_ME_SPEC: dict[str, Any] = {
     "name": "get_me",
-    "description": "Get current user and organization identity for the active API key.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get current user and organization identity for the active API key. Read-only and "
+        "non-destructive; not separately rate-limited. Use update_me to change the returned "
+        "names. Returns user_id, name, email, role, and the organization id, name, and "
+        "plan."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -19,12 +26,29 @@ GET_ME_SPEC: dict[str, Any] = {
 
 UPDATE_ME_SPEC: dict[str, Any] = {
     "name": "update_me",
-    "description": "Update the current user name and or organization name for the active API key.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Update the current user's name and/or the organization name for the active "
+        "API key; only the supplied fields change. Renaming the organization requires "
+        "an admin or owner key (access_scope_denied otherwise), and the key must be "
+        "linked to a user (user_not_found for service keys). At least one of name or "
+        "org_name is required. Returns the updated identity; read it first with "
+        "get_me."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "name": {"type": "string", "minLength": 1},
-            "org_name": {"type": "string", "minLength": 1},
+            "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "New display name for the calling user.",
+            },
+            "org_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "New organization name; requires admin or owner role.",
+            },
         },
         "additionalProperties": False,
     },
@@ -32,7 +56,14 @@ UPDATE_ME_SPEC: dict[str, Any] = {
 
 GET_LIMITS_SPEC: dict[str, Any] = {
     "name": "get_limits",
-    "description": "Get current plan quotas and limits for the active API key.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get current plan quotas and limits for the active API key. Read-only and "
+        "non-destructive; not separately rate-limited. Use get_usage for current "
+        "consumption against these limits. Returns the plan's quota ceilings, including "
+        "rate, concurrency, storage, and LLM spend cap."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -42,7 +73,14 @@ GET_LIMITS_SPEC: dict[str, Any] = {
 
 LIST_DISTRIBUTIONS_SPEC: dict[str, Any] = {
     "name": "list_distributions",
-    "description": "List supported distribution types for the active API key.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "List the probability distribution types supported in simulation variables — "
+        "normal, uniform, triangular, lognormal, and fixed — each with its required "
+        "parameters and a ready-to-use example. Read this before writing variable "
+        "definitions for simulate, score, compare, or submit_job. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -52,7 +90,14 @@ LIST_DISTRIBUTIONS_SPEC: dict[str, Any] = {
 
 LIST_TEMPLATES_SPEC: dict[str, Any] = {
     "name": "list_templates",
-    "description": "List built-in simulation templates for the active API key.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "List the built-in simulation templates available to the active API key, "
+        "each with its id and intended use. A template id pre-fills a simulation "
+        "request, so start here instead of hand-writing variables for common cases "
+        "such as a product launch. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -62,7 +107,15 @@ LIST_TEMPLATES_SPEC: dict[str, Any] = {
 
 LIST_API_KEYS_SPEC: dict[str, Any] = {
     "name": "list_api_keys",
-    "description": "List active API keys for the current organization. Never returns raw secret material.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "List active API keys for the current organization. Never returns raw secret "
+        "material. Read-only and non-destructive; not separately rate-limited. Use "
+        "create_api_key to mint one and revoke_api_key to retire one. Returns the key "
+        "records with id, label, key_prefix, device_limit, status, created_at, "
+        "last_used_at, and expires_at."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -72,14 +125,38 @@ LIST_API_KEYS_SPEC: dict[str, Any] = {
 
 CREATE_API_KEY_SPEC: dict[str, Any] = {
     "name": "create_api_key",
-    "description": "Create a new API key and return its one-time raw_key value.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
+    "description": (
+        "Create a new API key for the current organization and return its raw_key "
+        "value exactly once — it is never shown again, so store it immediately. "
+        "expires_at optionally sets an ISO-8601 expiry and device_limit caps how many "
+        "devices the key may register (validated against the plan ceiling, "
+        "invalid_device_limit on excess). Key creation is rate-limited per "
+        "organization (api_key_create_rate_limited). Use list_api_keys to see "
+        "existing keys and revoke_api_key to retire one."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["label"],
         "properties": {
-            "label": {"type": "string", "minLength": 1},
-            "expires_at": {"type": "string", "format": "date-time"},
-            "device_limit": {"type": "integer", "minimum": 0},
+            "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable label identifying the key's purpose.",
+            },
+            "expires_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Optional ISO-8601 expiry timestamp for the key.",
+            },
+            "device_limit": {
+                "type": "integer",
+                "minimum": 0,
+                "description": (
+                    "Optional per-key device cap; must not exceed the plan ceiling."
+                ),
+            },
         },
         "additionalProperties": False,
     },
@@ -87,12 +164,25 @@ CREATE_API_KEY_SPEC: dict[str, Any] = {
 
 REVOKE_API_KEY_SPEC: dict[str, Any] = {
     "name": "revoke_api_key",
-    "description": "Revoke one API key by id.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Revoke one API key by id (find ids with list_api_keys). The key stops "
+        "authenticating and the revocation cannot be undone from this tool. Guardrails: "
+        "an unknown key_id fails with api_key_not_found, and revoking the "
+        "organization's last active key is refused with cannot_revoke_last_key — "
+        "create a replacement with create_api_key first. Returns key_id with revoked: "
+        "true."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["key_id"],
         "properties": {
-            "key_id": {"type": "string", "minLength": 1},
+            "key_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "API key id from list_api_keys.",
+            },
         },
         "additionalProperties": False,
     },

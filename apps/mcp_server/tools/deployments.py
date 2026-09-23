@@ -9,7 +9,15 @@ from apps.mcp_server.client import api
 
 LIST_DEPLOYMENT_REGIONS_SPEC: dict[str, Any] = {
     "name": "list_deployment_regions",
-    "description": "List available deployment providers and regions for the current organization.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "List available deployment providers and regions for the current organization. "
+        "Read-only and non-destructive; not separately rate-limited. Call this before "
+        "create_deployment to pick a valid provider/region pair. Returns the providers "
+        "array with each provider's id, name, description, and regions (use a region id "
+        "when creating)."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -19,7 +27,15 @@ LIST_DEPLOYMENT_REGIONS_SPEC: dict[str, Any] = {
 
 GET_DEPLOYMENT_SPEC: dict[str, Any] = {
     "name": "get_deployment",
-    "description": "Fetch the current deployment for the active organization, if one exists.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Fetch the current deployment for the active organization, if one exists. Read-only "
+        "and non-destructive; not separately rate-limited. Poll this after "
+        "create_deployment until status is active. Returns the deployment record "
+        "(deployment_id, provider, region, status, config, created_at) or null when the "
+        "organization is on the shared pool."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -29,14 +45,46 @@ GET_DEPLOYMENT_SPEC: dict[str, Any] = {
 
 CREATE_DEPLOYMENT_SPEC: dict[str, Any] = {
     "name": "create_deployment",
-    "description": "Request a new isolated deployment for the active organization.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
+    "description": (
+        "Request a new isolated engine deployment for the active organization on the "
+        "chosen provider and region. Returns immediately with status requested — "
+        "provisioning is asynchronous, so poll get_deployment until status is active; "
+        "API calls then route to the isolated deployment automatically. Requires an "
+        "owner API key. Only one active or in-progress deployment is allowed per org "
+        "(deployment_exists otherwise — call delete_deployment first), and unknown "
+        "provider/region pairs fail validation; list_deployment_regions shows the "
+        "valid combinations."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
-            "provider": {"type": "string", "minLength": 1},
-            "region": {"type": "string", "minLength": 1},
-            "config": {"type": "object"},
-            "billing_markup_pct": {"type": "number", "minimum": 0, "maximum": 200},
+            "provider": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Cloud provider: algenta_shared (default), aws, azure, or gcp."
+                ),
+            },
+            "region": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Region id from list_deployment_regions; defaults to "
+                    "algenta-shared."
+                ),
+            },
+            "config": {
+                "type": "object",
+                "description": "Optional provider-specific configuration.",
+            },
+            "billing_markup_pct": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 200,
+                "description": "Billing markup percentage applied to this deployment, 0-200.",
+            },
         },
         "additionalProperties": False,
     },
@@ -44,12 +92,24 @@ CREATE_DEPLOYMENT_SPEC: dict[str, Any] = {
 
 GET_DEPLOYMENT_COST_SPEC: dict[str, Any] = {
     "name": "get_deployment_cost",
-    "description": "Get current-month cost details for one deployment by id.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get the current-month cost details of one deployment by id: provider, "
+        "region, cost_usd_month, billable_cost_usd_month after markup, the applied "
+        "billing_markup_pct, and last_updated. Requires an admin API key; an unknown "
+        "deployment_id fails with not_found. Use get_deployment to find the active "
+        "deployment first. Read-only."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["deployment_id"],
         "properties": {
-            "deployment_id": {"type": "string", "minLength": 1},
+            "deployment_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Deployment id from get_deployment.",
+            },
         },
         "additionalProperties": False,
     },
@@ -57,7 +117,14 @@ GET_DEPLOYMENT_COST_SPEC: dict[str, Any] = {
 
 DELETE_DEPLOYMENT_SPEC: dict[str, Any] = {
     "name": "delete_deployment",
-    "description": "Request deprovisioning for one deployment by id.",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": True},
+    "description": (
+        "Request deprovisioning for one deployment by id. Deprovision with this before "
+        "create_deployment when a deployment already exists. Returns status "
+        "'deprovisioning' with the deployment_id; deprovisioning is asynchronous, and an "
+        "already-deprovisioned deployment fails with already_deprovisioned."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["deployment_id"],
