@@ -12,10 +12,11 @@ SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Compare multiple named actions/options and get a ranked recommendation. "
-        "Use when you need to choose between two or more alternatives with uncertainty. "
-        "Synchronous deterministic compute; nothing is persisted and no separate "
-        "rate limit applies."
+        "Compare multiple named actions/options and get a ranked recommendation. Use when "
+        "you need to choose between two or more alternatives with uncertainty. Synchronous "
+        "deterministic compute; nothing is persisted and no separate rate limit applies. "
+        "Returns recommended_action, confidence, rationale, and the ranked action list with "
+        "expected_value and score per action."
     ),
     "inputSchema": {
         "type": "object",
@@ -80,9 +81,12 @@ BATCH_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Run multiple simulation requests in one call and return per-item success "
-        "or failure details. Synchronous deterministic compute; nothing is persisted "
-        "and no separate rate limit applies."
+        "Run multiple simulation requests in one call and return per-item success or "
+        "failure details. Synchronous deterministic compute; nothing is persisted and no "
+        "separate rate limit applies. Use simulate for a single request and submit_job for "
+        "very large async runs. Returns total, succeeded, failed, and a per-item results "
+        "array with index, success, the envelope's recommended_action and expected_value, "
+        "or the item error."
     ),
     "inputSchema": {
         "type": "object",

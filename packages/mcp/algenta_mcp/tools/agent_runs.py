@@ -185,9 +185,10 @@ GET_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the persisted checkpoints of one agent run — the deterministic snapshots "
-        "written at creation and every lifecycle transition that make the run "
-        "replayable. Use query_agent_run_checkpoints to search checkpoints across "
-        "runs. Read-only; an unknown run_id fails with agent_run_not_found."
+        "written at creation and every lifecycle transition that make the run replayable. "
+        "Use query_agent_run_checkpoints to search checkpoints across runs. Read-only; an "
+        "unknown run_id fails with agent_run_not_found. Returns the run's checkpoint "
+        "records."
     ),
     "inputSchema": {
         "type": "object",
@@ -266,11 +267,11 @@ GET_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Fetch the canonical mission-event records of one agent run — the typed, "
-        "indexed projection of its lifecycle used for audit and replay. Use "
-        "get_agent_run_events for the raw append-only stream and "
-        "query_agent_run_mission_events to search mission events across runs. "
-        "Read-only; an unknown run_id fails with agent_run_not_found."
+        "Fetch the canonical mission-event records of one agent run — the typed, indexed "
+        "projection of its lifecycle used for audit and replay. Use get_agent_run_events "
+        "for the raw append-only stream and query_agent_run_mission_events to search "
+        "mission events across runs. Read-only; an unknown run_id fails with "
+        "agent_run_not_found. Returns the run's canonical mission-event records."
     ),
     "inputSchema": {
         "type": "object",
@@ -355,10 +356,10 @@ GET_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Fetch the runtime telemetry batches recorded for one agent run — the "
-        "module-level timing and execution detail captured while it ran. Use "
-        "query_agent_run_telemetry to search telemetry across runs by kind or "
-        "module. Read-only; an unknown run_id fails with agent_run_not_found."
+        "Fetch the runtime telemetry batches recorded for one agent run — the module-level "
+        "timing and execution detail captured while it ran. Use query_agent_run_telemetry "
+        "to search telemetry across runs by kind or module. Read-only; an unknown run_id "
+        "fails with agent_run_not_found. Returns the run's telemetry batches."
     ),
     "inputSchema": {
         "type": "object",
@@ -497,12 +498,12 @@ APPROVE_AGENT_RUN_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": False, "openWorldHint": False},
     "description": (
-        "Approve an agent run that is waiting on manual approval (status "
-        "requires_approval) and execute it synchronously to completion. Runs in any "
-        "other state fail with agent_run_invalid_state; an unknown run_id fails with "
-        "agent_run_not_found. The approval is the human-in-the-loop gate for "
-        "manual-mode runs and is audit-logged and checkpointed. Returns the updated "
-        "run resource."
+        "Approve an agent run that is waiting on manual approval (status requires_approval) "
+        "and execute it synchronously to completion. Runs in any other state fail with "
+        "agent_run_invalid_state; an unknown run_id fails with agent_run_not_found. The "
+        "approval is the human-in-the-loop gate for manual-mode runs and is audit-logged "
+        "and checkpointed. Returns the updated run resource. Use resume_agent_run for "
+        "paused runs instead."
     ),
     "inputSchema": {
         "type": "object",

@@ -126,12 +126,12 @@ UPDATE_CONNECTOR_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Partially update one saved connector: only the supplied fields change. "
-        "Passing a new config replaces the encrypted credentials and resets the "
-        "connector to untested, so call test_connector again afterwards. Requires "
-        "manage permission on the connector (access_scope_denied otherwise) and at "
-        "least one field; an unknown id fails with not_found. Returns the updated "
-        "connector."
+        "Partially update one saved connector: only the supplied fields change. Passing a "
+        "new config replaces the encrypted credentials and resets the connector to "
+        "untested, so call test_connector again afterwards. Requires manage permission on "
+        "the connector (access_scope_denied otherwise) and at least one field; an unknown "
+        "id fails with not_found. Returns the updated connector. Use preview_test_connector "
+        "to validate a new config before applying it here."
     ),
     "inputSchema": {
         "type": "object",
@@ -253,9 +253,11 @@ PREVIEW_BROWSE_CONNECTOR_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": True},
     "description": (
-        "Browse one inline connector definition without saving it to discover files, tables, "
-        "endpoints, or items. This opens a real connection to the source and is "
-        "rate-limited per organization; nothing is saved."
+        "Browse one inline connector definition without saving it to discover files, "
+        "tables, endpoints, or items. This opens a real connection to the source and is "
+        "rate-limited per organization; nothing is saved. Use browse_connector for saved "
+        "connectors. Returns connector_type, items, total, message, labels, and discovery "
+        "metadata."
     ),
     "inputSchema": {
         "type": "object",
@@ -272,7 +274,10 @@ DELETE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "delete_connector",
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
         "idempotentHint": True, "openWorldHint": False},
-    "description": "Delete one saved connector by id.",
+    "description": (
+        "Delete one saved connector by id. Use update_connector to change config without "
+        "losing the saved definition. Returns connector_id with deleted: true."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["connector_id"],

@@ -12,11 +12,13 @@ SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": False, "openWorldHint": False},
     "description": (
-        "Run a Monte Carlo simulation and get a structured decision recommendation. "
-        "Use for: quantifying risk in a decision, comparing expected outcomes, "
-        "getting probability-weighted recommendations. Synchronous deterministic "
-        "compute governed by the plan's per-minute rate limit and monthly quota "
-        "(429 on excess); the run is recorded asynchronously and appears in list_runs."
+        "Run a Monte Carlo simulation and get a structured decision recommendation. Use "
+        "for: quantifying risk in a decision, comparing expected outcomes, getting "
+        "probability-weighted recommendations. Synchronous deterministic compute governed "
+        "by the plan's per-minute rate limit and monthly quota (429 on excess); the run is "
+        "recorded asynchronously and appears in list_runs. Returns the decision envelope: "
+        "recommended_action, expected_value, probability_of_loss, confidence, percentiles, "
+        "and run metadata (run_id, execution_ms, scenarios_run)."
     ),
     "inputSchema": {
         "type": "object",

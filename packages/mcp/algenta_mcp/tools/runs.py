@@ -46,9 +46,10 @@ GET_RUN_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Fetch one simulation run by run_id with its full detail — the decision "
-        "metrics and the request context it ran under. Use list_runs to find run "
-        "ids. Read-only; an unknown run_id fails with not_found."
+        "Fetch one simulation run by run_id with its full detail — the decision metrics and "
+        "the request context it ran under. Use list_runs to find run ids. Read-only; an "
+        "unknown run_id fails with not_found. Returns the run record: run_id, "
+        "recommended_action, confidence, expected_value, mode, and created_at."
     ),
     "inputSchema": {
         "type": "object",

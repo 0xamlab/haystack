@@ -12,8 +12,10 @@ GET_ME_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Get current user and organization identity for the active API key. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Get current user and organization identity for the active API key. Read-only and "
+        "non-destructive; not separately rate-limited. Use update_me to change the returned "
+        "names. Returns user_id, name, email, role, and the organization id, name, and "
+        "plan."
     ),
     "inputSchema": {
         "type": "object",
@@ -57,8 +59,10 @@ GET_LIMITS_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Get current plan quotas and limits for the active API key. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Get current plan quotas and limits for the active API key. Read-only and "
+        "non-destructive; not separately rate-limited. Use get_usage for current "
+        "consumption against these limits. Returns the plan's quota ceilings, including "
+        "rate, concurrency, storage, and LLM spend cap."
     ),
     "inputSchema": {
         "type": "object",
@@ -107,7 +111,10 @@ LIST_API_KEYS_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List active API keys for the current organization. Never returns raw secret "
-        "material. Read-only and non-destructive; not separately rate-limited."
+        "material. Read-only and non-destructive; not separately rate-limited. Use "
+        "create_api_key to mint one and revoke_api_key to retire one. Returns the key "
+        "records with id, label, key_prefix, device_limit, status, created_at, "
+        "last_used_at, and expires_at."
     ),
     "inputSchema": {
         "type": "object",

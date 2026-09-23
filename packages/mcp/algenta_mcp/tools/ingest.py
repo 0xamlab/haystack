@@ -18,11 +18,13 @@ SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Auto-map tabular data to a simulation payload. "
-        "Detects variable distributions, polarity (revenue=positive, cost=negative), "
-        "units, and builds the objective function automatically. "
-        "Set run_simulation=true to execute the simulation immediately and get results. "
-        "Multiple tables: auto-detects join keys and merges before analysis."
+        "Auto-map tabular data to a simulation payload. Detects variable distributions, "
+        "polarity (revenue=positive, cost=negative), units, and builds the objective "
+        "function automatically. Set run_simulation=true to execute the simulation "
+        "immediately and get results. Multiple tables: auto-detects join keys and merges "
+        "before analysis. Returns fields_detected, records_analyzed, join_applied, engine, "
+        "objective_function, variables, and simulation_payload, plus simulation_result when "
+        "run_simulation is true."
     ),
     "inputSchema": {
         "type": "object",

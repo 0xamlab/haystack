@@ -40,7 +40,10 @@ SPEC: dict[str, Any] = {
         "If clarification_required is true, or if confidence < 0.85, check the candidates "
         "list and ask the user to clarify. Never fabricate column names or SQL. "
         "Read-only against the engine; executes under the active API key with no "
-        "separate per-route rate limit."
+        "separate per-route rate limit. "
+        "Returns the query envelope: result, result_type, row_count, confidence, "
+        "resolved_column, decision_path, and plan, with candidates and "
+        "clarification_required set when the engine cannot resolve deterministically."
     ),
     "inputSchema": {
         "type": "object",
@@ -219,12 +222,13 @@ QUERY_BATCH_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": True},
     "description": (
-        "Execute several governed exact queries in one API call. "
-        "Use this for multi-metric prompts after choosing a dataset with "
-        "list_data and get_data_summary. Each item reuses the same structured "
-        "query contract as query_data; defaults may provide shared dataset_id, "
-        "filter, limit, and order. Read-only against the engine; executes under "
-        "the active API key with no separate per-route rate limit."
+        "Execute several governed exact queries in one API call. Use this for multi-metric "
+        "prompts after choosing a dataset with list_data and get_data_summary. Each item "
+        "reuses the same structured query contract as query_data; defaults may provide "
+        "shared dataset_id, filter, limit, and order. Read-only against the engine; "
+        "executes under the active API key with no separate per-route rate limit. Returns "
+        "request_id and a results array with each item's key, data envelope, metadata, or "
+        "error."
     ),
     "inputSchema": {
         "type": "object",
@@ -271,10 +275,10 @@ QUERY_SQL_REPORT_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": True},
     "description": (
-        "Execute a constrained read-only SQL rowset query over authorized datasets. "
-        "Use this only for wide reports that do not fit the governed exact-query "
-        "surface. SQL must be a single SELECT/WITH statement over the provided "
-        "dataset aliases."
+        "Execute a constrained read-only SQL rowset query over authorized datasets. Use "
+        "this only for wide reports that do not fit the governed exact-query surface. SQL "
+        "must be a single SELECT/WITH statement over the provided dataset aliases. Returns "
+        "columns, rows, row_count, truncated, request_id, and latency_ms."
     ),
     "inputSchema": {
         "type": "object",

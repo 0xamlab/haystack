@@ -69,8 +69,10 @@ GET_REPOSITORY_INTELLIGENCE_CAPABILITIES_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List globally supported Repository Intelligence languages and ranked support progress. "
-        "Read-only and non-destructive."
+        "List globally supported Repository Intelligence languages and ranked support "
+        "progress. Read-only and non-destructive. Check language support here before "
+        "create_repository_snapshot. Returns supported_languages and support_progress "
+        "(ranked target counts, progress fraction, and label)."
     ),
     "inputSchema": {
         "type": "object",
@@ -173,11 +175,12 @@ CREATE_REPOSITORY_DECISION_PLAN_SPEC: dict[str, Any] = {
         "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Create one stored, immutable repository DecisionPlan revision from a triage "
-        "workspace evidence bundle and return its decision_plan_id plus the validated "
-        "patch diff inline. snapshot_id is resolved from the bundle when omitted. This "
-        "is the only LLM-touching stage of the repository chain; model optionally picks "
-        "the planner model. The decision_plan_id feeds simulate_repository and "
-        "apply_repository. Persists the plan revision."
+        "workspace evidence bundle and return its decision_plan_id plus the validated patch "
+        "diff inline. snapshot_id is resolved from the bundle when omitted. This is the "
+        "only LLM-touching stage of the repository chain; model optionally picks the "
+        "planner model. The decision_plan_id feeds simulate_repository and "
+        "apply_repository. Persists the plan revision. Use run_repository_pipeline to chain "
+        "snapshot, triage, plan, and simulate in one call instead."
     ),
     "inputSchema": {
         "type": "object",

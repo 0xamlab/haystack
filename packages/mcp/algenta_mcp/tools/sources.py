@@ -43,15 +43,14 @@ REGISTER_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Advanced tool. "
-        "Register a data source and get full schema profiling + join detection. "
-        "Profiles every column (type, cardinality, fill rate, distribution). "
-        "Detects formula relationships (A×B≈C) within the source. "
-        "Detects join keys to every already-registered source automatically. "
-        "After registration the source is queryable by name via query_data. "
-        "Safe to call multiple times — re-registration is a no-op if data is unchanged. "
-        "Registration persists the source profile under the active API key's "
-        "organization."
+        "Advanced tool. Register a data source and get full schema profiling + join "
+        "detection. Profiles every column (type, cardinality, fill rate, distribution). "
+        "Detects formula relationships (A×B≈C) within the source. Detects join keys to "
+        "every already-registered source automatically. After registration the source is "
+        "queryable by name via query_data. Safe to call multiple times — re-registration is "
+        "a no-op if data is unchanged. Registration persists the source profile under the "
+        "active API key's organization. Returns source_id and the profiled schema with "
+        "columns, roles, formulas, and detected join keys."
     ),
     "inputSchema": {
         "type": "object",
@@ -106,10 +105,11 @@ LIST_SOURCES_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Advanced tool. "
-        "List all registered data sources for this org with their schema summaries. "
-        "Use this to discover available tables before calling query_data or register_source. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Advanced tool. List all registered data sources for this org with their schema "
+        "summaries. Use this to discover available tables before calling query_data or "
+        "register_source. Read-only and non-destructive; not separately rate-limited. "
+        "Returns the sources array with each source's id, name, and schema summary "
+        "(columns, roles, detected join keys), plus count, total, page, limit, and pages."
     ),
     "inputSchema": {
         "type": "object",
@@ -130,11 +130,11 @@ GET_SOURCE_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Advanced tool. "
-        "Get the full schema for a specific registered source: "
-        "column types, cardinality, fill rates, formula relationships, "
-        "and detected join keys to other sources. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Advanced tool. Get the full schema for a specific registered source: column types, "
+        "cardinality, fill rates, formula relationships, and detected join keys to other "
+        "sources. Read-only and non-destructive; not separately rate-limited. Use "
+        "list_sources to find source ids. Returns source_id and the full schema: column "
+        "types, cardinality, fill rates, formula relationships, and detected join keys."
     ),
     "inputSchema": {
         "type": "object",

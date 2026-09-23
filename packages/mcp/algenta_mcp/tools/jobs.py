@@ -39,8 +39,9 @@ GET_JOB_STATUS_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Fetch the latest async simulation job status by id. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Fetch the latest async simulation job status by id. Read-only and non-destructive; "
+        "not separately rate-limited. Use poll_job to block until a terminal state. Returns "
+        "the job record with status, progress, timestamps, and poll_url."
     ),
     "inputSchema": {
         "type": "object",
@@ -56,9 +57,10 @@ POLL_JOB_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Wait for an async simulation job to reach a terminal state. "
-        "Returns the final result when the job completes, or the terminal status when it fails, is cancelled, or times out. "
-        "Read-only: it polls the job's status endpoints and changes nothing."
+        "Wait for an async simulation job to reach a terminal state. Returns the final "
+        "result when the job completes, or the terminal status when it fails, is cancelled, "
+        "or times out. Read-only: it polls the job's status endpoints and changes nothing. "
+        "Use get_job_status for a single non-blocking check."
     ),
     "inputSchema": {
         "type": "object",
@@ -86,8 +88,9 @@ GET_JOB_RESULT_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Fetch the completed result payload for an async simulation job by id. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Fetch the completed result payload for an async simulation job by id. Read-only "
+        "and non-destructive; not separately rate-limited. Use get_job_status to check "
+        "progress before the job completes. Returns the completed job's result payload."
     ),
     "inputSchema": {
         "type": "object",
@@ -140,7 +143,11 @@ CANCEL_JOB_SPEC: dict[str, Any] = {
     "name": "cancel_job",
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
         "idempotentHint": True, "openWorldHint": False},
-    "description": "Cancel a queued or running async simulation job by id.",
+    "description": (
+        "Cancel a queued or running async simulation job by id. Use this for queued or "
+        "running jobs; list_jobs shows their states. Returns the updated job record with "
+        "its terminal status."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {

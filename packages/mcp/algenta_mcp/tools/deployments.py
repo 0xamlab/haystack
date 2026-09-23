@@ -13,7 +13,10 @@ LIST_DEPLOYMENT_REGIONS_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List available deployment providers and regions for the current organization. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Read-only and non-destructive; not separately rate-limited. Call this before "
+        "create_deployment to pick a valid provider/region pair. Returns the providers "
+        "array with each provider's id, name, description, and regions (use a region id "
+        "when creating)."
     ),
     "inputSchema": {
         "type": "object",
@@ -27,8 +30,11 @@ GET_DEPLOYMENT_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Fetch the current deployment for the active organization, if one exists. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Fetch the current deployment for the active organization, if one exists. Read-only "
+        "and non-destructive; not separately rate-limited. Poll this after "
+        "create_deployment until status is active. Returns the deployment record "
+        "(deployment_id, provider, region, status, config, created_at) or null when the "
+        "organization is on the shared pool."
     ),
     "inputSchema": {
         "type": "object",
@@ -113,7 +119,12 @@ DELETE_DEPLOYMENT_SPEC: dict[str, Any] = {
     "name": "delete_deployment",
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
         "idempotentHint": True, "openWorldHint": True},
-    "description": "Request deprovisioning for one deployment by id.",
+    "description": (
+        "Request deprovisioning for one deployment by id. Deprovision with this before "
+        "create_deployment when a deployment already exists. Returns status "
+        "'deprovisioning' with the deployment_id; deprovisioning is asynchronous, and an "
+        "already-deprovisioned deployment fails with already_deprovisioned."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["deployment_id"],

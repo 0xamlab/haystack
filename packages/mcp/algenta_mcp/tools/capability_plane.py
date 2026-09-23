@@ -13,11 +13,12 @@ LIST_CAPABILITY_PROVIDERS_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the unified capability providers available to the organization — data "
-        "sources, MCP servers, skill packs, native tools, and runtime libraries — "
-        "with their profiles, auth kinds, supported execution owners, and binding "
-        "scopes. Start here to find provider_id and profile_id for "
-        "create_capability_binding, then discover_capability_binding to see what a "
-        "binding exposes. Read-only."
+        "sources, MCP servers, skill packs, native tools, and runtime libraries — with "
+        "their profiles, auth kinds, supported execution owners, and binding scopes. Start "
+        "here to find provider_id and profile_id for create_capability_binding, then "
+        "discover_capability_binding to see what a binding exposes. Read-only. Returns the "
+        "provider records with provider_id, provider_type, auth metadata, supported "
+        "execution owners, and profiles."
     ),
     "inputSchema": {
         "type": "object",
@@ -31,12 +32,13 @@ LIST_CAPABILITY_BINDINGS_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List the capability bindings saved under the caller's organization, "
-        "optionally narrowed by provider_id or scope (user, workspace, organization). "
-        "A binding pairs a provider profile with credentials/config and is what makes "
-        "capabilities executable. Use create_capability_binding to add one, "
-        "test_capability_binding to verify one, and list_capabilities to browse what "
-        "they expose. Read-only."
+        "List the capability bindings saved under the caller's organization, optionally "
+        "narrowed by provider_id or scope (user, workspace, organization). A binding pairs "
+        "a provider profile with credentials/config and is what makes capabilities "
+        "executable. Use create_capability_binding to add one, test_capability_binding to "
+        "verify one, and list_capabilities to browse what they expose. Read-only. Returns "
+        "the binding records with binding_id, provider_id, profile_id, scope, "
+        "execution_owner, and status."
     ),
     "inputSchema": {
         "type": "object",
@@ -236,12 +238,13 @@ LIST_CAPABILITIES_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List the unified capability catalog visible to the caller — datasets, MCP "
-        "tools, resources and prompts, skills, native tools, and runtime libraries — "
-        "with each entry's kind, provider, binding, and execution owner. Filter by "
-        "kinds, provider_ids, or binding_ids to narrow the catalog. Use "
-        "get_capability for one entry's detail, route_capabilities to pick the best "
-        "entry for an objective, and list_skills for the skill subset. Read-only."
+        "List the unified capability catalog visible to the caller — datasets, MCP tools, "
+        "resources and prompts, skills, native tools, and runtime libraries — with each "
+        "entry's kind, provider, binding, and execution owner. Filter by kinds, "
+        "provider_ids, or binding_ids to narrow the catalog. Use get_capability for one "
+        "entry's detail, route_capabilities to pick the best entry for an objective, and "
+        "list_skills for the skill subset. Read-only. Returns the catalog entries with "
+        "capability_id, kind, provider_id, binding_id, execution_owner, and tags."
     ),
     "inputSchema": {
         "type": "object",
@@ -414,9 +417,10 @@ LIST_SKILLS_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the skill capabilities in the unified capability plane — prompt skills "
-        "enabled for the caller's organization with their names, bindings, and "
-        "execution owners. This is list_capabilities narrowed to kind=skill. Use "
-        "enable_skill to add one and disable_skill to remove one. Read-only."
+        "enabled for the caller's organization with their names, bindings, and execution "
+        "owners. This is list_capabilities narrowed to kind=skill. Use enable_skill to add "
+        "one and disable_skill to remove one. Read-only. Returns the skill catalog entries "
+        "with capability_id, name, binding, and execution owner."
     ),
     "inputSchema": {
         "type": "object",
@@ -480,10 +484,10 @@ DISABLE_SKILL_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Disable one skill by deleting its capability binding (find binding ids with "
-        "list_skills or list_capability_bindings). The skill immediately stops "
-        "appearing in the capability catalog and can no longer be routed or "
-        "executed; the deletion is permanent. Returns binding_id with disabled: "
-        "true."
+        "list_skills or list_capability_bindings). The skill immediately stops appearing in "
+        "the capability catalog and can no longer be routed or executed; the deletion is "
+        "permanent. Returns binding_id with disabled: true. Use this only for permanent "
+        "removal — re-enabling later requires a fresh enable_skill call."
     ),
     "inputSchema": {
         "type": "object",

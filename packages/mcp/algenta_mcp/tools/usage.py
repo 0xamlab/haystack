@@ -12,8 +12,10 @@ SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Get current billing period usage vs quota for this API key. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Get current billing period usage vs quota for this API key. Read-only and "
+        "non-destructive; not separately rate-limited. Use get_limits for the plan's "
+        "ceiling values. Returns simulations_used, simulations_limit, billing_period, and "
+        "plan."
     ),
     "inputSchema": {"type": "object", "properties": {}},
 }

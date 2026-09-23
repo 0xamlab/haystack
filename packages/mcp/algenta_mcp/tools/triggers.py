@@ -24,9 +24,11 @@ REGISTER_TRIGGER_SPEC: dict[str, Any] = {
         "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Register a real-time trigger that watches a data source for a threshold condition. "
-        "When the condition is met, the engine auto-runs the simulation template and optionally "
-        "fires a webhook. Examples: 'alert me when monthly revenue drops below $80k', "
-        "'simulate expansion if Downtown revenue exceeds $200k'."
+        "When the condition is met, the engine auto-runs the simulation template and "
+        "optionally fires a webhook. Examples: 'alert me when monthly revenue drops below "
+        "$80k', 'simulate expansion if Downtown revenue exceeds $200k'. Use fire_trigger to "
+        "test it immediately and delete_trigger to remove it. Returns trigger_id, name, "
+        "status, condition, and created_at."
     ),
     "inputSchema": {
         "type": "object",
@@ -100,9 +102,12 @@ LIST_TRIGGERS_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List all registered triggers with their current status, "
-        "last-checked time, and last-fired simulation result summary. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "List all registered triggers with their current status, last-checked time, and "
+        "last-fired simulation result summary. Read-only and non-destructive; not "
+        "separately rate-limited. Use register_trigger to add one and pause_trigger to "
+        "silence one without deleting. Returns triggers with trigger_id, name, status, "
+        "condition, last_checked_at, last_fired_at, and last_result_summary, plus count, "
+        "total, page, limit, and pages."
     ),
     "inputSchema": {
         "type": "object",
@@ -129,8 +134,10 @@ FIRE_TRIGGER_SPEC: dict[str, Any] = {
         "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Manually fire a trigger — evaluates its condition and runs the simulation template "
-        "regardless of whether the threshold is currently met. "
-        "Useful for testing triggers or forcing an immediate evaluation."
+        "regardless of whether the threshold is currently met. Useful for testing triggers "
+        "or forcing an immediate evaluation. Use pause_trigger to stop automatic firing "
+        "without deleting the trigger. Returns trigger_id, condition_met, fired, "
+        "simulation_run_id, recommended_action, expected_value, confidence, and fired_at."
     ),
     "inputSchema": {
         "type": "object",
@@ -178,7 +185,10 @@ PAUSE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "pause_trigger",
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
-    "description": "Pause or resume an existing trigger without deleting it.",
+    "description": (
+        "Pause or resume an existing trigger without deleting it. Returns trigger_id and "
+        "the updated status."
+    ),
     "inputSchema": {
         "type": "object",
         "required": ["trigger_id"],

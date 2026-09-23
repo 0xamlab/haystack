@@ -18,12 +18,13 @@ ONBOARD_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": False, "openWorldHint": False},
     "description": (
-        "Register a dataset for semantic querying. "
-        "Pass column names, inline records, or raw CSV. "
-        "The engine profiles roles automatically and starts background training. "
-        "Queries work immediately via a fallback model — accuracy improves "
-        "once schema-specific training completes (poll status with list_datasets). "
-        "Registration persists the dataset under the active API key's organization."
+        "Register a dataset for semantic querying. Pass column names, inline records, or "
+        "raw CSV. The engine profiles roles automatically and starts background training. "
+        "Queries work immediately via a fallback model — accuracy improves once "
+        "schema-specific training completes (poll status with list_datasets). Registration "
+        "persists the dataset under the active API key's organization. Use connect_data for "
+        "live connections instead of inline rows. Returns dataset_id, schema_hash, status, "
+        "model_tier, column_count, and suggested_aliases."
     ),
     "inputSchema": {
         "type": "object",
@@ -74,11 +75,12 @@ LIST_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List registered datasets and their current model tier. "
-        "Use search plus compact mode for low-token discovery, then poll "
-        "status or use the primary data tools once you choose a dataset. "
-        "Read-only and non-destructive; lists only the active API key's "
-        "organization and is not separately rate-limited."
+        "List registered datasets and their current model tier. Use search plus compact "
+        "mode for low-token discovery, then poll status or use the primary data tools once "
+        "you choose a dataset. Read-only and non-destructive; lists only the active API "
+        "key's organization and is not separately rate-limited. Returns the datasets array "
+        "with dataset_id, name, status, model_tier, source_names, column_count, and "
+        "registered_at, plus count, total, page, limit, and pages."
     ),
     "inputSchema": {
         "type": "object",

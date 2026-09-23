@@ -16,8 +16,10 @@ LIST_MODELS_SPEC: dict[str, Any] = {
         "any provider-backed routed entries with their routing, failover, timeout, and auth "
         "metadata, including capability-specific chat and embedding auth/header readiness. "
         "Use this before calling tokenize, count_tokens, chat_completions, responses, "
-        "embeddings, embedding_similarity, or rerank. Read-only and non-destructive; "
-        "calls share the plan's per-minute rate limit with the other LLM utility routes."
+        "embeddings, embedding_similarity, or rerank. Read-only and non-destructive; calls "
+        "share the plan's per-minute rate limit with the other LLM utility routes. Returns "
+        "the catalog entries with model id, capabilities, and, for provider-backed entries, "
+        "routing, failover, timeout, and auth-header readiness metadata."
     ),
     "inputSchema": {
         "type": "object",
@@ -31,8 +33,12 @@ RESOLVE_ARTIFACT_BRIDGE_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": True},
     "description": (
-        "Resolve a Hugging Face artifact path through the Algenta compatibility-ring artifact "
-        "bridge. Defaults to cache-only lookup and never downloads unless local_files_only=false."
+        "Resolve a Hugging Face artifact path through the Algenta compatibility-ring "
+        "artifact bridge. Defaults to cache-only lookup and never downloads unless "
+        "local_files_only=false. Use this only for Hugging Face artifact paths; use "
+        "list_models for the model catalog. Returns the resolution record: status, backend, "
+        "artifact_backend, resolved_path, cache_root, revision, auth_env_var_used, and "
+        "auth_configured."
     ),
     "inputSchema": {
         "type": "object",

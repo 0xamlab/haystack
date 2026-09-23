@@ -18,13 +18,14 @@ CONNECT_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": False, "openWorldHint": True},
     "description": (
-        "High-level data onboarding flow. "
-        "Use this instead of advanced connector/source tools for normal users. "
-        "Connect data once, pick the table/file/endpoint, and get a reusable dataset_id. "
-        "If the result status is needs_selection, call connect_data again with "
-        "connection_id and the chosen selection. Creating a connection persists it "
-        "and the dataset under the active API key's organization, and live sources "
-        "are dialed during this call; no separate per-route rate limit applies."
+        "High-level data onboarding flow. Use this instead of advanced connector/source "
+        "tools for normal users. Connect data once, pick the table/file/endpoint, and get a "
+        "reusable dataset_id. If the result status is needs_selection, call connect_data "
+        "again with connection_id and the chosen selection. Creating a connection persists "
+        "it and the dataset under the active API key's organization, and live sources are "
+        "dialed during this call; no separate per-route rate limit applies. Returns status "
+        "with dataset_id and connection_id on success, or status needs_selection with the "
+        "choices array to pick from."
     ),
     "inputSchema": {
         "type": "object",
@@ -111,11 +112,12 @@ LIST_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List visible datasets for the current user. "
-        "Use search plus compact mode first for low-token dataset discovery, "
-        "then get_data_schema on the chosen dataset_id. "
-        "Read-only and non-destructive; lists only the active API key's "
-        "organization and is not separately rate-limited."
+        "List visible datasets for the current user. Use search plus compact mode first for "
+        "low-token dataset discovery, then get_data_schema on the chosen dataset_id. "
+        "Read-only and non-destructive; lists only the active API key's organization and is "
+        "not separately rate-limited. Returns the datasets array (dataset_id, name, status, "
+        "source_names, connection_type, row_count, column_count, refreshable) plus count, "
+        "total, matched_total, page, limit, and pages."
     ),
     "inputSchema": {
         "type": "object",
@@ -155,8 +157,10 @@ GET_SCHEMA_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get a saved dataset plus its schema and relationship metadata by dataset_id. "
-        "Read-only and non-destructive; reads only the active API key's organization "
-        "and is not separately rate-limited."
+        "Read-only and non-destructive; reads only the active API key's organization and is "
+        "not separately rate-limited. Use get_data_summary first for a low-token look. "
+        "Returns the dataset record and its schema: row_count, columns, roles_summary, "
+        "formulas, and query_hints."
     ),
     "inputSchema": {
         "type": "object",
@@ -175,11 +179,11 @@ GET_SUMMARY_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Get the low-token dataset selection summary for a saved dataset_id. "
-        "Use this after list_data(search=..., compact=true) before paying for "
-        "the full schema payload. "
-        "Read-only and non-destructive; reads only the active API key's "
-        "organization and is not separately rate-limited."
+        "Get the low-token dataset selection summary for a saved dataset_id. Use this after "
+        "list_data(search=..., compact=true) before paying for the full schema payload. "
+        "Read-only and non-destructive; reads only the active API key's organization and is "
+        "not separately rate-limited. Returns dataset_id, name, status, source_names, "
+        "row_count, column_count, registered_at, and query_hints."
     ),
     "inputSchema": {
         "type": "object",

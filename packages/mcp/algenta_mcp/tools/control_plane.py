@@ -74,11 +74,12 @@ UPDATE_TEAM_MEMBER_ROLE_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Change one organization member's role by user_id (find ids with "
-        "list_team_members). Requires an admin API key. Guardrails: you cannot change "
-        "your own role (self_role_change_forbidden), only an owner can grant the owner "
-        "role (owner_grant_forbidden), and demoting the last active owner is refused "
-        "(last_owner). An unknown user_id fails with not_found. Returns the updated "
-        "user_id and a confirmation message."
+        "list_team_members). Requires an admin API key. Guardrails: you cannot change your "
+        "own role (self_role_change_forbidden), only an owner can grant the owner role "
+        "(owner_grant_forbidden), and demoting the last active owner is refused "
+        "(last_owner). An unknown user_id fails with not_found. Returns the updated user_id "
+        "and a confirmation message. Use remove_team_member to take the member out of the "
+        "organization instead."
     ),
     "inputSchema": {
         "type": "object",
@@ -105,10 +106,11 @@ REMOVE_TEAM_MEMBER_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Remove one member from the caller's organization by user_id (find ids with "
-        "list_team_members). Requires an admin API key. The member is suspended "
-        "immediately — their API keys stop authenticating at once — and removing the "
-        "last active owner is refused (last_owner). An unknown user_id fails with "
-        "not_found. Returns removed: true with the removed user_id."
+        "list_team_members). Requires an admin API key. The member is suspended immediately "
+        "— their API keys stop authenticating at once — and removing the last active owner "
+        "is refused (last_owner). An unknown user_id fails with not_found. Returns removed: "
+        "true with the removed user_id. Use update_team_member_role to change access "
+        "without removing the member."
     ),
     "inputSchema": {
         "type": "object",
@@ -160,9 +162,9 @@ REVOKE_DEVICE_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Revoke one registered device by registration_id (find ids with list_devices), "
-        "freeing one device slot. The device loses access on its next license refresh. "
-        "An unknown registration_id fails with not_found. Returns revoked: true with the "
-        "registration_id."
+        "freeing one device slot. The device loses access on its next license refresh. An "
+        "unknown registration_id fails with not_found. Returns revoked: true with the "
+        "registration_id. Use list_devices to find registration ids."
     ),
     "inputSchema": {
         "type": "object",
@@ -331,8 +333,10 @@ GET_EXECUTION_POLICY_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Get the current autonomous execution policy for the active organization. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Get the current autonomous execution policy for the active organization. Read-only "
+        "and non-destructive; not separately rate-limited. Read this before "
+        "update_execution_policy. Returns min_confidence, risk_floor, require_calibration, "
+        "allow_reexecution, and the current snapshot metadata."
     ),
     "inputSchema": {
         "type": "object",
@@ -364,7 +368,9 @@ GET_BILLING_INFO_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get current billing plan and subscription info for the active organization. "
-        "Read-only and non-destructive; not separately rate-limited."
+        "Read-only and non-destructive; not separately rate-limited. Use "
+        "create_billing_checkout or create_billing_portal to change anything. Returns plan, "
+        "stripe_customer_id, subscription_status, and current_period_end."
     ),
     "inputSchema": {
         "type": "object",
