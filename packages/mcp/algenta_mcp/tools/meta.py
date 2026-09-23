@@ -15,11 +15,13 @@ from algenta_mcp.client import api
 
 GET_CONTRACT_SPEC: dict[str, Any] = {
     "name": "get_contract",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get the machine-readable Algenta public contract. "
         "Use this when an agent needs the canonical discovery, summary, query, "
         "batch, SQL report, governed filter rules, CLI, or MCP entrypoints "
-        "before planning tool use."
+        "before planning tool use. Read-only and non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",
@@ -30,11 +32,14 @@ GET_CONTRACT_SPEC: dict[str, Any] = {
 
 GET_RUNTIME_MANIFEST_SPEC: dict[str, Any] = {
     "name": "get_runtime_manifest",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get the signed Algenta runtime manifest. "
         "Use this when an agent needs the canonical runtime-core inventory, "
         "maturity states, proof matrix, typed failure contract, or release theorem "
-        "before using runtime-backed execution paths."
+        "before using runtime-backed execution paths. Read-only and non-destructive; "
+        "not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",
@@ -45,10 +50,13 @@ GET_RUNTIME_MANIFEST_SPEC: dict[str, Any] = {
 
 GET_RUNTIME_RELEASE_VALIDATION_SPEC: dict[str, Any] = {
     "name": "get_runtime_release_validation",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get the authenticated Algenta runtime release validation result. "
         "Use this when an agent needs the current manifest-listed release verdict, "
-        "formal theorem conditions, or fail-closed proof status before using runtime-backed paths."
+        "formal theorem conditions, or fail-closed proof status before using runtime-backed paths. "
+        "Read-only and non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",
@@ -59,10 +67,13 @@ GET_RUNTIME_RELEASE_VALIDATION_SPEC: dict[str, Any] = {
 
 GET_RUNTIME_MODULES_SPEC: dict[str, Any] = {
     "name": "get_runtime_modules",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get the authenticated Algenta runtime module proof catalog. "
         "Use this when an agent needs the shipping module inventory, proof-matrix entries, "
-        "maturity counts, or compiled module evidence before using runtime-backed paths."
+        "maturity counts, or compiled module evidence before using runtime-backed paths. "
+        "Read-only and non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",
@@ -73,11 +84,14 @@ GET_RUNTIME_MODULES_SPEC: dict[str, Any] = {
 
 GET_RUNTIME_BENCHMARKS_SPEC: dict[str, Any] = {
     "name": "get_runtime_benchmarks",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get the authenticated Algenta runtime benchmark catalog. "
         "Use this when an agent needs benchmark classes, benchmark evidence paths, "
         "evaluation quality gates, SLO budgets, compiled artifacts, or module benchmark "
-        "linkage before reasoning about runtime performance claims."
+        "linkage before reasoning about runtime performance claims. Read-only and "
+        "non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",

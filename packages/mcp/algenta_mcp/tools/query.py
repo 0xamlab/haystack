@@ -20,6 +20,8 @@ from algenta_mcp.client import api
 
 SPEC: dict[str, Any] = {
     "name": "query_data",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Execute a structured query against connected data sources. "
         "Convert the user's question to a structured intent and call this tool — "
@@ -36,7 +38,9 @@ SPEC: dict[str, Any] = {
         "- ratio: percentages, margins, fill rates (0-1 range)\n"
         "- metric: let the engine pick the best numeric column\n\n"
         "If clarification_required is true, or if confidence < 0.85, check the candidates "
-        "list and ask the user to clarify. Never fabricate column names or SQL."
+        "list and ask the user to clarify. Never fabricate column names or SQL. "
+        "Read-only against the engine; executes under the active API key with no "
+        "separate per-route rate limit."
     ),
     "inputSchema": {
         "type": "object",
@@ -212,12 +216,15 @@ SPEC: dict[str, Any] = {
 
 QUERY_BATCH_SPEC: dict[str, Any] = {
     "name": "query_batch",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Execute several governed exact queries in one API call. "
         "Use this for multi-metric prompts after choosing a dataset with "
         "list_data and get_data_summary. Each item reuses the same structured "
         "query contract as query_data; defaults may provide shared dataset_id, "
-        "filter, limit, and order."
+        "filter, limit, and order. Read-only against the engine; executes under "
+        "the active API key with no separate per-route rate limit."
     ),
     "inputSchema": {
         "type": "object",
@@ -261,6 +268,8 @@ QUERY_BATCH_SPEC: dict[str, Any] = {
 
 QUERY_SQL_REPORT_SPEC: dict[str, Any] = {
     "name": "query_sql_report",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Execute a constrained read-only SQL rowset query over authorized datasets. "
         "Use this only for wide reports that do not fit the governed exact-query "

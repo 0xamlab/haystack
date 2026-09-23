@@ -9,6 +9,8 @@ from algenta_mcp.client import api
 
 LIST_RUNTIME_LIBRARIES_SPEC: dict[str, Any] = {
     "name": "list_runtime_libraries",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the executable Algenta runtime libraries with their engine and public "
         "functions — the discovery step before execute_runtime_library. q filters by "
@@ -38,6 +40,8 @@ LIST_RUNTIME_LIBRARIES_SPEC: dict[str, Any] = {
 
 EXECUTE_RUNTIME_LIBRARY_SPEC: dict[str, Any] = {
     "name": "execute_runtime_library",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Execute one public function from an Algenta runtime library with positional "
         "args and return its result, latency_ms, engine_used, and request_id. Call "

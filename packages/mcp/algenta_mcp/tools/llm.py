@@ -9,12 +9,15 @@ from algenta_mcp.client import api
 
 LIST_MODELS_SPEC: dict[str, Any] = {
     "name": "list_models",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the current Algenta model catalog, including deterministic utility models and "
         "any provider-backed routed entries with their routing, failover, timeout, and auth "
         "metadata, including capability-specific chat and embedding auth/header readiness. "
         "Use this before calling tokenize, count_tokens, chat_completions, responses, "
-        "embeddings, embedding_similarity, or rerank."
+        "embeddings, embedding_similarity, or rerank. Read-only and non-destructive; "
+        "calls share the plan's per-minute rate limit with the other LLM utility routes."
     ),
     "inputSchema": {
         "type": "object",
@@ -25,6 +28,8 @@ LIST_MODELS_SPEC: dict[str, Any] = {
 
 RESOLVE_ARTIFACT_BRIDGE_SPEC: dict[str, Any] = {
     "name": "resolve_artifact_bridge",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Resolve a Hugging Face artifact path through the Algenta compatibility-ring artifact "
         "bridge. Defaults to cache-only lookup and never downloads unless local_files_only=false."
@@ -44,6 +49,8 @@ RESOLVE_ARTIFACT_BRIDGE_SPEC: dict[str, Any] = {
 
 TOKENIZE_SPEC: dict[str, Any] = {
     "name": "tokenize",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Tokenize UTF-8 text into individual tokens with a supported deterministic Algenta "
         "tokenizer model (default text.tokenizer; call list_models for every supported model "
@@ -73,6 +80,8 @@ TOKENIZE_SPEC: dict[str, Any] = {
 
 COUNT_TOKENS_SPEC: dict[str, Any] = {
     "name": "count_tokens",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Count how many tokens a supported deterministic Algenta tokenizer model produces "
         "for UTF-8 text (default text.tokenizer; call list_models for every supported model "
@@ -102,6 +111,8 @@ COUNT_TOKENS_SPEC: dict[str, Any] = {
 
 CHAT_COMPLETIONS_SPEC: dict[str, Any] = {
     "name": "chat_completions",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Run one ordered chat transcript through an Algenta model and return the assistant "
         "message plus token usage. The default text.tokenizer model is a deterministic "
@@ -151,6 +162,8 @@ CHAT_COMPLETIONS_SPEC: dict[str, Any] = {
 
 RESPONSES_SPEC: dict[str, Any] = {
     "name": "responses",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Run the unified Algenta response envelope over one string or a list of independent "
         "strings, each processed as its own single-turn request. The output item per input "
@@ -197,6 +210,8 @@ RESPONSES_SPEC: dict[str, Any] = {
 
 EMBEDDINGS_SPEC: dict[str, Any] = {
     "name": "embeddings",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Generate one embedding vector per input string (a single string or a list of "
         "strings). The default text.hash_embedding_v1 model produces deterministic lexical "
@@ -237,6 +252,8 @@ EMBEDDINGS_SPEC: dict[str, Any] = {
 
 EMBEDDING_SIMILARITY_SPEC: dict[str, Any] = {
     "name": "embedding_similarity",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Score the similarity between two caller-supplied embedding vectors with a "
         "supported deterministic metric (default embeddings.cosine_similarity). This tool "
@@ -273,6 +290,8 @@ EMBEDDING_SIMILARITY_SPEC: dict[str, Any] = {
 
 RERANK_SPEC: dict[str, Any] = {
     "name": "rerank",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Rank caller-supplied document embeddings against a query embedding with a "
         "supported deterministic similarity metric (default embeddings.cosine_similarity), "

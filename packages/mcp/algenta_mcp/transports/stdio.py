@@ -58,6 +58,7 @@ async def run_stdio_server() -> None:
                     name=spec["name"],
                     description=spec["description"],
                     inputSchema=spec["inputSchema"],
+                    annotations=spec.get("annotations"),
                 )
                 for spec in get_tool_specs(allowed)
             ]

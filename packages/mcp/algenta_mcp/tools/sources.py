@@ -40,6 +40,8 @@ def _schema_cache_invalidate(source_id: str) -> None:
 
 REGISTER_SPEC: dict[str, Any] = {
     "name": "register_source",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Advanced tool. "
         "Register a data source and get full schema profiling + join detection. "
@@ -47,7 +49,9 @@ REGISTER_SPEC: dict[str, Any] = {
         "Detects formula relationships (A×B≈C) within the source. "
         "Detects join keys to every already-registered source automatically. "
         "After registration the source is queryable by name via query_data. "
-        "Safe to call multiple times — re-registration is a no-op if data is unchanged."
+        "Safe to call multiple times — re-registration is a no-op if data is unchanged. "
+        "Registration persists the source profile under the active API key's "
+        "organization."
     ),
     "inputSchema": {
         "type": "object",
@@ -99,10 +103,13 @@ REGISTER_SPEC: dict[str, Any] = {
 
 LIST_SOURCES_SPEC: dict[str, Any] = {
     "name": "list_sources",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Advanced tool. "
         "List all registered data sources for this org with their schema summaries. "
-        "Use this to discover available tables before calling query_data or register_source."
+        "Use this to discover available tables before calling query_data or register_source. "
+        "Read-only and non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",
@@ -120,11 +127,14 @@ LIST_SOURCES_SPEC: dict[str, Any] = {
 
 GET_SOURCE_SPEC: dict[str, Any] = {
     "name": "get_source_schema",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Advanced tool. "
         "Get the full schema for a specific registered source: "
         "column types, cardinality, fill rates, formula relationships, "
-        "and detected join keys to other sources."
+        "and detected join keys to other sources. "
+        "Read-only and non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",

@@ -20,6 +20,8 @@ from algenta_mcp.client import api
 
 REGISTER_TRIGGER_SPEC: dict[str, Any] = {
     "name": "register_trigger",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Register a real-time trigger that watches a data source for a threshold condition. "
         "When the condition is met, the engine auto-runs the simulation template and optionally "
@@ -95,9 +97,12 @@ REGISTER_TRIGGER_SPEC: dict[str, Any] = {
 
 LIST_TRIGGERS_SPEC: dict[str, Any] = {
     "name": "list_triggers",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List all registered triggers with their current status, "
-        "last-checked time, and last-fired simulation result summary."
+        "last-checked time, and last-fired simulation result summary. "
+        "Read-only and non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",
@@ -120,6 +125,8 @@ LIST_TRIGGERS_SPEC: dict[str, Any] = {
 
 FIRE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "fire_trigger",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Manually fire a trigger — evaluates its condition and runs the simulation template "
         "regardless of whether the threshold is currently met. "
@@ -146,6 +153,8 @@ FIRE_TRIGGER_SPEC: dict[str, Any] = {
 
 DELETE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "delete_trigger",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Delete one trigger by trigger_id (find ids with list_triggers). The trigger "
         "is removed immediately and will no longer fire automatically; its "
@@ -167,6 +176,8 @@ DELETE_TRIGGER_SPEC: dict[str, Any] = {
 
 PAUSE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "pause_trigger",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": "Pause or resume an existing trigger without deleting it.",
     "inputSchema": {
         "type": "object",

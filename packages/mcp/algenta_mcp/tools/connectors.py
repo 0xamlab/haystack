@@ -10,6 +10,8 @@ from algenta_mcp.client import api
 
 LIST_CONNECTORS_SPEC: dict[str, Any] = {
     "name": "list_connectors",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the data connectors saved under the caller's organization — databases, "
         "APIs, file-backed, and repository sources — with id, name, connector_type, "
@@ -47,13 +49,16 @@ LIST_CONNECTORS_SPEC: dict[str, Any] = {
 
 CREATE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "create_connector",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Save one connector configuration (host, credentials, options) for later data "
         "onboarding, health checks, and schema browsing. config is encrypted at rest "
         "and the new connector starts untested — call test_connector to verify it "
         "reaches the source, then browse_connector to discover what it exposes. Returns "
-        "the saved connector with its connector_id. To try a definition without saving "
-        "anything, call preview_test_connector instead."
+        "the saved connector with its connector_id, persisted under the active API "
+        "key's organization. To try a definition without saving anything, call "
+        "preview_test_connector instead."
     ),
     "inputSchema": {
         "type": "object",
@@ -94,6 +99,8 @@ CREATE_CONNECTOR_SPEC: dict[str, Any] = {
 
 GET_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "get_connector",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch one saved connector by connector_id: name, connector_type, status, "
         "visibility, timestamps, and the config fingerprint — never the stored "
@@ -116,6 +123,8 @@ GET_CONNECTOR_SPEC: dict[str, Any] = {
 
 UPDATE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "update_connector",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Partially update one saved connector: only the supplied fields change. "
         "Passing a new config replaces the encrypted credentials and resets the "
@@ -160,6 +169,8 @@ UPDATE_CONNECTOR_SPEC: dict[str, Any] = {
 
 TEST_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "test_connector",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Run a real connectivity test against one saved connector's stored config and "
         "persist the outcome as its live or error status with last_tested_at. This "
@@ -183,6 +194,8 @@ TEST_CONNECTOR_SPEC: dict[str, Any] = {
 
 BROWSE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "browse_connector",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Discover what one saved connector exposes — files, tables, endpoints, or "
         "items — with discovery labels and metadata for choosing what to onboard. The "
@@ -207,6 +220,8 @@ BROWSE_CONNECTOR_SPEC: dict[str, Any] = {
 
 PREVIEW_TEST_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "preview_test_connector",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Run a real connectivity test against an inline connector definition without "
         "saving anything — the dry run for create_connector. This opens an actual "
@@ -235,9 +250,12 @@ PREVIEW_TEST_CONNECTOR_SPEC: dict[str, Any] = {
 
 PREVIEW_BROWSE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "preview_browse_connector",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Browse one inline connector definition without saving it to discover files, tables, "
-        "endpoints, or items."
+        "endpoints, or items. This opens a real connection to the source and is "
+        "rate-limited per organization; nothing is saved."
     ),
     "inputSchema": {
         "type": "object",
@@ -252,6 +270,8 @@ PREVIEW_BROWSE_CONNECTOR_SPEC: dict[str, Any] = {
 
 DELETE_CONNECTOR_SPEC: dict[str, Any] = {
     "name": "delete_connector",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": "Delete one saved connector by id.",
     "inputSchema": {
         "type": "object",

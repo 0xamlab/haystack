@@ -9,6 +9,8 @@ from algenta_mcp.client import api
 
 LIST_TEAM_MEMBERS_SPEC: dict[str, Any] = {
     "name": "list_team_members",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the active users of the caller's organization with user_id, name, email, "
         "role, and status. Called with no arguments it returns the full member array; "
@@ -37,6 +39,8 @@ LIST_TEAM_MEMBERS_SPEC: dict[str, Any] = {
 
 INVITE_TEAM_MEMBER_SPEC: dict[str, Any] = {
     "name": "invite_team_member",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Invite someone to the caller's organization by email and return the pending "
         "invite. This creates a pending invitation, emails an accept link, and reserves a "
@@ -66,6 +70,8 @@ INVITE_TEAM_MEMBER_SPEC: dict[str, Any] = {
 
 UPDATE_TEAM_MEMBER_ROLE_SPEC: dict[str, Any] = {
     "name": "update_team_member_role",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Change one organization member's role by user_id (find ids with "
         "list_team_members). Requires an admin API key. Guardrails: you cannot change "
@@ -95,6 +101,8 @@ UPDATE_TEAM_MEMBER_ROLE_SPEC: dict[str, Any] = {
 
 REMOVE_TEAM_MEMBER_SPEC: dict[str, Any] = {
     "name": "remove_team_member",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Remove one member from the caller's organization by user_id (find ids with "
         "list_team_members). Requires an admin API key. The member is suspended "
@@ -118,6 +126,8 @@ REMOVE_TEAM_MEMBER_SPEC: dict[str, Any] = {
 
 LIST_DEVICES_SPEC: dict[str, Any] = {
     "name": "list_devices",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the devices registered to the caller's organization, paginated, together "
         "with the plan's device_limit and plan name. Requires an API-key identity "
@@ -146,6 +156,8 @@ LIST_DEVICES_SPEC: dict[str, Any] = {
 
 REVOKE_DEVICE_SPEC: dict[str, Any] = {
     "name": "revoke_device",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Revoke one registered device by registration_id (find ids with list_devices), "
         "freeing one device slot. The device loses access on its next license refresh. "
@@ -168,6 +180,8 @@ REVOKE_DEVICE_SPEC: dict[str, Any] = {
 
 GET_AUDIT_LOGS_SPEC: dict[str, Any] = {
     "name": "get_audit_logs",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Query the organization's audit-event log, newest first, with pagination "
         "(defaults page 1, limit 25) and exact-match filters. Every entry records who "
@@ -238,6 +252,8 @@ GET_AUDIT_LOGS_SPEC: dict[str, Any] = {
 
 GET_AUDIT_LOG_ARTIFACTS_SPEC: dict[str, Any] = {
     "name": "get_audit_log_artifacts",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Query the organization's immutable Parquet audit-log artifacts with pagination "
         "(defaults page 1, limit 25) and exact-match filters, including content_hash for "
@@ -312,7 +328,12 @@ GET_AUDIT_LOG_ARTIFACTS_SPEC: dict[str, Any] = {
 
 GET_EXECUTION_POLICY_SPEC: dict[str, Any] = {
     "name": "get_execution_policy",
-    "description": "Get the current autonomous execution policy for the active organization.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get the current autonomous execution policy for the active organization. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -322,6 +343,8 @@ GET_EXECUTION_POLICY_SPEC: dict[str, Any] = {
 
 LIST_EXECUTION_POLICY_SNAPSHOTS_SPEC: dict[str, Any] = {
     "name": "list_execution_policy_snapshots",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the organization's persisted execution-policy snapshots in revision order "
         "with total_snapshots. Every policy update writes a new snapshot, so these ids "
@@ -337,7 +360,12 @@ LIST_EXECUTION_POLICY_SNAPSHOTS_SPEC: dict[str, Any] = {
 
 GET_BILLING_INFO_SPEC: dict[str, Any] = {
     "name": "get_billing_info",
-    "description": "Get current billing plan and subscription info for the active organization.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get current billing plan and subscription info for the active organization. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -347,6 +375,8 @@ GET_BILLING_INFO_SPEC: dict[str, Any] = {
 
 CREATE_BILLING_CHECKOUT_SPEC: dict[str, Any] = {
     "name": "create_billing_checkout",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Create a Stripe Checkout session for the active organization and return its "
         "hosted checkout URL. The user completes the purchase in the browser; nothing is "
@@ -370,6 +400,8 @@ CREATE_BILLING_CHECKOUT_SPEC: dict[str, Any] = {
 
 CREATE_BILLING_PORTAL_SPEC: dict[str, Any] = {
     "name": "create_billing_portal",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Create a Stripe Billing Portal session for the active organization and return "
         "its URL, where the user manages payment methods, invoices, and the "
@@ -386,6 +418,8 @@ CREATE_BILLING_PORTAL_SPEC: dict[str, Any] = {
 
 REFRESH_CREDITS_SPEC: dict[str, Any] = {
     "name": "refresh_credits",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Issue a compatibility credit batch to a quota-governed managed runtime. This "
         "exists for non-Algenta managed plans; Algenta editions are unmetered and do "
@@ -421,6 +455,8 @@ REFRESH_CREDITS_SPEC: dict[str, Any] = {
 
 INGEST_METERING_EVENTS_SPEC: dict[str, Any] = {
     "name": "ingest_metering_events",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Ingest one batch of execution-analytics events from a managed runtime that "
         "explicitly enabled control-plane sync. This endpoint is analytics-only: "
@@ -492,6 +528,8 @@ INGEST_METERING_EVENTS_SPEC: dict[str, Any] = {
 
 UPDATE_EXECUTION_POLICY_SPEC: dict[str, Any] = {
     "name": "update_execution_policy",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Partially update the organization's autonomous execution policy: only the "
         "fields supplied change, the rest keep their values. min_confidence blocks "

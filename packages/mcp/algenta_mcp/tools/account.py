@@ -9,7 +9,12 @@ from algenta_mcp.client import api
 
 GET_ME_SPEC: dict[str, Any] = {
     "name": "get_me",
-    "description": "Get current user and organization identity for the active API key.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get current user and organization identity for the active API key. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -19,6 +24,8 @@ GET_ME_SPEC: dict[str, Any] = {
 
 UPDATE_ME_SPEC: dict[str, Any] = {
     "name": "update_me",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Update the current user's name and/or the organization name for the active "
         "API key; only the supplied fields change. Renaming the organization requires "
@@ -47,7 +54,12 @@ UPDATE_ME_SPEC: dict[str, Any] = {
 
 GET_LIMITS_SPEC: dict[str, Any] = {
     "name": "get_limits",
-    "description": "Get current plan quotas and limits for the active API key.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get current plan quotas and limits for the active API key. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -57,6 +69,8 @@ GET_LIMITS_SPEC: dict[str, Any] = {
 
 LIST_DISTRIBUTIONS_SPEC: dict[str, Any] = {
     "name": "list_distributions",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the probability distribution types supported in simulation variables — "
         "normal, uniform, triangular, lognormal, and fixed — each with its required "
@@ -72,6 +86,8 @@ LIST_DISTRIBUTIONS_SPEC: dict[str, Any] = {
 
 LIST_TEMPLATES_SPEC: dict[str, Any] = {
     "name": "list_templates",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the built-in simulation templates available to the active API key, "
         "each with its id and intended use. A template id pre-fills a simulation "
@@ -87,7 +103,12 @@ LIST_TEMPLATES_SPEC: dict[str, Any] = {
 
 LIST_API_KEYS_SPEC: dict[str, Any] = {
     "name": "list_api_keys",
-    "description": "List active API keys for the current organization. Never returns raw secret material.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "List active API keys for the current organization. Never returns raw secret "
+        "material. Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -97,6 +118,8 @@ LIST_API_KEYS_SPEC: dict[str, Any] = {
 
 CREATE_API_KEY_SPEC: dict[str, Any] = {
     "name": "create_api_key",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Create a new API key for the current organization and return its raw_key "
         "value exactly once — it is never shown again, so store it immediately. "
@@ -134,6 +157,8 @@ CREATE_API_KEY_SPEC: dict[str, Any] = {
 
 REVOKE_API_KEY_SPEC: dict[str, Any] = {
     "name": "revoke_api_key",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Revoke one API key by id (find ids with list_api_keys). The key stops "
         "authenticating and the revocation cannot be undone from this tool. Guardrails: "

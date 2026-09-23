@@ -9,9 +9,13 @@ from algenta_mcp.client import api
 
 SPEC: dict[str, Any] = {
     "name": "recommend",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Compare multiple named actions/options and get a ranked recommendation. "
-        "Use when you need to choose between two or more alternatives with uncertainty."
+        "Use when you need to choose between two or more alternatives with uncertainty. "
+        "Synchronous deterministic compute; nothing is persisted and no separate "
+        "rate limit applies."
     ),
     "inputSchema": {
         "type": "object",
@@ -42,15 +46,17 @@ SPEC: dict[str, Any] = {
 
 SCORE_SPEC: dict[str, Any] = {
     "name": "score",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Run one simulation request (the same payload shape as simulate) and return "
         "the decision envelope fields plus a composite score with its breakdown. The "
         "score blends the normalized expected value and one minus the probability of "
         "loss; scoring_weights tunes the blend (expected_value default 0.6, "
         "downside_risk default 0.4). Use simulate when you need the full envelope "
-        "without scoring, and compare to rank several scenarios. Synchronous; the "
-        "underlying run is persisted. Returns recommended_action, expected_value, "
-        "probability_of_loss, score, and score_breakdown."
+        "without scoring, and compare to rank several scenarios. Synchronous "
+        "deterministic compute; nothing is persisted. Returns recommended_action, "
+        "expected_value, probability_of_loss, score, and score_breakdown."
     ),
     "inputSchema": {
         "type": "object",
@@ -71,9 +77,12 @@ SCORE_SPEC: dict[str, Any] = {
 
 BATCH_SPEC: dict[str, Any] = {
     "name": "batch",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Run multiple simulation requests in one call and return per-item success "
-        "or failure details."
+        "or failure details. Synchronous deterministic compute; nothing is persisted "
+        "and no separate rate limit applies."
     ),
     "inputSchema": {
         "type": "object",
@@ -92,6 +101,8 @@ BATCH_SPEC: dict[str, Any] = {
 
 COMPARE_SPEC: dict[str, Any] = {
     "name": "compare",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Run 2-10 named scenarios side by side and return the winner plus each "
         "scenario's deltas versus the best one. The winner is the scenario with the "
@@ -99,7 +110,7 @@ COMPARE_SPEC: dict[str, Any] = {
         "expected_value, probability_of_loss, and delta_vs_best. Each scenario's "
         "request uses the simulate payload shape; runs and seed are forwarded for "
         "reproducibility. Use recommend for a ranked recommendation over actions "
-        "instead. Synchronous; the underlying runs are persisted."
+        "instead. Synchronous deterministic compute; nothing is persisted."
     ),
     "inputSchema": {
         "type": "object",

@@ -15,12 +15,15 @@ from algenta_mcp.client import api
 
 ONBOARD_SPEC: dict[str, Any] = {
     "name": "onboard_dataset",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Register a dataset for semantic querying. "
         "Pass column names, inline records, or raw CSV. "
         "The engine profiles roles automatically and starts background training. "
         "Queries work immediately via a fallback model — accuracy improves "
-        "once schema-specific training completes (poll status with list_datasets)."
+        "once schema-specific training completes (poll status with list_datasets). "
+        "Registration persists the dataset under the active API key's organization."
     ),
     "inputSchema": {
         "type": "object",
@@ -68,10 +71,14 @@ ONBOARD_SPEC: dict[str, Any] = {
 
 LIST_SPEC: dict[str, Any] = {
     "name": "list_datasets",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List registered datasets and their current model tier. "
         "Use search plus compact mode for low-token discovery, then poll "
-        "status or use the primary data tools once you choose a dataset."
+        "status or use the primary data tools once you choose a dataset. "
+        "Read-only and non-destructive; lists only the active API key's "
+        "organization and is not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",
@@ -189,6 +196,8 @@ async def list_handler(arguments: dict[str, Any]) -> str:
 
 STATUS_SPEC: dict[str, Any] = {
     "name": "get_dataset_status",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get the live training status and model tier of one dataset: whether semantic "
         "training is still running or the dataset is ready, and which model serves "
@@ -212,6 +221,8 @@ STATUS_SPEC: dict[str, Any] = {
 
 RETRAIN_SPEC: dict[str, Any] = {
     "name": "retrain_dataset",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Re-trigger background semantic training for one dataset and return "
         "immediately with status and a confirmation message — the build runs "

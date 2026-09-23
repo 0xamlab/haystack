@@ -9,6 +9,8 @@ from algenta_mcp.client import api
 
 LIST_CAPABILITY_PROVIDERS_SPEC: dict[str, Any] = {
     "name": "list_capability_providers",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the unified capability providers available to the organization — data "
         "sources, MCP servers, skill packs, native tools, and runtime libraries — "
@@ -26,6 +28,8 @@ LIST_CAPABILITY_PROVIDERS_SPEC: dict[str, Any] = {
 
 LIST_CAPABILITY_BINDINGS_SPEC: dict[str, Any] = {
     "name": "list_capability_bindings",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the capability bindings saved under the caller's organization, "
         "optionally narrowed by provider_id or scope (user, workspace, organization). "
@@ -54,6 +58,8 @@ LIST_CAPABILITY_BINDINGS_SPEC: dict[str, Any] = {
 
 CREATE_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
     "name": "create_capability_binding",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Save one capability binding for a provider/profile pair and return it with "
         "its binding_id. scope (default workspace) decides who can use it, "
@@ -115,6 +121,8 @@ CREATE_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
 
 TEST_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
     "name": "test_capability_binding",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Run a health test on one capability binding and return the outcome. Pass "
         "binding_id to test a saved binding, or a full inline definition "
@@ -169,6 +177,8 @@ TEST_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
 
 DISCOVER_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
     "name": "discover_capability_binding",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Discover the capabilities one binding exposes and return them as catalog "
         "entries. Pass binding_id to discover a saved binding (this publishes or "
@@ -223,6 +233,8 @@ DISCOVER_CAPABILITY_BINDING_SPEC: dict[str, Any] = {
 
 LIST_CAPABILITIES_SPEC: dict[str, Any] = {
     "name": "list_capabilities",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the unified capability catalog visible to the caller — datasets, MCP "
         "tools, resources and prompts, skills, native tools, and runtime libraries — "
@@ -267,6 +279,8 @@ LIST_CAPABILITIES_SPEC: dict[str, Any] = {
 
 GET_CAPABILITY_SPEC: dict[str, Any] = {
     "name": "get_capability",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch one unified capability catalog entry by capability_id: kind, provider, "
         "binding, execution owner, approval requirement, and tags. "
@@ -294,6 +308,8 @@ GET_CAPABILITY_SPEC: dict[str, Any] = {
 
 ROUTE_CAPABILITIES_SPEC: dict[str, Any] = {
     "name": "route_capabilities",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Pick the best unified capability for a natural-language objective and return "
         "the route plan: the selected capability, binding, and kind, the authoritative "
@@ -354,6 +370,8 @@ ROUTE_CAPABILITIES_SPEC: dict[str, Any] = {
 
 EXECUTE_CAPABILITY_SPEC: dict[str, Any] = {
     "name": "execute_capability",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Execute one routed or known algenta_managed capability by capability id and "
         "return the execution receipt. client_managed routes must execute in the "
@@ -392,6 +410,8 @@ EXECUTE_CAPABILITY_SPEC: dict[str, Any] = {
 
 LIST_SKILLS_SPEC: dict[str, Any] = {
     "name": "list_skills",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the skill capabilities in the unified capability plane — prompt skills "
         "enabled for the caller's organization with their names, bindings, and "
@@ -407,6 +427,8 @@ LIST_SKILLS_SPEC: dict[str, Any] = {
 
 ENABLE_SKILL_SPEC: dict[str, Any] = {
     "name": "enable_skill",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Enable one prompt skill as a first-class capability binding and return its "
         "discovered catalog entry. The skill's instruction text becomes an "
@@ -454,6 +476,8 @@ ENABLE_SKILL_SPEC: dict[str, Any] = {
 
 DISABLE_SKILL_SPEC: dict[str, Any] = {
     "name": "disable_skill",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Disable one skill by deleting its capability binding (find binding ids with "
         "list_skills or list_capability_bindings). The skill immediately stops "

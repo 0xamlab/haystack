@@ -9,6 +9,8 @@ from algenta_mcp.client import api
 
 LIST_RUNS_SPEC: dict[str, Any] = {
     "name": "list_runs",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the organization's recent simulation runs, newest first, with their "
         "recommended_action, confidence, expected_value, mode, and created_at. "
@@ -41,6 +43,8 @@ LIST_RUNS_SPEC: dict[str, Any] = {
 
 GET_RUN_SPEC: dict[str, Any] = {
     "name": "get_run",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch one simulation run by run_id with its full detail — the decision "
         "metrics and the request context it ran under. Use list_runs to find run "

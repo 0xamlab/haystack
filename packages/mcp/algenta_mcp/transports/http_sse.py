@@ -417,6 +417,7 @@ def _build_http_app() -> ASGIApp:
                         name=spec["name"],
                         description=spec["description"],
                         inputSchema=spec["inputSchema"],
+                        annotations=spec.get("annotations"),
                     )
                     for spec in get_tool_specs(allowed)
                 ]
@@ -657,6 +658,7 @@ def _build_fastapi_router() -> APIRouter | None:
                         name=spec["name"],
                         description=spec["description"],
                         inputSchema=spec["inputSchema"],
+                        annotations=spec.get("annotations"),
                     )
                     for spec in get_tool_specs(allowed)
                 ]

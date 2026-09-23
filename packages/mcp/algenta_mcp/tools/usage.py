@@ -9,7 +9,12 @@ from algenta_mcp.client import api
 
 SPEC: dict[str, Any] = {
     "name": "get_usage",
-    "description": "Get current billing period usage vs quota for this API key.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Get current billing period usage vs quota for this API key. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {"type": "object", "properties": {}},
 }
 

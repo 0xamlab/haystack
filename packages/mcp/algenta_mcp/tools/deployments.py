@@ -9,7 +9,12 @@ from algenta_mcp.client import api
 
 LIST_DEPLOYMENT_REGIONS_SPEC: dict[str, Any] = {
     "name": "list_deployment_regions",
-    "description": "List available deployment providers and regions for the current organization.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "List available deployment providers and regions for the current organization. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -19,7 +24,12 @@ LIST_DEPLOYMENT_REGIONS_SPEC: dict[str, Any] = {
 
 GET_DEPLOYMENT_SPEC: dict[str, Any] = {
     "name": "get_deployment",
-    "description": "Fetch the current deployment for the active organization, if one exists.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Fetch the current deployment for the active organization, if one exists. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {},
@@ -29,6 +39,8 @@ GET_DEPLOYMENT_SPEC: dict[str, Any] = {
 
 CREATE_DEPLOYMENT_SPEC: dict[str, Any] = {
     "name": "create_deployment",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Request a new isolated engine deployment for the active organization on the "
         "chosen provider and region. Returns immediately with status requested — "
@@ -74,6 +86,8 @@ CREATE_DEPLOYMENT_SPEC: dict[str, Any] = {
 
 GET_DEPLOYMENT_COST_SPEC: dict[str, Any] = {
     "name": "get_deployment_cost",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get the current-month cost details of one deployment by id: provider, "
         "region, cost_usd_month, billable_cost_usd_month after markup, the applied "
@@ -97,6 +111,8 @@ GET_DEPLOYMENT_COST_SPEC: dict[str, Any] = {
 
 DELETE_DEPLOYMENT_SPEC: dict[str, Any] = {
     "name": "delete_deployment",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": True},
     "description": "Request deprovisioning for one deployment by id.",
     "inputSchema": {
         "type": "object",

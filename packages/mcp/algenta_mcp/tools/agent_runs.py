@@ -9,6 +9,8 @@ from algenta_mcp.client import api
 
 CREATE_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "create_agent_run",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Create a persisted agent run lifecycle resource for a natural-language task. "
         "With approval_mode=auto (default) the run picks a tool from the task wording, "
@@ -74,6 +76,8 @@ CREATE_AGENT_RUN_SPEC: dict[str, Any] = {
 
 LIST_AGENT_RUNS_SPEC: dict[str, Any] = {
     "name": "list_agent_runs",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the organization's persisted agent runs, paginated (defaults page 1, "
         "limit 25), with lineage-aware filters: status, request_hash (find reruns of "
@@ -123,6 +127,8 @@ LIST_AGENT_RUNS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "get_agent_run",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch one persisted agent run by run_id: status, task, selected_tool, steps, "
         "result, tools_used, and the policy/schema snapshot ids it ran under. Use "
@@ -145,6 +151,8 @@ GET_AGENT_RUN_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_EVENTS_SPEC: dict[str, Any] = {
     "name": "get_agent_run_events",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch the append-only event stream of one agent run — run_created, "
         "tool_selected, tool_executed, run_completed, and the pause/approve/cancel "
@@ -173,6 +181,8 @@ GET_AGENT_RUN_EVENTS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
     "name": "get_agent_run_checkpoints",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the persisted checkpoints of one agent run — the deterministic snapshots "
         "written at creation and every lifecycle transition that make the run "
@@ -194,6 +204,8 @@ GET_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
 
 QUERY_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
     "name": "query_agent_run_checkpoints",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Search persisted checkpoints across all of the organization's agent runs, "
         "paginated (defaults page 1, limit 25). Filter by run_id or checkpoint_id to "
@@ -251,6 +263,8 @@ QUERY_AGENT_RUN_CHECKPOINTS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
     "name": "get_agent_run_mission_events",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch the canonical mission-event records of one agent run — the typed, "
         "indexed projection of its lifecycle used for audit and replay. Use "
@@ -279,6 +293,8 @@ GET_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
 
 QUERY_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
     "name": "query_agent_run_mission_events",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Search canonical mission-event records across all of the organization's "
         "agent runs, paginated (defaults page 1, limit 25) and newest first. Filter "
@@ -336,6 +352,8 @@ QUERY_AGENT_RUN_MISSION_EVENTS_SPEC: dict[str, Any] = {
 
 GET_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
     "name": "get_agent_run_telemetry",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch the runtime telemetry batches recorded for one agent run — the "
         "module-level timing and execution detail captured while it ran. Use "
@@ -363,6 +381,8 @@ GET_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
 
 QUERY_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
     "name": "query_agent_run_telemetry",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Search runtime telemetry batches across all of the organization's agent "
         "runs, paginated (defaults page 1, limit 25). Filter by run_id, "
@@ -424,6 +444,8 @@ QUERY_AGENT_RUN_TELEMETRY_SPEC: dict[str, Any] = {
 
 RESUME_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "resume_agent_run",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Resume a paused agent run by run_id. A run created with approval_mode=auto "
         "executes to completion synchronously and returns completed; a manual-mode run "
@@ -447,6 +469,8 @@ RESUME_AGENT_RUN_SPEC: dict[str, Any] = {
 
 CANCEL_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "cancel_agent_run",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Cancel an agent run by run_id, ending its lifecycle at cancelled. Only a "
         "paused or requires_approval run can be cancelled — anything else fails with "
@@ -470,6 +494,8 @@ CANCEL_AGENT_RUN_SPEC: dict[str, Any] = {
 
 APPROVE_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "approve_agent_run",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Approve an agent run that is waiting on manual approval (status "
         "requires_approval) and execute it synchronously to completion. Runs in any "

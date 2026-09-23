@@ -10,10 +10,14 @@ from algenta_mcp.client import api
 
 SUBMIT_JOB_SPEC: dict[str, Any] = {
     "name": "submit_job",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Submit a long-running async simulation job. "
         "Use for n_simulations > 500,000 or when you need a callback. "
-        "Returns a job_id — poll with get_job_status."
+        "Returns a job_id — poll with get_job_status. Submitting persists the job "
+        "under the active API key's organization; when callback_url is set, "
+        "completion is delivered to it by outbound webhook."
     ),
     "inputSchema": {
         "type": "object",
@@ -32,7 +36,12 @@ SUBMIT_JOB_SPEC: dict[str, Any] = {
 
 GET_JOB_STATUS_SPEC: dict[str, Any] = {
     "name": "get_job_status",
-    "description": "Fetch the latest async simulation job status by id.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Fetch the latest async simulation job status by id. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -44,9 +53,12 @@ GET_JOB_STATUS_SPEC: dict[str, Any] = {
 
 POLL_JOB_SPEC: dict[str, Any] = {
     "name": "poll_job",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Wait for an async simulation job to reach a terminal state. "
-        "Returns the final result when the job completes, or the terminal status when it fails, is cancelled, or times out."
+        "Returns the final result when the job completes, or the terminal status when it fails, is cancelled, or times out. "
+        "Read-only: it polls the job's status endpoints and changes nothing."
     ),
     "inputSchema": {
         "type": "object",
@@ -71,7 +83,12 @@ POLL_JOB_SPEC: dict[str, Any] = {
 
 GET_JOB_RESULT_SPEC: dict[str, Any] = {
     "name": "get_job_result",
-    "description": "Fetch the completed result payload for an async simulation job by id.",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
+    "description": (
+        "Fetch the completed result payload for an async simulation job by id. "
+        "Read-only and non-destructive; not separately rate-limited."
+    ),
     "inputSchema": {
         "type": "object",
         "properties": {
@@ -83,6 +100,8 @@ GET_JOB_RESULT_SPEC: dict[str, Any] = {
 
 LIST_JOBS_SPEC: dict[str, Any] = {
     "name": "list_jobs",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "List the organization's async simulation jobs, newest first, with pagination "
         "(defaults page 1, limit 25, max 200) and an optional status filter such as "
@@ -119,6 +138,8 @@ LIST_JOBS_SPEC: dict[str, Any] = {
 
 CANCEL_JOB_SPEC: dict[str, Any] = {
     "name": "cancel_job",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": True, "openWorldHint": False},
     "description": "Cancel a queued or running async simulation job by id.",
     "inputSchema": {
         "type": "object",
@@ -131,6 +152,8 @@ CANCEL_JOB_SPEC: dict[str, Any] = {
 
 TEST_WEBHOOK_DELIVERY_SPEC: dict[str, Any] = {
     "name": "test_webhook_delivery",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Send one real test webhook payload (event webhook.test with a sample message) "
         "to a callback URL and return the delivery result. This makes an actual "

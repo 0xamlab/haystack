@@ -9,6 +9,8 @@ from algenta_mcp.client import api
 
 SPEC: dict[str, Any] = {
     "name": "get_analytics",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Get aggregate usage analytics over the organization's simulation runs inside "
         "a lookback window: total_simulations, avg_confidence, action_breakdown (how "

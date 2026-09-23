@@ -9,10 +9,14 @@ from algenta_mcp.client import api
 
 SPEC: dict[str, Any] = {
     "name": "simulate",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Run a Monte Carlo simulation and get a structured decision recommendation. "
         "Use for: quantifying risk in a decision, comparing expected outcomes, "
-        "getting probability-weighted recommendations."
+        "getting probability-weighted recommendations. Synchronous deterministic "
+        "compute governed by the plan's per-minute rate limit and monthly quota "
+        "(429 on excess); the run is recorded asynchronously and appears in list_runs."
     ),
     "inputSchema": {
         "type": "object",

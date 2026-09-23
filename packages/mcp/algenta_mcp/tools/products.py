@@ -9,6 +9,8 @@ from algenta_mcp.client import api
 
 PRODUCT_DECISION_SPEC: dict[str, Any] = {
     "name": "product_decision",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Recommend an action for a business decision from plain inputs, and return the "
         "risk summary behind it. Each input becomes a simulation variable: fixed at "
@@ -17,10 +19,10 @@ PRODUCT_DECISION_SPEC: dict[str, Any] = {
         "engine evaluates scenarios (default 10000) and maps the loss probability to "
         "an action: over 50% -> reject, over the risk_tolerance threshold (low 5%, "
         "medium 15%, high 30%) -> pause, otherwise proceed. Use simulate for the raw "
-        "distribution and plan_decision for the structured plan. Synchronous; the "
-        "underlying run is persisted and its id is returned as decision_id. Returns "
-        "action, confidence, reasoning and why bullets, expected_outcome, "
-        "downside_risk (p5), upside_potential (p95), and probability_of_loss."
+        "distribution and plan_decision for the structured plan. Synchronous "
+        "deterministic compute; nothing is persisted. Returns decision_id, action, "
+        "confidence, reasoning and why bullets, expected_outcome, downside_risk "
+        "(p5), upside_potential (p95), and probability_of_loss."
     ),
     "inputSchema": {
         "type": "object",
@@ -71,6 +73,8 @@ PRODUCT_DECISION_SPEC: dict[str, Any] = {
 
 PRODUCT_AGENT_RUN_SPEC: dict[str, Any] = {
     "name": "product_agent_run",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Execute a natural-language task synchronously with the simple product agent and "
         "return a compact task result. The agent picks one tool from the task wording "
@@ -118,15 +122,18 @@ PRODUCT_AGENT_RUN_SPEC: dict[str, Any] = {
 
 PRODUCT_OPTIMIZE_SPEC: dict[str, Any] = {
     "name": "product_optimize",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Estimate the best value for each decision variable given a plain-English "
         "objective, and return the per-variable optima. Every variable is sampled "
         "uniformly over its [min, max] range; an objective containing 'maximize' favors "
         "each variable's max, anything else favors the min, and the returned optimum "
         "blends that endpoint with the range midpoint. Use product_decision when you want "
-        "a proceed/pause/reject recommendation instead of raw optima. Synchronous; the "
-        "underlying simulation run is persisted. Returns optimal_values, objective_value, "
-        "improvement_vs_midpoint (percent), constraints_satisfied, and iterations_run."
+        "a proceed/pause/reject recommendation instead of raw optima. Synchronous "
+        "deterministic compute; nothing is persisted. Returns optimal_values, "
+        "objective_value, improvement_vs_midpoint (percent), constraints_satisfied, "
+        "and iterations_run."
     ),
     "inputSchema": {
         "type": "object",
@@ -169,6 +176,8 @@ PRODUCT_OPTIMIZE_SPEC: dict[str, Any] = {
 
 PRODUCT_RETRIEVE_SPEC: dict[str, Any] = {
     "name": "product_retrieve",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Rank caller-supplied documents against a search query and return the top matches "
         "with snippets. Scoring is deterministic lexical word-overlap between query and "
@@ -217,13 +226,15 @@ PRODUCT_RETRIEVE_SPEC: dict[str, Any] = {
 
 PRODUCT_FORECAST_SPEC: dict[str, Any] = {
     "name": "product_forecast",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Forecast a business metric horizon periods ahead from its historical series and "
         "return per-period point forecasts with confidence intervals. The trend comes from "
         "the last up-to-6 history values, volatility from the mean absolute period change, "
         "and a 5000-scenario simulation quantifies uncertainty; seasonality=true applies "
         "an alternating +/-5% seasonal factor. Use query_data to build the history from a "
-        "connected dataset first. Synchronous; the underlying simulation run is "
+        "connected dataset first. Synchronous deterministic compute; nothing is "
         "persisted. Returns baseline (most recent value), forecast_mean (final period), "
         "total_change_pct, and one {period, forecast, lower_bound, upper_bound, trend} "
         "item per period with trend up, down, or stable."

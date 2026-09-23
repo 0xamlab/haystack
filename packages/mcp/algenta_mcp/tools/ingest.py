@@ -15,6 +15,8 @@ from algenta_mcp.client import api
 
 SPEC: dict[str, Any] = {
     "name": "ingest_data",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Auto-map tabular data to a simulation payload. "
         "Detects variable distributions, polarity (revenue=positive, cost=negative), "

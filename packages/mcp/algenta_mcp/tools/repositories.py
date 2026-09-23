@@ -12,6 +12,8 @@ from algenta_mcp.client import api
 
 CREATE_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
     "name": "create_repository_snapshot",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Create or reuse an immutable, content-hashed snapshot of a saved repository "
         "connector (a connector of a repository type — find its id with list_connectors). "
@@ -64,8 +66,11 @@ CREATE_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
 
 GET_REPOSITORY_INTELLIGENCE_CAPABILITIES_SPEC: dict[str, Any] = {
     "name": "get_repository_intelligence_capabilities",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "List globally supported Repository Intelligence languages and ranked support progress."
+        "List globally supported Repository Intelligence languages and ranked support progress. "
+        "Read-only and non-destructive."
     ),
     "inputSchema": {
         "type": "object",
@@ -76,6 +81,8 @@ GET_REPOSITORY_INTELLIGENCE_CAPABILITIES_SPEC: dict[str, Any] = {
 
 GET_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
     "name": "get_repository_snapshot",
+    "annotations": {"readOnlyHint": True, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Fetch one persisted immutable repository snapshot by repository_id and "
         "snapshot_id, including its resolved_revision, content_hash, file_count, "
@@ -104,6 +111,8 @@ GET_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
 
 TRIAGE_REPOSITORY_SPEC: dict[str, Any] = {
     "name": "triage_repository",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Condense one repository snapshot into a bounded workspace evidence bundle for "
         "the planner: ranked suspect files and symbols with scored, budget-capped "
@@ -160,6 +169,8 @@ TRIAGE_REPOSITORY_SPEC: dict[str, Any] = {
 
 CREATE_REPOSITORY_DECISION_PLAN_SPEC: dict[str, Any] = {
     "name": "create_repository_decision_plan",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Create one stored, immutable repository DecisionPlan revision from a triage "
         "workspace evidence bundle and return its decision_plan_id plus the validated "
@@ -200,6 +211,8 @@ CREATE_REPOSITORY_DECISION_PLAN_SPEC: dict[str, Any] = {
 
 QUERY_REPOSITORY_GRAPH_SPEC: dict[str, Any] = {
     "name": "query_repository_graph",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Walk the dependency graph of one persisted repository snapshot from optional "
         "file_path/symbol_name seeds and return impacted files and symbols with "
@@ -270,6 +283,8 @@ QUERY_REPOSITORY_GRAPH_SPEC: dict[str, Any] = {
 
 SIMULATE_REPOSITORY_SPEC: dict[str, Any] = {
     "name": "simulate_repository",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Score the patch risk of a stored repository DecisionPlan with the "
         "deterministic simulation engine and return the gated DecisionEnvelope whose "
@@ -318,6 +333,8 @@ SIMULATE_REPOSITORY_SPEC: dict[str, Any] = {
 
 APPLY_REPOSITORY_SPEC: dict[str, Any] = {
     "name": "apply_repository",
+    "annotations": {"readOnlyHint": False, "destructiveHint": True,
+        "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Materialize a simulated repository decision in one of three modes. patch_only "
         "just returns the validated patch diff with applied=false and writes nothing. "
@@ -399,6 +416,8 @@ APPLY_REPOSITORY_SPEC: dict[str, Any] = {
 
 RUN_REPOSITORY_PIPELINE_SPEC: dict[str, Any] = {
     "name": "run_repository_pipeline",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Run the whole repository-intelligence chain — snapshot, triage, plan, simulate "
         "— in one call and return the canonical repository envelope with every stage's "
@@ -477,6 +496,8 @@ RUN_REPOSITORY_PIPELINE_SPEC: dict[str, Any] = {
 
 SIMULATE_REPOSITORY_PATCH_SPEC: dict[str, Any] = {
     "name": "simulate_repository_patch",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Simulate the risk of an in-flight unified diff against one persisted snapshot "
         "and return the canonical repository envelope — without creating a stored "
@@ -517,6 +538,8 @@ SIMULATE_REPOSITORY_PATCH_SPEC: dict[str, Any] = {
 
 RUN_REPOSITORY_FIX_SPEC: dict[str, Any] = {
     "name": "run_repository_fix",
+    "annotations": {"readOnlyHint": False, "destructiveHint": False,
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Run the repository pipeline and then apply its result in one call, returning "
         "the canonical repository envelope for both stages. pipeline takes "
