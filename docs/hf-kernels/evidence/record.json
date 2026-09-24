@@ -1514,6 +1514,24 @@
       "owner": "eng",
       "accessed": "2026-09-24",
       "contradicts": []
+    },
+    {
+      "id": "SPACES-LAUNCH-REVIEW-001",
+      "question": "Does the production flagship Space (thyn-ai/algenta) meet the launch bar — three independent reviewers (Apple HIG, Google quality bar, sceptical journalist) each SHIP every tab with zero confirmed P0/P1 after adversarial verification on the live Space?",
+      "claim": "Build b0dc87ef1 at https://thyn-ai-algenta.hf.space: SHIP x3, zero confirmed P0/P1. Verdicts — Apple HIG reviewer: Try it SHIP, Playground SHIP, Races SHIP, LLM kernels SHIP, Governed SHIP, Ecosystem SHIP; Google product/engineering quality reviewer: Try it SHIP, Playground SHIP, Races SHIP, LLM kernels SHIP, Governed SHIP, Ecosystem SHIP; Sceptical technology journalist and fakes hunter: Try it SHIP, Playground SHIP, Races SHIP, LLM kernels SHIP, Governed SHIP, Ecosystem SHIP.",
+      "kind": "observed-behaviour",
+      "source": "Workflow spaces-launch-review-13.js (items 1–84) (three read-only reviewers + one adversarial verifier per P0/P1) against https://thyn-ai-algenta.hf.space, build b0dc87ef1; evidence under /Volumes/Samsung SSD 990 PRO 4TB Media/algenta-tooling/review13-shots/; production window verify_prod.sh (hero presses, verify_remote x3, every verify_checks gate, Races browser repro); artifact docs/hf-kernels/evidence/artifacts/spaces-launch-review-round13-b0dc87ef1.json (rounds 10–12 results under algenta-tooling/review1{0,1,2}-shots/)",
+      "result": "PASS",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "accepted-constraint",
+      "capability_scope": "thyn-ai/algenta (Docker Space, cpu-upgrade, the only Space in the organisation)",
+      "required_before": "spaces_public",
+      "status": "closed",
+      "owner": "0xamlab",
+      "accessed": "2026-09-24",
+      "contradicts": "",
+      "interpretation": "Thirteen review rounds (rounds 1–9 on staging, 10–13 on production) converged from six NOT-YET tabs to three SHIPs with zero P0/P1: each round's confirmed P1s were fixed and re-verified on the live Space; fifteen P2 polish items remain as backlog, none a launch blocker."
     }
   ]
 }

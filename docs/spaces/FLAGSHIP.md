@@ -604,9 +604,12 @@ Same contract as Tabs A: `build(deps, **injected) -> TabSpec`, `render(gr)` insi
 
 ### LLM kernels (`llm`)
 
-Three panels on `thyn-ai/algenta-llm` (CPU variant), each a parity check with both latencies —
-labelled "not a race" because torch is C-backed: **RMSNorm** (`normk.rmsnorm.rmsnorm_fwd_flat`,
-rows × cols sliders inside the contract's count relations, eps 1e-6), **RoPE**
+Three panels on `thyn-ai/algenta-llm` (CPU variant), each a parity check against torch — since
+round 10 the card shows no timing at these shapes (rulebook rule 6: the JSON transport around a
+~10 µs kernel dominates, so a latency pair would read as a loss that is not the kernel's):
+**RMSNorm** (`normk.rmsnorm.rmsnorm_fwd_flat`, rows × cols number boxes (round 11: no sliders;
+an out-of-range value is refused with a field message naming the range) inside the contract's
+count relations, eps 1e-6), **RoPE**
 (`attnk.rope.rope_table` + `rope_apply_flat`, tokens × heads × head_dim, rotate-half or
 interleaved pairs, θ 10000) and **Sampling** (`llmk.generate.greedy_argmax_flat` over the
 vocabulary, timed; plus the per-candidate `llm_sampling` formulas — `temperature_scale`,
@@ -614,15 +617,18 @@ vocabulary, timed; plus the per-candidate `llm_sampling` formulas — `temperatu
 against the transformers warper order). Every reference is written in torch directly (float64,
 CPU); transformers is not installed — the RoPE and sampling references are a few lines each and
 live in the Reproduce accordion, which renders the visitor's shapes with the same seed as
-compilable Python. Measurement: seed 20260922, 1 warm-up, 5 timed calls per lane, medians on the
-`cards.render_result_card(race=False)` card; the kernel lane runs through the one native lane
-(`budget_s` 20) and its time includes JSON marshalling across the C ABI. Tolerances printed on
+compilable Python. Measurement: seed 20260922, 1 warm-up, 5 calls per lane behind the card (the cell must still
+clear the rulebook); the card prints the parity chip, `compiled Mojo kernel · checked against
+torch`, the kernel and torch provenance chips and `parity check · no timing shown at this
+shape` — never a latency pair; the kernel lane runs through the one native lane (`budget_s` 20)
+and its time includes JSON marshalling across the C ABI. Tolerances printed on
 the chip: RMSNorm 1e-9 (measured 1.8e-15), RoPE 1e-8 (the kernel's cos/sin drift ~2e-11 per
 radian of angle: 2.5e-10 at 16 tokens, 1.3e-9 at 64 tokens × 128 dims — measured 2026-09-22 on
 `torch25-cpu-aarch64-darwin`), greedy token id exact. A parity failure is the unavailable card
-(`parity_failed`), never a result card. Measured warm latencies on an M4 Max: RMSNorm 8 × 256
-9.6 ms vs torch 0.16 ms; 32 × 1024 136 ms vs 2.8 ms; RoPE 16 × 4 × 64 20 ms vs 0.29 ms;
-64 × 8 × 128 ≈ 310 ms vs 8–19 ms; greedy over 32,768 logits 86 ms vs 1.5 ms. The GPU stage's live
+(`parity_failed`), never a result card. Why no timing is shown — warm latencies measured on an
+M4 Max (2026-09-22, history): RMSNorm 8 × 256 9.6 ms vs torch 0.16 ms; 32 × 1024 136 ms vs
+2.8 ms; RoPE 16 × 4 × 64 20 ms vs 0.29 ms; 64 × 8 × 128 ≈ 310 ms vs 8–19 ms; greedy over 32,768
+logits 86 ms vs 1.5 ms — transport around the kernel, not kernel time (autopsy in RULEBOOK.md). The GPU stage's live
 throughput tile (below) sits under the three panels only when `ALGENTA_GPU_STATUS_URL` is set,
 quiet when the stage is offline; the kernel lane is split once more into the Python side of the transport (`json.dumps` of the request
 envelope, `json.loads` of a same-shape reply, measured on the same payload) and the remainder.
