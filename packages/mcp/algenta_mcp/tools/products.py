@@ -22,7 +22,9 @@ PRODUCT_DECISION_SPEC: dict[str, Any] = {
         "distribution and plan_decision for the structured plan. Synchronous "
         "deterministic compute; nothing is persisted. Returns decision_id, action, "
         "confidence, reasoning and why bullets, expected_outcome, downside_risk "
-        "(p5), upside_potential (p95), and probability_of_loss."
+        "(p5), upside_potential (p95), and probability_of_loss. Which to use: a "
+        "proceed/pause/reject answer from plain business inputs; use simulate for "
+        "full distribution control and the envelope."
     ),
     "inputSchema": {
         "type": "object",

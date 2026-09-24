@@ -50,7 +50,11 @@ REGISTER_SPEC: dict[str, Any] = {
         "queryable by name via query_data. Safe to call multiple times — re-registration is "
         "a no-op if data is unchanged. Registration persists the source profile under the "
         "active API key's organization. Returns source_id and the profiled schema with "
-        "columns, roles, formulas, and detected join keys."
+        "columns, roles, formulas, and detected join keys. Which to use: the advanced "
+        "path — full column profiling, formula detection, and join-key detection "
+        "across registered sources (browse the results with list_data); use "
+        "onboard_dataset for semantic training, or connect_data for refreshable "
+        "live connections."
     ),
     "inputSchema": {
         "type": "object",

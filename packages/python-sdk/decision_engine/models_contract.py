@@ -164,6 +164,8 @@ class _RecommendedFlowsContractResult(_ContractBaseModel):
     governed_query: list[str] = Field(default_factory=list)
     multi_metric_query: list[str] = Field(default_factory=list)
     wide_sql_report: list[str] = Field(default_factory=list)
+    decision_simulation_tools: list[str] = Field(default_factory=list)
+    dataset_onboarding_tools: list[str] = Field(default_factory=list)
 
 
 class _PrimaryDataQueryContractValidationResult(_ContractBaseModel):

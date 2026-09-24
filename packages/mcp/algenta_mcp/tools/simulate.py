@@ -18,7 +18,11 @@ SPEC: dict[str, Any] = {
         "by the plan's per-minute rate limit and monthly quota (429 on excess); the run is "
         "recorded asynchronously and appears in list_runs. Returns the decision envelope: "
         "recommended_action, expected_value, probability_of_loss, confidence, percentiles, "
-        "and run metadata (run_id, execution_ms, scenarios_run)."
+        "and run metadata (run_id, execution_ms, scenarios_run). Which to use: the "
+        "full decision-envelope analysis on ONE scenario; use compare for named "
+        "scenario bake-offs, recommend for a ranked pick among actions, score for "
+        "a single weighted number, plan_decision for just the plan summary, or "
+        "product_decision for plain-English inputs."
     ),
     "inputSchema": {
         "type": "object",

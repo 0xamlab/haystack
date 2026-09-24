@@ -16,7 +16,9 @@ SPEC: dict[str, Any] = {
         "you need to choose between two or more alternatives with uncertainty. Synchronous "
         "deterministic compute; nothing is persisted and no separate rate limit applies. "
         "Returns recommended_action, confidence, rationale, and the ranked action list with "
-        "expected_value and score per action."
+        "expected_value and score per action. Which to use: a ranked pick among 2+ "
+        "named actions with confidence and rationale; use compare for named scenario "
+        "deltas, or simulate for one scenario's full envelope."
     ),
     "inputSchema": {
         "type": "object",
@@ -57,7 +59,10 @@ SCORE_SPEC: dict[str, Any] = {
         "downside_risk default 0.4). Use simulate when you need the full envelope "
         "without scoring, and compare to rank several scenarios. Synchronous "
         "deterministic compute; nothing is persisted. Returns recommended_action, "
-        "expected_value, probability_of_loss, score, and score_breakdown."
+        "expected_value, probability_of_loss, score, and score_breakdown. Which to "
+        "use: one scenario reduced to a single weighted number; use simulate for "
+        "the full envelope without scoring, or compare and recommend to pick "
+        "between options."
     ),
     "inputSchema": {
         "type": "object",
@@ -114,7 +119,10 @@ COMPARE_SPEC: dict[str, Any] = {
         "expected_value, probability_of_loss, and delta_vs_best. Each scenario's "
         "request uses the simulate payload shape; runs and seed are forwarded for "
         "reproducibility. Use recommend for a ranked recommendation over actions "
-        "instead. Synchronous deterministic compute; nothing is persisted."
+        "instead. Synchronous deterministic compute; nothing is persisted. Which to "
+        "use: 2-10 named scenarios evaluated side by side with the winner by "
+        "expected value; use recommend for a ranked pick with rationale, or "
+        "simulate for one scenario."
     ),
     "inputSchema": {
         "type": "object",

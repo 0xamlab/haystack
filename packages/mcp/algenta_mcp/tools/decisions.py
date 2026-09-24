@@ -28,7 +28,8 @@ PLAN_DECISION_SPEC: dict[str, Any] = {
         "summary for a dashboard or a follow-up plan_decision-to-log_decision flow; "
         "use simulate for the full envelope. Synchronous deterministic compute "
         "governed by the plan's per-minute rate limit and monthly quota; nothing "
-        "is persisted."
+        "is persisted. Which to use: the compact DecisionPlan summary without "
+        "envelope metrics; use simulate when you need the full DecisionEnvelope."
     ),
     "inputSchema": {
         "type": "object",

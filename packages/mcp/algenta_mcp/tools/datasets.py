@@ -24,7 +24,11 @@ ONBOARD_SPEC: dict[str, Any] = {
         "schema-specific training completes (poll status with list_datasets). Registration "
         "persists the dataset under the active API key's organization. Use connect_data for "
         "live connections instead of inline rows. Returns dataset_id, schema_hash, status, "
-        "model_tier, column_count, and suggested_aliases."
+        "model_tier, column_count, and suggested_aliases. Which to use: inline "
+        "columns, records, or CSV registered for semantic querying with background "
+        "training (track model_tier with list_datasets); use connect_data for live "
+        "refreshable connections, or register_source for formula and join-key "
+        "profiling."
     ),
     "inputSchema": {
         "type": "object",
@@ -80,7 +84,10 @@ LIST_SPEC: dict[str, Any] = {
         "you choose a dataset. Read-only and non-destructive; lists only the active API "
         "key's organization and is not separately rate-limited. Returns the datasets array "
         "with dataset_id, name, status, model_tier, source_names, column_count, and "
-        "registered_at, plus count, total, page, limit, and pages."
+        "registered_at, plus count, total, page, limit, and pages. Which to use: "
+        "browse semantically trained datasets with status and model_tier; use "
+        "list_data for connection-backed datasets from connect_data or "
+        "register_source."
     ),
     "inputSchema": {
         "type": "object",

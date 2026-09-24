@@ -477,6 +477,21 @@ export const PRIMARY_DATA_QUERY_CONTRACT = {
       "GET /v1/data?search=...&compact=1",
       "GET /v1/data/{dataset_id}/summary",
       "POST /v1/query/sql-report"
+    ],
+    "decision_simulation_tools": [
+      "simulate \u2014 one scenario, full DecisionEnvelope (action, expected value, loss probability, percentiles); the run is recorded for list_runs.",
+      "plan_decision \u2014 same request as simulate but only the compact DecisionPlan summary; use when you do not need the full envelope.",
+      "score \u2014 one simulation plus a single weighted composite (expected_value/downside_risk weights) with score_breakdown; use to rank by one number.",
+      "compare \u2014 2-10 named scenarios side by side; the winner is the highest expected value, with per-scenario deltas.",
+      "recommend \u2014 2+ named actions ranked with a picked recommended_action, confidence, and rationale; use for 'which option should I pick'.",
+      "product_decision \u2014 plain business inputs (value with optional low/high) mapped for you; returns proceed/pause/reject with plain-English reasons; no simulation knowledge needed."
+    ],
+    "dataset_onboarding_tools": [
+      "connect_data \u2014 the normal path for live sources (database/API/object storage) or uploads; returns a reusable dataset_id and supports refresh_data.",
+      "onboard_dataset \u2014 inline columns/records/CSV for semantic querying with background model training (track model_tier with list_datasets); no live connection.",
+      "register_source \u2014 the advanced path: full column profiling, formula detection, and join-key detection across registered sources (browse with list_data).",
+      "list_data \u2014 browse datasets from the connect_data and register_source flows (connection_type, provider, refreshable).",
+      "list_datasets \u2014 browse semantically trained datasets with training status and model_tier."
     ]
   }
 };

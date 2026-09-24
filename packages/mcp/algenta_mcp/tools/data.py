@@ -25,7 +25,10 @@ CONNECT_SPEC: dict[str, Any] = {
         "it and the dataset under the active API key's organization, and live sources are "
         "dialed during this call; no separate per-route rate limit applies. Returns status "
         "with dataset_id and connection_id on success, or status needs_selection with the "
-        "choices array to pick from."
+        "choices array to pick from. Which to use: the normal onboarding path — live "
+        "sources (database/API/object storage) or uploads with a refreshable "
+        "dataset_id; use onboard_dataset for inline data with semantic training, or "
+        "register_source for advanced profiling and join detection."
     ),
     "inputSchema": {
         "type": "object",
@@ -117,7 +120,10 @@ LIST_SPEC: dict[str, Any] = {
         "Read-only and non-destructive; lists only the active API key's organization and is "
         "not separately rate-limited. Returns the datasets array (dataset_id, name, status, "
         "source_names, connection_type, row_count, column_count, refreshable) plus count, "
-        "total, matched_total, page, limit, and pages."
+        "total, matched_total, page, limit, and pages. Which to use: browse datasets "
+        "from the connect_data and register_source flows (connection_type, provider, "
+        "refreshable); use list_datasets for the semantic-training store with "
+        "model_tier and training status."
     ),
     "inputSchema": {
         "type": "object",
