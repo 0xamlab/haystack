@@ -1,0 +1,6 @@
+# These files ship verbatim inside every generated kernel package and run on whichever CPython
+# the visitor's torch variant serves (torch 2.5 -> 3.9). Lint and format them against that floor,
+# not the repo's 3.14, so no newer syntax lands in the glue (zip(strict=), PEP 758 except clauses).
+# Rules come from the repo.
+extend = "../../../pyproject.toml"
+target-version = "py39"
