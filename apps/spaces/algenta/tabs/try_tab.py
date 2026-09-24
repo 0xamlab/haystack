@@ -566,6 +566,26 @@ def human_reason(reason: str) -> str:
     return reason.replace(f" on {HERO_LANE}", "")
 
 
+#: The hero's one lane in a visitor's words (the rulebook names it `algenta-stats`).
+HERO_LANE_WORDS = "the kernel lane"
+
+
+def noisy_cause(cell: bench.CellResult) -> str:
+    """The gate that held a noisy hero, said once and truthfully, for the not-recorded card:
+    `spread above 15 percent on the kernel lane` — `bench.noisy_reason` (the gate that failed,
+    per lane, the same words the race cards print), without its `noisy — not recorded —` lead,
+    because the card's chip says `not recorded` right beside it (round 11: the sentence
+    dropped the lane and repeated the chip), and with the lane in words, not its identifier.
+    A cell the rulebook stopped for another reason keeps its own reason, in human words."""
+    ours = cell.lane(bench.SIDE_ALGENTA)
+    if cell.status == bench.STATUS_NOISY and ours is not None and not ours.stable:
+        reason = bench.noisy_reason([ours])
+    else:
+        reason = cell.reason or cell.status
+    reason = reason.removeprefix(f"{bench.NOISY_TEXT} — ")
+    return reason.replace(f" on {HERO_LANE}", f" on {HERO_LANE_WORDS}")
+
+
 def human_cell(cell: bench.CellResult) -> bench.CellResult:
     """The same cell with its reason in human words, for the cards that print it."""
     if not cell.reason:
@@ -641,8 +661,9 @@ def render_unrecorded_hero_card(hero: HeroResult, *, kernel_label: str = "") -> 
     if kernel_label:
         chips.append(common.chip(kernel_label))
     chips.append(common.chip(common.TRANSPORT_NOTE))
-    # the cell's own gate label is the two chips above, said once; the cause in human words
-    quiet = dataclasses.replace(human_cell(cell), parity_label="")
+    # the cell's own gate label is the two chips above, said once; the cause names the gate
+    # and the lane (`noisy_cause`) and leaves `not recorded` to the chip beside it
+    quiet = dataclasses.replace(cell, parity_label="", reason=noisy_cause(cell))
     return cards.render_not_recorded_card(
         quiet,
         title=TITLE,
@@ -877,6 +898,17 @@ def mcp_tool_count(
         count, stamp = _LAST_LIVE
         return count, f"{LAST_READ} {stamp} · {CODE_MCP_UNREACHABLE} now · {reason}", "measured"
     return None, f"unavailable · {CODE_MCP_UNREACHABLE} · {reason}", "unavailable"
+
+
+def last_live_mcp_read() -> tuple[int, str] | None:
+    """`(count, stamp)` of this container's last successful read of the hosted tools list —
+    what the Try tile and the SDK card print as `live` — or None before the first one. `/health`
+    carries it under `facts.mcp_tools` when no registry is installed here (round 11: the pages
+    read `140 MCP tools · live` while the facts said null)."""
+    if not _LAST_LIVE:
+        return None
+    count, stamp = _LAST_LIVE
+    return int(count), str(stamp)
 
 
 def hosted_tile(fetch_json: Callable[[str], common.Fetched] = common.fetch_json) -> str:
@@ -1234,10 +1266,23 @@ def build(deps: Deps) -> TabSpec:
                 # row wraps and the fields stack full-width (a 34 px-wide box is no target).
                 with gr.Column(elem_classes=["alg-field"], min_width=160):
                     boxes.append(gr.Number(defaults[name], label=label, precision=None))
-                    slots.append(gr.HTML("", elem_classes=["alg-status-row", "alg-field-slot"]))
+                    # four fields and Run share the row, so the column is 163 px wide even at
+                    # 1440: the slot reserves two caption lines at every width (round 11)
+                    slots.append(
+                        gr.HTML(
+                            "",
+                            elem_classes=[
+                                "alg-status-row",
+                                "alg-field-slot",
+                                common.FIELD_SLOT_NARROW_CLASS,
+                            ],
+                        )
+                    )
             a, na, b, nb = boxes
             run = gr.Button(LABEL_RUN, variant="primary", elem_classes=["alg-run"])
-        status = gr.HTML(common.render_status(), elem_classes=["alg-status-row"])
+        # the reserved caption line under Run: a refusal's echo fills it and nothing under the
+        # form moves (`common.STATUS_SLOT_CLASS`); a run's lane chip takes the 32 px row
+        status = gr.HTML(common.render_status(), elem_classes=[common.STATUS_SLOT_CLASS])
         with gr.Accordion(LABEL_HOW, open=False, elem_classes=["alg-disclosure"]):
             gr.HTML(common.render_note(HOW_MEASURED))
         with gr.Accordion(LABEL_REPRODUCE, open=False, elem_classes=["alg-disclosure"]):
@@ -1375,6 +1420,7 @@ def build(deps: Deps) -> TabSpec:
             "snippet_copy": snippet_copy,
             "snippet_caption": snippet_caption,
             "inputs": inputs,
+            "slots": slots,
             "run": run,
             "status": status,
             "field_slots": slots,

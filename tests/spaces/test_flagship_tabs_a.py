@@ -8,6 +8,7 @@ UI construction runs only where gradio is installed (`pytest.importorskip`).
 
 from __future__ import annotations
 
+import dataclasses
 import importlib
 import json
 import math
@@ -762,9 +763,24 @@ def test_not_recorded_hero_card_says_the_cause_in_words(kernels):
     assert f" on {try_tab.HERO_LANE}" not in card, "the lane's internal name stays out of the cause"
     reason_line = re.search(r'alg-card-reason">([^<]*)<', card)
     assert reason_line is not None and try_tab.HERO_LANE not in reason_line.group(1)
+    # round 11: the cause names the gate and the lane, as the race cards do (`bench.noisy_reason`),
+    # and leaves `not recorded` to the chip beside it — said once, never twice
+    assert reason_line.group(1) == "spread above 15 percent on the kernel lane"
+    assert try_tab.HERO_LANE_WORDS == "the kernel lane"
+    assert re.sub(r"<[^>]+>", " ", card).count("not recorded") == 1, "the chip alone says it"
+    assert "noisy" not in reason_line.group(1)
+    assert try_tab.noisy_cause(hero.cell) == "spread above 15 percent on the kernel lane"
+    ours = hero.cell.lane(bench.SIDE_ALGENTA)
+    assert ours is not None and bench.noisy_reason([ours]) == (
+        "noisy — not recorded — spread above 15 percent on algenta-stats"
+    )
+    # the boot row and the loading note keep the verdict words (`noisy — not recorded`)
     assert try_tab.human_reason("spread above 15 percent on algenta-stats") == (
         "spread above 15 percent"
     )
+    # a cell stopped for another reason keeps its own words
+    other = dataclasses.replace(hero.cell, status=bench.STATUS_ERROR, reason="call_failed: boom")
+    assert try_tab.noisy_cause(other) == "call_failed: boom"
     assert "MAD" in try_tab.HOW_MEASURED and "spread" in try_tab.HOW_MEASURED
     # The run ran: the kernel's answer and the parity check stay on the card; only the timing
     # rows are withheld. A documented state — the quiet card the verifier reads.
@@ -1531,6 +1547,17 @@ def test_try_inputs_never_round_in_the_browser(deps, monkeypatch):
         assert box.precision is None, "precision=0 would turn a typed 2.5 into 2 before Run"
         assert box.postprocess(2.5) == 2.5 and box.preprocess(2.5) == 2.5
     assert handles["on_edit"]() == (common.render_status(), "", "", "", ""), "an edit clears it"
+    # round 11: the status row under Run is the reserved caption line, so a refusal's echo
+    # fills it and the disclosures below never move; every field slot reserves two lines at
+    # every width, because four fields and Run share the row (a 163 px box even at 1440)
+    assert handles["status"].elem_classes == [common.STATUS_SLOT_CLASS]
+    assert len(handles["slots"]) == 4
+    for slot in handles["slots"]:
+        assert slot.elem_classes == [
+            "alg-status-row",
+            "alg-field-slot",
+            common.FIELD_SLOT_NARROW_CLASS,
+        ]
     band = handles["band"].value
     assert "GPU" not in band and 'data-count="2"' in band, "no Space variable, no GPU tile"
 
@@ -2626,7 +2653,7 @@ def test_play_function_change_and_run_handlers_through_gradio(deps, monkeypatch)
     gr = pytest.importorskip("gradio")
     monkeypatch.setattr(races, "reference_for", lambda m, f: None)
     spec = play_tab.build(deps)
-    with gr.Blocks():
+    with gr.Blocks() as blocks:
         handles = spec.render(gr)
     per_slot = len(play_tab.SLOT_OUTPUTS)
     # The default function's form exists at construction: four visible int slots, prefilled.
@@ -2865,6 +2892,28 @@ def test_play_function_change_and_run_handlers_through_gradio(deps, monkeypatch)
     hidden = {"__type__": "update", "visible": False}
     assert copy_rows[:2] == [hidden, hidden] and caption_rows[:2] == [hidden, hidden]
     assert all(u == {"__type__": "update"} for u in copy_rows[2:] + caption_rows[2:])
+    # round 11: editing any generated control clears the refusal — the alert under the field
+    # and the echo beside Run — as Try's and the LLM tab's boxes do (`.input`, never `.change`)
+    cleared = handles["on_edit"]()
+    assert cleared[0] == common.render_status() and "alg-status-echo" not in cleared[0]
+    assert len(cleared) == 1 + play_tab.MAX_FIELDS
+    assert all(u == {"__type__": "update", "value": ""} for u in cleared[1:])
+    assert handles["status"].elem_classes == [common.STATUS_SLOT_CLASS]
+    edit_fns = [
+        fn
+        for fn in blocks.fns.values()
+        if fn.fn is handles["on_edit"] and {event for _, event in fn.targets} == {"input"}
+    ]
+    controls = {slot[name]._id for slot in handles["slots"] for name in play_tab.SLOT_COMPONENTS}
+    assert {block_id for fn in edit_fns for block_id, _ in fn.targets} == controls, (
+        "every number, checkbox, text and JSON control clears the refusal on input"
+    )
+    for fn in edit_fns:
+        assert [o._id for o in fn.outputs] == [
+            handles["status"]._id,
+            *(slot["message"]._id for slot in handles["slots"]),
+        ]
+        assert str(fn.api_name).startswith("false"), "no endpoint: a client-side convenience"
     # A run that then succeeds shows the request again, with its caption and Copy chip.
     slot_values[0:4] = [50, False, "", ""]
     ran = list(handles["on_run"](*default, *slot_values))[-1]

@@ -159,6 +159,35 @@ def test_primary_button_gradient_holds_aa_contrast_with_white_text(mode):
     assert design.TYPE_SCALE["count"][0] >= 48 and design.TYPE_SCALE_PHONE["count"][0] >= 48
 
 
+def test_strong_gradient_token_carries_the_primary_button_at_aa():
+    """Round 11: the filled primary button's gradient is one named token,
+    `--alg-accent-gradient-strong` — the `button-*` stops, white text at 4.5:1 or better on
+    BOTH stops (and the midpoint) — and Gradio's primary fill is pinned to that very string,
+    so the button never falls back to the decorative accent (#3B82F6 under white is 3.7:1).
+    The header count keeps `--alg-accent-gradient`."""
+    token = design.ACCENT_GRADIENT_STRONG
+    scale = design._scale_block()
+    assert scale.startswith(":root {\n") and f"  --alg-accent-gradient-strong: {token};" in scale
+    assert design.TOKENS_CSS.count("--alg-accent-gradient-strong:") == 1
+    stops = design.gradient_stops(token)
+    assert stops == ("#5B3FE0", "#1D4ED8") and len(stops) == 2
+    for stop in (*stops, _midpoint(*stops)):
+        assert _contrast(stop, design.BUTTON_TEXT) >= 4.5, (
+            stop,
+            _contrast(stop, design.BUTTON_TEXT),
+        )
+    assert token.startswith("linear-gradient(135deg, ") and "var(" not in token
+    settings = design.theme_settings()
+    assert settings["button_primary_background_fill"] == token == design.button_gradient(0)
+    assert settings["button_primary_background_fill_dark"] == design.button_gradient(1)
+    # the decorative gradient stays the count's and the lane bar's, and fails the body bound
+    assert design.gradient_stops(design.ACCENT_GRADIENT) == ("#7C5CFA", "#3B82F6")
+    assert _contrast("#3B82F6", design.BUTTON_TEXT) < 4.5
+    assert "--alg-accent-gradient: linear-gradient(90deg, #7C5CFA, #3B82F6);" in design.TOKENS_CSS
+    for stop in design.gradient_stops(design.ACCENT_GRADIENT):
+        assert _contrast(stop, design.BUTTON_TEXT) < _contrast(stops[0], design.BUTTON_TEXT)
+
+
 @pytest.mark.parametrize("mode", [0, 1], ids=["light", "dark"])
 def test_hero_accent_text_is_the_aa_accent_not_the_gradient(mode):
     """`.alg-hero-num.alg-accent-text` measured 4.12:1 light / 4.23:1 dark painted in

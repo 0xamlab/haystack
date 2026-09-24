@@ -197,6 +197,9 @@ TITLE_HUB = "Kernels on the Hub"
 TITLE_OSS = "Open-source kernels"
 TITLE_SDK = "SDK and MCP"
 REFRESH_TEXT = "Refresh Hub counts"
+#: The Refresh button's label while the fetch is in flight: the button is disabled and says
+#: what it is doing (round 11: a press showed no pending state until the table repainted).
+REFRESHING_TEXT = "Refreshing…"
 SNIPPET_TITLE = "Kernel snippet"
 LOADING_HUB_TEXT = "Reading downloads and likes from the Hub."
 LOADING_OSS_TEXT = "Reading the package list and the latest release from GitHub."
@@ -1180,9 +1183,11 @@ def build(
         def _refresh():
             stages = staged_refresh(hub, oss_state, facts, fetch=fetch, rows=rows, total=total)
             first = next(stages)
+            # the pending state at once: the loading cards, the button disabled and saying
+            # `Refreshing…`; the floor's label and timer come back with the result
             yield (
                 *(gr.skip() if v is KEEP else v for v in first),
-                gr.update(interactive=False),
+                gr.update(interactive=False, value=REFRESHING_TEXT),
                 gr.skip(),
             )
             for values in stages:
@@ -1207,6 +1212,7 @@ def build(
             "refresh": refresh,
             "cooldown": cooldown,
             "button_state": _button,
+            "on_refresh": _refresh,
             "table": table,
             "more": more,
             "snippet": snippet,

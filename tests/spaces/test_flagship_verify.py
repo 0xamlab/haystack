@@ -672,9 +672,10 @@ def test_every_check_passes_on_a_healthy_flagship(ctx, client, http) -> None:
     )
     assert _detail(report, "voids") == "14 column samples at 1440 px, no gap over 240 px"
     assert _detail(report, "refusal_convention") == (
-        "6 refusals on llm, play, try: field message under the control + status-row echo, no red"
-        " card, no toast; not shown: desktop/light/gov: no form to refuse"
-        " (hosted_not_configured); phone/dark/gov: no form to refuse (hosted_not_configured)"
+        "9 refusals on llm, play, try: field message under the control + status-row echo, no red"
+        " card, no toast; nothing moved at 1440, 1024, 375 px, the Reproduce editor kept its"
+        " lines; not shown: desktop/light/gov: no form to refuse"
+        " (hosted_not_configured); tablet/light/gov: no form to refuse (hosted_not_configured)"
     )
     assert _detail(report, "footer_stamp_one_line") == (
         "stamp 12 hex, one line at 375 px in 2 contexts (156x20 px)"
@@ -1437,7 +1438,7 @@ def test_round_4_browser_gates_fail_on_each_defect(ctx, client, monkeypatch) -> 
     monkeypatch.setattr(vc, "run_refusal_audit", lambda base_url: broken)
     detail = _detail(_run(ctx, "refusal_convention"), "refusal_convention")
     assert detail.startswith(
-        "2 of 6 probes: desktop/light/try 'Successes A'=5000: no field message"
+        "2 of 9 probes: desktop/light/try 'Successes A'=5000: no field message"
     )
     vc.reset_clients()
     monkeypatch.setattr(vc, "run_refusal_audit", lambda base_url: vc.RefusalAudit())
@@ -1534,6 +1535,78 @@ def test_refusal_problems_read_the_page_geometry() -> None:
     assert vc.refusal_not_exercisable(silent) is None
     assert vc.refusal_not_exercisable({**ok, "codes": ["unavailable · x"]}) is None
     assert vc.refusal_not_exercisable(None) is None
+
+
+def test_refusal_shift_problems_name_everything_a_refusal_moved() -> None:
+    """Round 11: the refusal probe snapshots the form before and after the refused press (with
+    the Reproduce disclosure open) — a sibling box, a Run button, the element below the form,
+    the editor's lines or height, an open disclosure's height, or Gradio's empty-editor
+    placeholder each fail; a still page passes at every width."""
+    assert vc.REFUSAL_CONTEXTS == (
+        ("desktop", 1440, 900, "light"),
+        ("tablet", 1024, 768, "light"),
+        ("phone", 375, 812, "dark"),
+    )
+    assert vc.REFUSAL_OPEN_DISCLOSURE == "Reproduce" and vc.EMPTY_EDITOR_SELECTOR == "div.empty"
+    before = {
+        "boxes": [
+            {"name": "Successes A", "top": 856, "bottom": 900, "left": 176, "right": 340},
+            {"name": "Trials A", "top": 856, "bottom": 900, "left": 402, "right": 565},
+            {"name": "Successes B", "top": 972, "bottom": 1016, "left": 176, "right": 340},
+        ],
+        "runs": [{"name": "Run", "top": 856, "bottom": 900, "left": 900, "right": 1100}],
+        "below": {"top": 936, "bottom": 980, "left": 176, "right": 1264},
+        "editors": [{"lines": 29, "top": 1400, "bottom": 2426, "left": 192, "right": 1248}],
+        "accordions": [{"height": 1104}],
+        "emptyEditors": 0,
+    }
+    lead = "phone/dark/try 'Trials A'=2.5"
+    assert vc.refusal_shift_problems("phone/dark/try", "Trials A", "2.5", before, before) == []
+    assert vc.refusal_shift_problems("phone/dark/try", "Trials A", "2.5", None, before) == []
+    moved = {
+        **before,
+        "boxes": [before["boxes"][0], before["boxes"][1], {**before["boxes"][2], "top": 988}],
+        "runs": [{**before["runs"][0], "top": 872}],
+        "below": {**before["below"], "top": 984},
+    }
+    problems = vc.refusal_shift_problems("phone/dark/try", "Trials A", "2.5", before, moved)
+    assert problems == [
+        f"{lead}: 'Successes B' moved +16 px",
+        f"{lead}: 'Run' moved +16 px",
+        f"{lead}: the element below the form moved +48 px",
+    ]
+    # the LLM refusal that emptied the snippet: the editor vanished into a placeholder and
+    # the accordion shrank; the RoPE panel's boxes below moved with it
+    emptied = {
+        **before,
+        "editors": [],
+        "accordions": [{"height": 339.8}],
+        "emptyEditors": 1,
+    }
+    problems = vc.refusal_shift_problems("desktop/light/llm", "Rows", "50", before, emptied)
+    assert problems == [
+        "desktop/light/llm 'Rows'=50: 1 editor(s) before the refusal, 0 after",
+        "desktop/light/llm 'Rows'=50: disclosure 0 height 1104 -> 340 px",
+        "desktop/light/llm 'Rows'=50: 1 empty-editor placeholder(s)",
+    ]
+    fewer_lines = {**before, "editors": [{**before["editors"][0], "lines": 1, "bottom": 1436}]}
+    problems = vc.refusal_shift_problems("d/l/llm", "Rows", "50", before, fewer_lines)
+    assert problems == [
+        "d/l/llm 'Rows'=50: editor 0 went from 29 to 1 lines",
+        "d/l/llm 'Rows'=50: editor 0 height 1026 -> 36 px",
+    ]
+    vanished = {**before, "below": None, "boxes": before["boxes"][:2]}
+    problems = vc.refusal_shift_problems("d/l/play", "n_a", "2.5", before, vanished)
+    assert problems == [
+        "d/l/play 'n_a'=2.5: 3 box(es) before the refusal, 2 after",
+        "d/l/play 'n_a'=2.5: the element below the form appeared or vanished",
+    ]
+    # sub-pixel rounding is not movement
+    jitter = {**before, "runs": [{**before["runs"][0], "top": 856.4}]}
+    assert vc.refusal_shift_problems("d/l/try", "Trials A", "2.5", before, jitter) == []
+    for key in ("boxes", "runs", "below", "editors", "accordions", "emptyEditors"):
+        assert key in vc._JS_REFUSAL, key
+    assert "div.empty" in vc._JS_REFUSAL and ".cm-line" in vc._JS_REFUSAL
 
 
 def test_ecosystem_counts_or_unavailable(ctx, client) -> None:

@@ -107,6 +107,16 @@ RADII: Mapping[str, str] = {"card": "12px", "input": "8px", "pill": "999px"}
 ACCENT_GRADIENT = (
     f"linear-gradient(90deg, {COLOR_TOKENS['accent-from'][0]}, {COLOR_TOKENS['accent-to'][0]})"
 )
+#: The gradient that carries body-size text: the filled primary button's fill
+#: (`--alg-accent-gradient-strong`, the `button-*` stops — white at 6.5:1 and 6.7:1, the
+#: midpoint at 6.8:1), the same in both modes. `theme_settings()` pins Gradio's
+#: `button_primary_background_fill` to this very string, so the button and the token never
+#: drift; the decorative `--alg-accent-gradient` (3.7:1 under white at its blue end) is for
+#: the lane bar and the header's 64 px count only.
+ACCENT_GRADIENT_STRONG = (
+    f"linear-gradient(135deg, {COLOR_TOKENS['button-from'][0]} 0%,"
+    f" {COLOR_TOKENS['button-to'][0]} 100%)"
+)
 
 # role -> (size px, line px, tracking, weight)
 TYPE_SCALE: Mapping[str, tuple[int, int, str, int]] = {
@@ -265,6 +275,7 @@ def _scale_block() -> str:
         lines.append(f"  --alg-{role}-weight: {weight};")
     lines.append(f"  --alg-shadow: {SHADOW};")
     lines.append(f"  --alg-accent-gradient: {ACCENT_GRADIENT};")
+    lines.append(f"  --alg-accent-gradient-strong: {ACCENT_GRADIENT_STRONG};")
     lines.append(f"  --alg-content-max: {MAX_CONTENT_WIDTH}px;")
     lines.append(f"  --alg-target: {TARGET_PX}px;")
     lines.append(f"  --alg-motion: {MOTION_MS}ms ease-out;")
@@ -347,9 +358,17 @@ BASE_CSS = stylesheet(
 
 
 def button_gradient(mode: int = 0) -> str:
-    """The primary-button fill: the `button-*` stops, white text at 4.5:1 or better."""
+    """The primary-button fill: the `button-*` stops, white text at 4.5:1 or better — the
+    string `--alg-accent-gradient-strong` declares (`ACCENT_GRADIENT_STRONG`), per mode."""
     start, end = COLOR_TOKENS["button-from"][mode], COLOR_TOKENS["button-to"][mode]
     return f"linear-gradient(135deg, {start} 0%, {end} 100%)"
+
+
+def gradient_stops(gradient: str) -> tuple[str, ...]:
+    """The `#RRGGBB` stops of a gradient string, in order — for a contrast check of a token."""
+    import re
+
+    return tuple(re.findall(r"#[0-9A-Fa-f]{6}", gradient))
 
 
 def button_hover_gradient(mode: int = 0) -> str:

@@ -440,6 +440,41 @@ def test_facts_are_computed_from_the_loaded_contracts_and_written(state: Any) ->
     assert detail == f"{facts['function_count']:,} functions in 1 family"
 
 
+def test_health_facts_carry_the_live_hero_and_the_last_live_mcp_read(
+    state: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Round 11: `/health facts.hero` froze at the facts stage while `hero` and the boot card's
+    row moved on, and `facts.mcp_tools` was null while the pages printed the hosted API's live
+    count. `/health` serves the facts with both read now; the file keeps boot's own record."""
+    from tabs import try_tab
+
+    health = state.health()
+    assert health["facts"]["hero"] == health["hero"], "the same record, never two"
+    assert health["facts"]["hero"]["status"] == "measured"
+    written = json.loads(Path(state.facts["facts_path"]).read_text(encoding="utf-8"))
+    assert written["hero"]["qualname"] == health["hero"]["qualname"]
+    assert "attempts" in written["hero"], "the file keeps the hero as the facts stage saw it"
+    # no registry installed here and no live read yet: the boot record's null stands
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [])
+    monkeypatch.setitem(state.facts, "mcp_tools", None)
+    facts = state.health()["facts"]
+    assert facts["mcp_tools"] is None and "mcp_tools_source" not in facts
+    assert try_tab.last_live_mcp_read() is None
+    # after the Try tile read the hosted endpoint: the count, its source and its stamp
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [140, "2026-09-24 08:28 UTC"])
+    assert try_tab.last_live_mcp_read() == (140, "2026-09-24 08:28 UTC")
+    facts = state.health()["facts"]
+    assert facts["mcp_tools"] == 140 and facts["mcp_tools_source"] == boot_sequence.MCP_TOOLS_LIVE
+    assert facts["mcp_tools_read_utc"] == "2026-09-24 08:28 UTC"
+    assert state.facts["mcp_tools"] is None, "the boot record itself is not rewritten"
+    # an installed registry's count is the boot record's and stays
+    monkeypatch.setitem(state.facts, "mcp_tools", 137)
+    facts = state.health()["facts"]
+    assert facts["mcp_tools"] == 137 and "mcp_tools_source" not in facts
+    assert state.live_facts(None) == {**state.facts, "hero": None}
+    assert boot_sequence.BootState.live_facts(type("S", (), {"facts": {}})(), None) == {}
+
+
 def test_health_and_status_tile_shapes(state: Any) -> None:
     health = state.health()
     assert health["ready"] is True and health["status"] == "ready"

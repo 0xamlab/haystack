@@ -105,6 +105,9 @@ What each check asserts
 * ``refusal_convention``  every refusal on Try, the Playground, LLM kernels and (with a key)
                           Governed is a field message under the offending control and an echo
                           in the status row beside the action — never a red card, never a toast
+                          — and moves nothing at 1440, 1024 and 375 px: no sibling box, no Run
+                          button, not the element below the form, not the open Reproduce
+                          editor (its lines and height), no empty-editor placeholder
 * ``permalink_truth``     ten link shapes are loaded (``PERMALINK_SHAPES``): the box under the
                           strip promises only what the tab restored — every function and
                           argument it names is visible in the form — and the three full shapes
@@ -1492,10 +1495,19 @@ REFUSAL_PROBES: tuple[tuple[str, str, str, str], ...] = (
     ("llm", "Rows", "50", "rows"),
     ("gov", "number input for Optimistic value", "1000", "optimistic"),
 )
+#: The desktop, the width where four fields and Run share one row in 163 px columns (round 11:
+#: a wrapped sentence moved the row below by 16 px there), and the phone.
 REFUSAL_CONTEXTS: tuple[tuple[str, int, int, str], ...] = (
     ("desktop", 1440, 900, "light"),
+    ("tablet", 1024, 768, "light"),
     ("phone", 375, 812, "dark"),
 )
+#: The disclosure the probe opens before it refuses: the Reproduce editor inside must keep its
+#: lines and the accordion its height (round 11: the LLM refusal emptied the snippet, Gradio
+#: painted its stock empty-editor placeholder and the page shrank 564 px).
+REFUSAL_OPEN_DISCLOSURE = "Reproduce"
+#: Gradio's placeholder for an empty `gr.Code`: never on the page after a refusal.
+EMPTY_EDITOR_SELECTOR = "div.empty"
 #: A field message counts as "under the control" within this many px below the control's box.
 FIELD_MESSAGE_REACH_PX = 120
 #: The status row's echo counts as "beside the action" within this many px of the run button.
@@ -2401,10 +2413,26 @@ _JS_REFUSAL = """
     .map(s => ({text: s.textContent.trim().replace(/\\s+/g, ' ').slice(0, 120), ...box(s)}));
   const codes = [...panel.querySelectorAll('[data-kind=unavailable]')].filter(vis)
     .map(c => c.textContent.trim().replace(/\\s+/g, ' ').slice(0, 60));
+  const boxes = [...panel.querySelectorAll('input[type=number], input[type=text], textarea')]
+    .filter(vis).map(el => ({name: el.getAttribute('aria-label') || el.name || '', ...box(el)}));
+  const runs = [...panel.querySelectorAll('.alg-run')].filter(vis)
+    .map(el => ({name: el.textContent.trim().slice(0, 40), ...box(el)}));
+  const runBottom = run === undefined ? -1 : box(run).bottom;
+  const belowCard = [...panel.querySelectorAll('.alg-card')].filter(vis).map(box)
+    .find(b => b.top >= runBottom);
+  const belowHead = [...panel.querySelectorAll('.alg-disclosure > button')].filter(vis).map(box)
+    .find(b => b.top >= runBottom);
+  const below = belowCard === undefined ? belowHead : belowCard;
+  const editors = [...panel.querySelectorAll('.cm-editor')].filter(vis)
+    .map(el => ({lines: el.querySelectorAll('.cm-line').length, ...box(el)}));
+  const accordions = [...panel.querySelectorAll('[data-testid=accordion-content]')].filter(vis)
+    .map(el => ({height: box(el).bottom - box(el).top}));
   return {control: control === undefined ? null : box(control),
           run: run === undefined ? null : box(run), messages, status, codes,
           redCards: [...panel.querySelectorAll('.alg-card-err')].filter(vis).length,
-          toasts: [...document.querySelectorAll('.toast-body')].filter(vis).length};
+          toasts: [...document.querySelectorAll('.toast-body')].filter(vis).length,
+          boxes, runs, below: below === undefined ? null : below, editors, accordions,
+          emptyEditors: [...panel.querySelectorAll('div.empty')].filter(vis).length};
 }
 """
 
@@ -3616,9 +3644,90 @@ def refusal_problems(
     return problems
 
 
+def refusal_shift_problems(
+    where: str,
+    control: str,
+    value: str,
+    before: Mapping[str, Any] | None,
+    after: Mapping[str, Any] | None,
+) -> list[str]:
+    """Everything a refusal moved that it must not: a sibling box, a Run button, the first
+    element below the form (the result card, else the first disclosure), the Reproduce editor
+    (its line count and height) or its accordion — and Gradio's empty-editor placeholder,
+    which must never appear (round 11: the LLM refusal emptied the snippet, 384 px of
+    placeholder with a live Copy button; a wrapped sentence on a phone moved the second row of
+    boxes and Run by 16 px)."""
+    lead = f"{where} '{control}'={value}"
+    if before is None or after is None:
+        return []
+    problems: list[str] = []
+
+    def moved(kind: str, olds: Sequence[Mapping[str, Any]], news: Sequence[Mapping[str, Any]]):
+        if len(olds) != len(news):
+            problems.append(f"{lead}: {len(olds)} {kind} before the refusal, {len(news)} after")
+            return
+        for old, new in zip(olds, news, strict=True):
+            delta = float(new["top"]) - float(old["top"])
+            if abs(delta) >= 1:
+                name = old.get("name") or kind
+                problems.append(f"{lead}: {name!r} moved {delta:+.0f} px")
+
+    moved("box(es)", before.get("boxes", ()), after.get("boxes", ()))
+    moved("run button(s)", before.get("runs", ()), after.get("runs", ()))
+    old_below, new_below = before.get("below"), after.get("below")
+    if isinstance(old_below, Mapping) and isinstance(new_below, Mapping):
+        delta = float(new_below["top"]) - float(old_below["top"])
+        if abs(delta) >= 1:
+            problems.append(f"{lead}: the element below the form moved {delta:+.0f} px")
+    elif isinstance(old_below, Mapping) != isinstance(new_below, Mapping):
+        problems.append(f"{lead}: the element below the form appeared or vanished")
+    old_editors, new_editors = before.get("editors", ()), after.get("editors", ())
+    if len(old_editors) != len(new_editors):
+        problems.append(
+            f"{lead}: {len(old_editors)} editor(s) before the refusal, {len(new_editors)} after"
+        )
+    else:
+        for index, (old, new) in enumerate(zip(old_editors, new_editors, strict=True)):
+            if int(old["lines"]) != int(new["lines"]):
+                problems.append(
+                    f"{lead}: editor {index} went from {old['lines']} to {new['lines']} lines"
+                )
+            old_h = float(old["bottom"]) - float(old["top"])
+            new_h = float(new["bottom"]) - float(new["top"])
+            if abs(new_h - old_h) >= 1:
+                problems.append(f"{lead}: editor {index} height {old_h:.0f} -> {new_h:.0f} px")
+    old_acc, new_acc = before.get("accordions", ()), after.get("accordions", ())
+    if len(old_acc) != len(new_acc):
+        problems.append(f"{lead}: {len(old_acc)} open disclosure(s) before, {len(new_acc)} after")
+    else:
+        for index, (old, new) in enumerate(zip(old_acc, new_acc, strict=True)):
+            if abs(float(new["height"]) - float(old["height"])) >= 1:
+                problems.append(
+                    f"{lead}: disclosure {index} height {float(old['height']):.0f} ->"
+                    f" {float(new['height']):.0f} px"
+                )
+    if int(after.get("emptyEditors", 0) or 0):
+        problems.append(f"{lead}: {after['emptyEditors']} empty-editor placeholder(s)")
+    return problems
+
+
+def _open_disclosure(page: Any, title: str) -> bool:
+    """Open the first visible disclosure named `title` on the displayed panel; False if none."""
+    header = page.locator("[role=tabpanel] .alg-disclosure > button", has_text=title).filter(
+        visible=True
+    )
+    if not header.count():
+        return False
+    if header.first.get_attribute("aria-expanded") != "true":
+        header.first.click()
+        page.wait_for_timeout(SNAP_SETTLE_MS)
+    return True
+
+
 def run_refusal_audit(base_url: str) -> RefusalAudit:
     """Type one refused value per tab (`REFUSAL_PROBES`) in each `REFUSAL_CONTEXTS` context,
-    press Run, and read where the page said no."""
+    press Run, and read where the page said no — and, with the Reproduce disclosure open
+    (`REFUSAL_OPEN_DISCLOSURE`), what the refusal moved (`refusal_shift_problems`: nothing)."""
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -3643,6 +3752,8 @@ def run_refusal_audit(base_url: str) -> RefusalAudit:
                             code = unavailable_code(page.content()) or "no controls"
                             result.skipped.append(f"{where}: no form to refuse ({code})")
                             continue
+                        _open_disclosure(page, REFUSAL_OPEN_DISCLOSURE)
+                        before = page.evaluate(_JS_REFUSAL, control)
                         field.first.fill(value)
                         field.first.dispatch_event("input")
                         field.first.dispatch_event("change")
@@ -3660,6 +3771,7 @@ def run_refusal_audit(base_url: str) -> RefusalAudit:
                         )
                         continue
                     problems = refusal_problems(where, control, value, word, state)
+                    problems += refusal_shift_problems(where, control, value, before, state)
                     texts = [m["text"] for m in (state or {}).get("messages", ())]
                     result.probes.append(
                         f"{where} '{control}'={value}: {len(texts)} message(s)"
@@ -3966,7 +4078,9 @@ def boot_row_live(ctx: Any) -> str:
 def refusal_convention(ctx: Any) -> str:
     """Every refusal is a field message under the offending control and an echo in the status
     row beside the action — on Try, the Playground, LLM kernels and, with a key, Governed —
-    never a red card, never a toast."""
+    never a red card, never a toast; and it moves nothing: at 1440, 1024 and 375 px every
+    sibling box, every Run button, the element below the form and the open Reproduce editor
+    stay where they were (`refusal_shift_problems`)."""
     result = refusal_audit_for(ctx)
     if not result.probes and not result.skipped:
         fail("no refusal was provoked")
@@ -3977,9 +4091,11 @@ def refusal_convention(ctx: Any) -> str:
         fail(f"{len(problems)} of {len(result.probes)} probes: {'; '.join(problems[:4])}")
     tabs = sorted({p.split(" ", 1)[0].rsplit("/", 1)[-1] for p in result.probes})
     skipped = f"; not shown: {'; '.join(result.skipped[:2])}" if result.skipped else ""
+    widths = ", ".join(f"{width}" for _, width, _, _ in REFUSAL_CONTEXTS)
     return (
         f"{len(result.probes)} refusals on {', '.join(tabs)}: field message under the control"
-        f" + status-row echo, no red card, no toast{skipped}"
+        f" + status-row echo, no red card, no toast; nothing moved at {widths} px, the"
+        f" {REFUSAL_OPEN_DISCLOSURE} editor kept its lines{skipped}"
     )
 
 

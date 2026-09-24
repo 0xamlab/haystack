@@ -197,6 +197,9 @@ GUTTERS = ".cm-gutters"
 #: `div.block > label[data-testid="block-label"] + div.wrap > div.codemirror-wrapper > .cm-editor`.
 CODE_BLOCK_LABEL = 'div:has(> div > div > .cm-editor) > label[data-testid="block-label"]'
 STOCK_ICON_LABELS: tuple[str, ...] = ("Copy", "Copy table data", "Download", "Fullscreen")
+#: WebKit's native number-box stepper pseudo-elements; the sheet hides both (and Firefox's via
+#: `-moz-appearance: textfield`), so a number box is a plain 44 px field.
+NUMBER_SPINNERS: tuple[str, str] = ("-webkit-inner-spin-button", "-webkit-outer-spin-button")
 #: Written by `shell.TABSTRIP_SCRIPT` on the strip's scrolling wrapper: `start`, `middle`, `end`
 #: or `none` (the strip fits). The phone sheet fades the edge that hides more tabs.
 STRIP_EDGE_ATTR = "data-alg-scroll"
@@ -326,6 +329,17 @@ CHROME_CSS = stylesheet(
         f"{_CONTROL_BOX} height: var(--alg-target); {_CONTROL_TYPE}"
         " font-variant-numeric: tabular-nums;",
         suffix=_STANDALONE_NUMBER,
+    ),
+    # number boxes carry no native spinner: the arrows are 12 px targets that step a typed
+    # value by one and read as chrome the design did not draw (round 11); every engine's form
+    page_rule("appearance: textfield; -moz-appearance: textfield;", suffix='input[type="number"]'),
+    page_rule(
+        "-webkit-appearance: none; display: none; margin: 0;",
+        suffix=f'input[type="number"]::{NUMBER_SPINNERS[0]}',
+    ),
+    page_rule(
+        "-webkit-appearance: none; display: none; margin: 0;",
+        suffix=f'input[type="number"]::{NUMBER_SPINNERS[1]}',
     ),
     # a single-row textarea (the permalink box, the Governed action) lands on 44 px: one 20 px
     # line inside 12 px pads; a taller box grows by whole lines (round 7: 46 px)
@@ -466,12 +480,20 @@ CHROME_CSS = stylesheet(
         _strip_edge_rule("end", _FADE_START),
         _strip_edge_rule("middle", _FADE_BOTH),
     ),
+    # Reduced motion: no transition and no animation anywhere on the page. The universal rule
+    # is (0,4,0); the chrome rules above that set a transition carry an element or attribute
+    # in their selector — `button` is (0,4,1) — so each of those is repeated here, where it
+    # wins (round 11 measured the 180 ms button fades still running under the preference).
     block(
         "@media (prefers-reduced-motion: reduce)",
         page_rule("transition: none; animation: none;", suffix="*"),
+        page_rule("transition: none;", suffix="button"),
+        page_rule("transition: none;", suffix=OPTION),
         rule(DISCLOSURE_CLASS, "transition: none;", suffix=" > button::after"),
     ),
 )
+#: The selectors whose rest-state rule sets a transition; `REDUCED_MOTION_CSS` must name each.
+TRANSITION_SELECTORS: tuple[str, ...] = ("button", OPTION, f".{DISCLOSURE_CLASS} > button::after")
 
 # semantic role -> (light classes, dark classes) — gradio 6.28.0's basicLight / basicDark
 CODE_TOKEN_CLASSES: Mapping[str, tuple[tuple[str, ...], tuple[str, ...]]] = {

@@ -246,6 +246,9 @@ TIMING_LABEL = "timing"
 HELD_TEXT = "held: incumbent faster on this run"
 HELD_CODE = "incumbent_faster"
 NOT_RECORDED_TEXT = "not recorded"
+#: The caption beside the lane bars: their widths are on a log scale (`_bar_widths`), so a 3×
+#: race is not drawn as a bar one third as long — the chart says so in three words (round 11).
+BARS_SCALE_TEXT = "bars: log scale"
 NOT_A_RACE_TEXT = "not a race"
 NOT_CONFIGURED_CODE = "hosted_not_configured"
 UNAVAILABLE_PREFIX = "unavailable · "
@@ -564,8 +567,9 @@ def _bars_html(lanes: list[LaneResult]) -> str:
         )
     label = "; ".join(f"{lane.name} median {fmt_ms(lane.median_ms)}" for lane in lanes)
     return (
-        f'<div class="alg-lane-chart" role="img" aria-label="{_esc(label)}">'
+        f'<div class="alg-lane-chart" role="img" aria-label="{_esc(label)}; {BARS_SCALE_TEXT}">'
         + "".join(rows)
+        + f'<div class="alg-lane-scale">{BARS_SCALE_TEXT}</div>'
         + "</div>"
     )
 
@@ -1093,6 +1097,11 @@ CARD_CSS = stylesheet(
         "background: linear-gradient(90deg, var(--alg-accent-from), var(--alg-accent-to));",
     ),
     rule("alg-lane-val", f"flex: 0 0 96px; {_MONO_NUM} {_CAPTION} text-align: right;"),
+    # the scale caption sits under the bars on their right edge, in the caption face
+    rule(
+        "alg-lane-scale",
+        f"{_MONO_NUM} {_CAPTION} color: var(--alg-text-2); text-align: right; margin: 0;",
+    ),
     # tables: hairline row separators only, in every card and in the Ecosystem table
     *_table_rules("alg-card", table_suffix=" table"),
     *_table_rules("alg-lane-table", table_suffix="", cell_extra=_MONO_NUM),
@@ -1221,6 +1230,7 @@ CARD_CSS = stylesheet(
     block(
         "@media (prefers-reduced-motion: reduce)",
         rule("alg-chip-loading", "animation: none;", suffix="::before"),
+        rule("alg-lane-bar", "transition: none;"),
     ),
     # the reason line is body copy (15/22, regular): a state is stated, not shouted
     rule("alg-card-reason", f"{_BODY} font-weight: 400; margin: 12px 0 0;"),

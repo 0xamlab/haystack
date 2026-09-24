@@ -27,10 +27,12 @@ in any state (round 3 measured 469 px under the RMSNorm controls after a run). E
 number box follows the fleet's refusal convention (Try, the Playground): it stands in its
 own column with one reserved caption line under it (the message slot), a shape the form
 refuses puts its sentence there — naming the box and its range, `Rows: 1 to 32` — the
-status row under Run reads `Not run · fix the marked field`, the quiet card says the same
-with its code, and nothing else on the panel moves (round 10: Rows 50 was told by the
-quiet card alone while the box that caused it carried no word). Editing a box clears the
-slots and the echo. The
+status row under Run (a reserved caption line, `common.STATUS_SLOT_CLASS`) reads `Not run ·
+fix the marked field`, and nothing else on the panel changes: the card and the Reproduce
+snippet stay as they were (round 10: Rows 50 was told by the quiet card alone while the box
+that caused it carried no word; round 11: the refusal emptied the snippet and moved the
+panels below). The module's own `run_*` functions still answer the quiet `invalid_shape`
+card with the sentence for a refused shape. Editing a box clears the slots and the echo. The
 two-column tabs (Governed, Ecosystem) share `STRETCH_CLASS` from this module's
 `STATE_CSS` instead: the row is `equal_height`, the block grows to the column and
 the card's footer sits on the bottom edge.
@@ -46,8 +48,9 @@ candidates and checks the kept set against the transformers warper order
 
 Every handler answers at once with the loading card and then with the result,
 so the page never shows Gradio's progress chrome (`show_progress="hidden"`);
-before the first run each result column carries the empty card naming the
-rows a run fills — or, when the family did not load in this container, the
+before the first run each result column carries the empty card shaped like the
+parity card a run paints (`render_empty`: one sentence, one provenance line, no
+lane rows) — or, when the family did not load in this container, the
 quiet card with that code, so a visitor knows before pressing anything. Every
 Reproduce editor opens prefilled with the snippet for the default shape. The
 three panels are peers, so their Run buttons share one hierarchy
@@ -661,7 +664,7 @@ def _parity_label(delta: float, tol: float) -> str:
 def _subtitle(loaded: LoadedKernel) -> str:
     """Words only: the repository, variant and revision are chips and mono values, not copy."""
     del loaded
-    return f"Hub kernel against torch {torch_version()} on the CPU, float64"
+    return empty_provenance()
 
 
 def _through_lane(deps: Deps, label: str, fn: Callable[[], Any]) -> Any:
@@ -693,9 +696,35 @@ def _kernel(deps: Deps) -> LoadedKernel:
     return loaded
 
 
+def check_rmsnorm_shape(rows: Any, cols: Any) -> tuple[int, int]:
+    """The RMSNorm shape as the kernel takes it, or the `ShapeError` naming the box."""
+    return _check_range("rows", rows, ROWS), _check_range("cols", cols, COLS)
+
+
+def check_rope_shape(n_tok: Any, n_heads: Any, head_dim: Any) -> tuple[int, int, int]:
+    """The RoPE shape as the kernel takes it: the three ranges, then the even head dimension."""
+    n_tok = _check_range("tokens", n_tok, TOKENS)
+    n_heads = _check_range("heads", n_heads, HEADS)
+    head_dim = _check_range("head_dim", head_dim, HEAD_DIM)
+    if head_dim % 2:
+        raise ShapeError("head_dim", HINT_HEAD_DIM_ODD)
+    return n_tok, n_heads, head_dim
+
+
+def check_sampling_shape(
+    vocab: Any, temperature: Any, top_k: Any, top_p: Any
+) -> tuple[int, float, int, float]:
+    """The sampling shape as the kernel takes it, or the `ShapeError` naming the box."""
+    return (
+        _check_range("vocab", vocab, VOCAB),
+        _check_range("temperature", temperature, TEMPERATURE),
+        _check_range("top_k", top_k, TOP_K),
+        _check_range("top_p", top_p, TOP_P),
+    )
+
+
 def measure_rmsnorm(deps: Deps, rows: int, cols: int) -> Panel:
-    rows = _check_range("rows", rows, ROWS)
-    cols = _check_range("cols", cols, COLS)
+    rows, cols = check_rmsnorm_shape(rows, cols)
     loaded = _kernel(deps)
     x, gamma = rmsnorm_inputs(rows, cols)
     kernel_ms, calls = _through_lane(
@@ -722,11 +751,7 @@ def measure_rmsnorm(deps: Deps, rows: int, cols: int) -> Panel:
 
 
 def measure_rope(deps: Deps, n_tok: int, n_heads: int, head_dim: int, interleaved: bool) -> Panel:
-    n_tok = _check_range("tokens", n_tok, TOKENS)
-    n_heads = _check_range("heads", n_heads, HEADS)
-    head_dim = _check_range("head_dim", head_dim, HEAD_DIM)
-    if head_dim % 2:
-        raise ShapeError("head_dim", HINT_HEAD_DIM_ODD)
+    n_tok, n_heads, head_dim = check_rope_shape(n_tok, n_heads, head_dim)
     interleaved = bool(interleaved)
     loaded = _kernel(deps)
     x = rope_inputs(n_tok, n_heads, head_dim)
@@ -761,10 +786,7 @@ def measure_rope(deps: Deps, n_tok: int, n_heads: int, head_dim: int, interleave
 
 
 def measure_sampling(deps: Deps, vocab: int, temperature: float, top_k: int, top_p: float) -> Panel:
-    vocab = _check_range("vocab", vocab, VOCAB)
-    temperature = _check_range("temperature", temperature, TEMPERATURE)
-    top_k = _check_range("top_k", top_k, TOP_K)
-    top_p = _check_range("top_p", top_p, TOP_P)
+    vocab, temperature, top_k, top_p = check_sampling_shape(vocab, temperature, top_k, top_p)
     loaded = _kernel(deps)
     logits = logits_inputs(vocab)
     kernel_ms, calls = _through_lane(
@@ -909,11 +931,20 @@ def render_sampling_note(
     return f'<div class="alg-llm-note"><div class="alg-chips">{chips}</div></div>'
 
 
+def empty_provenance() -> str:
+    """The one line the empty card carries under its sentence: what a run compares, in the
+    measured card's own subtitle words (`_subtitle`) — never a lane row with a dash where a
+    figure would land, since the measured card prints no figure (round 11: the empty state
+    advertised two timed lanes, `Hub kernel · —` and `torch · —`, that no run ever fills)."""
+    return f"Hub kernel against torch {torch_version()} on the CPU, float64"
+
+
 def render_empty(title: str, run_label: str) -> str:
-    """The result column before its first run: the three rows a run fills."""
-    return render_empty_card(
-        title, EMPTY_TEXT.format(run=run_label), rows=(LANE_KERNEL, LANE_TORCH, LANE_PARITY)
-    )
+    """The result column before its first run, shaped like the parity card it becomes: the
+    title, one sentence, one provenance line — no lane rows, no dashes, no timing promise."""
+    card = render_empty_card(title, EMPTY_TEXT.format(run=run_label))
+    line = f'<p class="alg-empty-provenance">{common.esc(empty_provenance())}</p>'
+    return card.replace("</article>", f"{line}</article>")
 
 
 def opening_card(deps: Deps, title: str, run_label: str) -> str:
@@ -1050,14 +1081,53 @@ def staged(title: str, run: Callable[[], Any]) -> Iterator[Any]:
 
 
 def panel_updates(
-    title: str, fields: Sequence[str], run: Callable[[], Outcome], keep: Any
+    title: str,
+    fields: Sequence[str],
+    run: Callable[[], Outcome],
+    keep: Any,
+    *,
+    check: Callable[[], Outcome | None],
 ) -> Iterator[tuple[Any, ...]]:
-    """What a panel's handler yields into `[card, snippet, status, *slots]`: the loading card
-    at once with everything else as it is (`keep`), then the outcome — its card and snippet,
-    the status row and one message per field (`field_messages`)."""
+    """What a panel's handler yields into `[card, snippet, status, *slots]`.
+
+    A refused shape is told where the fleet tells it — the sentence under the box it names,
+    `STATUS_NOT_RUN` beside Run — and nothing else on the panel changes: the card stays what
+    it was (the empty card, or the last measured shape, whose title carries its own shape) and
+    the Reproduce editor keeps its snippet, so the panel keeps its height (round 11: the
+    refusal's empty snippet made Gradio paint its stock empty-editor placeholder — 384 px with
+    a live Copy button — and the quiet card and the echo moved the panels below). So the
+    loading card is never shown for a refusal either: the shape is checked first, and only a
+    shape that passes gets the loading card and then the outcome. A run that failed after the
+    check (the visitor allowance, a kernel error) keeps its card — that is what happened — and
+    leaves the editor alone: nothing ran, so there is nothing new to reproduce.
+    `Outcome.__iter__` still answers `(card, snippet)` for the module's own callers.
+
+    `check` answers the refusal for the shape before anything runs (`shape_refusal`), or None
+    when the shape passes; `run` then measures."""
+    outcome = check()
+    if outcome is not None and outcome.refused:
+        yield keep, keep, status_row(outcome), *field_messages(outcome, fields)
+        return
     yield render_loading(title), keep, keep, *(keep for _ in fields)
     outcome = run()
-    yield outcome.card, outcome.snippet, status_row(outcome), *field_messages(outcome, fields)
+    if outcome.refused:
+        # `run` re-checks the shape and cannot refuse what `check` passed; a caller wiring a
+        # different check still gets the fleet's answer, with the loading card replaced
+        yield outcome.card, keep, status_row(outcome), *field_messages(outcome, fields)
+        return
+    snippet = outcome.snippet if outcome.snippet else keep
+    yield outcome.card, snippet, status_row(outcome), *field_messages(outcome, fields)
+
+
+def shape_refusal(deps: Deps, title: str, check: Callable[[], Any]) -> Outcome | None:
+    """The refused `Outcome` — the quiet card, the box and its sentence — when `check` (one of
+    `check_*_shape`, the range checks every `measure_*` runs first) raises `ShapeError`; None
+    when the shape passes. Nothing runs either way."""
+    try:
+        check()
+    except ShapeError as exc:
+        return Outcome(_error_card(title, exc, deps.hardware), "", exc.field, str(exc))
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -1154,6 +1224,8 @@ _CELL = (
 )
 
 STATE_CSS = stylesheet(
+    # the empty card's provenance line: the measured card's subtitle face, under the sentence
+    rule("alg-empty-provenance", f"{_CAPTION} color: var(--alg-text-2); margin: 8px 0 0;"),
     rule("alg-empty-rows", "display: flex; flex-direction: column; gap: 4px; margin: 12px 0 0;"),
     rule(
         "alg-empty-row",
@@ -1370,8 +1442,9 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
                     min_width=RUN_MIN_WIDTH,
                     elem_classes=["alg-run"],
                 )
-            # the refusal's echo lands here (`STATUS_NOT_RUN`); empty, the row takes no space
-            status = gr.HTML(common.render_status(), elem_classes=["alg-status-row"])
+            # the refusal's echo lands here (`STATUS_NOT_RUN`) in the reserved caption line
+            # under Run (`common.STATUS_SLOT_CLASS`), so the panels below never move
+            status = gr.HTML(common.render_status(), elem_classes=[common.STATUS_SLOT_CLASS])
             card = gr.HTML(opening_card(deps, title, run_label), elem_classes=[common.BLOCK_CLASS])
             with gr.Accordion(REPRODUCE_TITLE, open=False, elem_classes=["alg-disclosure"]):
                 snippet = gr.Code(
@@ -1439,23 +1512,38 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
         with gr.Accordion(HOW_TITLE, open=False, elem_classes=["alg-disclosure"]):
             gr.HTML(common.render_note(HOW_TEXT))
 
-        def _emit(key: str, title: str, run: Callable[[], Outcome]):
-            yield from panel_updates(title, PANEL_FIELDS[key], run, gr.update())
+        def _emit(key: str, title: str, check: Callable[[], Any], run: Callable[[], Outcome]):
+            yield from panel_updates(
+                title,
+                PANEL_FIELDS[key],
+                run,
+                gr.update(),
+                check=lambda: shape_refusal(deps, title, check),
+            )
 
         # the values reach `_check_range` as typed: a decimal in a whole-number field is
         # refused with a sentence, never floored on the way in (round 5)
         def on_rmsnorm(r: float, c: float, request=None):
-            yield from _emit("rmsnorm", TITLE_RMSNORM, lambda: run_rmsnorm(deps, r, c, request))
+            yield from _emit(
+                "rmsnorm",
+                TITLE_RMSNORM,
+                lambda: check_rmsnorm_shape(r, c),
+                lambda: run_rmsnorm(deps, r, c, request),
+            )
 
         def on_rope(t: float, h: float, d: float, inter: bool, request=None):
             yield from _emit(
-                "rope", TITLE_ROPE, lambda: run_rope(deps, t, h, d, bool(inter), request)
+                "rope",
+                TITLE_ROPE,
+                lambda: check_rope_shape(t, h, d),
+                lambda: run_rope(deps, t, h, d, bool(inter), request),
             )
 
         def on_sampling(v: float, temp: float, k: float, p: float, request=None):
             yield from _emit(
                 "sampling",
                 TITLE_SAMPLING,
+                lambda: check_sampling_shape(v, temp, k, p),
                 lambda: run_sampling(deps, v, float(temp), k, float(p), request),
             )
 

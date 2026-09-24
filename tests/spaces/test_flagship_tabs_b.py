@@ -24,7 +24,7 @@ from _rules import (
     _assert_four_class_selectors,
     _assert_stylesheet_discipline,
 )
-from algenta_spaces import bench, cards, css, hosted_api, hubkernel, playground
+from algenta_spaces import bench, cards, css, design, hosted_api, hubkernel, playground
 from algenta_spaces.hosted_api import HostedGoverned
 from algenta_spaces.killswitch import KillSwitch
 from algenta_spaces.lane import Lane, LaneBusyError
@@ -448,12 +448,35 @@ def test_refused_shape_marks_its_field_and_a_valid_run_clears_the_slots(deps: De
     assert llm_tab.field_messages(stray, fields)[0] == common.render_field_message(stray.message)
     with pytest.raises(ValueError):
         llm_tab.field_messages(stray, ())
-    # the staged handler: the loading card first with everything else kept, then the outcome
+    # the staged handler (round 11): a refused shape is answered before anything runs — no
+    # loading card, the card and the Reproduce snippet kept as they are (`keep`: the editor
+    # never empties into Gradio's placeholder), the echo beside Run, the sentence in its slot
     keep = object()
-    stages = list(llm_tab.panel_updates("T", fields, lambda: outcome, keep))
+    refusal = llm_tab.shape_refusal(deps, "T", lambda: llm_tab.check_rmsnorm_shape(50, 256))
+    assert refusal is not None and refusal.refused and refusal.field == "rows"
+    assert code_of(refusal.card) == llm_tab.CODE_BAD_SHAPE and refusal.message == "Rows: 1 to 32"
+    assert fake_kernel.calls == []
+    stages = list(llm_tab.panel_updates("T", fields, lambda: outcome, keep, check=lambda: refusal))
+    assert stages == [(keep, keep, llm_tab.status_row(outcome), rows_slot, "")]
+    assert llm_tab.shape_refusal(deps, "T", lambda: llm_tab.check_rmsnorm_shape(4, 64)) is None
+    assert llm_tab.check_rmsnorm_shape(4, 64) == (4, 64)
+    assert llm_tab.check_rope_shape(16, 4, 64) == (16, 4, 64)
+    assert llm_tab.check_sampling_shape(4096, 0.8, 40, 0.95) == (4096, 0.8, 40, 0.95)
+    with pytest.raises(llm_tab.ShapeError) as odd_dim:
+        llm_tab.check_rope_shape(16, 4, 63)
+    assert odd_dim.value.field == "head_dim"
+    # a shape that passes: the loading card first with everything else kept, then the outcome;
+    # a run that did not happen (the allowance, a kernel error) keeps the snippet as it is
+    limited = llm_tab.Outcome(
+        llm_tab.render_quiet_card("T", llm_tab.CODE_LIMITED, "one at a time", hardware=""), ""
+    )
+    stages = list(llm_tab.panel_updates("T", fields, lambda: limited, keep, check=lambda: None))
     assert len(stages) == 2 and LOADING_RE.search(stages[0][0])
     assert stages[0][1:] == (keep, keep, keep, keep)
-    assert stages[1] == (html, "", llm_tab.status_row(outcome), rows_slot, "")
+    assert stages[1] == (limited.card, keep, common.render_status(), "", "")
+    # a check that let a refusal through still answers the convention, the loading card replaced
+    stages = list(llm_tab.panel_updates("T", fields, lambda: outcome, keep, check=lambda: None))
+    assert stages[1] == (html, keep, llm_tab.status_row(outcome), rows_slot, "")
     # a run that goes through: no message, no echo — the slots are cleared, not left as they were
     pytest.importorskip("torch")
     ok = llm_tab.run_rmsnorm(deps, 4, 64)
@@ -462,7 +485,7 @@ def test_refused_shape_marks_its_field_and_a_valid_run_clears_the_slots(deps: De
     assert llm_tab.status_row(ok) == common.render_status() and "alg-status-echo" not in (
         llm_tab.status_row(ok)
     )
-    assert list(llm_tab.panel_updates("T", fields, lambda: ok, keep))[1] == (
+    assert list(llm_tab.panel_updates("T", fields, lambda: ok, keep, check=lambda: None))[1] == (
         ok.card,
         ok.snippet,
         common.render_status(),
@@ -612,12 +635,21 @@ def test_transport_split_is_measured_on_the_same_payload_and_never_exceeds_the_l
 
 
 def test_llm_empty_and_loading_cards_name_the_rows_a_run_fills():
+    """Round 11: the empty card is shaped like the parity card a run paints — the title, one
+    sentence, one provenance line (the measured card's own subtitle) — and advertises no timed
+    lane: no `Hub kernel · —`, no `torch · —`, no dash, no `not measured yet`."""
     empty = llm_tab.render_empty(llm_tab.TITLE_RMSNORM, llm_tab.RUN_RMSNORM)
     assert 'class="alg-card alg-card-empty"' in empty
     for key in (llm_tab.LANE_KERNEL, llm_tab.LANE_TORCH, llm_tab.LANE_PARITY):
-        assert f'alg-empty-key">{key}<' in empty
-    assert empty.count(cards.EMPTY_VALUE) == 3 and "not measured yet" in empty
+        assert f'alg-empty-key">{key}<' not in empty
+    assert "alg-empty-row" not in empty and cards.EMPTY_VALUE not in empty
+    assert llm_tab.PENDING_TEXT not in empty and " ms" not in empty
     assert "Run RMSNorm" in empty
+    provenance = llm_tab.empty_provenance()
+    assert f'<p class="alg-empty-provenance">{provenance}</p></article>' in empty
+    assert provenance.startswith("Hub kernel against torch ") and "float64" in provenance
+    assert provenance == llm_tab._subtitle(None), "the measured card's subtitle, word for word"
+    assert ".alg-empty-provenance" * 4 + " {" in llm_tab.STATE_CSS
     _assert_clean_copy(empty)
     loading = llm_tab.render_loading(llm_tab.TITLE_ROPE)
     assert LOADING_RE.search(loading) and 'data-kind="loading"' in loading
@@ -1739,6 +1771,15 @@ def test_gov_primary_copy_carries_human_names_not_identifiers():
     note = gov_tab.profile_html("execute")
     assert note.count('<span class="alg-chip ') == len(gov_tab.PROFILE_TOOLS["execute"])
     assert not SNAKE_RE.search(text_of(note)), text_of(note)
+    # round 11: the Full profile's description was printed twice — the sentence and a chip
+    # saying the same words; the line says it once and the chip row is not drawn at all
+    full = gov_tab.profile_html("full")
+    assert gov_tab.PROFILE_TOOLS["full"] == (gov_tab.EVERY_TOOL,) == ("*",)
+    assert full == f'<p class="alg-gov-profile">{gov_tab.PROFILE_LINES["full"]}</p>'
+    assert text_of(full).count("Every tool the engine lists") == 1 and "alg-chip" not in full
+    assert gov_tab.tool_chips("full") == ""
+    assert gov_tab.tool_chips("observe").count('<span class="alg-chip ') == 4
+    _assert_clean_copy(full)
     assert set(gov_tab.TOOL_NAMES) >= {t for tools in gov_tab.PROFILE_TOOLS.values() for t in tools}
     hook = make_hook()
     hosted, _ = make_hosted(hook=hook)
@@ -2316,7 +2357,9 @@ def test_llm_tab_builds_with_gradio(deps: Deps):
             assert column is not None and column is slot.parent, f"{box_name}: a field column"
             assert column.parent.elem_classes == ["alg-form-row"], f"{box_name}: top-aligned row"
         status = handles[f"status_{panel}"]
-        assert status.value == common.render_status() and "alg-status-row" in status.elem_classes
+        # round 11: the status row is the reserved caption line, never the 0 px row that grew
+        assert status.value == common.render_status()
+        assert status.elem_classes == [common.STATUS_SLOT_CLASS]
         assert (
             ids.index(handles[f"run_{panel}"]._id)
             < ids.index(status._id)
@@ -2336,12 +2379,13 @@ def test_llm_tab_builds_with_gradio(deps: Deps):
     while checkbox_column is not None and "alg-field" not in checkbox_column.elem_classes:
         checkbox_column = checkbox_column.parent
     assert checkbox_column is not None, "the checkbox stands in a field column too, without a slot"
-    # the refusal reaches the page through the handler: Rows 50 → the quiet card, an empty
-    # snippet, `STATUS_NOT_RUN` beside Run and the sentence in the Rows slot alone
+    # the refusal reaches the page through the handler in one step: Rows 50 → the card and
+    # the snippet untouched (value-less updates: no loading card, no empty editor), then
+    # `STATUS_NOT_RUN` beside Run and the sentence in the Rows slot alone (round 11)
     stages = list(handles["on_rmsnorm"](50, 256))
-    assert len(stages) == 2 and len(stages[1]) == 5
-    card, snippet, status_html, rows_msg, cols_msg = stages[1]
-    assert code_of(card) == llm_tab.CODE_BAD_SHAPE and snippet == ""
+    assert len(stages) == 1 and len(stages[0]) == 5
+    card, snippet, status_html, rows_msg, cols_msg = stages[0]
+    assert card == {"__type__": "update"} and snippet == {"__type__": "update"}
     assert common.STATUS_NOT_RUN in status_html and "Rows: 1 to 32" in rows_msg and cols_msg == ""
     for name, expected in (
         ("snippet_rmsnorm", llm_tab.snippet_rmsnorm(llm_tab.ROWS[3], llm_tab.COLS[3])),
@@ -2607,6 +2651,18 @@ def test_eco_tab_builds_with_gradio():
     button, timer = handles["button_state"]()
     assert button["interactive"] is False and button["value"].startswith("Next refresh in ")
     assert timer.active is True, "disabled and counting down inside the floor"
+    # round 11: a press shows its pending state at once — the button disabled and saying what it
+    # does (`Refreshing…`) beside the loading cards — and the floor's label comes back with the
+    # result (the fetch here is the test's own body, never the network)
+    pressed = list(handles["on_refresh"]())
+    assert len(pressed) == 2 and len(pressed[0]) == len(pressed[1]) == 5
+    assert LOADING_RE.search(pressed[0][0]), "the Hub table's loading card first"
+    assert pressed[0][3] == {"__type__": "update", "interactive": False, "value": "Refreshing…"}
+    assert eco_tab.REFRESHING_TEXT == "Refreshing…" and pressed[0][4] == {"__type__": "update"}
+    _assert_clean_copy(eco_tab.REFRESHING_TEXT)
+    restored = pressed[1][3]
+    assert restored["interactive"] is False and restored["value"].startswith("Next refresh in ")
+    assert ">20 kernels<" in pressed[1][0], "the refreshed table lands with the restored button"
 
 
 # ---------------------------------------------------------------------------
@@ -3125,6 +3181,34 @@ def test_round_6_launch_review_regressions(deps: Deps):
     assert common.FIELD_BOX_OFFSET_PX == 32 and common.FIELD_SLOT_PX == 16
     assert ".alg-field-slot" * 4 + " > div { min-height: 16px; }" in common.TABS_CSS
     assert ".alg-field-slot" * 4 + ":has(> div) { margin-top: -12px; }" in common.TABS_CSS
+    # round 11: the message starts where the box starts (the block's 16 px inset); narrow field
+    # columns reserve two caption lines, so a sentence that wraps moves nothing below it
+    assert common.FIELD_BLOCK_INSET_PX == 16 and design.BLOCK_PADDING == "12px 16px"
+    assert ".alg-field-slot" * 4 + " .alg-field-msg { margin: 0 16px; }" in common.TABS_CSS
+    assert common.FIELD_SLOT_TWO_LINE_MAX_WIDTH == 1279 == eco_tab.WRAP_MAX_WIDTH
+    assert common.FIELD_SLOT_TWO_LINE_MAX_WIDTH == gov_tab.PROFILE_GRID_MAX_WIDTH
+    assert common.FIELD_SLOT_NARROW_PX == 32
+    narrow = common.TABS_CSS.split("@media (width <= 1279px) {\n", 1)[1].split("\n}", 1)[0]
+    assert narrow.strip() == ".alg-field-slot" * 4 + " > div { min-height: 32px; }"
+    # Try's columns are 163 px at 1440 too (four fields and Run in one row): two lines always
+    assert common.FIELD_SLOT_NARROW_CLASS == "alg-field-slot-narrow"
+    assert ".alg-field-slot-narrow" * 4 + " > div { min-height: 32px; }" in common.TABS_CSS
+    # the status row under Run is the same reserved line: pulled up like a slot, 16 px empty or
+    # with the echo alone, the 32 px row only for a lane chip
+    slot = f".{common.STATUS_SLOT_CLASS}" * 4
+    assert common.STATUS_SLOT_CLASS == "alg-status-slot"
+    assert f"{slot} {{ padding: 0; margin: 0; min-height: 0; }}" in common.TABS_CSS
+    assert f"{slot} > div {{ padding: 0; }}" in common.TABS_CSS
+    assert f"{slot}:has(> div > div > .alg-status) {{ margin-top: -12px; }}" in common.TABS_CSS
+    assert f"{slot}:has(> div) {{" not in common.TABS_CSS, (
+        "the prose wrapper carries the class too and holds the <div>: it must not pull as well"
+    )
+    assert f"{slot} > div > div > .alg-status {{ min-height: 16px; }}" in common.TABS_CSS
+    assert (
+        ".alg-status" * 4 + ":has(> .alg-status-echo:only-child) { min-height: 16px; }"
+    ) in common.TABS_CSS
+    assert ".alg-status" * 4 + ":not(:empty) { min-height: 32px; }" in common.TABS_CSS
+    _assert_stylesheet_discipline(common.TABS_CSS)
     assert ".alg-field" * 4 + ' [data-testid="block-info"] {' in common.TABS_CSS
     # the refusal: the sentence under the field once, the status row acknowledges
     assert common.STATUS_NOT_RUN == "Not run · fix the marked field"

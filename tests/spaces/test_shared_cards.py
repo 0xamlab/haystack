@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 
 import pytest
 from _rules import (
@@ -129,6 +130,14 @@ def test_result_card_race_has_hero_ratio_bars_table_chips_and_footer():
     assert "3.20×" in html and "faster than networkx 3.4.2" in html
     assert html.count('class="alg-lane-row"') == 2
     assert "alg-lane-bar-alg" in html and "alg-lane-bar-inc" in html
+    # round 11: the bars are on a log scale and the chart says so, once, beside them — in the
+    # caption under the bars and in the chart's accessible name
+    assert cards.BARS_SCALE_TEXT == "bars: log scale" and len(cards.BARS_SCALE_TEXT.split()) == 3
+    assert html.count(cards.BARS_SCALE_TEXT) == 2
+    assert f'<div class="alg-lane-scale">{cards.BARS_SCALE_TEXT}</div></div>' in html
+    assert re.search(r'aria-label="[^"]*; bars: log scale"', html) is not None
+    assert html.index('class="alg-lane-row"') < html.index('class="alg-lane-scale"')
+    assert ".alg-lane-scale" * 4 + " {" in cards.CARD_CSS
     # absolute ms for every lane: median, MAD, CV, P95 and min–max with units (rulebook v0.3)
     assert "12.5 ms" in html and "40.0 ms" in html
     assert "0.625 ms" in html and "2.00 ms" in html  # MAD

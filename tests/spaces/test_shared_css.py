@@ -299,6 +299,52 @@ def test_disabled_and_focus_states_are_designed_not_faded():
     assert "prefers-reduced-motion: reduce" in sheet
 
 
+def test_reduced_motion_stops_every_transition_and_animation():
+    """Round 11: under `prefers-reduced-motion: reduce` the 180 ms button fades still ran — the
+    universal rule is (0,4,0) and loses to every chrome rule with an element in its selector.
+    The block names each such selector, so no transition or animation survives the preference
+    (there is no count-up: the header's number is static text in a gradient)."""
+    sheet = css.CHROME_CSS
+    reduced = _media_block(sheet, "@media (prefers-reduced-motion: reduce)")
+    assert f"{ROOT} * {{ transition: none; animation: none; }}" in reduced
+    for selector in css.TRANSITION_SELECTORS:
+        if selector.startswith("."):
+            assert f"{selector.split(' ', 1)[0] * 4} {selector.split(' ', 1)[1]} {{" in reduced, (
+                selector
+            )
+        else:
+            assert f"{ROOT} {selector} {{ transition: none; }}" in reduced, selector
+    # every rest-state transition in the chrome sheet has its reduced-motion twin
+    rest = sheet.split("@media (prefers-reduced-motion: reduce)")[0]
+    for line in rest.splitlines():
+        if "transition:" not in line or line.startswith("@") or not line.strip():
+            continue
+        selector = line.split(" {", 1)[0].strip().removeprefix(f"{ROOT} ")
+        assert selector in css.TRANSITION_SELECTORS or selector.startswith(
+            f".{css.DISCLOSURE_CLASS}" * 4
+        ), selector
+    assert 150 <= design.MOTION_MS <= 200
+    # the shared cards' lane bar and the tabs' tile link carry their own twins (later sheets)
+    from algenta_spaces import cards  # noqa: PLC0415
+
+    bars = _media_block(cards.CARD_CSS, "@media (prefers-reduced-motion: reduce)")
+    assert ".alg-lane-bar" * 4 + " { transition: none; }" in bars
+    assert ".alg-chip-loading" * 4 + "::before { animation: none; }" in bars
+
+
+def test_number_boxes_hide_the_native_spinner():
+    """Round 11: the browser's stepper arrows on every number box are 12 px targets the design
+    did not draw; the sheet hides WebKit's two pseudo-elements and Firefox's via `textfield`."""
+    sheet = css.CHROME_CSS
+    assert css.NUMBER_SPINNERS == ("-webkit-inner-spin-button", "-webkit-outer-spin-button")
+    plain = _line(sheet, f'{ROOT} input[type="number"] {{')
+    assert "appearance: textfield; -moz-appearance: textfield;" in plain
+    for pseudo in css.NUMBER_SPINNERS:
+        line = _line(sheet, f'{ROOT} input[type="number"]::{pseudo} {{')
+        assert "-webkit-appearance: none; display: none; margin: 0;" in line
+    _assert_stylesheet_discipline(sheet)
+
+
 def test_code_sheet_maps_every_role_in_both_modes_to_aa_colours():
     sheet = css.CODE_CSS
     assert f"{ROOT} .cm-content span {{ color: inherit; }}" in sheet

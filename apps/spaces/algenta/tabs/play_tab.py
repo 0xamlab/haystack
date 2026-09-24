@@ -806,7 +806,9 @@ def build(deps: Deps) -> TabSpec:
                     }
                 slots.append(slot)
         run = gr.Button(LABEL_RUN, variant="primary", elem_classes=["alg-run"])
-        status = gr.HTML(common.render_status(), elem_classes=["alg-status-row"])
+        # the reserved caption line under Run (`common.STATUS_SLOT_CLASS`): a refusal's echo
+        # fills it and the card below never moves; a run's lane chip takes the 32 px row
+        status = gr.HTML(common.render_status(), elem_classes=[common.STATUS_SLOT_CLASS])
         card = gr.HTML(common.render_empty(EMPTY_TITLE, EMPTY_TEXT), elem_classes=["alg-play-card"])
         copies: list[tuple[Any, Any]] = []
 
@@ -1194,6 +1196,18 @@ def build(deps: Deps) -> TabSpec:
         )
         for button, source in copies:
             button.click(None, [source], [button], js=common.COPY_JS, api_name=False, **quiet)
+
+        def on_edit() -> tuple[Any, ...]:
+            """A refusal clears the moment the visitor edits a control: the alert under the
+            field and the echo beside Run both go — Try's and the LLM tab's convention (round
+            11: the Playground's message and echo stayed through the correction)."""
+            return (common.render_status(), *(gr.update(value="") for _ in slots))
+
+        # `.input` on every generated control (number, checkbox, text, JSON): the visitor's own
+        # typing, never the cascade's or a restore's programmatic writes (those fire `change`)
+        message_slots = [slot["message"] for slot in slots]
+        for control in flat_slot_inputs:
+            control.input(on_edit, None, [status, *message_slots], api_name=False, **quiet)
         return {
             "family": family,
             "module": module,
@@ -1203,6 +1217,7 @@ def build(deps: Deps) -> TabSpec:
             "slots": slots,
             "run": run,
             "status": status,
+            "on_edit": on_edit,
             "card": card,
             "request_json": request_json,
             "response_json": response_json,

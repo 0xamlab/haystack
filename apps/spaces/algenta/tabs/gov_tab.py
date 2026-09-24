@@ -187,6 +187,8 @@ PROFILE_TOOLS: Mapping[str, tuple[str, ...]] = {
     ),
     "full": ("*",),
 }
+#: The engine's wildcard: every tool it lists (the `full` profile's one entry).
+EVERY_TOOL = "*"
 #: The engine's tool ids, as a visitor reads them; the ids stay in the JSON and the snippets.
 TOOL_NAMES: Mapping[str, str] = {
     "get_contract": "Read the contract",
@@ -877,7 +879,10 @@ def gate_name(gate: str) -> str:
 
 
 def tool_chips(profile: str) -> str:
-    return "".join(_chip(tool_name(tool)) for tool in PROFILE_TOOLS[profile])
+    """One chip per tool the profile allows; the `*` profile's chip would repeat the profile
+    line word for word (`Every tool the engine lists`), so it is said once, in the line
+    (round 11: the Full description printed twice, as a sentence and as a chip)."""
+    return "".join(_chip(tool_name(tool)) for tool in PROFILE_TOOLS[profile] if tool != EVERY_TOOL)
 
 
 def not_configured_card(hosted: HostedGoverned | None, hint: str = NOT_CONFIGURED_HINT) -> str:
@@ -1317,12 +1322,13 @@ def request_preview(
 
 
 def profile_html(profile: str) -> str:
+    """The profile's one-line description and, under it, a chip per tool it allows — no chip
+    row at all for a profile whose tools the line already names (`full`)."""
     if profile not in PROFILES:
         profile = PROFILES[0]
-    return (
-        f'<p class="alg-gov-profile">{_esc(PROFILE_LINES[profile])}</p>'
-        f'<div class="alg-chips alg-gov-tools">{tool_chips(profile)}</div>'
-    )
+    chips = tool_chips(profile)
+    row = f'<div class="alg-chips alg-gov-tools">{chips}</div>' if chips else ""
+    return f'<p class="alg-gov-profile">{_esc(PROFILE_LINES[profile])}</p>{row}'
 
 
 # ---------------------------------------------------------------------------

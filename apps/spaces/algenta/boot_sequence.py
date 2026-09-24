@@ -97,6 +97,9 @@ FAMILIES: tuple[str, ...] = TAB_FAMILIES + OTHER_FAMILIES
 #: Everything `preload` warms: the families, then the umbrella (its members are already loaded).
 PRELOAD: tuple[str, ...] = FAMILIES + (hubkernel.UMBRELLA_FAMILY,)
 
+#: `facts.mcp_tools_source` when `/health` carries this container's last live read of the
+#: hosted tools list in place of an installed registry's count (`BootState.live_facts`).
+MCP_TOOLS_LIVE = "live"
 STAGE_HOST = "host"
 STAGE_KERNELS = "kernels"
 STAGE_HERO = "hero"
@@ -342,6 +345,7 @@ class BootState:
                 "base_url": self.hosted_status.base_url,
                 "checked_utc": self.hosted_status.checked_utc,
             }
+        hero = self.hero_summary()
         snapshot.update(
             {
                 "status": status,
@@ -355,8 +359,8 @@ class BootState:
                         name: error.code for name, error in sorted(self.kernel_errors.items())
                     },
                 },
-                "hero": self.hero_summary(),
-                "facts": self.facts,
+                "hero": hero,
+                "facts": self.live_facts(hero),
                 "killswitch": self.killswitch.snapshot(),
                 "lane": self.lane.stats(),
                 "hosted": hosted,
@@ -364,6 +368,35 @@ class BootState:
             }
         )
         return snapshot
+
+    def live_facts(self, hero: dict[str, Any] | None) -> dict[str, Any]:
+        """`facts` as `/health` serves it: the boot record (`compute_facts`, what `facts.json`
+        holds) with the two entries that move after boot read now.
+
+        `hero` is the tracker's current state — the same record the snapshot's `hero` carries
+        — so `facts.hero` and `hero` never disagree once a background attempt or a visitor's
+        run of the card example has recorded (the file keeps the hero as it stood when the
+        facts stage ran: boot's own record, which is what it documents). `mcp_tools` stays the
+        installed registry's count when there is one; with none installed the boot record
+        holds null, and the pages count the hosted endpoint's tools list live
+        (`try_tab.mcp_tool_count`) — so the last live read this container made rides here,
+        with its source and stamp (round 11: `140 MCP tools · live` on the page beside a null
+        in the facts). Empty before the facts stage."""
+        facts = dict(self.facts)
+        if not facts:
+            return facts
+        if "hero" in facts:
+            facts["hero"] = hero
+        if facts.get("mcp_tools") is None:
+            from tabs import try_tab
+
+            live = try_tab.last_live_mcp_read()
+            if live is not None:
+                count, stamp = live
+                facts["mcp_tools"] = count
+                facts["mcp_tools_source"] = MCP_TOOLS_LIVE
+                facts["mcp_tools_read_utc"] = stamp
+        return facts
 
     def status_tile(self) -> dict[str, Any]:
         """The compact record another Space's tile reads: what is warm here, measured when."""

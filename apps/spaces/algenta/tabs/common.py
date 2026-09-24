@@ -601,6 +601,29 @@ FIELD_BLOCK_PAD_PX = 12
 FIELD_BOX_OFFSET_PX = FIELD_BLOCK_PAD_PX + FIELD_LABEL_LINE_PX + FIELD_LABEL_GAP_PX
 #: A field's message slot always holds one caption line, so a one-line refusal moves nothing.
 FIELD_SLOT_PX = 16
+#: Below this width the field columns are narrow enough (163 px at 375 and 414, 163 px at
+#: 1024 with four fields and Run on one row) for a one-sentence refusal to wrap, so the slot
+#: holds two caption lines there (round 11: `Trials A must be a whole number.` wrapped and
+#: moved the second row of boxes and Run by 16 px). The same breakpoint as the Governed
+#: profile grid and the Ecosystem wrap (`gov_tab.PROFILE_GRID_MAX_WIDTH`, `eco_tab.WRAP_MAX_WIDTH`).
+FIELD_SLOT_TWO_LINE_MAX_WIDTH = 1279
+FIELD_SLOT_NARROW_PX = 2 * FIELD_SLOT_PX
+#: A slot under a field whose column is narrow at every width — the Try form's four fields and
+#: Run share one 1,088 px row, so a box is 163 px wide even at 1440 and `Successes A cannot
+#: exceed Trials A.` (209 px in the caption face) wraps there too — reserves two caption lines
+#: everywhere (`FIELD_SLOT_NARROW_CLASS`, beside `alg-field-slot`). The Playground's and the
+#: LLM tab's fields are 456 px or wider above 1279 px, so theirs keep the one line there.
+FIELD_SLOT_NARROW_CLASS = "alg-field-slot-narrow"
+#: A field's box and label sit inside the block's horizontal padding (`design.BLOCK_PADDING`,
+#: 16 px); the message under the box carries the same inset, so it starts at the box's left
+#: edge, never at the column's (round 11: x=176 beside a box at 192).
+FIELD_BLOCK_INSET_PX = 16
+#: The status row of a form (Try, the Playground, LLM kernels): the block carrying this class
+#: reserves one caption line under Run, so the refusal's echo fills the line and nothing under
+#: the form moves — the field slots' convention, applied to the row beside the action (round
+#: 11: the LLM row grew 48 px on a refusal and shifted the panels below). A row that only ever
+#: shows a lane chip (Governed) keeps `alg-status-row`: 0 px while empty.
+STATUS_SLOT_CLASS = "alg-status-slot"
 #: The status row's one sentence beside the action when a field refused the run: distinct
 #: from the field message (round 6: the same sentence printed twice, 56–72 px apart).
 STATUS_NOT_RUN = "Not run · fix the marked field"
@@ -668,7 +691,37 @@ TABS_CSS = stylesheet(
     # the block (the one with a <div> child) — both pulling would lift the message over the box
     rule("alg-field-slot", f"margin-top: -{BLOCK_GAP_PX - 4}px;", suffix=":has(> div)"),
     rule("alg-field-slot", f"min-height: {FIELD_SLOT_PX}px;", suffix=" > div"),
-    rule("alg-field-slot", "margin: 0;", suffix=" .alg-field-msg"),
+    # the message starts where the box starts: inside the block's 16 px inset, never at the
+    # column's edge (round 11 measured x=176 under a box at 192, 16 under one at 33)
+    rule("alg-field-slot", f"margin: 0 {FIELD_BLOCK_INSET_PX}px;", suffix=" .alg-field-msg"),
+    # narrow field columns (a phone, or four fields and Run across 1024 px): a sentence wraps
+    # to two lines, so the slot reserves both and the row below stays put
+    block(
+        f"@media (width <= {FIELD_SLOT_TWO_LINE_MAX_WIDTH}px)",
+        rule("alg-field-slot", f"min-height: {FIELD_SLOT_NARROW_PX}px;", suffix=" > div"),
+    ),
+    # a slot in a column that is narrow at every width (Try): two lines everywhere
+    rule(FIELD_SLOT_NARROW_CLASS, f"min-height: {FIELD_SLOT_NARROW_PX}px;", suffix=" > div"),
+    # A form's status row (`STATUS_SLOT_CLASS`): the reserved caption line under Run. The
+    # block drops its pads, pulls itself up like a field slot (4 px under the button) and keeps
+    # one 16 px line whether the row is empty or carries the refusal's echo alone; a lane chip
+    # in it (a run that happened) takes the 32 px row. `elem_classes` land on the block and on
+    # its prose wrapper alike and the row's payload is a <div>, so the pull is scoped to the
+    # block by its three-deep chain (block > container > prose > .alg-status) — a wrapper that
+    # pulled too would lift the echo 8 px into the button above.
+    rule(STATUS_SLOT_CLASS, "padding: 0; margin: 0; min-height: 0;"),
+    rule(STATUS_SLOT_CLASS, "padding: 0;", suffix=" > div"),
+    rule(
+        STATUS_SLOT_CLASS,
+        f"margin-top: -{BLOCK_GAP_PX - 4}px;",
+        suffix=":has(> div > div > .alg-status)",
+    ),
+    rule(STATUS_SLOT_CLASS, f"min-height: {FIELD_SLOT_PX}px;", suffix=" > div > div > .alg-status"),
+    rule(
+        "alg-status",
+        f"min-height: {FIELD_SLOT_PX}px;",
+        suffix=":has(> .alg-status-echo:only-child)",
+    ),
     rule(
         "alg-status-meta",
         f"font-family: var(--alg-font-mono); {_CAPTION} color: var(--alg-text-2);"
@@ -745,6 +798,9 @@ TABS_CSS = stylesheet(
     block(
         "@media (prefers-reduced-motion: reduce)",
         rule("alg-skeleton", "animation: none;"),
+        # the tile link's border fade: this sheet loads after the chrome sheet's reduced-motion
+        # block, so the rule is repeated here where it can win the tie
+        rule("alg-tile-link", "transition: none;"),
     ),
     # The Playground form: one surface, each field a row with its label, help and control. No
     # horizontal padding of its own: the fields' Gradio blocks carry the 16 px inset, so their
