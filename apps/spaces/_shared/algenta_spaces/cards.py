@@ -123,13 +123,15 @@ The API the tabs build on (M2-B design system)
 Rulebook v0.4 on the result card
 --------------------------------
 The lane table (`_table_html`) prints every statistic the rulebook records per
-lane: median, MAD, CV, P95 (N >= 20, else max) and min – max, each with its
-unit (`fmt_ms`, `fmt_cv`), in tabular numerals with hairline separators. Below
-560 px the table becomes one row card per lane (`data-label` on every cell).
-The chips carry the stability gate: `stable · CV 4.0% ≤ 15%` (`data-gate=
-"stability"`) when every lane's CV is inside `bench.CV_MAX`, else the amber
-`CV 18% above 15%`. `spread_chips(lane)` gives a tab that draws its own card
-(the Try hero) the same P95 · MAD · CV chips.
+lane: median, MAD, spread, CV, P95 (N >= 20, else max) and min – max, each with
+its unit (`fmt_ms`, `fmt_cv`), in tabular numerals with hairline separators.
+Below 560 px the table becomes one row card per lane (`data-label` on every
+cell). The chips carry the stability gate: `stable · spread 4.0% ≤ 15%`
+(`data-gate="stability"`) when every lane is stable — its spread and its
+mean/median gap both inside `bench.CV_MAX`, `LaneResult.stable` — else the amber
+`spread 18% above 15%`, or `mean 22% off the median, above 15%` when the spread
+cleared and the mean did not. `spread_chips(lane)` gives a tab that draws its
+own card (the Try hero) the same P95 · MAD · spread · CV chips.
 
 `fmt_ms` is adaptive: three significant figures in the unit that fits — `1.23 s`,
 `189 ms`, `42.2 ms`, `2.17 ms`, `0.122 ms`, and microseconds below 0.1 ms
@@ -446,16 +448,26 @@ def stamp_chip(kind: str, stamp: str) -> str:
 
 
 def stability_chip(lanes: list[LaneResult], cv_max: float = bench.CV_MAX) -> str:
-    """The rulebook's stability gate as one chip: `stable · CV 4.0% ≤ 15%`, or the amber
-    `CV 18% above 15%` when a lane's spread is over the gate (a cell that should not have
-    been recorded — the card still tells the truth)."""
+    """The rulebook's stability gate as one chip: `stable · spread 4.0% ≤ 15%` when every lane
+    is stable — `LaneResult.stable`: its spread and its mean/median gap both inside the gate —
+    else the amber chip naming what failed: `spread 18% above 15%`, or `mean 22% off the
+    median, above 15%` when the spread cleared and the mean did not (a 50/50 alternation has
+    MAD 0; Codna review on #1150 caught the chip reading the spread alone). A cell that should
+    not have been recorded — the card still tells the truth."""
     if not lanes:
         raise ValueError("the stability gate needs at least one lane")
-    worst = max(lane.spread for lane in lanes)
+    worst_spread = max(lane.spread for lane in lanes)
+    worst_skew = max(lane.skew for lane in lanes)
     attrs = ' data-gate="stability"'
-    if worst <= cv_max:
-        return _chip(f"{STABLE_TEXT} · spread {fmt_cv(worst)} ≤ {fmt_gate(cv_max)}", attrs=attrs)
-    return _chip(f"spread {fmt_cv(worst)} above {fmt_gate(cv_max)}", "warn", attrs=attrs)
+    if worst_spread <= cv_max and worst_skew <= cv_max:
+        return _chip(
+            f"{STABLE_TEXT} · spread {fmt_cv(worst_spread)} ≤ {fmt_gate(cv_max)}", attrs=attrs
+        )
+    if worst_spread > cv_max:
+        return _chip(f"spread {fmt_cv(worst_spread)} above {fmt_gate(cv_max)}", "warn", attrs=attrs)
+    return _chip(
+        f"mean {fmt_cv(worst_skew)} off the median, above {fmt_gate(cv_max)}", "warn", attrs=attrs
+    )
 
 
 def calls_text(n: int, k: int = 1) -> str:
@@ -600,12 +612,13 @@ def _chips_html(cell: CellResult, *, transport_share: float | None, status: tupl
     return f'<div class="alg-chips">{"".join(chips)}</div>'
 
 
-def foot_html(hardware: str, ts_utc: str, load_1m: float = 0.0) -> str:
+def foot_html(hardware: str, ts_utc: str, load_1m: float = bench.LOAD_UNREAD) -> str:
     """`hardware · host load 14.1 · <time>stamp</time>`: the machine line as given, the machine's
-    1-minute load average when the cell ran (rulebook v0.6: disclosed, never a gate; omitted when
-    the harness did not read one), the stamp machine-readable."""
+    1-minute load average when the cell ran (rulebook v0.6: disclosed, never a gate — an idle
+    host's 0.0 included; omitted only when the harness did not read one, `bench.LOAD_UNREAD`,
+    Codna review on #1150), the stamp machine-readable."""
     parts = [_esc(hardware)]
-    if load_1m > 0:
+    if load_1m >= 0:
         parts.append(f"host load {load_1m:.1f}")
     parts.append(_time_or_text(ts_utc))
     return f'<div class="alg-card-foot">{" · ".join(parts)}</div>'

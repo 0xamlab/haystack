@@ -75,6 +75,10 @@ CV_MAX = 0.15
 #: v0.5 — MAD scaled to a standard deviation (normal sample); the gate reads
 #: `ROBUST_SCALE × MAD / median`.
 ROBUST_SCALE = 1.4826
+#: v0.6 — what `load_1m()` returns where the platform has no load average. A reading is never
+#: negative, so the card's foot prints every real one, an idle host's 0.0 included (Codna review
+#: on #1150: 0.0 doubled as the sentinel and an idle host's load went unprinted).
+LOAD_UNREAD = -1.0
 P95_MIN_N = 20
 #: v0.4 — a timed sample is k back-to-back calls that together last at least this long; the
 #: per-call time is the sample over k. Below it the sample measures the scheduler and the timer
@@ -184,7 +188,7 @@ class CellResult:
     reason: str = ""
     n: int = 0
     warmups: int = WARMUPS
-    load_1m: float = 0.0
+    load_1m: float = LOAD_UNREAD
     cpu_quota: int = 1
     elapsed_s: float = 0.0
     ts_utc: str = ""
@@ -299,13 +303,15 @@ def calls_per_sample(
 
     `ceil(sample_min_ms / warm_call_ms)`, never above `cap`, and 1 for a call already at or
     over the floor — so a lane at 10 ms or slower is timed exactly as v0.3 timed it. A warm
-    call of zero (or less) gets the cap; `sample_min_ms <= 0` switches batching off (k = 1).
+    call of zero (or less), or none at all (`warmups=0` leaves a lane at `math.inf`; a NaN reads
+    the same), gets the cap — never 1, which would switch batching off for the lane whose cost
+    is unknown (Codna review on #1150); `sample_min_ms <= 0` switches batching off (k = 1).
     """
     if sample_min_ms <= 0:
         return 1
     if cap < 1:
         raise ValueError("the cap on calls per sample is at least 1")
-    if not warm_call_ms > 0:
+    if not (math.isfinite(warm_call_ms) and warm_call_ms > 0):
         return cap
     if warm_call_ms >= sample_min_ms:
         return 1
@@ -386,11 +392,11 @@ def cpu_quota(
 
 
 def load_1m() -> float:
-    """The 1-minute load average, 0.0 where the platform has none."""
+    """The 1-minute load average, `LOAD_UNREAD` where the platform has none."""
     try:
         return os.getloadavg()[0]
     except (OSError, AttributeError):
-        return 0.0
+        return LOAD_UNREAD
 
 
 def thread_env(env: Mapping[str, str] | None = None) -> str:

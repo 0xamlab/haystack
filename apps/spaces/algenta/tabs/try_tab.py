@@ -421,16 +421,22 @@ class HeroTracker:
         return self._thread is not None and self._thread.is_alive()
 
     def record(self, hero: HeroResult) -> None:
-        """Keep a result measured outside this tracker (a visitor's run of the card example)."""
+        """Keep a result measured outside this tracker (a visitor's run of the card example)
+        and count it — under one lock, so `/health` never reads `recorded` up with the boot
+        hero still in place (Codna review on #1150)."""
         with self._lock:
             self.recorded += 1
-        self._keep(hero)
+            self._set(hero)
 
     def _keep(self, hero: HeroResult) -> None:
         with self._lock:
-            self.latest = hero
-            if hero.cell.measured:
-                self.measured = hero
+            self._set(hero)
+
+    def _set(self, hero: HeroResult) -> None:
+        """The caller holds `_lock`."""
+        self.latest = hero
+        if hero.cell.measured:
+            self.measured = hero
 
     def attempt(self) -> HeroResult:
         if self._measure is None:

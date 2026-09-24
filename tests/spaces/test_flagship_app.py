@@ -234,7 +234,9 @@ def test_hub_space_hardware_reads_the_runtime_endpoint(monkeypatch: pytest.Monke
         return Response(next(bodies))
 
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
-    monkeypatch.delenv("HF_ENDPOINT", raising=False)
+    # Codna review on #1150: the Hub is the caller's `endpoint` (read from the environment it
+    # was given), never the process's `HF_ENDPOINT` — the token goes where that environment says
+    monkeypatch.setenv("HF_ENDPOINT", "https://process.invalid")
     assert boot_sequence.hub_space_hardware("thyn-ai/algenta-staging", "hf_token") == "cpu-upgrade"
     assert boot_sequence.hub_space_hardware("thyn-ai/algenta") == "l4x1"
     assert boot_sequence.hub_space_hardware("thyn-ai/algenta") == ""
@@ -242,9 +244,24 @@ def test_hub_space_hardware_reads_the_runtime_endpoint(monkeypatch: pytest.Monke
     assert url == "https://huggingface.co/api/spaces/thyn-ai/algenta-staging/runtime"
     assert headers["Authorization"] == "Bearer hf_token" and timeout == boot_sequence.TIER_TIMEOUT_S
     assert "Authorization" not in seen[1][1], "no token, no header"
-    monkeypatch.setenv("HF_ENDPOINT", "http://hub.local")
     with pytest.raises(ValueError):
-        boot_sequence.hub_space_hardware("thyn-ai/algenta")
+        boot_sequence.hub_space_hardware("thyn-ai/algenta", endpoint="http://hub.local")
+    assert len(seen) == 3, "a non-https endpoint never reaches urlopen"
+    # `space_tier` asks the Hub the injected environment names, with that environment's token
+    bodies = iter([{"stage": "RUNNING", "hardware": {"current": "t4-small"}}])
+    env = {
+        "SPACE_ID": "thyn-ai/algenta",
+        "HF_TOKEN": "hf_env",
+        "HF_ENDPOINT": "https://hub.mirror/",
+    }
+    assert boot_sequence.space_tier(env) == "t4-small"
+    url, headers, _ = seen[3]
+    assert url == "https://hub.mirror/api/spaces/thyn-ai/algenta/runtime"
+    assert headers["Authorization"] == "Bearer hf_env"
+    assert boot_sequence.hub_endpoint({}) == boot_sequence.HF_ENDPOINT_DEFAULT
+    assert (
+        boot_sequence.hub_endpoint({"HF_ENDPOINT": " https://hub.mirror/ "}) == "https://hub.mirror"
+    )
 
 
 @pytest.fixture(scope="module")

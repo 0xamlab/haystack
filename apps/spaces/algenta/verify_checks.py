@@ -1652,7 +1652,7 @@ class Audit:
     dismissals: int = 0
     dismissal_failures: list[str] = field(default_factory=list)
     dismissal_errors: list[str] = field(default_factory=list)  # a listbox that would not open
-    reopens: int = 0  # a click on the focused, closed box opened its list (round 5)
+    reopens: int = 0  # a click on the focused, closed box opened its list, form unchanged (round 5)
     reopen_failures: list[str] = field(default_factory=list)
     reopen_errors: list[str] = field(default_factory=list)
     boot_rows: list[dict[str, str]] = field(default_factory=list)  # stage, elapsed, detail
@@ -2826,13 +2826,16 @@ def _probe_reopen(page: Any, box: Any, name: str, where: str, audit: Audit, labe
             )
             return
         page.wait_for_timeout(200)
-        audit.reopens += 1
         after = page.evaluate(_JS_FORM_STATE)
         changes = _form_diff(before, after)
+        # a click is a reopen or a failure, never both: `reopens + len(reopen_failures)` is the
+        # click count the gate reports (Codna review on #1150 found a changed form counted twice)
         if changes:
             audit.reopen_failures.append(
                 f"{where} '{name.strip()[:24]}' {label}: {'; '.join(changes[:3])}"
             )
+        else:
+            audit.reopens += 1
     except Exception as exc:  # noqa: BLE001 - reported as a probe that could not be read
         audit.reopen_errors.append(
             f"{where} '{name.strip()[:24]}' {label}: {_first_line_of(exc)[:120]}"

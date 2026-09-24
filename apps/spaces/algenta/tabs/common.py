@@ -289,7 +289,7 @@ def render_call_card(
     parity: str = "",
     kernel_label: str = "",
     extra_chips: Sequence[tuple[str, str]] = (),
-    load_1m: float = 0.0,
+    load_1m: float = bench.LOAD_UNREAD,
 ) -> str:
     """One executed call: the latency as the hero, the result, chips, the machine line.
 

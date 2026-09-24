@@ -368,9 +368,23 @@ def test_stability_chip_reads_the_worst_lane_against_the_gate():
     lanes[1].mad_ms = lanes[1].median_ms * 0.18 / bench.ROBUST_SCALE  # spread 18%
     unstable = cards.stability_chip(lanes)
     assert 'alg-chip-warn" data-gate="stability">spread 18% above 15%</span>' in unstable
+    # Codna review on #1150: the chip reads the lane's whole gate. A 50/50 alternation has MAD 0
+    # (spread 0) but a mean 95 % off its median — `lane.stable` is False and the chip names what
+    # failed, never `stable · spread 0.0%`; when both fail, the spread is named
+    lanes[1].median_ms, lanes[1].mad_ms = 1.0, 0.0
+    lanes[1].samples_ms = [1.0, 3.0] * 10 + [1.0]  # median 1.0, mean 1.952
+    assert lanes[1].spread == 0.0 and lanes[1].skew > bench.CV_MAX and not lanes[1].stable
+    skewed = cards.stability_chip(lanes)
+    assert cards.STABLE_TEXT not in skewed
+    assert (
+        'alg-chip-warn" data-gate="stability">mean 95% off the median, above 15%</span>' in skewed
+    )
+    lanes[1].mad_ms = 0.18 / bench.ROBUST_SCALE  # spread 18% and the mean still off
+    assert "spread 18% above 15%" in cards.stability_chip(lanes)
     with pytest.raises(ValueError):
         cards.stability_chip([])
     _assert_clean_copy(stable)
+    _assert_clean_copy(skewed)
 
 
 def test_spread_chips_carry_p95_mad_and_cv_with_units():
@@ -777,11 +791,21 @@ def test_feet_carry_the_stamp_as_time_and_never_rewrite_the_hardware_line():
         in measured
     )
     unread = cards.render_result_card(
-        dataclasses.replace(_cell(12.5, 40.0), load_1m=0.0), title="x", hardware="M3"
+        dataclasses.replace(_cell(12.5, 40.0), load_1m=bench.LOAD_UNREAD),
+        title="x",
+        hardware="M3",
     )
     assert f'<div class="alg-card-foot">M3 · {cards.time_stamp(TS)}</div>' in unread, (
         "no load read, no load"
     )
+    # Codna review on #1150: an idle host's 0.0 is a reading, and rulebook v0.6 discloses it;
+    # only the sentinel (`bench.LOAD_UNREAD`, never a real load) leaves the foot silent
+    idle = cards.render_result_card(
+        dataclasses.replace(_cell(12.5, 40.0), load_1m=0.0), title="x", hardware="M3"
+    )
+    assert f'<div class="alg-card-foot">M3 · host load 0.0 · {cards.time_stamp(TS)}</div>' in idle
+    assert bench.CellResult(status=bench.STATUS_ERROR).load_1m == bench.LOAD_UNREAD < 0
+    assert cards.foot_html("M3", TS) == cards.foot_html("M3", TS, bench.LOAD_UNREAD)
     held = cards.render_held_card(
         title="x", algenta_ms=5.0, incumbent_ms=4.0, incumbent_name="y", hardware="M3", ts_utc=TS
     )

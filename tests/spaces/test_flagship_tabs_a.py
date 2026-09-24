@@ -1003,6 +1003,36 @@ def test_hero_tracker_keeps_the_latest_measured_attempt_and_retries_in_the_backg
         try_tab.HeroTracker().attempt()
 
 
+def test_hero_tracker_records_the_count_and_the_hero_under_one_lock(kernels):
+    """Codna review on #1150: `record()` bumped `recorded` under one lock and swapped the hero
+    under a second — `/health` between the two read a visitor counted with boot's hero still
+    up. A probe lock sees one acquisition, released with the count and the hero both in
+    place."""
+    measure, _ = _noisy_then_measured(kernels, flips=0)
+    tracker = try_tab.HeroTracker(measure)
+    boot_hero = tracker.attempt()
+    assert boot_hero.cell.measured and tracker.hero is boot_hero
+    releases: list[tuple[int, Any]] = []
+
+    class ProbeLock:
+        def __init__(self, inner: Any) -> None:
+            self.inner = inner
+
+        def __enter__(self) -> Any:
+            return self.inner.__enter__()
+
+        def __exit__(self, *exc: Any) -> Any:
+            releases.append((tracker.recorded, tracker.hero))
+            return self.inner.__exit__(*exc)
+
+    tracker._lock = ProbeLock(tracker._lock)
+    visitor = measure()
+    assert visitor.cell.measured and visitor is not boot_hero
+    tracker.record(visitor)
+    assert releases == [(1, visitor)], "one lock, released with the count and the hero together"
+    assert tracker.snapshot()["recorded"] == 1 and tracker.hero is visitor
+
+
 def test_opening_card_is_never_the_warn_card_while_a_verdict_can_still_change(deps, kernels):
     measure, _ = _noisy_then_measured(kernels, flips=1)
     tracker = try_tab.HeroTracker(measure)

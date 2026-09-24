@@ -76,6 +76,11 @@ def test_calls_per_sample_makes_every_sample_last_ten_milliseconds():
     assert bench.calls_per_sample(0.001) == 200 and bench.calls_per_sample(0.0) == 200
     assert bench.calls_per_sample(0.05) == 200 and bench.calls_per_sample(0.051) == 197
     assert bench.calls_per_sample(0.0005, cap=50) == 50
+    # Codna review on #1150: no warm call at all (`warmups=0` leaves the lane at inf) or a NaN
+    # reads like zero — the cap, never 1, which would switch batching off unnoticed
+    assert bench.calls_per_sample(float("inf")) == 200 and bench.calls_per_sample(-1.0) == 200
+    assert bench.calls_per_sample(float("nan")) == 200
+    assert bench.calls_per_sample(float("inf"), cap=50) == 50
     assert bench.calls_per_sample(0.09, sample_min_ms=0) == 1  # the v0.3 protocol
     assert bench.calls_per_sample(0.5, sample_min_ms=2.0) == 4
     assert bench.calls_per_sample(1.0, sample_min_ms=2.0) == 2
@@ -83,6 +88,18 @@ def test_calls_per_sample_makes_every_sample_last_ten_milliseconds():
         bench.calls_per_sample(0.5, cap=0)
     with pytest.raises(ValueError):
         bench.summarise(bench.LaneSpec("a", bench.SIDE_ALGENTA, lambda: 1), [1.0], k=0)
+
+
+def test_run_cell_without_warm_ups_batches_at_the_cap():
+    """Codna review on #1150: `warmups=0` leaves every lane's warm call at inf; k is the cap, not
+    1 — batching stays on for the lane whose cost nothing measured."""
+    clock, log = FakeClock(), []
+    lanes = _lanes(clock, log, [0.05], [0.05])
+    cell = bench.run_cell(
+        lanes, correctness_gate=_gate_ok, warmups=0, clock=clock, loadavg=lambda: 0.0, quota=8
+    )
+    assert cell.measured and cell.warmups == 0 and cell.k == bench.CALLS_MAX
+    assert cell.load_1m == 0.0, "an idle host's load is a reading, kept as read"
 
 
 def test_run_cell_measured_statistics_ratio_direction_and_order():
@@ -459,8 +476,19 @@ def test_cpu_model_falls_back_without_proc(tmp_path: Path):
     assert isinstance(model, str) and model
 
 
-def test_load_and_thread_env():
-    assert bench.load_1m() >= 0.0
+def test_load_and_thread_env(monkeypatch: pytest.MonkeyPatch):
+    read = bench.load_1m()
+    assert read >= 0.0 or read == bench.LOAD_UNREAD
+
+    # Codna review on #1150: the sentinel is never a reading (a load is never negative), so an
+    # idle host's 0.0 stays a reading the foot prints
+    def unavailable() -> tuple[float, float, float]:
+        raise OSError("no load average here")
+
+    monkeypatch.setattr(bench.os, "getloadavg", unavailable)
+    assert bench.load_1m() == bench.LOAD_UNREAD == -1.0
+    monkeypatch.delattr(bench.os, "getloadavg")
+    assert bench.load_1m() == bench.LOAD_UNREAD
     assert bench.thread_env({}) == ""
     assert bench.thread_env({"MKL_NUM_THREADS": "2"}) == "threads 2"
     assert bench.thread_env({"OMP_NUM_THREADS": "8", "OPENBLAS_NUM_THREADS": " 8 "}) == "threads 8"

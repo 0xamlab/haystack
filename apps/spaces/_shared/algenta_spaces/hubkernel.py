@@ -693,6 +693,13 @@ def load(
 NATIVE_SHA_CHARS = 12
 
 
+def bare_file_name(name: str) -> bool:
+    """True when a manifest entry names one file beside the manifest and nothing else: no path
+    separator, no `.`/`..` component, not empty — the only shape `native_dir / name` may take
+    (Codna review on #1150: a crafted `library` would have hashed any file on disk)."""
+    return bool(name) and name not in (".", "..") and "\\" not in name and Path(name).name == name
+
+
 def native_proof(kernel: ModuleType) -> dict[str, Any] | None:
     """What actually executes a call of this package: the compiled Mojo shared library.
 
@@ -734,6 +741,11 @@ def native_proof(kernel: ModuleType) -> dict[str, Any] | None:
         "loaded": False,
         "loader": "ctypes",
     }
+    if not bare_file_name(library):
+        # the manifest is read from a Hub package: a library that is not a bare file name beside
+        # it is never joined onto `native_dir` — no hash, no handle, the reason on the proof
+        proof["error"] = f"manifest library {library!r} is not a bare file name beside the manifest"
+        return proof
     try:
         proof["sha256"] = hashlib.sha256((native_dir / library).read_bytes()).hexdigest()[
             :NATIVE_SHA_CHARS

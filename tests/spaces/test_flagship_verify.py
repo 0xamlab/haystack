@@ -15,6 +15,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 import verify_remote as vr
@@ -1885,6 +1886,57 @@ def test_shared_stamp_reads_a_gradio_6_page(ctx, http, client) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_probe_reopen_files_a_click_once():
+    """Codna review on #1150: `_probe_reopen` files a click as a reopen or as a failure, never
+    both — a list that showed over a changed form is one failure, and `reopens +
+    len(reopen_failures)` is the click count the gate reports."""
+
+    class Keyboard:
+        def press(self, key: str) -> None:
+            pass
+
+    class Locator:
+        def filter(self, **kw: Any) -> Locator:
+            return self
+
+        def count(self) -> int:
+            return 0
+
+    class Page:
+        def __init__(self, states: list[dict[str, Any]]) -> None:
+            self.states = iter(states)
+            self.keyboard = Keyboard()
+
+        def evaluate(self, script: str) -> dict[str, Any]:
+            return next(self.states)
+
+        def locator(self, selector: str) -> Locator:
+            return Locator()
+
+        def wait_for_selector(self, selector: str, **kw: Any) -> None:
+            pass
+
+        def wait_for_timeout(self, ms: int) -> None:
+            pass
+
+    class Box:
+        def get_attribute(self, name: str) -> str:
+            return "false"
+
+        def click(self) -> None:
+            pass
+
+    same = {"combos": [["Family", "text"]], "fields": 3}
+    changed = {"combos": [["Family", "graph"]], "fields": 3}
+    audit = vc.Audit()
+    vc._probe_reopen(Page([same, same]), Box(), "Family", "desktop/light/play", audit, "click")
+    assert audit.reopens == 1 and audit.reopen_failures == []
+    vc._probe_reopen(Page([same, changed]), Box(), "Family", "desktop/light/play", audit, "click")
+    assert audit.reopens == 1, "a changed form is not a reopen"
+    assert audit.reopen_failures == ["desktop/light/play 'Family' click: Family 'text' -> 'graph'"]
+    assert audit.reopens + len(audit.reopen_failures) == 2, "two clicks, each filed once"
+
+
 def _with_audit(monkeypatch: pytest.MonkeyPatch, **fields) -> None:
     vc.reset_clients()  # the audit is cached per base URL
     audit = vc.Audit(
@@ -2109,6 +2161,18 @@ def test_round_3_gates_fail_on_each_defect(ctx, client, monkeypatch) -> None:
     assert detail.startswith(
         "2 of 10 clicks opened nothing or changed the form: desktop/light/play"
     )
+    # Codna review on #1150: a click whose list showed over a changed form is a failure, not a
+    # reopen as well — 3 clean reopens and 2 changed forms are 5 clicks, never 7
+    _with_audit(
+        monkeypatch,
+        reopens=3,
+        reopen_failures=[
+            "desktop/light/play 'Family' click after Escape: Family 'text' -> 'graph'",
+            "desktop/light/race 'Race' click after Tab-arrival: rows '123' -> '200'",
+        ],
+    )
+    detail = _detail(_run(ctx, "dropdown_reopens"), "dropdown_reopens")
+    assert detail.startswith("2 of 5 clicks opened nothing or changed the form: desktop/light/play")
     _with_audit(monkeypatch, reopens=9, reopen_errors=["desktop/light/eco 'Family' Tab-arrival: x"])
     assert "1 probe(s) not measured" in _detail(_run(ctx, "dropdown_reopens"), "dropdown_reopens")
     _with_audit(monkeypatch, reopens=0)

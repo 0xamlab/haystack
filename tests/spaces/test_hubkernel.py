@@ -836,6 +836,21 @@ def test_native_proof_reads_the_package_manifest_and_the_live_ctypes_handle(tmp_
     native.runtime = refuse
     broken = hk.native_proof(kernel)
     assert broken["loaded"] is False and broken["error"].startswith("OSError: dlopen failed")
+    # Codna review on #1150: the manifest is Hub content — a `library` that is not a bare file
+    # name beside it (a parent path, an absolute path, a subdirectory) is never joined onto
+    # `_native`: no hash of any other file on disk, no handle asked, `loaded` False, the reason
+    native.runtime = lambda: Runtime()
+    secret = tmp_path / "secret.txt"
+    secret.write_bytes(b"not for the health page")
+    for crafted in ("../../secret.txt", str(secret), "..", ".", "", "sub/lib.so", "..\\secret.txt"):
+        (pkg / "_native" / "manifest.json").write_text(
+            _json.dumps({"library": crafted, "abi_version": 1})
+        )
+        guarded = hk.native_proof(kernel)
+        assert guarded["loaded"] is False and guarded["sha256"] == "", crafted
+        assert guarded["error"].endswith("is not a bare file name beside the manifest"), crafted
+        assert "abi_answered" not in guarded, crafted
+    assert hk.bare_file_name("libalgenta_fake.so") and not hk.bare_file_name("lib/x.so")
     # no execute, or no manifest: no proof at all (never a fabricated one)
     assert hk.native_proof(types.ModuleType("empty")) is None
     (pkg / "_native" / "manifest.json").unlink()

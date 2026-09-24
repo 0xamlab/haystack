@@ -2828,14 +2828,25 @@ def test_round_4_launch_review_regressions(tmp_path: Path, deps: Deps):
     assert "M3 · host load 2.5 · " in call
 
 
-def test_round_4_blocks_share_the_edge_and_editors_are_read_only(deps: Deps):
+def test_round_4_blocks_share_the_edge_and_editors_are_read_only(
+    tmp_path: Path, deps: Deps, monkeypatch: pytest.MonkeyPatch
+):
     """The rendered side of the round-4 fixes: every Races, LLM kernels, Governed and Ecosystem
     gr.HTML payload carries `common.BLOCK_CLASS`, and every code editor on those tabs is
     read-only (a live editor swallows Tab). Skipped where gradio is not installed, like the
-    other render tests; the deployed Space's own gates measure the same facts."""
+    other render tests; the deployed Space's own gates measure the same facts. The Races tab
+    gets a prepared state: `build(deps)` alone would fetch the qualification file from the Hub
+    (Codna review on #1150 — a unit test never reaches the network)."""
     gr = pytest.importorskip("gradio")
+    race_state = _race_state(tmp_path)
+    monkeypatch.setattr(
+        race_tab, "build_state", lambda *a, **k: pytest.fail("build_state reads the Hub")
+    )
     for spec_mod in (race_tab, llm_tab, gov_tab, eco_tab):
-        spec = spec_mod.build(deps)
+        if spec_mod is race_tab:
+            spec = spec_mod.build(deps, state=race_state)
+        else:
+            spec = spec_mod.build(deps)
         blocks, handles = _render(spec, gr)
         html_blocks = [b for b in blocks.blocks.values() if type(b).__name__ == "HTML"]
         carded = [b for b in html_blocks if common.BLOCK_CLASS in (b.elem_classes or [])]

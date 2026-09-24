@@ -48,6 +48,7 @@ the build if one is missing — the runtime never downloads.
 from __future__ import annotations
 
 import argparse
+import functools
 import logging
 import os
 import sys
@@ -920,18 +921,28 @@ def run_boot(
 SpaceRuntime = Callable[[str, str | None], str]
 #: One call at boot; the host stage waits this long for the Hub at most.
 TIER_TIMEOUT_S = 5.0
+#: The Hub, when the environment names no other (`HF_ENDPOINT`: a mirror, a proxy).
+HF_ENDPOINT_DEFAULT = "https://huggingface.co"
 
 
-def hub_space_hardware(space_id: str, token: str | None = None) -> str:
+def hub_endpoint(env: Mapping[str, str]) -> str:
+    """`HF_ENDPOINT` from `env`, else `HF_ENDPOINT_DEFAULT`; no trailing slash."""
+    return (env.get("HF_ENDPOINT", "").strip() or HF_ENDPOINT_DEFAULT).rstrip("/")
+
+
+def hub_space_hardware(
+    space_id: str, token: str | None = None, *, endpoint: str = HF_ENDPOINT_DEFAULT
+) -> str:
     """The tier the Hub runs `space_id` on right now (`cpu-upgrade`, `l4x1`), from the Space
     runtime endpoint — the current hardware, else the requested one while it changes; "" when
-    the Hub does not say. A private Space answers only with its token."""
+    the Hub does not say. A private Space answers only with its token. `endpoint` is the Hub
+    the caller read from its own environment (`hub_endpoint`), never `os.environ` here: the
+    token goes to the Hub the injected environment names (Codna review on #1150)."""
     import json
     import urllib.request
     from urllib.parse import quote, urlsplit
 
-    endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
-    url = f"{endpoint}/api/spaces/{quote(space_id, safe='/')}/runtime"
+    url = f"{endpoint.rstrip('/')}/api/spaces/{quote(space_id, safe='/')}/runtime"
     if urlsplit(url).scheme != "https":
         raise ValueError("the Hub endpoint must be https")
     headers = {"Accept": "application/json", "User-Agent": "algenta-spaces-boot"}
@@ -960,7 +971,11 @@ def space_tier(env: Mapping[str, str], *, runtime: SpaceRuntime | None = None) -
     space_id = env.get("SPACE_ID", "").strip()
     if not space_id:
         return ""
-    ask = hub_space_hardware if runtime is None else runtime
+    ask = (
+        functools.partial(hub_space_hardware, endpoint=hub_endpoint(env))
+        if runtime is None
+        else runtime
+    )
     try:
         tier = ask(space_id, env.get("HF_TOKEN", "").strip() or None).strip()
     except Exception as exc:  # the foot names no tier rather than a guessed one
