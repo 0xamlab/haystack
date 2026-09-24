@@ -185,17 +185,29 @@ services:
 
   # ── MinIO setup (create bucket on first run) ──────────────────────────────
   minio-setup:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    # docker.io/minio/mc was withdrawn with the rest of MinIO's community images (2026-09-24).
+    # Chainguard's minio-client, `latest-dev` variant by index digest: the runtime variant has
+    # no /bin/sh, this one does, so the alias/mb script below can run.
+    image: cgr.dev/chainguard/minio-client@sha256:614e083a12c6dc779f13f97e01b13afda4021a8ce3f4021a2fcf23ec86f46837
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-algenta_minio} ${S3_SECRET_ACCESS_KEY:-algenta_minio_secret} &&
-      mc mb --ignore-existing local/${S3_BUCKET_NAME:-algenta-results} &&
-      mc anonymous set download local/${S3_BUCKET_NAME:-algenta-results} &&
-      echo 'MinIO bucket ready'
-      "
+    # The credentials reach the script as environment variables and are expanded by the shell
+    # inside double quotes (`$$` keeps Compose from interpolating them into the command string),
+    # so a secret with spaces, `$`, `;` or backticks is never evaluated as shell. The bucket is
+    # private: the API hands out presigned download URLs (storage_service), so no anonymous
+    # policy is set — a world-readable results bucket was a defect, not a feature.
+    environment:
+      MC_ACCESS_KEY: ${S3_ACCESS_KEY_ID:-algenta_minio}
+      MC_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:-algenta_minio_secret}
+      MC_BUCKET: ${S3_BUCKET_NAME:-algenta-results}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        mc alias set local http://minio:9000 "$$MC_ACCESS_KEY" "$$MC_SECRET_KEY" &&
+        mc mb --ignore-existing "local/$$MC_BUCKET" &&
+        echo 'MinIO bucket ready'
 
 volumes:
   postgres_data:

@@ -61,7 +61,9 @@ services:
 
   # ─── MinIO bucket initialization ────────────────────────────────────────────
   minio-init:
-    image: minio/mc:latest
+    # docker.io/minio/mc withdrawn (2026-09-24) — Chainguard's minio-client (`latest-dev`, has
+    # /bin/sh for the script below), by digest
+    image: cgr.dev/chainguard/minio-client@sha256:614e083a12c6dc779f13f97e01b13afda4021a8ce3f4021a2fcf23ec86f46837
     container_name: decision-engine-minio-init
     depends_on:
       minio:
