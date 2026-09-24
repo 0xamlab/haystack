@@ -1,0 +1,4 @@
+# The packed-int8 captured-graph engine for the L4 (qwen3_p3_graph_cuda, sm_89, with its runtime
+# closure and manifest.json) is copied here at deploy time from the sm_89 build (DEPLOY.md) and
+# uploaded with the folder; it is proprietary and over the 500 KB commit ceiling, never committed.
+engine/

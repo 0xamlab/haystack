@@ -5,11 +5,11 @@ colorFrom: gray
 colorTo: green
 sdk: docker
 app_port: 7860
-hardware: t4-small
-suggested_hardware: t4-small
+hardware: l4x1
+suggested_hardware: l4x1
 pinned: false
 license: apache-2.0
-short_description: "Qwen3-1.7B on Algenta CUDA kernels — parity probe"
+short_description: "Qwen3-0.6B-Base: the published CUDA race, live on an L4"
 tags:
   - kernels
   - mojo
@@ -19,67 +19,80 @@ tags:
 
 # Algenta GPU probe
 
-Qwen3-1.7B decoded on an NVIDIA GPU by the compiled CUDA kernels published at
-[thyn-ai/algenta-llm](https://huggingface.co/thyn-ai/algenta-llm), and checked token by token
-against an independent reference. One fixed prompt, eight greedy tokens, the same token ids on
-both sides or the index where they part. The same decode without Algenta — transformers on the
-same GPU, float32 and float16 — sits beside it.
+The published single-stream race, run live on one NVIDIA L4: the CUDA engine that ships in
+Algenta's runtime wheel against llama.cpp built with GGML_CUDA at the benchmark pages' pinned
+commit, on Qwen3-0.6B-Base, the same 256-token prompt, 64 greedy tokens, one warm-up excluded
+and the median of three timed runs, exactly the shape of the published L4 cell. The published
+figures of that cell are printed beneath the measured ones, marked as published, with a link to
+the page they come from. Two secondary rows run beside the race on the same GPU with the same
+prompt: the compiled CUDA kernels published at
+[thyn-ai/algenta-llm](https://huggingface.co/thyn-ai/algenta-llm) on their f32 parity path, and
+plain transformers in float32 and float16. Every lane's tokens are checked against a
+transformers float32 CPU reference, the first 16 as the published oracle and all 64.
 
-This Space is private and stays paused between runs. A run is one boot: it costs a few minutes
-of `t4-small` time and leaves `run.json` behind.
+This Space is private and stays paused between runs. A run is one boot: it costs some minutes of
+`l4x1` time and leaves `run.json` behind.
 
-## What it proves
+## What it measures
 
-- The Hub's GPU hardware meets the CUDA build's floor natively: NVIDIA driver 580 or later,
-  a compute capability the build carries a library for (sm_75, sm_80, sm_89, sm_90).
-- `kernels.get_kernel("thyn-ai/algenta-llm", backend="cuda")`, pinned to the published
-  revision, resolves the `torch29-cxx11-cu128-x86_64-linux` variant, the native manifest
-  declares the 6144 staging tier that admits Qwen3-1.7B, and the runtime loads the library the
-  device's capability calls for.
-- The Qwen3-1.7B snapshot converts to the f64 CUDA blob with
-  `algenta.inference.prepare_model_checkpoint`, timed.
-- `DecodeSession` produces eight greedy tokens for the prompt, with the session open time and
-  each step's wall time.
-- Plain transformers on the same GPU decodes the same prompt with the same greedy settings, in
-  float32 (the precision of Algenta's resident weights) and in float16, each lane its own model
-  load with a warm-up generate excluded; the page prints the two beside the Algenta lane —
-  tokens, parity, load, time to first token, steady per-token time, tokens per second, device
-  memory — every number measured in the same run, and a lane that cannot run says so with a
-  code.
-- transformers in float32 on the CPU produces the same eight token ids, or the page names the
-  first divergent index and the reference's top-2 logit margin there.
+- Lane A, the shipped engine: `conform_generate_cuda` from the installed `algenta-runtime-native`
+  wheel, located the way `algenta serve` locates it, run as the published battery runs it
+  (`<checkpoint> --max-new 64 --prompt-len 256`). Its signed manifest names its compile target
+  and build; the probe prints them and refuses to launch an engine whose target cannot load on
+  the device, with a code that says so. When the Space variable `ALGENTA_CUDA_ENGINE` names the
+  packed-int8 captured-graph driver of the published cells (`qwen3_p3_graph_cuda`, built for
+  the L4's sm_89 and shipped beside the app), lane A runs that driver instead, through its own
+  protocol: its gate battery first (a 16-token oracle, 3 x 128 steps of graph-vs-per-dispatch
+  token identity, an engagement check), then gen=64 and gen=256 in one process; the page names
+  the engine's build and the campaign prompt fixture the whole run then uses.
+- Lane B, the published opponent: `llama-server -ngl 99` on the F16 GGUF converted from the same
+  snapshot at image build, the same 256 ids sent as tokens, greedy; llama.cpp's own timings
+  (`predicted_per_second`, `prompt_per_second`) are the figures.
+- Lane C, the Hub kernels: `kernels.get_kernel("thyn-ai/algenta-llm", backend="cuda")` at the
+  published revision, the `DecodeSession` over the same f64 blob, one warm-up session excluded,
+  three timed sessions.
+- Lane D, the naive stack: transformers `generate` on the same GPU in float32 and float16, each
+  its own model load, one warm-up generate excluded, three timed generates.
+- The reference: transformers float32 greedy on the CPU, the same ids, with each step's top-2
+  logit margin, so a divergence names the index and how close the call was.
+
+A lane that cannot run says so with a code (`engine_target_mismatch`, `llama_server_failed`,
+`baseline_oom`, ...) and the other lanes still run; the record is written when the driver, the
+conversion and the reference are ok.
 
 ## How the run is made
 
 The probe runs at boot, one phase after another, each in its own process with a wall-clock
-budget: `driver`, `kernel`, `convert`, `decode`, `baseline`, `reference`, then `record`.
-`/health` is the live record of the run: the phase that is running, every phase's status, code
-and time, and each fact once it has been measured. The page at `/` renders that record; a
-number appears only after it was measured in this container, and a phase that cannot run says
-so with a code. `/run.json` is the finished record with the evidence rows' fields and the
-`baseline` block, written once every phase that decides the verdict is ok (a baseline that
-could not run is recorded with its code, not as a stop).
+budget: `driver`, `kernel`, `convert`, `engine`, `llama`, `decode`, `baseline`, `reference`,
+then `record`. `/health` is the live record: the phase that is running, every phase's status,
+code and time, and each fact once it has been measured. The page at `/` renders that record; a
+number appears only after it was measured in this container, and a lane that cannot run says so
+with a code. `/run.json` is the finished record with the evidence rows' fields.
 
-The image bakes the kernel snapshot and the model snapshot at build time and boots with
-`HF_HUB_OFFLINE=1`, so nothing downloads at boot. The 13.8 GB conversion happens on the Space's
-disk during the `convert` phase and is reused while the Space stays up.
+The image builds llama.cpp in a builder stage, bakes the kernel snapshot, the model snapshot and
+the F16 GGUF at build time and boots with `HF_HUB_OFFLINE=1`, so nothing downloads at boot. The
+f64 conversion (about 4.8 GB) happens on the Space's disk during the `convert` phase and serves
+lanes A and C.
 
 ## Run it yourself
 
 ```sh
-pip install kernels torch
+pip install algenta kernels torch
+python -c 'from algenta.serve.engine import resolve_engine
+print(resolve_engine("cuda"))'
 python -c 'from kernels import get_kernel
 k = get_kernel("thyn-ai/algenta-llm", version=1, backend="cuda", trust_remote_code=["thyn-ai/algenta-llm"])
 print(k.__file__)'
 ```
 
-Duplicate this Space on GPU hardware to run the full probe on your own account; the Dockerfile
+Duplicate this Space on GPU hardware to run the full race on your own account; the Dockerfile
 carries every pin.
 
 ## Boundary
 
 Space code is Apache-2.0. The kernels it loads are published under the Algenta Community
 License 1.1; commercial plans at [algenta.ai/pricing](https://algenta.ai/pricing).
-[Qwen/Qwen3-1.7B](https://huggingface.co/Qwen/Qwen3-1.7B) is Apache-2.0, by the Qwen team.
-Documentation: [docs.algenta.ai](https://docs.algenta.ai). Questions and results:
+[Qwen/Qwen3-0.6B-Base](https://huggingface.co/Qwen/Qwen3-0.6B-Base) is Apache-2.0, by the Qwen
+team; llama.cpp is MIT, by the ggml authors. Documentation:
+[docs.algenta.ai](https://docs.algenta.ai). Questions and results:
 [Discord](https://discord.gg/w8NDsph9an).

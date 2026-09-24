@@ -39,19 +39,82 @@ info = api.upload_folder(
 print(info.commit_url, info.oid)
 ```
 
-The README frontmatter (`sdk: docker`, `hardware: t4-small`) sets the SDK; `delete_patterns`
-removes every old file in the same commit. The Hub starts the image build at once, on its own
-builders (the build itself is not GPU time): torch cu128 plus the 4.1 GB Qwen3-1.7B snapshot
-take about 10 to 20 minutes.
+The README frontmatter (`sdk: docker`, `hardware: l4x1`) sets the SDK; `delete_patterns`
+removes every old file in the same commit.
+
+## 1b. Ship the sm_89 engine (restores lane A on the L4)
+
+The wheel's engine is `sm_90a` and the f32 conformance session; on the L4 lane A refuses it
+with `engine_target_mismatch`. The packed-int8 captured-graph driver of the published cells,
+`qwen3_p3_graph_cuda`, built for `sm_89` with its runtime closure, restores the lane. It is
+proprietary and above the 500 KB commit ceiling, so it never enters git: it is copied into the
+Space folder right before the upload and travels with it (`engine/` is git-ignored; the
+Dockerfile exposes it at `/home/user/engine` when present).
+
+Build it (about three minutes; an `ubuntu:22.04` linux/amd64 container with the pinned Mojo
+toolchain, the recipe of `.github/scripts/build_cuda_engine_linux_amd64.sh` without the CUDA
+toolkit and the tensor-core shim, `-D ALGENTA_GPU -D ALGENTA_CUDA --target-accelerator sm_89`):
+
+```sh
+bash "/Volumes/Samsung SSD 990 PRO 4TB Media/algenta-tooling/cuda-engine-sm89/scripts/run_build.sh"
+# -> cuda-engine-sm89/out/{qwen3_p3_graph_cuda, lib*.so, manifest.json, engine-build.json}
+#    cuda-engine-sm89/BUILD.md records every command, the ELF gate and the sha256 of each file
+```
+
+Copy it in, check it, and upload with the closure allowed through (the default `IGNORE`
+drops `*.so`, which would strip the engine's libraries):
+
+```python
+import hashlib
+import json
+import shutil
+import sys
+from pathlib import Path
+
+OUT = Path("/Volumes/Samsung SSD 990 PRO 4TB Media/algenta-tooling/cuda-engine-sm89/out")
+ENGINE_DIR = SOURCE / "engine"
+shutil.rmtree(ENGINE_DIR, ignore_errors=True)
+shutil.copytree(OUT, ENGINE_DIR)
+subprocess.run([sys.executable, "scripts/hf_kernels/elf_check.py", str(ENGINE_DIR)], check=True)
+manifest = json.loads((ENGINE_DIR / "manifest.json").read_text())
+assert manifest["engine"]["cuda_target"] == "sm_89"
+for entry in manifest["artifacts"]:
+    assert hashlib.sha256((ENGINE_DIR / entry["name"]).read_bytes()).hexdigest() == entry["sha256"]
+
+IGNORE_WITH_ENGINE = ["**/__pycache__/**", "*.pyc", "tests/**", "**/tests/**", "*.whl", "*.dylib"]
+info = api.upload_folder(
+    folder_path=str(SOURCE),
+    repo_id=REPO_ID,
+    repo_type="space",
+    commit_message=f"deploy {sha} + sm_89 packed-int8 graph engine",
+    delete_patterns=["**"],
+    ignore_patterns=IGNORE_WITH_ENGINE,
+)
+api.add_space_variable(REPO_ID, "ALGENTA_CUDA_ENGINE", "/home/user/engine/qwen3_p3_graph_cuda")
+```
+
+The libraries (1 to 24 MB each) go through LFS on their own. `ALGENTA_CUDA_ENGINE` is the
+resolver's first override (`algenta.serve.engine.CUDA_ENGINE_ENV_VARS`), exactly as `algenta
+serve` honours it; with it set, lane A speaks the driver's protocol (`<checkpoint> --runs 3`:
+the gate battery, then gen=64 and gen=256 in one process) and the whole run converts and
+races the campaign prompt fixture the driver's oracle is bound to (`PROBE_PROMPT_FIXTURE`
+overrides the choice; a mismatch fails the lane closed with `engine_prompt_fixture_mismatch`).
+The page then names the engine as "packed-int8 captured-graph, sm_89, built <date> from
+<source commit>" from the manifest beside the binary. To go back to the wheel's engine, delete
+the variable (`api.delete_space_variable(REPO_ID, "ALGENTA_CUDA_ENGINE")`) and upload without
+`engine/`. Setting the variable on a running Space restarts it. The Hub starts the image build at once, on its own
+builders (the build itself is not GPU time): the llama.cpp CUDA compile for sm_89 (10 to 25
+minutes), torch cu128 plus the 1.2 GB Qwen3-0.6B-Base snapshot and the GGUF conversion (10 to
+20 minutes).
 
 ## 2. Request the GPU and wait for the new revision
 
 ```python
 import time
 
-api.request_space_hardware(REPO_ID, "t4-small", sleep_time=900)
+api.request_space_hardware(REPO_ID, "l4x1", sleep_time=900)
 
-deadline = time.monotonic() + 60 * 60
+deadline = time.monotonic() + 90 * 60
 seen_build = False
 while True:
     rt = api.get_space_runtime(REPO_ID)
@@ -63,7 +126,7 @@ while True:
     elif seen_build:
         break
     if time.monotonic() > deadline:
-        raise SystemExit(f"{REPO_ID} still {stage} after 60 min")
+        raise SystemExit(f"{REPO_ID} still {stage} after 90 min")
     print(stage, rt.hardware, rt.requested_hardware)
     time.sleep(20)
 ```
@@ -73,7 +136,10 @@ stage is the new one (the `deploy.py` rule). `sleep_time=900` pauses the Space b
 15 minutes without traffic, the backstop if step 4 is forgotten. A Space that was paused before
 this deploy needs `api.restart_space(REPO_ID)` after `request_space_hardware`, or it stays paused
 (observed 2026-09-22). `t4-small` schedules within a few minutes; `l4x1` stalled for 31 minutes
-without hardware on 2026-09-22.
+without hardware on 2026-09-22, so the deadline above allows an hour and a half. The
+`deploy_gpu_probe*.py` scripts in `algenta-tooling/scripts` do the same: for the race, change
+their `request_space_hardware(REPO, "t4-small", sleep_time=900)` to `"l4x1"` and their output
+directory to `gpu-probe-run15`.
 
 ## 3. Read the run
 
@@ -81,17 +147,20 @@ The Space is private, so its host answers only with the token:
 
 ```sh
 H="Authorization: Bearer $HF_TOKEN"
-curl -sS -H "$H" https://thyn-ai-algenta-gpu-probe.hf.space/health | python3 -m json.tool | head -40
-# poll until "status": "ok" (about 3 to 4 minutes after RUNNING: 82 s conversion, 42 s session
-# open, 20 s reference) or "status": "error" with the failing phase's code
+curl -sS -H "$H" https://thyn-ai-algenta-gpu-probe.hf.space/health | python3 -m json.tool | head -60
+# poll until "status": "ok" (about 6 to 8 minutes after RUNNING: 30 s conversion, the four lanes,
+# the reference) or "status": "error" with the failing phase's code; `race.race[*].code` names a
+# lane that could not run
 curl -sS -H "$H" https://thyn-ai-algenta-gpu-probe.hf.space/run.json \
-  > docs/hf-kernels/evidence/artifacts/gpu-probe-run13-t4-small-qwen3-1p7b.json
+  > docs/hf-kernels/evidence/artifacts/gpu-probe-run15-l4x1-qwen3-0p6b-race.json
 ```
 
-Commit the record next to run 12's and add or update the evidence rows
-(`GPU-SPACE-DRIVER-001`, `GPU-SPACE-PARITY-001` in `docs/hf-kernels/evidence/record.json`) from
-its `evidence` block. The Space's container logs (`api.get_space_runtime` has no log API; use the
-Space page's Logs tab) carry each stage's stderr.
+Commit the record next to the earlier ones and add or update the evidence rows
+(`GPU-SPACE-DRIVER-001`, `GPU-SPACE-PARITY-001`, `GPU-SPACE-RACE-001` in
+`docs/hf-kernels/evidence/record.json`) from its `evidence` block. The Space's container logs
+(`api.get_space_runtime` has no log API; use the Space page's Logs tab) carry each stage's
+stderr; `llama-server`'s own log is `~/work/llama-server.log` inside the container and its tail
+is in the `llama` block.
 
 ## 4. Pause
 
@@ -101,12 +170,14 @@ api.pause_space(REPO_ID)
 
 Billing stops while paused; the hardware setting is kept. To run the probe again:
 `api.restart_space(REPO_ID)` (a restart reruns the probe from boot; the image and its baked
-assets are reused, the 13.8 GB conversion is redone because the Space's disk is ephemeral).
-To change the hardware for a run on another GPU (`l4x1`, sm_89, which run 12 did not
-re-verify), `request_space_hardware(REPO_ID, "l4x1", sleep_time=900)` then `restart_space`.
+assets are reused, the 4.8 GB conversion is redone because the Space's disk is ephemeral).
+To run on another GPU, `request_space_hardware(REPO_ID, "<hardware>", sleep_time=900)` then
+`restart_space`: `h100` is where the wheel's `sm_90a` engine loads (see
+`docs/spaces/GPU-PROBE.md`); `t4-small` runs the secondary rows only, since the llama.cpp build
+targets sm_89.
 
 ## Cost
 
-`t4-small` was $0.60 per hour on 2026-09-22. A build-to-pause cycle is about 10 minutes of
-GPU time (the build is not billed as GPU time); run 12 billed about 2.7 minutes. Paused, the
-Space costs nothing.
+`l4x1` was $0.80 per hour on 2026-09-24 (`t4-small` $0.40). A build-to-pause cycle is about 10
+minutes of GPU time (the build is not billed as GPU time), about $0.15. Paused, the Space costs
+nothing.

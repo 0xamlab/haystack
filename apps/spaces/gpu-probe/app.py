@@ -1,14 +1,16 @@
 """The GPU probe Space: one page, `/health`, `/run.json`, and the run itself at boot.
 
 The probe starts in a background thread when the server starts (`PROBE_AUTOSTART`, default on)
-and runs the six measuring stages of `probe.py` one after another, each in its own process
-with a wall-clock budget, then writes `run.json`. `/health` is the live record: the phase that
-is running, every phase's status, code and time, and each fact once it is measured. The page at
+and runs the measuring stages of `probe.py` one after another, each in its own process with a
+wall-clock budget, then writes `run.json`. `/health` is the live record: the phase that is
+running, every phase's status, code and time, and each fact once it is measured. The page at
 `/` renders that same record in plain HTML; every number on it was measured in this container
 during this boot, and what has not been measured yet is shown as absent, never as a stored
-result. A failed phase is its code and one sentence, never a traceback. Right under the verdict
-the page puts the same decode without Algenta beside it: transformers on the same GPU, float32
-and float16, one column each, measured in the same run.
+result. A failed phase or lane is its code and one sentence, never a traceback. The first
+section is the published race, live: the shipped Algenta engine beside llama.cpp F16 on the
+same GPU, with the published figures of the same cell printed as such beneath the measured
+ones; the second section is the secondary rows, the Hub kernels' parity path and plain
+transformers, same GPU, same prompt, same tokens.
 
 Environment: `PROBE_WORK_DIR` (the converted checkpoint and stage reports; default
 `~/work`), `PROBE_RUN_JSON` (default `<work>/run.json`), `PROBE_AUTOSTART` (`0` to serve
@@ -26,7 +28,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -39,41 +41,60 @@ log = logging.getLogger("gpu_probe.app")
 
 APP_DIR = Path(__file__).resolve().parent
 TITLE = "Algenta GPU probe"
-HEADLINE = "Qwen3-1.7B on Algenta CUDA kernels"
+HEADLINE = "Qwen3-0.6B-Base, the published race, live"
 SUBLINE = (
-    "One prompt, eight greedy tokens, one GPU: the Hub kernel against a transformers reference."
+    "Algenta's shipped CUDA engine beside llama.cpp F16 on one GPU: gen=64, the benchmarked shape."
 )
 STAGE_PHASES: tuple[str, ...] = tuple(p for p in core.PHASES if p != "record")
 HEALTH_PATH = "/health"
 RUN_JSON_PATH = "/run.json"
 ABSENT = "—"
-SIDE_BY_SIDE_TITLE = "Side by side on the same {gpu}"
-SIDE_BY_SIDE_PREDATES = (
-    "This record predates the baseline stage: the transformers lanes were not part of this "
-    "run, so only the Algenta lane is shown."
+RACE_TITLE = "The published race, live on this {gpu}"
+SECONDARY_TITLE = "Secondary rows on the same {gpu}: the Hub kernels and the naive stack"
+RACE_PREDATES = (
+    "This record predates the race stages: the Algenta engine and llama.cpp were not part of "
+    "this run, so only the secondary rows are shown."
 )
-SIDE_BY_SIDE_CAPTION = (
-    "Same prompt, same eight greedy tokens requested, same GPU; the precision of each lane is "
-    "printed. Steady per-token is the mean of steps {steady_from} to {n}, and tokens per second "
-    "(steady) is 1000 over it; tokens per second over all {n} steps divides {n} by the sum of "
-    "every step. Time to first token counts from the timed call's start: for the Algenta lane the "
-    "prefill runs at session open, so its time to first token is the session open, which "
-    "includes the f64 to f32 weight upload, and its warm-up is step 2, inside the timed steps. "
-    "The transformers lanes ran one warm-up generate first, excluded from every timed figure; "
-    "their step 1 is the prefill, and every step is the gap between two consecutive tokens "
-    "reaching the host through the generate streamer. Load is the session open for Algenta and "
-    "from_pretrained plus the move to the device for transformers."
+RACE_CAPTION = (
+    "Same checkpoint, the same {n_prompt}-token prompt (the benchmark battery's eight-id cycle), "
+    "{gen} greedy tokens requested, the same GPU in the same run; {warmup} warm-up run excluded, "
+    "then {runs} timed runs, each figure the median. Decode tokens per second is each engine's "
+    "own definition, the one the published cells used: for Algenta the tokens after the first "
+    "over the time of their steps (CONFORM_TIMING decode_tok_s), for llama.cpp its "
+    "predicted_per_second. Prefill tokens per second is the prompt over the prefill time; time "
+    "to first token is that prefill (the first token is computed by it). Device memory is the "
+    "peak nvidia-smi memory.used while the lane's process ran, minus the idle baseline. Every "
+    "lane's tokens are compared with a transformers float32 CPU reference on the same ids; the "
+    "published gate's form, the first {oracle} tokens, is printed as the oracle."
 )
-OPEN_NOTE = "f64 blob uploaded as f32, prompt prefilled"
-FIRST_STEP_NOTE = "prefill done at session open"
-TTFT_NOTE = "= session open"
+SECONDARY_CAPTION = (
+    "Same prompt, same {gen} greedy tokens requested, same GPU; decode tokens per second is the "
+    "tokens after the first over the time of their steps, the race's definition. The Hub lane "
+    "pays its prefill inside the session open together with the f64 to f32 weight upload, so "
+    "its time to first token is the session open; the transformers lanes load the model once "
+    "and pay the prefill as step 1 of each generate. Steady per-token is the mean of steps "
+    "{steady_from} onwards. One warm-up session or generate is excluded, then {runs} timed runs."
+)
+P3_LANE_NOTE = (
+    "Algenta engine: the packed-int8 captured-graph driver of the published cells ran here, "
+    "selected by ALGENTA_CUDA_ENGINE. It runs its gate battery first (16 greedy tokens against "
+    "its campaign oracle through one graph chain, 3 seeds x 128 steps graph == per-dispatch "
+    "token for token, per-step wall flat and faster than per-dispatch at four depths), then "
+    "gen=64 and gen=256 for three arms in one process, one untimed warm-up and {runs} timed "
+    "runs per cell, each figure the cell's median with its relative IQR against the frozen 5 % "
+    "bar. Its decode figure is the generated tokens over the replay window, prefill excluded, "
+    "the published cell's definition; it prints no prefill time and, when the oracle passes, "
+    "no token beyond the 16 it checked, so the whole run uses the campaign prompt fixture that "
+    "oracle is bound to and the token row shows those 16."
+)
+PUBLISHED_LABEL = "Published {date}, same cell"
 _MIB_RE = re.compile(r"^\s*(\d+)\s*MiB\s*$")
 
 PAGE_CSS = """
 :root { color-scheme: light dark; }
 body { margin: 0; padding: 24px 16px 48px; font: 16px/1.5 -apple-system, BlinkMacSystemFont,
   "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1d1d1f; background: #ffffff; }
-main { max-width: 860px; margin: 0 auto; }
+main { max-width: 900px; margin: 0 auto; }
 h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
 h2 { font-size: 18px; margin: 32px 0 8px; }
 p { margin: 0 0 16px; }
@@ -89,6 +110,9 @@ table.lanes th { width: auto; }
 table.lanes th[scope="row"] { width: 22%; }
 table.lanes th[scope="col"] { font-weight: 600; color: inherit; }
 table.lanes td { width: 26%; }
+table.lanes tr.hero td { font-size: 22px; font-weight: 600; }
+table.lanes tr.published { background: #f5f5f7; color: #515154; font-style: italic; }
+table.lanes tr.published th[scope="row"] { color: #515154; }
 .lanes-wrap { overflow-x: auto; }
 .caption { color: #515154; font-size: 14px; margin-top: 8px; }
 footer { margin-top: 48px; color: #515154; font-size: 14px; }
@@ -97,6 +121,8 @@ footer a { color: inherit; }
   body { color: #f5f5f7; background: #000000; }
   .alg-subline, th, footer, .caption { color: #a1a1a6; }
   table.lanes th[scope="col"] { color: inherit; }
+  table.lanes tr.published { background: #1c1c1e; color: #a1a1a6; }
+  table.lanes tr.published th[scope="row"] { color: #a1a1a6; }
   .status { border-color: #424245; }
   th, td { border-bottom-color: #2c2c2e; }
 }
@@ -120,7 +146,8 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <p>The run record is at <a href="{run_json_path}">run.json</a> and the live state at
 <a href="{health_path}">/health</a>. Space source: <code>apps/spaces/gpu-probe</code> in the
 Algenta repository. Model: <a href="{model_url}">{model_repo}</a> (Apache-2.0). Kernel:
-<a href="{kernel_url}">{kernel_repo}</a>, Algenta Community License 1.1.</p>
+<a href="{kernel_url}">{kernel_repo}</a>, Algenta Community License 1.1. Opponent:
+<a href="{llama_url}">llama.cpp</a> (MIT) at the pinned commit.</p>
 <p><a href="{docs_url}">Documentation</a> &middot; <a href="{pricing_url}">Commercial plans</a>
 &middot; <a href="{discord_url}">Discord</a></p>
 </footer>
@@ -230,17 +257,48 @@ def run_probe(
     runner: StageRunner | None = None,
     *,
     timeouts: Mapping[str, float] = cfg.STAGE_TIMEOUTS_S,
+    budget_s: float = cfg.RUN_BUDGET_S,
 ) -> None:
-    """The whole run: six stages in order, then `run.json`. Never raises."""
+    """The whole run: the stages in order, then `run.json`. Never raises.
+
+    A lane whose dependency is not ok (`decode` needs `kernel`) is recorded as
+    `upstream_failed` without running; a lane that would start after `budget_s` seconds of run
+    is recorded as `run_budget_exhausted`. The reference and the record always run.
+    """
     if runner is None:
         state.stage_dir.mkdir(parents=True, exist_ok=True)
 
         def runner(name: str, timeout_s: float) -> StageOutcome:
             return subprocess_runner(name, timeout_s, stage_dir=state.stage_dir)
 
+    t_start = time.perf_counter()
     for name in STAGE_PHASES:
         with state.lock:
             state.machine.start(name)
+        dependency = core.DEPENDS.get(name)
+        if dependency is not None:
+            dep = state.machine.records[dependency]
+            if dep.status != core.OK:
+                with state.lock:
+                    state.machine.fail(
+                        name,
+                        "upstream_failed",
+                        f"not run: {dependency} is {dep.status} ({dep.code or 'no code'})",
+                        wall_s=0.0,
+                    )
+                log.warning("phase %s: not run, %s is %s", name, dependency, dep.status)
+                continue
+        elapsed = time.perf_counter() - t_start
+        if name in state.machine.soft and elapsed > budget_s:
+            with state.lock:
+                state.machine.fail(
+                    name,
+                    "run_budget_exhausted",
+                    f"not run: {elapsed:.0f} s into the {budget_s:.0f} s run budget",
+                    wall_s=0.0,
+                )
+            log.warning("phase %s: not run, the run budget is spent", name)
+            continue
         log.info("phase %s: started", name)
         try:
             outcome = runner(name, float(timeouts.get(name, 600.0)))
@@ -352,14 +410,40 @@ def _with_note(value: str | None, note: str | None) -> str | None:
     return f"{value} ({note})" if note else value
 
 
+def _tok_s(value: Any) -> str | None:
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return None
+    return f"{float(value):,.1f} tok/s"
+
+
+def _ms_value(value: Any) -> str | None:
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return None
+    ms = float(value)
+    return f"{ms / 1000.0:.2f} s" if ms >= 1000.0 else f"{ms:.1f} ms"
+
+
 def status_line(body: Mapping[str, Any]) -> str:
     status = str(body.get("status"))
     phase = str(body.get("phase"))
     failure = body.get("failure")
     if status == core.OK:
-        parity = body.get("parity") or {}
-        verdict = parity.get("verdict") or ABSENT
-        return f"Run complete. Parity {verdict}: {parity.get('reference_decoded') or ABSENT}"
+        view = body.get("race") if isinstance(body.get("race"), Mapping) else core.race_view(body)
+        parts = []
+        for lane in view["race"]:
+            if lane["status"] == core.OK_LANE:
+                rate = _tok_s(lane.get("decode_tok_per_s")) or ABSENT
+                identity = (lane.get("identity") or {}).get("verdict")
+                parts.append(
+                    f"{lane['title']} {rate}" + (f" (identity {identity})" if identity else "")
+                )
+            elif lane["status"] == core.UNAVAILABLE:
+                parts.append(f"{lane['title']} unavailable ({lane.get('code') or 'no code'})")
+            else:
+                parts.append(f"{lane['title']} not measured")
+        ratio = (view.get("ratio") or {}).get("decode_gen64")
+        tail = f"; ratio {ratio:.2f}" if isinstance(ratio, float) else ""
+        return f"Run complete. {'; '.join(parts)}{tail}."
     if status == core.ERROR and isinstance(failure, Mapping):
         return (
             f"Stopped at {failure.get('phase')}: {failure.get('code')} "
@@ -368,6 +452,342 @@ def status_line(body: Mapping[str, Any]) -> str:
     if status == core.PENDING:
         return "Waiting to start."
     return f"Running: {phase}."
+
+
+def _graph_nodes_text(block: Mapping[str, Any]) -> str | None:
+    """`200 (vs 171 per-dispatch enqueues)` from the packed-int8 driver's node count."""
+    nodes = block.get("graph_nodes")
+    if not isinstance(nodes, int) or isinstance(nodes, bool):
+        return None
+    budget = block.get("dispatch_budget")
+    return f"{nodes}" + (f" (vs {budget} per-dispatch enqueues)" if budget is not None else "")
+
+
+def _gates_text(gates: Any) -> str | None:
+    """`G0 passed, G1 passed, G2 passed` from the packed-int8 driver's gate records."""
+    if not isinstance(gates, Mapping) or not gates:
+        return None
+    parts = []
+    for name in sorted(gates):
+        rec = gates[name]
+        passed = rec.get("passed") if isinstance(rec, Mapping) else rec
+        parts.append(f"{name} {'passed' if passed else 'failed'}")
+    return ", ".join(parts)
+
+
+def _identity_text(lane: Mapping[str, Any]) -> str | None:
+    identity = lane.get("identity") or lane.get("parity")
+    if not isinstance(identity, Mapping):
+        return None
+    verdict = str(identity.get("verdict") or ABSENT)
+    text = f"{verdict}"
+    if identity.get("oracle"):
+        text += f", oracle {identity['oracle']}"
+    div = identity.get("first_divergence")
+    if isinstance(div, Mapping):
+        text += f", first divergence at index {div.get('index')}"
+        margin = identity.get("reference_top2_margin_at_divergence")
+        if margin is not None:
+            text += f" (reference top-2 margin {float(margin):.3f})"
+    return text
+
+
+def _tokens_text(lane: Mapping[str, Any], reference: list[int] | None) -> str | None:
+    tokens = lane.get("tokens") or []
+    decoded = lane.get("decoded")
+    if not tokens and decoded is None:
+        return None
+    shown = (
+        str(decoded).strip()
+        if decoded
+        else _fmt(tokens[:12], plain=True) + (", …" if len(tokens) > 12 else "")
+    )
+    if len(shown) > 160:
+        shown = shown[:157] + "…"
+    note = f"{len(tokens)} tokens"
+    verified = lane.get("tokens_verified")
+    if isinstance(verified, int) and not isinstance(verified, bool) and verified > 0:
+        note += " checked by the driver's oracle gate"
+        if reference:
+            same = list(tokens) == list(reference)[: len(tokens)]
+            note += ", the reference's first" if same else ", differ from the reference"
+    elif reference:
+        note += ", the reference's" if tokens == reference else ", differ from the reference"
+    if lane.get("runs_agree") is False:
+        note += "; the timed runs did not all agree"
+    return f"{shown} ({note})"
+
+
+def _runs_text(lane: Mapping[str, Any]) -> str | None:
+    n = lane.get("n_runs")
+    if n is None:
+        return None
+    text = f"{n} timed, {cfg.WARMUP_RUNS} warm-up excluded"
+    if lane.get("runs_agree") is True:
+        text += "; identical tokens in every run"
+    elif lane.get("runs_agree") is False:
+        text += "; tokens differed between runs"
+    if lane.get("iqr_note"):
+        text += f"; {lane['iqr_note']}"
+    return text
+
+
+def _memory_text(lane: Mapping[str, Any]) -> str | None:
+    taken = _gb(lane.get("vram_bytes"))
+    peak = _gb(lane.get("peak_allocated_bytes"))
+    parts = []
+    if taken:
+        parts.append(taken)
+    if peak:
+        parts.append(f"peak allocated by torch {peak}")
+    return "; ".join(parts) or None
+
+
+def _unavailable_first_cell(lane: Mapping[str, Any]) -> str:
+    status = lane.get("status")
+    if status == core.UNAVAILABLE:
+        return f"unavailable ({lane.get('code') or 'no code'})"
+    if status == core.PENDING_LANE:
+        return "not measured yet"
+    return "not measured in this run"
+
+
+def _race_cells(lane: Mapping[str, Any], reference: list[int] | None) -> dict[str, Any]:
+    if lane.get("status") != core.OK_LANE:
+        return {"decode": _unavailable_first_cell(lane)}
+    long_rate = _tok_s(lane.get("decode_tok_per_s_long"))
+    if long_rate is None and lane.get("long_gen_skipped"):
+        long_rate = f"not run ({lane['long_gen_skipped']})"
+    return {
+        "decode": _tok_s(lane.get("decode_tok_per_s")),
+        "decode_long": long_rate,
+        "prefill": _tok_s(lane.get("prefill_tok_per_s")),
+        "ttft": _with_note(_ms_value(lane.get("ttft_ms")), lane.get("ttft_note")),
+        "memory": _with_note(_memory_text(lane), lane.get("vram_note")),
+        "tokens": _tokens_text(lane, reference),
+        "identity": _identity_text(lane),
+        "runs": _runs_text(lane),
+        "precision": _with_note(lane.get("precision"), lane.get("session_note")),
+        "stack": lane.get("stack"),
+    }
+
+
+def _secondary_cells(lane: Mapping[str, Any], reference: list[int] | None) -> dict[str, Any]:
+    if lane.get("status") != core.OK_LANE:
+        return {"decode": _unavailable_first_cell(lane)}
+    return {
+        "decode": _tok_s(lane.get("decode_tok_per_s")),
+        "ttft": _with_note(_ms_value(lane.get("ttft_ms")), lane.get("ttft_note")),
+        "load": _with_note(_s(lane.get("load_s")), lane.get("load_label")),
+        "steady": _with_note(
+            _ms(lane.get("steady_step_ms")),
+            f"steps {lane['steady_steps']}" if lane.get("steady_steps") else None,
+        ),
+        "steady_tok_per_s": _tok_s(lane.get("steady_tok_per_s")),
+        "memory": _with_note(_memory_text(lane), lane.get("vram_note")),
+        "tokens": _tokens_text(lane, reference),
+        "identity": _identity_text(lane),
+        "runs": _runs_text(lane),
+        "precision": lane.get("precision"),
+        "stack": lane.get("stack"),
+    }
+
+
+def _lanes_table(
+    lanes: list[Mapping[str, Any]],
+    cells: list[Mapping[str, Any]],
+    rows: list[tuple[str, str, str]],
+    extra_rows: Sequence[str] = (),
+) -> str:
+    head = "".join(
+        f'<th scope="col">{html.escape(lane["title"])} · {html.escape(lane["precision"])}</th>'
+        for lane in lanes
+    )
+    body_rows = []
+    for label, key, css in rows:
+        tds = "".join(f"<td>{html.escape(_fmt(c.get(key)))}</td>" for c in cells)
+        klass = f' class="{css}"' if css else ""
+        body_rows.append(f'<tr{klass}><th scope="row">{html.escape(label)}</th>{tds}</tr>')
+    body_rows.extend(extra_rows)
+    return (
+        '<div class="lanes-wrap"><table class="lanes">\n'
+        f"<thead><tr><th></th>{head}</tr></thead>\n<tbody>\n"
+        + "\n".join(body_rows)
+        + "\n</tbody></table></div>\n"
+    )
+
+
+def _published_row(label: str, url: str, page: str, algenta: str, opponent: str) -> str:
+    return (
+        '<tr class="published">'
+        f'<th scope="row">{html.escape(label)} (L4), '
+        f'<a href="{html.escape(url)}">{html.escape(page)}</a></th>'
+        f"<td>{html.escape(algenta)}</td><td>{html.escape(opponent)}</td></tr>"
+    )
+
+
+def _published_rows(published: Mapping[str, Any]) -> list[str]:
+    serving = published.get("serving") or {}
+    throughput = published.get("throughput") or {}
+    label = PUBLISHED_LABEL.format(date=published.get("date") or cfg.PUBLISHED_DATE)
+    rows = []
+    if serving:
+        algenta = (
+            f"{serving['algenta_gen64']:.1f} tok/s at gen=64, "
+            f"{serving['algenta_gen256']:.1f} at gen=256 ({serving.get('session') or ''})"
+        )
+        opponent = (
+            f"{serving['ratio_gen64']:.2f}× slower at gen=64 "
+            f"({serving['llama_gen64_implied']:.1f} tok/s implied), "
+            f"{serving['ratio_gen256']:.2f}× at gen=256 "
+            f"({serving['llama_gen256_implied']:.1f} implied); {serving.get('opponent') or ''}"
+        )
+        rows.append(
+            _published_row(
+                label,
+                serving.get("url") or cfg.PUBLISHED_SERVING_URL,
+                "NVIDIA LLM serving",
+                algenta,
+                opponent,
+            )
+        )
+    if throughput:
+        algenta = (
+            f"{throughput['algenta_gen64']:.1f} tok/s at gen=64, "
+            f"{throughput['algenta_gen256']:.1f} at gen=256 ({throughput.get('session') or ''})"
+        )
+        opponent = (
+            f"{throughput['llama_gen64']:.1f} tok/s at gen=64, "
+            f"{throughput['llama_gen256']:.1f} at gen=256"
+        )
+        # `_ratio` answers None for a non-positive operand and an older replayed record can
+        # carry None here: the parenthetical appears only when both ratios are numbers
+        ratios = (throughput.get("ratio_gen64"), throughput.get("ratio_gen256"))
+        if all(isinstance(r, int | float) and not isinstance(r, bool) for r in ratios):
+            opponent += f" (ratio {float(ratios[0]):.2f} / {float(ratios[1]):.2f})"
+        rows.append(
+            _published_row(
+                label,
+                throughput.get("url") or cfg.PUBLISHED_THROUGHPUT_URL,
+                "NVIDIA LLM throughput",
+                algenta,
+                opponent,
+            )
+        )
+    return rows
+
+
+def race_section(body: Mapping[str, Any]) -> str:
+    """The first section: lanes A and B as columns, the hero row first, the published rows of
+    the same cell beneath the measured ones, then the ratio and the definitions."""
+    view = body.get("race") if isinstance(body.get("race"), Mapping) else core.race_view(body)
+    lanes = list(view["race"])
+    reference = view.get("reference_tokens")
+    gpu = view.get("gpu") or "GPU"
+    cells = [_race_cells(lane, reference) for lane in lanes]
+    rows: list[tuple[str, str, str]] = [
+        (f"Decode tokens per second (gen={view['gen_tokens']})", "decode", "hero"),
+        (f"Decode tokens per second (gen={view['gen_tokens_long']})", "decode_long", ""),
+        (f"Prefill tokens per second ({view['n_prompt']} tokens)", "prefill", ""),
+        ("Time to first token", "ttft", ""),
+        ("Device memory (peak)", "memory", ""),
+        (f"Tokens ({view['gen_tokens']} greedy)", "tokens", ""),
+        ("Identity vs the CPU reference", "identity", ""),
+        ("Runs", "runs", ""),
+        ("Precision", "precision", ""),
+        ("Build", "stack", ""),
+    ]
+    table = _lanes_table(lanes, cells, rows, _published_rows(view.get("published") or {}))
+    notes: list[str] = []
+    if view.get("predates"):
+        notes.append(RACE_PREDATES)
+    for lane in lanes:
+        if lane.get("status") == core.UNAVAILABLE:
+            notes.append(
+                f"{lane['title']}: unavailable, {lane.get('code') or 'no code'}"
+                + (f" — {lane['message']}" if lane.get("message") else "")
+                + "."
+            )
+    ratio = view.get("ratio") or {}
+    # a stored `race` block is data: it may carry fewer or more than the two lanes of today
+    engine = lanes[0] if lanes else {}
+    llama = lanes[1] if len(lanes) > 1 else {}
+    if ratio.get("decode_gen64") is not None:
+        text = (
+            f"Measured ratio, {engine.get('title') or 'Algenta engine'} over "
+            f"{llama.get('title') or 'llama.cpp'}, decode at gen="
+            f"{view['gen_tokens']}: {ratio['decode_gen64']:.2f}"
+        )
+        if ratio.get("decode_gen256") is not None:
+            text += f"; at gen={view['gen_tokens_long']}: {ratio['decode_gen256']:.2f}"
+        if ratio.get("prefill") is not None:
+            text += f"; prefill: {ratio['prefill']:.2f}"
+        compared = ratio.get("tokens_compared")
+        verified = engine.get("tokens_verified")
+        if isinstance(verified, int) and isinstance(compared, int):
+            text += (
+                f" (both lanes decoded the same first {compared} tokens, the ones the "
+                "Algenta driver prints)."
+            )
+        else:
+            text += " (both lanes decoded the same tokens)."
+        notes.append(text)
+    elif ratio.get("same_tokens") is False:
+        notes.append("No ratio: the two lanes decoded different tokens.")
+    if engine.get("protocol") == cfg.P3_ENGINE_NAME:
+        notes.append(P3_LANE_NOTE.format(runs=engine.get("n_runs") or cfg.RUNS))
+    caption = RACE_CAPTION.format(
+        n_prompt=view["n_prompt"],
+        gen=view["gen_tokens"],
+        warmup=view["warmup_runs"],
+        runs=view["runs"],
+        oracle=cfg.ORACLE_PREFIX,
+    )
+    return (
+        f"<h2>{html.escape(RACE_TITLE.format(gpu=gpu))}</h2>\n"
+        + table
+        + "".join(f'<p class="caption">{html.escape(note)}</p>\n' for note in notes)
+        + f'<p class="caption">{html.escape(caption)}</p>'
+    )
+
+
+def secondary_section(body: Mapping[str, Any]) -> str:
+    view = body.get("race") if isinstance(body.get("race"), Mapping) else core.race_view(body)
+    lanes = list(view["secondary"])
+    reference = view.get("reference_tokens")
+    gpu = view.get("gpu") or "GPU"
+    cells = [_secondary_cells(lane, reference) for lane in lanes]
+    rows: list[tuple[str, str, str]] = [
+        (f"Decode tokens per second (gen={view['gen_tokens']})", "decode", "hero"),
+        ("Time to first token", "ttft", ""),
+        ("Load / session open", "load", ""),
+        ("Steady per-token", "steady", ""),
+        ("Tokens per second (steady)", "steady_tok_per_s", ""),
+        ("Device memory", "memory", ""),
+        (f"Tokens ({view['gen_tokens']} greedy)", "tokens", ""),
+        ("Identity vs the CPU reference", "identity", ""),
+        ("Runs", "runs", ""),
+        ("Precision", "precision", ""),
+        ("Stack", "stack", ""),
+    ]
+    table = _lanes_table(lanes, cells, rows)
+    notes: list[str] = []
+    for lane in lanes:
+        if lane.get("status") == core.UNAVAILABLE:
+            notes.append(
+                f"{lane['title']} {lane['precision']}: unavailable, {lane.get('code') or 'no code'}"
+                + (f" — {lane['message']}" if lane.get("message") else "")
+                + "."
+            )
+    caption = SECONDARY_CAPTION.format(
+        gen=view["gen_tokens"], steady_from=cfg.STEADY_FROM_STEP, runs=view["runs"]
+    )
+    return (
+        f"<h2>{html.escape(SECONDARY_TITLE.format(gpu=gpu))}</h2>\n"
+        + table
+        + "".join(f'<p class="caption">{html.escape(note)}</p>\n' for note in notes)
+        + f'<p class="caption">{html.escape(caption)}</p>'
+    )
 
 
 def render_page(body: Mapping[str, Any]) -> str:
@@ -386,21 +806,28 @@ def render_page(body: Mapping[str, Any]) -> str:
     torch_facts = driver.get("torch") or {}
     kernel = body.get("kernel") or {}
     model = body.get("model") or {}
-    decode = body.get("decode") or {}
-    timings = (
-        core.decode_timings(decode.get("open_s"), decode.get("step_ms") or []) if decode else {}
-    )
-    n_steps = timings.get("n_tokens") or cfg.MAX_NEW_TOKENS
-    steady_from = cfg.STEADY_FROM_STEP
+    engine_block = body.get("engine") or {}
+    engine = engine_block.get("engine") or {}
+    gate = engine_block.get("target_gate") or {}
+    llama = body.get("llama") or {}
+    llama_version = llama.get("version") or {}
+    gguf = llama.get("gguf") or {}
     reference = body.get("reference") or {}
-    parity = body.get("parity") or {}
-    run12 = body.get("run12_recorded") or {}
     pins = body.get("pins") or {}
     versions = body.get("versions") or {}
     packages = versions.get("packages") or {}
-    divergence = parity.get("first_divergence")
+    view = body.get("race") if isinstance(body.get("race"), Mapping) else core.race_view(body)
+    identity_rows = []
+    for lane in [*view["race"], *view["secondary"]]:
+        text = (
+            _identity_text(lane)
+            if lane.get("status") == core.OK_LANE
+            else _unavailable_first_cell(lane)
+        )
+        identity_rows.append(_row(f"{lane['title']} · {lane['precision']}", text))
     sections = [
-        side_by_side_section(body),
+        race_section(body),
+        secondary_section(body),
         _table("Phases", phase_rows),
         _table(
             "Device",
@@ -415,6 +842,60 @@ def render_page(body: Mapping[str, Any]) -> str:
                 _row("Driver floor", pins.get("driver_floor")),
                 _row("torch", torch_facts.get("version")),
                 _row("torch CUDA", torch_facts.get("cuda")),
+                _row("Hardware requested", pins.get("hardware")),
+                _row("Prompt fixture", pins.get("prompt_fixture")),
+            ],
+        ),
+        _table(
+            "Algenta engine",
+            [
+                _row("Wheel", pins.get("engine"), code=True),
+                _row("Selected by ALGENTA_CUDA_ENGINE", pins.get("engine_selected"), code=True),
+                _row("Protocol", engine_block.get("protocol") or pins.get("engine_protocol")),
+                _row("Binary", engine.get("path"), code=True),
+                _row("Resolved from", engine.get("resolved_from")),
+                _row("Session", engine.get("session")),
+                _row("Built", engine.get("built_utc")),
+                _row("Source commit", engine.get("source_commit"), code=True),
+                _row("Mojo", engine.get("mojo_version")),
+                _row("Compile target", engine.get("cuda_target"), code=True),
+                _row(
+                    "Target gate",
+                    None
+                    if not gate
+                    else (
+                        "compute capability "
+                        f"{'.'.join(map(str, gate.get('device_compute_capability') or []))}: "
+                        + (
+                            "passed"
+                            if gate.get("ok")
+                            else "not checked"
+                            if not gate.get("checked")
+                            else "refused"
+                        )
+                    ),
+                ),
+                _row("Comptime defines", engine.get("comptime_defines"), code=True),
+                _row("Host libraries", engine.get("host_shared_libraries"), code=True),
+                _row("sha256", engine.get("sha256"), code=True),
+                _row("Bundled libraries", engine.get("bundled_shared_libraries"), code=True),
+                _row("Argv", engine_block.get("argv"), code=True),
+                _row("Gates", _gates_text(engine_block.get("gates"))),
+                _row("Kernel set", engine_block.get("kernel_variant")),
+                _row("Captured nodes per token", _graph_nodes_text(engine_block)),
+                _row("One-time load", _ms_value(engine_block.get("load_ms"))),
+            ],
+        ),
+        _table(
+            "llama.cpp",
+            [
+                _row("Pinned commit", pins.get("llama_cpp_commit"), code=True),
+                _row("Reported version", llama_version.get("line")),
+                _row("CUDA architectures", llama.get("cuda_architectures"), code=True),
+                _row("GGUF", gguf.get("path"), code=True),
+                _row("GGUF size", _bytes(gguf.get("bytes"))),
+                _row("Server ready", _s(llama.get("ready_s"))),
+                _row("Argv", llama.get("argv"), code=True),
             ],
         ),
         _table(
@@ -443,28 +924,12 @@ def render_page(body: Mapping[str, Any]) -> str:
                     "Conversion",
                     "reused from disk" if model.get("reused") else _s(model.get("wall_s")),
                 ),
-                _row("Prompt tokens", model.get("prompt_ids"), plain=True),
-            ],
-        ),
-        _table(
-            "Decode on the GPU",
-            [
-                _row("Prompt", pins.get("prompt")),
-                _row("Tokens", decode.get("tokens"), plain=True),
-                _row("Text", decode.get("decoded")),
-                _row("Session open", _with_note(_s(timings.get("open_s")), OPEN_NOTE)),
-                _row("First step", _with_note(_ms(timings.get("first_step_ms")), FIRST_STEP_NOTE)),
-                _row("Time to first token", _with_note(_s(timings.get("ttft_s")), TTFT_NOTE)),
+                _row("Prompt", _prompt_text(model, reference)),
                 _row(
-                    f"Steady per-token (steps {steady_from} to {n_steps})",
-                    _ms(timings.get("steady_step_ms")),
+                    "Prompt tokens",
+                    model.get("n_prompt") or len(model.get("prompt_ids") or []) or None,
+                    plain=True,
                 ),
-                _row("Tokens per second (steady)", timings.get("steady_tok_per_s")),
-                _row(
-                    f"Tokens per second (over all {n_steps} steps)",
-                    timings.get("all_steps_tok_per_s"),
-                ),
-                _row("Step times", _ms_list(timings.get("step_ms"))),
             ],
         ),
         _table(
@@ -477,25 +942,9 @@ def render_page(body: Mapping[str, Any]) -> str:
                 _row("Text", reference.get("decoded")),
                 _row("Model load", _s(reference.get("load_s"))),
                 _row("Generate", _s(reference.get("generate_s"))),
-                _row("Tokenizers agree", reference.get("prompt_ids_agree_with_algenta_tokenizer")),
             ],
         ),
-        _table(
-            "Parity",
-            [
-                _row("Verdict", parity.get("verdict")),
-                _row(
-                    "First divergence",
-                    None if not divergence else f"index {divergence.get('index')}",
-                ),
-                _row(
-                    "Reference top-2 margin there",
-                    parity.get("reference_top2_margin_at_divergence"),
-                ),
-                _row("Run 12 recorded (2026-09-22, T4)", run12.get("tokens"), plain=True),
-                _row("Matches run 12", run12.get("matches_this_run")),
-            ],
-        ),
+        _table("Identity", identity_rows),
         _table(
             "Versions",
             [
@@ -523,131 +972,27 @@ def render_page(body: Mapping[str, Any]) -> str:
         model_repo=html.escape(cfg.MODEL_REPO),
         kernel_url=cfg.KERNEL_HUB_URL,
         kernel_repo=html.escape(cfg.KERNEL_REPO),
+        llama_url=cfg.LLAMA_CPP_URL,
         docs_url=cfg.DOCS_URL,
         pricing_url=cfg.PRICING_URL,
         discord_url=cfg.DISCORD_URL,
     )
 
 
-def _lane_parity(lane: Mapping[str, Any]) -> str | None:
-    parity = lane.get("parity")
-    if not isinstance(parity, Mapping):
-        return None
-    verdict = str(parity.get("verdict") or ABSENT)
-    div = parity.get("first_divergence")
-    if isinstance(div, Mapping):
-        verdict += f", first divergence at index {div.get('index')}"
-        margin = parity.get("reference_top2_margin_at_divergence")
-        if margin is not None:
-            verdict += f" (reference top-2 margin {float(margin):.3f})"
-    return verdict
-
-
-def _lane_tokens(lane: Mapping[str, Any], algenta: Mapping[str, Any]) -> str | None:
-    text = lane.get("decoded")
-    tokens = lane.get("tokens") or []
-    if text is None and not tokens:
-        return None
-    shown = str(text) if text is not None else _fmt(tokens, plain=True)
-    if lane is algenta or not tokens:
-        return shown
-    if tokens == (algenta.get("tokens") or []):
-        return f"{shown} (the same {len(tokens)} tokens)"
-    cmp = core.compare_tokens(tokens, algenta.get("tokens") or [])
-    div = cmp.get("first_divergence") or {}
-    return f"{shown} (differs from the Algenta lane at index {div.get('index')})"
-
-
-def _lane_memory(lane: Mapping[str, Any]) -> str | None:
-    taken = _gb(lane.get("device_taken_bytes"))
-    peak = _gb(lane.get("peak_allocated_bytes"))
-    parts = []
-    if taken:
-        parts.append(f"{taken} taken on the device")
-    if peak:
-        parts.append(f"peak allocated {peak}")
-    return "; ".join(parts) or None
-
-
-def _lane_cells(lane: Mapping[str, Any], algenta: Mapping[str, Any]) -> dict[str, Any]:
-    """Every row's cell for one lane; an unavailable lane says so once and is absent after."""
-    status = lane.get("status")
-    if status != core.OK_LANE:
-        if status == core.UNAVAILABLE:
-            first = f"unavailable ({lane.get('code') or 'no code'})"
-        elif status == core.PENDING_LANE:
-            first = "not measured yet"
-        else:
-            first = "not measured in this run"
-        return {"tokens": first}
-    return {
-        "tokens": _lane_tokens(lane, algenta),
-        "parity": _lane_parity(lane),
-        "load": _with_note(_s(lane.get("load_s")), lane.get("load_label")),
-        "ttft": _with_note(_s(lane.get("ttft_s"), fine=True), lane.get("ttft_note")),
-        "steady": _ms(lane.get("steady_step_ms")),
-        "tok_per_s": lane.get("steady_tok_per_s"),
-        "tok_per_s_all": lane.get("all_steps_tok_per_s"),
-        "first_step": _with_note(_ms(lane.get("first_step_ms")), lane.get("first_step_note")),
-        "memory": _lane_memory(lane),
-        "precision": lane.get("precision"),
-        "stack": lane.get("stack"),
-    }
-
-
-def side_by_side_section(body: Mapping[str, Any]) -> str:
-    """The comparison table right under the verdict: one column per lane, the Algenta lane
-    first, every figure this run's own; a caption defines every timing once."""
-    view = core.side_by_side(body)
-    lanes = view["lanes"]
-    algenta = lanes[0]
-    gpu = view.get("gpu") or "GPU"
-    n_steps = len(algenta.get("step_ms") or []) or cfg.MAX_NEW_TOKENS
-    cells = [_lane_cells(lane, algenta) for lane in lanes]
-    rows: list[tuple[str, str]] = [
-        ("Tokens decoded", "tokens"),
-        ("Parity vs the CPU reference", "parity"),
-        ("Load / session open", "load"),
-        ("Time to first token", "ttft"),
-        (f"Steady per-token (steps {view['steady_from_step']} to {n_steps})", "steady"),
-        ("Tokens per second (steady)", "tok_per_s"),
-        (f"Tokens per second (over all {n_steps} steps)", "tok_per_s_all"),
-        ("First step and warm-up", "first_step"),
-        ("Device memory", "memory"),
-        ("Precision", "precision"),
-        ("Stack", "stack"),
-    ]
-    head = "".join(
-        f'<th scope="col">{html.escape(lane["title"])} · {html.escape(lane["precision"])}</th>'
-        for lane in lanes
-    )
-    body_rows = []
-    for label, key in rows:
-        tds = "".join(f"<td>{html.escape(_fmt(c.get(key)))}</td>" for c in cells)
-        body_rows.append(f'<tr><th scope="row">{html.escape(label)}</th>{tds}</tr>')
-    notes: list[str] = []
-    if view["predates"]:
-        notes.append(SIDE_BY_SIDE_PREDATES)
-    for ratio in view["ratios"]:
-        lane = next(x for x in lanes if x["id"] == ratio["lane"])
-        title = f"{lane['title']} {lane['precision']}"
-        if ratio["steady_step_ratio"] is not None:
-            notes.append(
-                f"Ratio of steady per-token times, {title} over Algenta: "
-                f"{ratio['steady_step_ratio']:.2f} (both lanes decoded the same tokens)."
-            )
-        elif ratio["same_tokens"] is False:
-            notes.append(f"No ratio for {title}: its tokens differ from the Algenta lane's.")
-    caption = SIDE_BY_SIDE_CAPTION.format(steady_from=view["steady_from_step"], n=n_steps)
-    return (
-        f"<h2>{html.escape(SIDE_BY_SIDE_TITLE.format(gpu=gpu))}</h2>\n"
-        '<div class="lanes-wrap"><table class="lanes">\n'
-        f"<thead><tr><th></th>{head}</tr></thead>\n<tbody>\n"
-        + "\n".join(body_rows)
-        + "\n</tbody></table></div>\n"
-        + "".join(f'<p class="caption">{html.escape(note)}</p>\n' for note in notes)
-        + f'<p class="caption">{html.escape(caption)}</p>'
-    )
+def _prompt_text(model: Mapping[str, Any], reference: Mapping[str, Any]) -> str | None:
+    """The race prompt as the record describes it: the decoded cycle and its repeat count when
+    the record carries the cycle, else the record's own prompt ids."""
+    cycle_ids = model.get("prompt_cycle_ids")
+    prompt_ids = model.get("prompt_ids") or []
+    if not cycle_ids:
+        return _fmt(prompt_ids, plain=True) if prompt_ids else None
+    cycle = model.get("decoded_prompt_cycle") or reference.get("prompt_cycle_text")
+    n_prompt = model.get("n_prompt") or len(prompt_ids) or cfg.PROMPT_TOKENS
+    repeats = int(n_prompt) // max(1, len(cycle_ids))
+    ids = _fmt(cycle_ids, plain=True)
+    if cycle:
+        return f"{str(cycle).strip()!r} (ids {ids}) repeated {repeats} times"
+    return f"ids {ids} repeated {repeats} times"
 
 
 def _s(value: Any, *, fine: bool = False) -> str | None:
@@ -660,12 +1005,6 @@ def _s(value: Any, *, fine: bool = False) -> str | None:
 
 def _ms(value: Any) -> str | None:
     return None if value is None else f"{float(value):.2f} ms"
-
-
-def _ms_list(values: Any) -> str | None:
-    if not values:
-        return None
-    return ", ".join(f"{float(v):.1f}" for v in values) + " ms"
 
 
 # ---------------------------------------------------------------------------

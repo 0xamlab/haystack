@@ -1,22 +1,29 @@
-"""Image build: bake the kernel and the model into `HF_HOME`, then prove the boot needs no Hub.
+"""Image build: bake the kernel, the model, the engine facts and the GGUF; prove the boot needs
+no Hub.
 
-    python fetch_assets.py --bake                      # network: kernel snapshot + model snapshot
-    HF_HUB_OFFLINE=1 python fetch_assets.py --verify   # no network: both resolve from the cache
+    python fetch_assets.py --bake                      # network: kernel + model; GGUF converted
+    HF_HUB_OFFLINE=1 python fetch_assets.py --verify   # no network: everything resolves locally
 
 `--bake` installs `thyn-ai/algenta-llm` at the pinned revision for the cuda backend
 (`kernels.install_kernel`; no GPU is needed to download a variant), refuses the image when the
 snapshot is not the pinned sha, the variant is not the torch29/cu128 one or the native manifest
 does not declare the 6144 staging tier, prunes the repository's cached tree listing (kernels
 0.17.1 would otherwise refuse the variant-only cache offline, see the flagship's
-`boot_sequence.prune_tree_listings`), downloads the pinned Qwen3-1.7B snapshot and writes
-`build_facts.json` (versions, paths, sizes, timings) where `probe.py` reads it.
+`boot_sequence.prune_tree_listings`), downloads the pinned Qwen3-0.6B-Base snapshot, reads the
+installed `algenta-runtime-native` wheel's signed manifest for its bundled `conform_generate_cuda`
+(path, sha256, compile target, comptime defines; the target is judged against the requested
+hardware and the verdict recorded, the lane fails closed at run time with the same code),
+converts the snapshot to the F16 GGUF with the pinned llama.cpp's `convert_hf_to_gguf.py`
+(timed), records `llama-server --version`, and writes `build_facts.json` where `probe.py` reads
+it.
 
 `--verify` runs with `HF_HUB_OFFLINE=1`: the model resolves from the cache alone, the kernel
 snapshot and its pruned listing are in place, `algenta`'s tokenizer imports on this interpreter
-and encodes the prompt, and `kernels.get_kernel` imports the cuda package from the cache with
-the architecture check off (the build host has no GPU; a refusal that names the missing device
-is recorded and tolerated, any other refusal fails the build). Its findings join
-`build_facts.json` under `verify`.
+and decodes the race prompt's cycle, the engine binary is where the bake found it with the
+same sha256, the GGUF is on disk with the recorded size, and `kernels.get_kernel` imports the
+cuda package from the cache with the architecture check off (the build host has no GPU; a
+refusal that names the missing device is recorded and tolerated, any other refusal fails the
+build). Its findings join `build_facts.json` under `verify`.
 """
 
 from __future__ import annotations
@@ -25,6 +32,7 @@ import argparse
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -38,6 +46,7 @@ import probe_core as core
 log = logging.getLogger("gpu_probe.build")
 
 GPU_ABSENT_MARKERS = ("gpu_unavailable", "libcuda", "cuinit", "cuda device", "compute capability")
+CONVERT_TIMEOUT_S = 1800.0
 
 
 def hub_cache_dir() -> Path:
@@ -175,6 +184,183 @@ def bake_model() -> dict[str, Any]:
     }
 
 
+def runtime_native_dir() -> Path:
+    from importlib import resources
+
+    try:
+        return Path(str(resources.files(cfg.ENGINE_WHEEL.replace("-", "_"))))
+    except ModuleNotFoundError as exc:
+        raise core.ProbeError(
+            "engine_wheel_missing", f"{cfg.ENGINE_WHEEL} is not installed: {exc}"
+        ) from exc
+
+
+def bake_engine() -> dict[str, Any]:
+    """The bundled engine as the wheel's signed manifest declares it, plus what the requested
+    hardware makes of its compile target (recorded, never a build failure: the lane fails
+    closed at run time with the same code and the other lanes still run)."""
+    directory = runtime_native_dir()
+    engine = directory / cfg.ENGINE_NAME
+    if not engine.is_file():
+        raise core.ProbeError(
+            "engine_binary_missing", f"{engine} is not in the installed {cfg.ENGINE_WHEEL} wheel"
+        )
+    manifest_path = directory / cfg.ENGINE_MANIFEST
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise core.ProbeError("engine_manifest_invalid", f"{manifest_path}: {exc}") from exc
+    block = manifest.get("engine") if isinstance(manifest, dict) else None
+    if not isinstance(block, dict) or block.get("name") != cfg.ENGINE_NAME:
+        raise core.ProbeError(
+            "engine_manifest_invalid", f"{manifest_path} declares no engine {cfg.ENGINE_NAME}"
+        )
+    sha = probe.sha256_of(engine)
+    if sha != block.get("sha256"):
+        raise core.ProbeError(
+            "engine_sha_mismatch",
+            f"{engine.name} hashes to {sha[:12]}, the manifest declares "
+            f"{str(block.get('sha256'))[:12]}",
+        )
+    wheel_version = probe.package_versions((cfg.ENGINE_WHEEL,))[cfg.ENGINE_WHEEL]
+    if wheel_version != cfg.ENGINE_WHEEL_VERSION:
+        raise core.ProbeError(
+            "engine_wheel_version_mismatch",
+            f"{cfg.ENGINE_WHEEL} {wheel_version} is installed, {cfg.ENGINE_WHEEL_VERSION} pinned",
+        )
+    cc = cfg.HARDWARE_COMPUTE_CAPABILITY.get(cfg.HARDWARE)
+    verdict: dict[str, Any]
+    if cc is None:
+        verdict = {"hardware": cfg.HARDWARE, "checked": False, "note": "hardware not in the table"}
+    else:
+        try:
+            verdict = {
+                "hardware": cfg.HARDWARE,
+                **core.engine_target_gate(block.get("cuda_target"), cc),
+            }
+        except core.ProbeError as exc:
+            verdict = {"hardware": cfg.HARDWARE, "checked": True, "ok": False, **exc.as_dict()}
+            log.warning("engine target on %s: %s — %s", cfg.HARDWARE, exc.code, exc.message)
+    facts = {
+        "name": cfg.ENGINE_NAME,
+        "wheel": cfg.ENGINE_WHEEL,
+        "wheel_version": wheel_version,
+        "dir": str(directory),
+        "path": str(engine),
+        "size_bytes": engine.stat().st_size,
+        "sha256": sha,
+        "manifest": str(manifest_path),
+        "build_variant": manifest.get("build_variant"),
+        "platform": manifest.get("platform"),
+        "cuda_target": block.get("cuda_target"),
+        "comptime_defines": list(block.get("comptime_defines") or []),
+        "host_shared_libraries": list(block.get("host_shared_libraries") or []),
+        "source": block.get("source"),
+        "shim_object": block.get("shim_object"),
+        "bundled_libraries": {
+            name: (directory / name).is_file() for name in cfg.ENGINE_BUNDLED_LIBRARIES
+        },
+        "expected_hardware_gate": verdict,
+    }
+    log.info(
+        "%s %s: %s, target %s, %d defines; %s on %s",
+        cfg.ENGINE_WHEEL,
+        wheel_version,
+        engine.name,
+        facts["cuda_target"],
+        len(facts["comptime_defines"]),
+        "loads" if verdict.get("ok") else f"{verdict.get('code') or 'unchecked'}",
+        cfg.HARDWARE,
+    )
+    return facts
+
+
+def llama_server_version() -> dict[str, Any]:
+    server = Path(cfg.LLAMA_SERVER)
+    if not server.is_file() or not os.access(server, os.X_OK):
+        raise core.ProbeError("llama_build_missing", f"{server} is not in the image")
+    try:
+        proc = subprocess.run(  # noqa: S603 - fixed argv
+            [str(server), "--version"], capture_output=True, text=True, timeout=120, check=False
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise core.ProbeError("llama_server_failed", f"--version did not run: {exc}") from exc
+    facts = core.parse_llama_version(f"{proc.stdout}\n{proc.stderr}")
+    facts["returncode"] = proc.returncode
+    commit_file = Path(cfg.LLAMA_COMMIT_FILE)
+    facts["commit_file"] = (
+        commit_file.read_text(encoding="utf-8").strip() if commit_file.is_file() else None
+    )
+    if facts["commit_file"] and facts["commit_file"] != cfg.LLAMA_CPP_COMMIT:
+        raise core.ProbeError(
+            "llama_commit_mismatch",
+            f"the image built llama.cpp {facts['commit_file'][:10]}, "
+            f"pinned {cfg.LLAMA_CPP_COMMIT[:10]}",
+        )
+    return facts
+
+
+def bake_gguf(snapshot: Path) -> dict[str, Any]:
+    """`convert_hf_to_gguf.py --outtype f16` on the baked snapshot, into the assets directory."""
+    convert = Path(cfg.LLAMA_CONVERT)
+    gguf_py = Path(cfg.LLAMA_GGUF_PY)
+    if not convert.is_file() or not gguf_py.is_dir():
+        raise core.ProbeError("llama_build_missing", f"{convert} or {gguf_py} is not in the image")
+    out = probe.assets_dir() / cfg.GGUF_FILENAME
+    out.parent.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env["PYTHONPATH"] = f"{gguf_py}:{env.get('PYTHONPATH', '')}".rstrip(":")
+    argv = [
+        sys.executable,
+        str(convert),
+        "--outtype",
+        cfg.LLAMA_GGUF_OUTTYPE,
+        "--outfile",
+        str(out),
+        str(snapshot),
+    ]
+    t0 = time.perf_counter()
+    try:
+        proc = subprocess.run(  # noqa: S603 - fixed argv
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=CONVERT_TIMEOUT_S,
+            check=False,
+            env=env,
+            cwd=str(convert.parent),
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise core.ProbeError("llama_convert_failed", f"{type(exc).__name__}: {exc}") from exc
+    wall = time.perf_counter() - t0
+    tail = core.log_tail(f"{proc.stdout}\n{proc.stderr}", 5)
+    if proc.returncode != 0 or not out.is_file():
+        raise core.ProbeError(
+            "llama_convert_failed",
+            f"convert_hf_to_gguf.py exited {proc.returncode}: {tail[-1] if tail else 'no output'}",
+        )
+    log.info("%s: %.2f GB in %.1f s", out.name, out.stat().st_size / 1e9, wall)
+    return {
+        "path": str(out),
+        "bytes": out.stat().st_size,
+        "outtype": cfg.LLAMA_GGUF_OUTTYPE,
+        "convert_wall_s": round(wall, 2),
+        "converter": str(convert),
+        "log_tail": tail,
+    }
+
+
+def bake_llama(snapshot: Path) -> dict[str, Any]:
+    return {
+        "server": cfg.LLAMA_SERVER,
+        "commit_pinned": cfg.LLAMA_CPP_COMMIT,
+        "tag": cfg.LLAMA_CPP_TAG,
+        "cuda_architectures": cfg.LLAMA_CUDA_ARCHITECTURES,
+        "version": llama_server_version(),
+        "gguf": bake_gguf(snapshot),
+    }
+
+
 def write_facts(facts: dict[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(facts, indent=1, sort_keys=True) + "\n", encoding="utf-8")
@@ -184,14 +370,17 @@ def bake(path: Path) -> dict[str, Any]:
     if not hf_ua_shim.apply():
         raise core.ProbeError("huggingface_hub_missing", "huggingface_hub is not installed")
     facts = {
-        "schema": "algenta-gpu-probe-build/1",
+        "schema": "algenta-gpu-probe-build/2",
         "built_utc": core.utc_now(),
         **probe.environment_facts(),
         "hf_home": os.environ.get("HF_HOME"),
         "hub_cache": str(hub_cache_dir()),
+        "hardware": cfg.HARDWARE,
         "kernel": bake_kernel(),
         "model": bake_model(),
+        "engine": bake_engine(),
     }
+    facts["llama"] = bake_llama(Path(facts["model"]["path"]))
     write_facts(facts, path)
     log.info("build facts written: %s", path)
     return facts
@@ -239,11 +428,33 @@ def verify(path: Path) -> dict[str, Any]:
         raise core.ProbeError("tree_listings_present", f"unpruned listings: {leftover}")
     report["kernel_path"] = str(kernel_path)
 
-    # the tokenizer on this interpreter (algenta requires CPython 3.14)
-    ids = probe.prompt_token_ids(model_path)
-    report["prompt_ids"] = ids
-    report["prompt_ids_match_run12"] = ids == list(cfg.RUN12_PROMPT_IDS)
-    log.info("prompt -> %d ids (match run 12: %s)", len(ids), report["prompt_ids_match_run12"])
+    # the tokenizer on this interpreter (algenta requires CPython 3.14): the race prompt's cycle
+    cycle = probe.decode_text(model_path, list(cfg.PROMPT_CYCLE_IDS))
+    report["prompt_cycle_text"] = cycle
+    report["prompt_ids"] = core.race_prompt_ids()
+    log.info("race prompt: %r x %d", cycle, cfg.PROMPT_TOKENS // len(cfg.PROMPT_CYCLE_IDS))
+
+    # the engine where the bake found it, unchanged
+    engine = Path(facts["engine"]["path"])
+    if not engine.is_file():
+        raise core.ProbeError("engine_binary_missing", f"{engine} vanished after the bake")
+    sha = probe.sha256_of(engine)
+    if sha != facts["engine"]["sha256"]:
+        raise core.ProbeError("engine_sha_mismatch", f"{engine.name} changed since the bake")
+    report["engine"] = {
+        "path": str(engine),
+        "sha256": sha,
+        "cuda_target": facts["engine"]["cuda_target"],
+    }
+
+    # the opponent's binary and its GGUF
+    server = Path(cfg.LLAMA_SERVER)
+    if not server.is_file():
+        raise core.ProbeError("llama_build_missing", f"{server} is not in the image")
+    gguf = Path(facts["llama"]["gguf"]["path"])
+    if not gguf.is_file() or gguf.stat().st_size != facts["llama"]["gguf"]["bytes"]:
+        raise core.ProbeError("llama_gguf_missing", f"{gguf} is absent or changed since the bake")
+    report["llama"] = {"server": str(server), "gguf": str(gguf), "gguf_bytes": gguf.stat().st_size}
 
     # the kernel package imports from the cache; the device check is the runtime's job
     from kernels import get_kernel
