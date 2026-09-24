@@ -278,9 +278,17 @@ def split_qualname(fn: str | None) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 
+#: The `step` a number box gets: a Float field accepts any decimal (`step="any"` — the browser's
+#: default step of 1 marked 51.5074 as a `stepMismatch` and the arrow keys moved it by 1.0,
+#: launch review round 12); a whole-number field keeps the browser's step of 1.
+FLOAT_STEP = "any"
+INT_STEP = 1
+
+
 @dataclass(frozen=True)
 class SlotPlan:
-    """One slot after a function change: the component to show, its label, help and value."""
+    """One slot after a function change: the component to show, its label, help, value and
+    the field's kind (`playground.KINDS`; empty for a slot that is hidden)."""
 
     index: int
     visible: bool
@@ -288,6 +296,7 @@ class SlotPlan:
     label: str = ""
     info: str = ""
     value: Any = None
+    kind: str = ""
 
 
 def slot_plans(form: playground.Form | None, defaults: Mapping[str, Any] | None) -> list[SlotPlan]:
@@ -312,6 +321,7 @@ def slot_plans(form: playground.Form | None, defaults: Mapping[str, Any] | None)
                 label=spec.name,
                 info=info,
                 value=value,
+                kind=spec.kind,
             )
         )
     return plans
@@ -339,6 +349,10 @@ def control_kwargs(plan: SlotPlan, name: str) -> dict[str, Any]:
     if name == "json":
         kwargs.pop("info")
         kwargs["label"] = f"{plan.label} — {plan.info}"
+    if name == "number":
+        # the box's native step follows the field's kind; the frontend writes it as the input's
+        # `step` attribute, so a decimal field is never a `stepMismatch` (round 12)
+        kwargs["step"] = FLOAT_STEP if plan.kind == playground.KIND_FLOAT else INT_STEP
     return kwargs
 
 

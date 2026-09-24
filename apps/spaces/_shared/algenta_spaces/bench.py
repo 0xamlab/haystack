@@ -158,7 +158,7 @@ class LaneResult:
         MAD scaled to a standard deviation for a normal sample). On a shared cloud host a few
         scheduler spikes inflate the sample standard deviation (the classical CV read 13–15 %
         on the deployed Space) while the median and MAD of the same 21 samples barely move
-        (MAD 0.7–1.2 µs on an 85 µs median). The CV stays printed beside it."""
+        (MAD 0.7–1.2 µs on an 85 µs median). The CV stays in the lane table."""
         if self.median_ms <= 0:
             return 0.0
         return ROBUST_SCALE * self.mad_ms / self.median_ms

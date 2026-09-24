@@ -1070,6 +1070,20 @@ def test_page_holds_first_paint_until_the_requested_tab_is_selected(client: Any)
     assert app_mod.BOOTING_CLASS in index, "the fragment travels with the page config"
 
 
+def test_gradios_live_region_gets_a_sentence_for_the_key_its_catalogue_lacks(client: Any) -> None:
+    """Round 12: Gradio 6.28's screen-reader status region announced the raw key
+    `common.complete` after every request. The mount hands the client a catalogue entry for it
+    (`SR_TRANSLATIONS`, `mount_gradio_app(i18n=)`), so the region speaks a sentence; the
+    Space's own `.alg-status` live region is untouched. Every entry is a sentence, not a key."""
+    config = client.get("/config").json()
+    assert config["i18n_translations"] == {"en": dict(app_mod.SR_TRANSLATIONS)}
+    assert app_mod.SR_TRANSLATIONS["common.complete"] == "Request complete"
+    for key, sentence in app_mod.SR_TRANSLATIONS.items():
+        assert re.fullmatch(r"[a-z_]+(\.[a-z_]+)+", key), key
+        assert sentence[0].isupper() and " " in sentence and "." not in sentence, sentence
+        _assert_clean_copy(sentence)
+
+
 def test_mcp_schema_answers_and_the_gradio_footer_is_off(client: Any) -> None:
     """`mcp_server=True` is what the Hub's MCP badge and `algenta-mcp` clients read;
     `footer_links=[]` keeps Gradio's own footer (API · Built with Gradio · Settings) off the page,
@@ -1542,7 +1556,17 @@ def test_requirements_lock_is_hash_pinned_for_cp314_linux() -> None:
     pins = dict(re.findall(r"^([a-z0-9_.\[\]-]+)==([^\s\\]+)", lock, re.M))
     assert pins["gradio"] == "6.28.0" and pins["torch"] == "2.9.1+cpu"
     assert pins["huggingface-hub"] == "1.26.1" and pins["kernels"] == "0.17.1"
-    assert pins["algenta"] == "1.0.24" and pins["algenta-runtime-native"] == "1.0.7"
+    # round 12: the published SDK is 1.0.28 (the Ecosystem card had said 1.0.24); torch stays at
+    # 2.9.1 — the one Linux build variant the Hub repositories publish is torch29
+    assert pins["algenta"] == "1.0.28" and pins["algenta-sdk"] == "1.0.28"
+    assert pins["algenta-runtime-native"] == "1.0.7"
+    requirements = (APP_DIR / "requirements.txt").read_text(encoding="utf-8")
+    direct = dict(re.findall(r"^([a-z0-9_.\[\]-]+)==([^\s\\#]+)", requirements, re.M))
+    for name, version in direct.items():
+        key = name.split("[")[0].replace("_", "-")
+        assert pins.get(key) == version, (
+            f"{name}: requirements.txt says {version}, the lock {pins.get(key)}"
+        )
     assert {"mcp", "statsmodels", "scipy", "networkx", "nltk", "sympy", "numpy", "uvicorn"} <= set(
         pins
     )

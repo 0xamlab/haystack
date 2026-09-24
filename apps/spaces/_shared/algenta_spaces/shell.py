@@ -51,7 +51,7 @@ identifier; `machine_token(text)` names the first such token so the app that
 composes the pills can keep them human (the flagship's `badges()` in
 `app.py` owns the text).
 
-Head fragment (`NAV_ROWS_HEAD`, appended to the flagship's `BOOT_HEAD`): five
+Head fragment (`NAV_ROWS_HEAD`, appended to the flagship's `BOOT_HEAD`): six
 plain-ES5 scripts with no exclamation mark (the copy lint). `NAV_ROWS_SCRIPT`
 marks the item that opens each wrapped nav row (above); `DISCLOSURE_SCRIPT`
 mirrors every `alg-disclosure` accordion's open state onto its header as
@@ -68,7 +68,9 @@ instead of two lines inside a 999 px pill — re-run per frame on DOM, class and
 style changes (a tab or accordion opening), on resize and when the web fonts
 land; a chip that fits is left as the pill it is. `DROPDOWN_CLOSE_SCRIPT` closes
 a Gradio 6.28 dropdown whose list was left open after focus moved away — see the
-script's note for the stock behaviour it corrects.
+script's note for the stock behaviour it corrects. `TABS_KEYBOARD_SCRIPT` gives
+the strip the WAI-ARIA tabs keyboard contract Gradio leaves out: one Tab stop (the
+selected tab), Left / Right / Home / End move and select — see its note.
 """
 
 from __future__ import annotations
@@ -1128,14 +1130,90 @@ CHIP_WRAP_SCRIPT = (
     " })();"
 )
 
+#: The WAI-ARIA tabs keyboard contract Gradio 6.28 leaves out (launch review round 12: six tab
+#: buttons were six Tab stops and the arrow keys did nothing). A roving tabindex: in every
+#: strip the selected tab alone is in the Tab order (`tabindex="0"`), every other tab is
+#: `tabindex="-1"`, re-applied whenever `aria-selected` moves or a strip is (re)built — the
+#: attribute this script writes is not the one it observes, so a pass never schedules another.
+#: Gradio's clipped measuring copy of the strip (inside `.visually-hidden`, its buttons already
+#: `tabindex="-1"`) is left alone: a 1 px strip is not a keyboard target. On a tab, Right / Left
+#: move to the next / previous visible tab (wrapping), Home / End to the first / last; the
+#: target takes focus and is selected (`click()`, the way the strip script selects — Gradio's
+#: own handler runs). A trusted key only, never with a modifier; Tab itself is untouched, so the
+#: dropdown script's Tab-arrival reading (`DROPDOWN_CLOSE_SCRIPT`) is unchanged. `TABSTRIP_SCRIPT`
+#: already reveals a tab that takes focus, so on a phone the strip follows the arrows.
+TABS_KEYBOARD_SCRIPT = (
+    "(function () {"
+    " var TABS = '[role=\"tab\"]';"
+    " var LISTS = '[role=\"tablist\"]';"
+    " var MEASURING = '.visually-hidden';"
+    " var shownTabs = function (list) {"
+    "  var all = list.querySelectorAll(TABS); var shown = [];"
+    "  for (var i = 0; i < all.length; i += 1) {"
+    "   if (all[i].getBoundingClientRect().width > 0) { shown.push(all[i]); }"
+    "  }"
+    "  return shown;"
+    " };"
+    " var rove = function (list) {"
+    "  var tabs = shownTabs(list); var selected = null;"
+    "  for (var i = 0; i < tabs.length; i += 1) {"
+    "   if (tabs[i].getAttribute('aria-selected') === 'true') { selected = tabs[i]; }"
+    "  }"
+    "  if (selected === null && tabs.length > 0) { selected = tabs[0]; }"
+    "  for (var j = 0; j < tabs.length; j += 1) {"
+    "   var want = tabs[j] === selected ? '0' : '-1';"
+    "   if (tabs[j].getAttribute('tabindex') !== want) { tabs[j].setAttribute('tabindex', want); }"
+    "  }"
+    " };"
+    " var roveAll = function () {"
+    "  var lists = document.querySelectorAll(LISTS);"
+    "  for (var i = 0; i < lists.length; i += 1) {"
+    "   if (lists[i].closest(MEASURING) === null) { rove(lists[i]); }"
+    "  }"
+    " };"
+    " var target = function (tab, key) {"
+    "  var list = tab.closest(LISTS);"
+    "  if (list === null) { return null; }"
+    "  var tabs = shownTabs(list); var index = tabs.indexOf(tab);"
+    "  if (index === -1 || tabs.length === 0) { return null; }"
+    "  if (key === 'Home') { return tabs[0]; }"
+    "  if (key === 'End') { return tabs[tabs.length - 1]; }"
+    "  if (key === 'ArrowRight') { return tabs[(index + 1) % tabs.length]; }"
+    "  if (key === 'ArrowLeft') { return tabs[(index + tabs.length - 1) % tabs.length]; }"
+    "  return null;"
+    " };"
+    " var onKey = function (event) {"
+    "  if (event.isTrusted === false || event.altKey || event.ctrlKey || event.metaKey) { return; }"
+    "  var node = event.target;"
+    "  var tab = node !== null && node.closest !== undefined ? node.closest(TABS) : null;"
+    "  if (tab === null || tab.closest(MEASURING) !== null) { return; }"
+    "  var next = target(tab, event.key);"
+    "  if (next === null) { return; }"
+    "  event.preventDefault();"
+    "  next.focus();"
+    "  if (next.getAttribute('aria-selected') !== 'true') { next.click(); }"
+    " };"
+    " var start = function () {"
+    "  roveAll();"
+    "  new MutationObserver(roveAll).observe(document.documentElement,"
+    "   {childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected']});"
+    "  document.addEventListener('keydown', onKey, true);"
+    " };"
+    " if (document.readyState === 'loading') {"
+    "  document.addEventListener('DOMContentLoaded', start);"
+    " } else { start(); }"
+    " })();"
+)
+
 HEAD_SCRIPTS: tuple[str, ...] = (
     NAV_ROWS_SCRIPT,
     DISCLOSURE_SCRIPT,
     TABSTRIP_SCRIPT,
     CHIP_WRAP_SCRIPT,
     DROPDOWN_CLOSE_SCRIPT,
+    TABS_KEYBOARD_SCRIPT,
 )
 #: The fragment a host page puts in `<head>` (the flagship's `app.py` appends it to its own):
-#: the five head scripts. `SHELL_HEAD` is the same fragment under the name that says so.
+#: the six head scripts. `SHELL_HEAD` is the same fragment under the name that says so.
 NAV_ROWS_HEAD = "".join(f"<script>{script}</script>" for script in HEAD_SCRIPTS)
 SHELL_HEAD = NAV_ROWS_HEAD

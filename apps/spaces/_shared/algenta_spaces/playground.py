@@ -142,9 +142,14 @@ CALL_WIDTH = 88
 #: The largest magnitude a browser number box carries exactly: a JavaScript number is an IEEE
 #: double, so a whole number at or above 2^53 may arrive rounded by one and cannot be trusted.
 BROWSER_EXACT_MAX = 1 << 53
-REASON_ABOVE_BROWSER_RANGE = (
-    "is above the range the browser can enter exactly; use the snippet under Reproduce"
-)
+#: Short on purpose: with the field's label in front (`Successes A is too large; use
+#: Reproduce.`) it fits two caption lines in the Try form's 163 px column — 131 px of text
+#: inside the slot's insets, measured 235 px over two lines of at most 124 px — where the earlier
+#: sentence ran four lines in the 32 px slot (launch review round 12). The semicolon is the wrap
+#: point: an em dash became a word of its own and pushed `Reproduce.` onto a third line. The
+#: meaning stays — the box cannot carry the number exactly, the snippet under Reproduce can.
+REASON_ABOVE_BROWSER_RANGE = "is too large; use Reproduce"
+
 REASON_WHOLE_NUMBER = "must be a whole number"
 REASON_NEGATIVE = "cannot be negative"
 REASON_OPEN_UNIT = "must be above 0 and below 1"

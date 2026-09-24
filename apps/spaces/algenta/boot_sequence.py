@@ -51,6 +51,7 @@ import argparse
 import functools
 import logging
 import os
+import re
 import sys
 import time
 from collections.abc import Callable, Iterable, Mapping
@@ -699,10 +700,27 @@ def _stage_hero(
         )
 
 
-#: The hero row's clause once a background attempt, not boot, recorded the measurement.
+#: The hero row's clause once a background attempt, not boot, recorded the measurement. It is
+#: followed by the measurement's own clock (`after_boot_clause`: `measured after boot ·
+#: 10:12 UTC`), so the row's time and the foot's `finished <boot stamp>` cannot be read as one
+#: moment (launch review round 12).
 MEASURED_AFTER_BOOT = "measured after boot"
 #: The hero row before any attempt has run (a tracker built with none).
 HERO_NOT_ATTEMPTED = "no attempt has run"
+
+
+#: The clock inside a fleet stamp (`2026-09-24 10:12 UTC` → `10:12`).
+_CLOCK_RE = re.compile(r"\b\d{4}-\d{2}-\d{2} (\d{2}:\d{2}) UTC\b")
+
+
+def after_boot_clause(ts_utc: str) -> str:
+    """`measured after boot · 10:12 UTC` — the qualifier with the measurement's own clock, read
+    from the cell's fleet stamp (`YYYY-MM-DD HH:MM UTC`); a stamp that is not one leaves the
+    qualifier alone, so the row never prints a clock it did not read."""
+    clock = _CLOCK_RE.search(ts_utc or "")
+    if clock is None:
+        return MEASURED_AFTER_BOOT
+    return f"{MEASURED_AFTER_BOOT} · {clock.group(1)} UTC"
 
 
 def hero_detail(tracker: Any, *, boot_attempts: int | None = None, boot_hero: Any = None) -> str:
@@ -712,9 +730,10 @@ def hero_detail(tracker: Any, *, boot_attempts: int | None = None, boot_hero: An
     Measured: `0.12 ms per kernel call, n = 21 × 83 calls · statsmodels agrees · attempt 6` — the n
     chip in the Try card's own words (`try_tab.repeats_label`: `n = 21` when each sample was one
     call, `n = 21 × k calls` under rulebook v0.4) — plus
-    `· measured after boot` when the figure is not boot's own: more attempts have run than
-    boot's (`boot_attempts`), or a visitor's run of the card example was recorded since and the
-    hero is no longer the one boot ended with (`boot_hero`). Not
+    `· measured after boot · 10:12 UTC` (`after_boot_clause`, the measurement's own clock) when
+    the figure is not boot's own: more attempts have run than boot's (`boot_attempts`), or a
+    visitor's run of the card example was recorded since and the hero is no longer the one boot
+    ended with (`boot_hero`). Not
     measured: the rulebook's verdict in human words and the attempt count, plus `· measured
     again every 60 s until it records` only while the background thread is still trying; once
     it has stopped without recording (a final verdict), the verdict alone.
@@ -730,7 +749,7 @@ def hero_detail(tracker: Any, *, boot_attempts: int | None = None, boot_hero: An
         parity = "" if hero.parity is None else f" · {hero.parity.reference} agrees"
         later_attempt = boot_attempts is not None and tracker.attempts > boot_attempts
         replaced = boot_hero is not None and hero is not boot_hero
-        after = f" · {MEASURED_AFTER_BOOT}" if later_attempt or replaced else ""
+        after = f" · {after_boot_clause(cell.ts_utc)}" if later_attempt or replaced else ""
         return (
             f"{bench_ms(hero.kernel_ms)} per kernel call, {try_tab.repeats_label(cell)}"
             f"{parity}{tries}{after}"

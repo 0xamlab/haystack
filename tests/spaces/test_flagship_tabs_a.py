@@ -737,7 +737,9 @@ def test_render_hero_card_shows_ms_result_parity_bound_machine_and_stamp(kernels
     ours = hero.cell.lane(bench.SIDE_ALGENTA)
     assert f"MAD {common.cards.fmt_ms(ours.mad_ms)}" in card
     assert f"spread {common.cards.fmt_cv(ours.spread)}" in card  # the gate's statistic (v0.5)
-    assert f"CV {common.cards.fmt_cv(ours.cv)}" in card  # printed beside it, not gated
+    # round 12: no CV chip beside the verdict — `CV 19%` next to `stable · spread 1.6% ≤ 15%`
+    # read as a contradiction; the CV stays a lane-table statistic
+    assert f"CV {common.cards.fmt_cv(ours.cv)}" not in card and ">CV " not in card
     head = card.split('<pre class="alg-result">')[0]
     assert '<div class="alg-card-sub">50 of 1,000 vs 65 of 1,000</div>' in head
     assert "successes_a" not in head and "ab_testing" not in head, "no identifiers in primary copy"
@@ -903,18 +905,15 @@ def test_run_hero_flows(deps, monkeypatch):
         ((2.5, 1000, 65, 1000), "Successes A must be a whole number."),
         (
             (50, 1 << 63, 65, 1000),
-            "Trials A is above the range the browser can enter exactly; use the snippet under"
-            " Reproduce.",
+            "Trials A is too large; use Reproduce.",
         ),
         (
             (50, (1 << 53) + 1, 65, 1000),
-            "Trials A is above the range the browser can enter exactly; use the snippet under"
-            " Reproduce.",
+            "Trials A is too large; use Reproduce.",
         ),
         (
             (50, float(1 << 53), 65, 1000),
-            "Trials A is above the range the browser can enter exactly; use the snippet under"
-            " Reproduce.",
+            "Trials A is too large; use Reproduce.",
         ),
         ((50, "9223372036854775808", 65, 1000), "Trials A is outside the 64-bit range."),
     ],
@@ -1028,7 +1027,12 @@ def test_hero_tracker_keeps_the_latest_measured_attempt_and_retries_in_the_backg
     qualified = boot_sequence.hero_detail(
         tracker, boot_attempts=tracker.attempts, boot_hero=boot_hero
     )
-    assert qualified.endswith(f"attempt 3 · {boot_sequence.MEASURED_AFTER_BOOT}"), qualified
+    # the qualifier carries the measurement's own clock, so it is never read as the foot's
+    # boot time (round 12): `measured after boot · 10:12 UTC`
+    clause = boot_sequence.after_boot_clause(visitor.cell.ts_utc)
+    assert clause == f"{boot_sequence.MEASURED_AFTER_BOOT} · {visitor.cell.ts_utc[11:16]} UTC"
+    assert qualified.endswith(f"attempt 3 · {clause}"), qualified
+    assert boot_sequence.after_boot_clause("not a stamp") == boot_sequence.MEASURED_AFTER_BOOT
     assert boot_sequence.bench_ms(visitor.kernel_ms) in qualified, "the visitor's figure"
     with pytest.raises(RuntimeError):
         try_tab.HeroTracker().attempt()
@@ -1643,7 +1647,9 @@ def test_slot_plans_map_kinds_and_prefill_hero_defaults(deps):
         "label": "n_nodes",
         "info": restored[3].info,
         "value": 3,
+        "step": play_tab.INT_STEP,  # a whole-number field keeps the browser's step of 1
     }
+    assert restored[3].kind == playground.KIND_INT
     assert play_tab.control_kwargs(restored[3], "bool") == {"visible": False}
     json_kwargs = play_tab.control_kwargs(restored[0], "json")
     assert json_kwargs["label"].startswith("src — ") and "info" not in json_kwargs
@@ -1708,7 +1714,7 @@ def test_run_call_validation_success_and_errors(deps, monkeypatch):
         )
     )
     assert play_tab.field_message("n_a", huge[0].field_errors["n_a"]) == (
-        "n_a is above the range the browser can enter exactly; use the snippet under Reproduce."
+        "n_a is too large; use Reproduce."
     )
     assert huge[0].refused and huge[0].card is None
     for raw, field_name, reason in (
@@ -2409,8 +2415,10 @@ def test_boot_hero_row_is_live_after_a_background_attempt_records(kernels):
             "the row prints the Try card's own n chip (n = 21 × k calls under rulebook v0.4)"
         )
         assert live["detail"].endswith(
-            f"attempt {tracker.attempts} · {boot_sequence.MEASURED_AFTER_BOOT}"
+            f"attempt {tracker.attempts} ·"
+            f" {boot_sequence.after_boot_clause(tracker.measured.cell.ts_utc)}"
         )
+        assert live["detail"].endswith(" UTC"), "the after-boot clause carries its own clock"
         assert tracker.attempts > 2 and "again" not in live["detail"], "no promise once it recorded"
         _assert_clean_copy(live["detail"])
         assert registry._stages["hero"].detail == frozen, (

@@ -53,11 +53,13 @@ parity card a run paints (`render_empty`: one sentence, one provenance line, no
 lane rows) — or, when the family did not load in this container, the
 quiet card with that code, so a visitor knows before pressing anything. Every
 Reproduce editor opens prefilled with the snippet for the default shape. The
-three panels are peers, so their Run buttons share one hierarchy
-(`RUN_VARIANT`: all secondary — no panel is "the" action); each panel is the
-one stack described above (controls two to a row, `CONTROL_MIN_WIDTH` each and
-one under the other on a phone, Run, then the full-width card), so no column
-ever ends hundreds of pixels above the card beside it.
+three panels are peers, and each panel's Run is the primary action of its own
+card (`RUN_VARIANT`, the gradient primary every other tab's Run wears — round 12:
+three grey 240 px secondaries beside five primary Runs read as a different
+control); each panel is the one stack described above (controls two to a row,
+`CONTROL_MIN_WIDTH` each and one under the other on a phone, Run across the
+panel, then the full-width card), so no column ever ends hundreds of pixels
+above the card beside it.
 The lane label on the card is `races.revision_label` — the family at the Hub
 snapshot the module was imported from, never the capped sha when the cache
 holds a later revision. The GPU stage tile (`gpu_status`) sits below the three
@@ -132,15 +134,14 @@ TOL_RMSNORM = 1e-9
 TOL_ROPE = 1e-8  # the kernel's cos/sin drift ~2e-11 per radian; 1.3e-9 measured at 64 tokens
 FEATURE = "kernels"
 TORCH = "torch"
-#: Three peer panels, one hierarchy: every Run button is the secondary button.
-RUN_VARIANT = "secondary"
+#: Three peer panels, one hierarchy: every Run button is the primary button of its own card, as
+#: on every other tab (round 12).
+RUN_VARIANT = "primary"
 #: A control column in a two-up row: two fit beside a card on the desktop, one per row on a
 #: phone (Gradio stacks a column narrower than this).
 CONTROL_MIN_WIDTH = 240
 #: The width below which a two-column tab sharing this module's stretch stacks its columns.
 COLUMN_MIN_WIDTH = 280
-#: The Run button under a panel's controls: its own width, never the panel's.
-RUN_MIN_WIDTH = 240
 #: The shared two-column stretch (Governed, Ecosystem): the `gr.HTML` block carrying this class
 #: grows to its column, the card inside fills it and the card's footer sits on the bottom edge.
 STRETCH_CLASS = "alg-stretch"
@@ -1433,15 +1434,8 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
             inputs = controls(slots)
             if len(slots) != len(PANEL_FIELDS[key]):
                 raise ValueError(f"{key}: {len(slots)} slots for {len(PANEL_FIELDS[key])} fields")
-            with gr.Row():
-                run = gr.Button(
-                    run_label,
-                    variant=RUN_VARIANT,
-                    size="lg",
-                    scale=0,
-                    min_width=RUN_MIN_WIDTH,
-                    elem_classes=["alg-run"],
-                )
+            # the panel's primary action across the panel, as the Playground's Run is (round 12)
+            run = gr.Button(run_label, variant=RUN_VARIANT, elem_classes=["alg-run"])
             # the refusal's echo lands here (`STATUS_NOT_RUN`) in the reserved caption line
             # under Run (`common.STATUS_SLOT_CLASS`), so the panels below never move
             status = gr.HTML(common.render_status(), elem_classes=[common.STATUS_SLOT_CLASS])

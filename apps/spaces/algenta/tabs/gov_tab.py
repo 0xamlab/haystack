@@ -9,17 +9,23 @@ and the two endpoints answer with that same card. With a key, one primary
 action runs the whole chain against the real engine:
 
     recommend (two named actions, the engine's own simulation)
-      → log_decision (the chosen action, confidence, risk floor)
+      → log_decision (the chosen action, the declared confidence, the risk P5)
         → execute_decision (webhook_url = this Space's own /hook/<nonce>)
           → Receipt with the engine's webhook POST shown next to it,
             or a Denial naming the gate that held it.
 
 The profile radio is the integration contract's four profiles (`observe`,
 `govern`, `execute`, `full` — `contracts/integration-tool-contract.json` in
-thyn-ai/algenta-integrations, mirrored here as data): under `observe` and
-`govern` the execute step is intercepted before the engine is called, exactly
-as every algenta-* integration filters `execute_decision` out of the model-
-facing tool list. From 1280 px up its four pills share one row at their natural
+thyn-ai/algenta-integrations, mirrored here as data): the chain stops at the
+first tool the profile does not expose (`first_tool_outside_profile`), exactly
+as every algenta-* integration filters the tools outside the profile out of the
+model-facing tool list — under `observe` that is `log_decision` (the
+recommendation stands; nothing is logged, nothing runs, no decision id exists),
+under `govern` it is `execute_decision` (the decision is logged; nothing ran),
+and `execute` and `full` run the whole chain. The intercepted card names the
+tool, the call it stopped and only the steps that did run (round 17: the
+observe card showed a decision id and said "the decision is logged" while the
+profile has no `log_decision`). From 1280 px up its four pills share one row at their natural
 widths; below that (`PROFILE_GRID_MAX_WIDTH`) the controls column is too narrow
 for the four — 465 px of pills in a 422 px row at 1024 — so the pills are two
 even rows of two, each 44 px, never three and an orphan (round 10: `Full` sat
@@ -102,7 +108,7 @@ import html
 import json
 import logging
 import math
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -165,7 +171,6 @@ PROFILE_LABELS: Mapping[str, str] = {
     "full": "Full",
 }
 DEFAULT_PROFILE = "execute"
-EXECUTE_PROFILES: frozenset[str] = frozenset({"execute", "full"})
 PROFILE_TOOLS: Mapping[str, tuple[str, ...]] = {
     "observe": ("get_contract", "query_data", "simulate", "recommend"),
     "govern": (
@@ -189,6 +194,32 @@ PROFILE_TOOLS: Mapping[str, tuple[str, ...]] = {
 }
 #: The engine's wildcard: every tool it lists (the `full` profile's one entry).
 EVERY_TOOL = "*"
+#: The tools one run calls, in order; the chain stops at the first one outside the profile.
+CHAIN_TOOLS: tuple[str, ...] = ("recommend", "log_decision", "execute_decision")
+
+
+def allows(profile: str, tool: str) -> bool:
+    """True when the profile exposes `tool` (the `*` profile exposes every tool)."""
+    tools = PROFILE_TOOLS[profile]
+    return EVERY_TOOL in tools or tool in tools
+
+
+def first_tool_outside_profile(profile: str, tools: Sequence[str] = CHAIN_TOOLS) -> str:
+    """The first of `tools` the profile does not expose — where the integration intercepts the
+    chain — or an empty string when the profile exposes every one of them (`execute`, `full`).
+    `observe` → `log_decision`, `govern` → `execute_decision`."""
+    return next((tool for tool in tools if not allows(profile, tool)), "")
+
+
+def chain_steps(profile: str, tools: Sequence[str] = CHAIN_TOOLS) -> tuple[str, ...]:
+    """The tools of `tools` a run under `profile` calls: every one up to the intercepted tool."""
+    blocked = first_tool_outside_profile(profile, tools)
+    return tuple(tools) if not blocked else tuple(tools)[: tuple(tools).index(blocked)]
+
+
+#: The profiles whose run reaches `execute_decision` — derived from the tool lists, never a
+#: second copy of them.
+EXECUTE_PROFILES: frozenset[str] = frozenset(p for p in PROFILES if allows(p, "execute_decision"))
 #: The engine's tool ids, as a visitor reads them; the ids stay in the JSON and the snippets.
 TOOL_NAMES: Mapping[str, str] = {
     "get_contract": "Read the contract",
@@ -202,7 +233,7 @@ TOOL_NAMES: Mapping[str, str] = {
 }
 STEP_NAMES: Mapping[str, str] = {
     "recommend": "Recommendation",
-    "log_decision": "Decision logged",
+    "log_decision": "Decision log",
     "execute_decision": "Execution",
     "run": "Run",
 }
@@ -337,8 +368,12 @@ LABEL_ACTION = "Action"
 LABEL_LOW = "Pessimistic value"
 LABEL_HIGH = "Optimistic value"
 LABEL_HOLD = "Hold outcome"
-LABEL_CONFIDENCE = "Confidence"
-LABEL_RISK = "Risk floor (5th percentile)"
+#: The visitor's own confidence in the decision (`log_decision.confidence`) — not the engine's
+#: ranking confidence, which the Recommendation row prints as `engine confidence`.
+LABEL_CONFIDENCE = "Declared confidence"
+#: `log_decision.risk_p5`: the decision's pessimistic outcome at the 5th percentile. Not the
+#: policy's risk floor — that is the gate the engine compares it against (`GATE_NAMES`).
+LABEL_RISK = "Risk (P5)"
 LABEL_FORCE = "Force execution (operators only)"
 LABEL_OVERRIDE = "Override the safety gate (operators only)"
 LABEL_RAW = "Engine JSON"
@@ -350,6 +385,14 @@ EMPTY_ROWS = ("recommendation", "decision", "execution")
 #: What a screen reader hears for an empty step row before a run (these are steps, not timings).
 PENDING_TEXT = "not run yet"
 LOADING_TEXT = "Asking the hosted engine: recommend, log the decision, execute it."
+#: The loading sentence names the steps the profile will run (`loading_text`): every step under
+#: `execute` and `full` (`LOADING_TEXT`), fewer under `govern` and `observe`.
+LOADING_STEPS_TEXT = "Asking the hosted engine: {steps}."
+STEP_PHRASES: Mapping[str, str] = {
+    "recommend": "recommend",
+    "log_decision": "log the decision",
+    "execute_decision": "execute it",
+}
 LOADING_AGAIN_TEXT = (
     "Sending the last decision to the hosted engine again; after a failed delivery it executes "
     "again and issues a new receipt."
@@ -360,7 +403,8 @@ LOADING_AGAIN_GATE_TEXT = (
 HOW_TEXT = (
     "Every step is a real call to the hosted engine on a shared tenant: the recommendation runs "
     f"the engine's simulation over two named actions ({RUNS} runs each), logging records the "
-    "chosen one with your confidence and downside, executing asks the engine to deliver it to "
+    "chosen one with your declared confidence and its risk at the 5th percentile, executing "
+    "asks the engine to deliver it to "
     "this Space's own webhook. The engine answers in the same call with a receipt and its "
     "integrity ids, or holds it at a policy gate such as confidence or the risk floor. The "
     "receipt says whether the engine's POST reached this Space, and a POST is shown only once "
@@ -376,9 +420,28 @@ BOOT_UNAVAILABLE_HINT = (
 BOOT_RATE_LIMITED_HINT = (
     "The hosted engine throttled this Space when it booted; a run asks it again."
 )
+#: What the intercepted card says, by the tool the integration stopped: `govern` stops at
+#: `execute_decision` (the decision is logged), `observe` at `log_decision` (nothing is logged).
 INTERCEPT_TEXT = (
     "Executing a decision is not in this profile; the decision is logged and nothing ran."
 )
+INTERCEPT_LOG_TEXT = (
+    "Logging a decision is not in this profile; the recommendation stands, nothing was logged "
+    "or run."
+)
+INTERCEPT_TEXTS: Mapping[str, str] = {
+    "execute_decision": INTERCEPT_TEXT,
+    "log_decision": INTERCEPT_LOG_TEXT,
+}
+#: The intercepted card's sub-line names the call the integration stopped: the engine was
+#: called for every step before it (round 17: "before the engine was called" under `govern`,
+#: after two real engine calls).
+INTERCEPT_SUB_TEXT = "before the {call} call reached the engine"
+CALL_WORDS: Mapping[str, str] = {
+    "recommend": "recommend",
+    "log_decision": "log",
+    "execute_decision": "execute",
+}
 WEBHOOK_MISSED_TEXT = (
     "The engine reported delivery; its POST had not reached this Space within {wait:g} s."
 )
@@ -448,8 +511,16 @@ FIELD_LABELS: Mapping[str, str] = {
     "high": LABEL_HIGH,
     "hold_value": LABEL_HOLD,
     "confidence": LABEL_CONFIDENCE,
-    "risk_p5": "Risk floor",
+    "risk_p5": LABEL_RISK,
 }
+#: The two confidences on one card, named apart: the Recommendation row's is the engine's
+#: ranking confidence (`Recommendation.confidence`), the Chosen action row's the one the visitor
+#: declared (`Decision.confidence`, the form's field). Round 17: `confidence 1.00` and
+#: `confidence 0.93` sat on adjacent rows.
+ENGINE_CONFIDENCE_TEXT = "engine confidence"
+DECLARED_CONFIDENCE_TEXT = "declared confidence"
+#: The Chosen action row's `risk_p5` (see `LABEL_RISK`); the gate stays `GATE_NAMES["risk_floor"]`.
+RISK_P5_TEXT = "risk P5"
 
 
 # ---------------------------------------------------------------------------
@@ -631,6 +702,7 @@ class Outcome:
     receipt: Receipt | None = None
     denial: Denial | None = None
     intercepted_profile: str = ""
+    intercepted_tool: str = ""
     webhook: webhook_mod.HookEvent | None = None
     webhook_host: str = ""
     rejected: list[webhook_mod.Rejection] = field(default_factory=list)
@@ -687,15 +759,31 @@ def run_chain(
     state: dict[str, Any],
     out: Outcome | None = None,
 ) -> Outcome:
-    """recommend → log_decision → (profile gate) → execute_decision, recording each step into
-    `out` (the caller's, so the bodies of the steps that did run survive a later failure)."""
+    """recommend → log_decision → execute_decision, stopping at the first tool the profile does
+    not expose (`first_tool_outside_profile`: `log_decision` under `observe`, `execute_decision`
+    under `govern`, none under `execute` and `full`), recording each step into `out` (the
+    caller's, so the bodies of the steps that did run survive a later failure). An intercepted
+    step is audited as that tool, `intercepted`, at the profile gate; nothing past it is called,
+    and a run intercepted before `log_decision` leaves the session's decisions untouched."""
     if profile not in PROFILES:
         raise ValueError(f"profile must be one of {PROFILES}")
     out = Outcome() if out is None else out
+    blocked = first_tool_outside_profile(profile)
+
+    def intercept(tool: str, decision_id: str = "") -> Outcome:
+        out.intercepted_profile = profile
+        out.intercepted_tool = tool
+        _audit(state, tool, "intercepted", decision_id, INTERCEPT_GATE)
+        return out
+
+    if blocked == "recommend":
+        return intercept("recommend")
     actions = recommend_actions(action, low, high, hold_value)
     out.recommendation = hosted.recommend(actions, runs=RUNS)
     out.raw["recommend"] = out.recommendation.raw
     _audit(state, "recommend", f"recommends {out.recommendation.recommended_action}")
+    if blocked == "log_decision":
+        return intercept("log_decision")
 
     rationale = out.recommendation.rationale or "Recommended by the hosted engine."
     figures = hosted_api.action_result(out.recommendation, action)
@@ -721,11 +809,8 @@ def run_chain(
     state["last_execution_status"] = ""
     state["last_gate"] = ""
     _audit(state, "log_decision", "logged", out.decision.decision_id)
-
-    if profile not in EXECUTE_PROFILES:
-        out.intercepted_profile = profile
-        _audit(state, "execute_decision", "intercepted", out.decision.decision_id, INTERCEPT_GATE)
-        return out
+    if blocked == "execute_decision":
+        return intercept("execute_decision", out.decision.decision_id)
     execute_into(hosted, hook, out, out.decision.decision_id, force, override_safety, state)
     return out
 
@@ -878,6 +963,26 @@ def gate_name(gate: str) -> str:
     return GATE_NAMES.get(gate, gate.replace("_", " "))
 
 
+def call_word(tool: str) -> str:
+    """The one word the intercepted card's sub-line calls a tool's engine call by."""
+    return CALL_WORDS.get(tool, tool.replace("_", " "))
+
+
+def intercept_text(tool: str) -> str:
+    """The intercepted card's sentence for the tool the integration stopped at."""
+    fallback = f"{tool_name(tool)} is not in this profile; nothing past it ran."
+    return INTERCEPT_TEXTS.get(tool) or fallback
+
+
+def loading_text(profile: str = DEFAULT_PROFILE) -> str:
+    """The run's loading sentence: the steps this profile will ask the engine for, in order —
+    `LOADING_TEXT` word for word under `execute` and `full`."""
+    if profile not in PROFILES:
+        profile = DEFAULT_PROFILE
+    steps = [STEP_PHRASES[tool] for tool in chain_steps(profile)]
+    return LOADING_STEPS_TEXT.format(steps=", ".join(steps))
+
+
 def tool_chips(profile: str) -> str:
     """One chip per tool the profile allows; the `*` profile's chip would repeat the profile
     line word for word (`Every tool the engine lists`), so it is said once, in the line
@@ -936,11 +1041,12 @@ def empty_card() -> str:
     return render_empty_card(TITLE_EMPTY, EMPTY_TEXT, rows=EMPTY_ROWS, pending_text=PENDING_TEXT)
 
 
-def loading_card(again: bool = False, gate: str = "") -> str:
-    """The loading card: the run's sentence, or Execute again's — which names the gate the
-    engine is expected to hold the repeat at, when there is one."""
+def loading_card(again: bool = False, gate: str = "", profile: str = DEFAULT_PROFILE) -> str:
+    """The loading card: the run's sentence (the steps the profile will run), or Execute
+    again's — which names the gate the engine is expected to hold the repeat at, when there is
+    one."""
     if not again:
-        return render_loading_card(TITLE_LANE, LOADING_TEXT)
+        return render_loading_card(TITLE_LANE, loading_text(profile))
     if gate:
         return render_loading_card(TITLE_LANE, LOADING_AGAIN_GATE_TEXT.format(gate=gate_name(gate)))
     return render_loading_card(TITLE_LANE, LOADING_AGAIN_TEXT)
@@ -950,7 +1056,9 @@ def _steps_html(out: Outcome) -> str:
     rows = []
     rec = out.recommendation
     if rec is not None:
-        conf = f" · confidence {rec.confidence:.2f}" if rec.confidence is not None else ""
+        conf = ""
+        if rec.confidence is not None:
+            conf = f" · {ENGINE_CONFIDENCE_TEXT} {rec.confidence:.2f}"
         rows.append(
             _row(
                 step_name("recommend"),
@@ -965,7 +1073,8 @@ def _steps_html(out: Outcome) -> str:
         rows.append(
             _row(
                 "Chosen action",
-                f"{dec.chosen_action} · confidence {conf_text} · risk floor {risk_text}",
+                f"{dec.chosen_action} · {DECLARED_CONFIDENCE_TEXT} {conf_text}"
+                f" · {RISK_P5_TEXT} {risk_text}",
             )
         )
     if out.webhook_host:
@@ -1160,14 +1269,19 @@ def render_denial(out: Outcome, hosted: HostedGoverned) -> str:
 
 
 def render_intercepted(out: Outcome, hosted: HostedGoverned) -> str:
+    """The amber card for a chain the integration stopped: the title names the profile, the
+    sub-line the call that never reached the engine, the sentence what did and did not happen
+    for that tool (`intercept_text`), and the steps list only what ran — under `observe` the
+    Recommendation row alone, no Decision row, since nothing was logged."""
     profile = out.intercepted_profile
+    tool = out.intercepted_tool or "execute_decision"
     return (
         '<article class="alg-card alg-card-warn alg-gov-card">'
         f'<h2 class="alg-card-title">{_esc(TITLE_INTERCEPTED.format(profile=profile))}</h2>'
-        '<div class="alg-card-sub">before the engine was called</div>'
+        f'<div class="alg-card-sub">{_esc(INTERCEPT_SUB_TEXT.format(call=call_word(tool)))}</div>'
         f'<div class="alg-chips">{cards.status_chip("measured", "intercepted by the integration")}'
         f"{_chip(INTERCEPT_CODE, 'warn')}</div>"
-        f'<p class="alg-card-reason">{INTERCEPT_TEXT}</p>'
+        f'<p class="alg-card-reason">{_esc(intercept_text(tool))}</p>'
         f'<p class="alg-card-note">The {_esc(profile)} profile exposes:</p>'
         f'<div class="alg-chips">{tool_chips(profile)}</div>'
         f"{_steps_html(out)}"
@@ -1422,9 +1536,12 @@ def on_execute_again(
                 TITLE_LANE, CODE_NO_DECISION, HINT_NO_DECISION, hardware=_foot(hosted)
             )
             return card, raw_json(None, hook), render_audit(state), state
-        if str(profile) not in EXECUTE_PROFILES:
-            out.intercepted_profile = str(profile) if str(profile) in PROFILES else PROFILES[0]
-            _audit(state, "execute_decision", "intercepted", decision_id, INTERCEPT_GATE)
+        chosen = str(profile) if str(profile) in PROFILES else PROFILES[0]
+        blocked = first_tool_outside_profile(chosen, ("execute_decision",))
+        if blocked:
+            out.intercepted_profile = chosen
+            out.intercepted_tool = blocked
+            _audit(state, blocked, "intercepted", decision_id, INTERCEPT_GATE)
             return render_intercepted(out, hosted), raw_json(out, hook), render_audit(state), state
         execute_into(hosted, hook, out, decision_id, bool(force), bool(override_safety), state)
         return render_outcome(out, hosted), raw_json(out, hook), render_audit(state), state
@@ -1533,13 +1650,16 @@ def build(
         LOADING_TEXT,
         LOADING_AGAIN_TEXT,
         LOADING_AGAIN_GATE_TEXT.format(gate="idempotency"),
+        *(loading_text(p) for p in PROFILES),
         INTERCEPT_TEXT,
+        INTERCEPT_LOG_TEXT,
+        *(INTERCEPT_SUB_TEXT.format(call=call_word(t)) for t in CHAIN_TOOLS),
         NO_SIGNATURE_TEXT,
         REJECTED_NOTE,
         ENGINE_NOTE_TEXT,
     ):
         check_copy(text, what="gov copy")
-    for text in (LABEL_RISK, LABEL_FORCE, LABEL_OVERRIDE):
+    for text in (LABEL_CONFIDENCE, LABEL_RISK, LABEL_FORCE, LABEL_OVERRIDE):
         check_copy(text, max_words=6, what="gov control label")
     for line in PROFILE_LINES.values():
         check_copy(line, max_words=14, what="profile line")
@@ -1743,7 +1863,7 @@ def build(
                 return
             yield from _emit(
                 staged(
-                    loading_card(),
+                    loading_card(profile=str(p)),
                     lambda: on_run(
                         deps, lane, hook, p, a, lo, hi, hv, c, r, f, o, s, request, boot_status
                     ),

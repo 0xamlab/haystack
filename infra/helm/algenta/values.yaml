@@ -419,7 +419,12 @@ redis:
 
 minio:
   enabled: false
-  image: "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z"
+  # MinIO withdrew its community images (quay.io/minio/minio and docker.io/minio/minio answer
+  # `unauthorized`, 2026-09-24). Chainguard builds MinIO from source for linux/amd64 + arm64 with
+  # the same `minio` entrypoint, env vars, console flag and health paths; referenced by index
+  # digest (its free tier publishes only `latest`). The pod's securityContext (runAsUser/fsGroup
+  # 1000) keeps /data writable exactly as before.
+  image: "cgr.dev/chainguard/minio@sha256:bd014394a80898e68c149f2311fdf8d5a2c2f3bb2c33b9327ae6d02b4b065ae1"
   rootUser: algenta_minio
   rootPassword: ""
   bucketName: algenta-results

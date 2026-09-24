@@ -428,15 +428,17 @@ def test_stability_chip_and_the_noisy_reason_name_the_same_gate():
         bench.noisy_reason(lanes)
 
 
-def test_spread_chips_carry_p95_mad_and_cv_with_units():
+def test_spread_chips_carry_p95_mad_and_spread_with_units_and_no_cv():
+    """Round 12: `CV 19%` beside `stable · spread 1.6% ≤ 15%` read as a contradiction to three
+    reviewers; the CV is a lane-table statistic and leaves every card face."""
     lane = _lane("algenta-stats", bench.SIDE_ALGENTA, 0.13)
     chips = cards.spread_chips(lane)
     assert [c[c.index(">") + 1 : c.index("</")] for c in chips] == [
         "P95 0.156 ms",
         "MAD 6.50 µs",
         "spread 7.4%",
-        "CV 4.0%",
     ]
+    assert not any("CV" in c for c in chips), "the CV is printed in the lane table alone"
     lane.n = 11
     assert cards.spread_chips(lane)[0].endswith(">max 0.169 ms</span>")
     for chip in chips:
@@ -498,7 +500,7 @@ def test_n_chip_says_how_the_timing_was_taken():
         " least 10 ms (at most 200; batched calls run faster than a lone warm call, so a sample"
         " usually lasts a few ms), the per-call time is the sample over k, and the card says"
         " n = 21 × k calls; the spread the stability gate reads is 1.4826 × MAD over the median,"
-        " with the mean within 15% of the median (the CV is printed beside it)"
+        " with the mean within 15% of the median (the CV is shown in the lane table)"
     )
     assert (
         f"{bench.SAMPLE_MIN_MS:g} ms" in cards.HOW_TIMED and str(bench.CALLS_MAX) in cards.HOW_TIMED

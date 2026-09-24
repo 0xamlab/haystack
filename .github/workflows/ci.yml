@@ -228,12 +228,17 @@ jobs:
             --label "algenta-ci-created=$(date +%s)" \
             --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+          # MinIO: the community images at quay.io/minio/minio and docker.io/minio/minio were
+          # withdrawn (anonymous pulls answer `unauthorized`, 2026-09-24 — every CI run went red).
+          # Chainguard builds MinIO from source for linux/amd64 + arm64 with the same `minio`
+          # entrypoint, env vars and /minio/health/ready; referenced by index digest alone (its free
+          # tier publishes only `latest`, so the digest is the pin). Runs as uid 65532; /data is 1777.
           docker_run_retry "$minio_name" -d --name "$minio_name" -p 0:9000 \
             --label algenta-ci=test-services \
             --label "algenta-ci-created=$(date +%s)" \
             --label "algenta-ci-run=${CI_SERVICE_SUFFIX}" \
             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-            quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+            cgr.dev/chainguard/minio@sha256:bd014394a80898e68c149f2311fdf8d5a2c2f3bb2c33b9327ae6d02b4b065ae1 server /data
 
           # docker port emits one line per binding (0.0.0.0:NNNN, then [::]:NNNN) — take the
           # port number of the first.

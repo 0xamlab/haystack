@@ -43,6 +43,11 @@ What each check asserts
                           within the printed tolerance)
 * ``governed_lane``       the Governed tab returns the not-configured card without a key,
                           else a receipt or a gate denial
+* ``governed_profiles``   with a key, the chain stops at the first tool outside the profile:
+                          the ``observe`` profile's run answers the intercept card with no
+                          Decision row (``recommend`` ran, nothing was logged), the ``govern``
+                          profile's the intercept card with one (the decision is logged,
+                          nothing ran); each card's sentence and sub-line name the tool
 * ``ecosystem_counts``    the Ecosystem tab's Hub table carries the live counts (repository
                           rows, the Hub column, the downloads and likes chips) whenever the Hub
                           answered; only a Hub code (``hub_counts_*``) is the documented state,
@@ -118,6 +123,11 @@ What each check asserts
 * ``no_toasts``           no visible ``.toast-body`` anywhere: on the landing page, at 100, 400,
                           800 and 3,000 ms after every tab's run button is pressed (the
                           Governed run included when its key is set) and once every run settled
+* ``srlive_no_raw_keys``  Gradio's own screen-reader status region (``.sr-only[role=status]``,
+                          its StatusTracker) never carries a bare i18n key (``common.complete``)
+                          — sampled every 100 ms for 4 s after each tab click and after one Run
+                          at 1440 light and 375 dark — and the Space's own ``.alg-status`` live
+                          region announced the run
 * ``boot_card_timings``   every stage row of the boot card prints the time ``/health`` records
                           for it (a stage that ran is never ``0.0 s``) and the rows sum to the
                           ``booted in`` foot, which is the snapshot's boot time
@@ -443,6 +453,8 @@ def reset_clients() -> None:
     _refusal_audit_errors.clear()
     _eco_table_audits.clear()
     _eco_table_errors.clear()
+    _srlive_audits.clear()
+    _srlive_errors.clear()
     _LABEL_CACHE.clear()
 
 
@@ -936,6 +948,66 @@ def receipt_tone(ctx: Any) -> str:
         fail(f"/{name} receipt '{chip}': {'; '.join(problems)}")
     tail = f", {WEBHOOK_RECEIVED_TEXT}" if received else ""
     return f"/{name} receipt '{chip}' painted {tone}{tail}"
+
+
+def profile_parameter(info: Mapping[str, Any]) -> str:
+    """The `/gov_run` parameter that carries the profile: the form's one Radio, else a parameter
+    named `profile` or `p`; a form without one fails the gate by name."""
+    params = [p for p in info.get("parameters", ()) if str(p.get("parameter_name") or "")]
+    radios = [str(p["parameter_name"]) for p in params if p.get("component") == PROFILE_COMPONENT]
+    if len(radios) == 1:
+        return radios[0]
+    names = [str(p["parameter_name"]) for p in params]
+    for candidate in PROFILE_PARAM_NAMES:
+        if candidate in names:
+            return candidate
+    fail(f"/gov_run has no profile radio among its parameters ({', '.join(names) or 'none'})")
+
+
+def governed_profiles(ctx: Any) -> str:
+    """The chain stops at the first tool the profile does not expose, and the card says so: the
+    `observe` profile's run answers the intercept card with no Decision row (`recommend` ran and
+    nothing was logged — round 17 found a decision id on it), the `govern` profile's the
+    intercept card with a Decision row (the decision is logged, nothing ran); each card's title
+    names the profile, its sub-line the call that never reached the engine and its sentence the
+    tool. Without a key the not-configured card is the documented state — except in the keyed
+    phase, where it is a broken precondition."""
+    name, info = endpoint_for(ctx, "gov")
+    param = profile_parameter(info)
+    findings: list[str] = []
+    for profile, tool, call_word, sentence, wants_decision in PROFILE_INTERCEPTS:
+        name, outputs = call(ctx, "gov", {param: profile})
+        texts = texts_of(outputs)
+        card = next((t for t in texts if "alg-card" in t), "\n".join(texts))
+        code = unavailable_code(card)
+        if same_code(code, NOT_CONFIGURED_CODE):
+            _not_configured_in_a_keyed_run(name, code)
+            return f"/{name} {code}: no key on this Space, the profiles are not exercised"
+        if same_code(code, RATE_LIMITED_CODE):
+            return f"/{name} {code}: demo tenant throttled, the profiles are not exercised"
+        if code:
+            fail(f"/{name} {param}={profile} returned the unavailable card ({code})")
+        text = plain_text(card)
+        problems: list[str] = []
+        title = INTERCEPT_TITLE.format(profile=profile)
+        if title not in text:
+            problems.append(f"not the intercept card (no '{title}')")
+        if sentence not in text:
+            problems.append(f"the card does not say '{sentence}'")
+        sub = INTERCEPT_SUB_TEXT.format(call=call_word)
+        if sub not in text:
+            problems.append(f"the sub-line is not '{sub}'")
+        has_decision = DECISION_ROW_RE.search(card) is not None
+        if wants_decision and not has_decision:
+            problems.append("no Decision row, though the profile logs the decision first")
+        if has_decision and not wants_decision:
+            problems.append("a Decision row, though the profile exposes no log_decision")
+        if problems:
+            fail(f"/{name} {param}={profile}: {'; '.join(problems)}")
+        findings.append(
+            f"{profile} intercepted at {tool}, {'a' if has_decision else 'no'} Decision row"
+        )
+    return f"/{name} {'; '.join(findings)}"
 
 
 def _urllib_post_json(url: str, body: Mapping[str, Any], timeout: float) -> tuple[int, str]:
@@ -1534,7 +1606,8 @@ EXACT_INT_FAMILY = "stats"
 EXACT_INT_MODULE = "ab_testing"
 EXACT_INT_FUNCTION = "z_test_proportions"
 EXACT_INT_ARGS: Mapping[str, int] = {"successes_a": 200, EXACT_INT_FIELD: EXACT_INT}
-#: The refusal the contract prints for a JSON whole number at or above 2^53, in the detail.
+#: The refusal the contract prints for a JSON whole number at or above 2^53, in the detail (the
+#: sentence up to its wrap point: `is too large`).
 REFUSAL_WORDS = playground.REASON_ABOVE_BROWSER_RANGE.split(";")[0]
 FIELD_MESSAGE_SELECTOR = ".alg-field-msg, .alg-field-messages"
 RESULT_TIMEOUT_MS = 40_000
@@ -1564,6 +1637,30 @@ RECEIPT_CHIP_RE = re.compile(
 )
 RECEIPT_OK_TONE = cards.CHIP_KINDS["live"]
 ERROR_CARD_CLASS = "alg-card-err"
+#: The Governed intercept card as `gov_tab.render_intercepted` paints it (mirrored, like the
+#: receipt): its title, its sub-line naming the call the integration stopped, the sentence for
+#: each intercepted tool, and the Decision row that exists only once `log_decision` ran.
+INTERCEPT_TITLE = "Not in the {profile} profile"
+INTERCEPT_SUB_TEXT = "before the {call} call reached the engine"
+INTERCEPT_LOG_TEXT = (
+    "Logging a decision is not in this profile; the recommendation stands, nothing was logged "
+    "or run."
+)
+INTERCEPT_EXECUTE_TEXT = (
+    "Executing a decision is not in this profile; the decision is logged and nothing ran."
+)
+DECISION_ROW_RE = re.compile(r'alg-gov-key">Decision<')
+#: `(profile, intercepted tool, its call word, its sentence, a Decision row is expected)` for
+#: the two profiles below `execute`: `observe` exposes no `log_decision`, `govern` no
+#: `execute_decision` (`gov_tab.PROFILE_TOOLS`, the integration contract's profiles).
+PROFILE_INTERCEPTS: tuple[tuple[str, str, str, str, bool], ...] = (
+    ("observe", "log_decision", "log", INTERCEPT_LOG_TEXT, False),
+    ("govern", "execute_decision", "execute", INTERCEPT_EXECUTE_TEXT, True),
+)
+#: The Governed form's profile radio is the endpoint's one Radio parameter; Gradio names the
+#: parameters after the handler's arguments, so the name itself is no contract.
+PROFILE_COMPONENT = "Radio"
+PROFILE_PARAM_NAMES: tuple[str, ...] = ("profile", "p")
 DELIVERY_CLAIM = "reported delivery"
 #: A webhook path that carries a nonce (`/hook/<24 url-safe bytes>`), anywhere it must not be.
 HOOK_NONCE_RE = re.compile(r"/hook/[A-Za-z0-9_-]{16,}")
@@ -1590,6 +1687,7 @@ _PHASE: dict[str, str] = {"value": PHASE_NOKEY}
 #: with the gate left out of the run).
 KEYED_REQUIRED: tuple[str, ...] = (
     "governed_lane",
+    "governed_profiles",
     "receipt_tone",
     "webhook_privacy",
     "refusal_convention",
@@ -1739,6 +1837,45 @@ _permalink_audits: dict[str, PermalinkAudit] = {}
 _exact_int_audits: dict[str, ExactIntAudit] = {}
 _refusal_audits: dict[str, RefusalAudit] = {}
 _refusal_audit_errors: dict[str, str] = {}
+
+
+#: A bare i18n key as Gradio's client prints one its catalogue lacks (`common.complete`, launch
+#: review round 12: read aloud after every request on every tab, both themes, 1440 and 375).
+BARE_KEY_RE = re.compile(r"^[a-z_]+(?:\.[a-z_]+)+$")
+#: Gradio's own screen-reader status region (the client's StatusTracker; re-created per request).
+SR_REGION_SELECTOR = ".sr-only[role=status]"
+#: The Space's own live region in the displayed tab panel (`common.render_status`).
+SPACE_STATUS_SELECTOR = "[role=tabpanel] .alg-status"
+#: The live regions are read this often, for this long, after every tab click and after the Run.
+SR_SAMPLE_MS = 100
+SR_WINDOW_MS = 4000
+#: Where the live regions are read: the desktop in light and the phone in dark, as the refusal
+#: and permalink probes do.
+SR_CONTEXTS: tuple[tuple[str, int, int, str], ...] = (
+    ("desktop", 1440, 900, "light"),
+    ("phone", 375, 812, "dark"),
+)
+#: The tab whose Run the probe presses: Try's is enabled in both phases.
+SR_RUN_TAB = "try"
+
+
+@dataclass
+class SrLiveAudit:
+    """What the two screen-reader live regions said, sampled every `SR_SAMPLE_MS` for
+    `SR_WINDOW_MS` after every tab click and after one Run: `gradio_texts` every distinct text
+    Gradio's region carried, `raw_keys` the samples that were a bare i18n key (where and what),
+    `space_texts` what the Space's own region said while the run ran, `runs` the presses."""
+
+    samples: int = 0
+    views: int = 0
+    gradio_texts: list[str] = field(default_factory=list)
+    raw_keys: list[str] = field(default_factory=list)  # "desktop/light/play click 'common.…'"
+    space_texts: list[str] = field(default_factory=list)
+    runs: list[str] = field(default_factory=list)  # "desktop/light/try Run"
+
+
+_srlive_audits: dict[str, SrLiveAudit] = {}
+_srlive_errors: dict[str, str] = {}
 
 # Shared colour arithmetic for the contrast gates: sRGB parsing, WCAG relative luminance,
 # alpha blending, the effective background of an element (its own fill or the first opaque
@@ -3578,6 +3715,77 @@ def run_exact_int_audit(base_url: str) -> ExactIntAudit:
     return result
 
 
+_JS_REGION_TEXTS = (
+    "(sel) => [...document.querySelectorAll(sel)].map(n => (n.textContent || '').trim())"
+    ".filter(Boolean)"
+)
+_JS_SHOWN_REGION_TEXTS = (
+    "(sel) => [...document.querySelectorAll(sel)].filter(n => n.offsetParent !== null)"
+    ".map(n => (n.textContent || '').trim()).filter(Boolean)"
+)
+
+
+def _add_distinct(seen: list[str], texts: Sequence[str]) -> None:
+    for text in texts:
+        if text not in seen:
+            seen.append(text)
+
+
+def _sample_live_regions(page: Any, where: str, result: SrLiveAudit, *, space: bool) -> None:
+    """Read Gradio's region (and, during a run, the Space's) every `SR_SAMPLE_MS` for
+    `SR_WINDOW_MS`; a bare key in Gradio's region is filed with where it was heard."""
+    for _ in range(SR_WINDOW_MS // SR_SAMPLE_MS):
+        result.samples += 1
+        for text in page.evaluate(_JS_REGION_TEXTS, SR_REGION_SELECTOR):
+            _add_distinct(result.gradio_texts, [text])
+            if BARE_KEY_RE.match(text):
+                result.raw_keys.append(f"{where} {text!r}")
+        if space:
+            _add_distinct(
+                result.space_texts, page.evaluate(_JS_SHOWN_REGION_TEXTS, SPACE_STATUS_SELECTOR)
+            )
+        page.wait_for_timeout(SR_SAMPLE_MS)
+
+
+def run_srlive_audit(base_url: str) -> SrLiveAudit:
+    """Click every tab and press the Try tab's Run in each `SR_CONTEXTS` context, sampling the
+    screen-reader live regions after each — Gradio's for a bare key, the Space's for the run."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        skip("playwright not installed")
+    result = SrLiveAudit()
+    slugs = tuple(tab_slugs())
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch()
+        try:
+            for label, width, height, theme in SR_CONTEXTS:
+                context = browser.new_context(
+                    viewport={"width": width, "height": height}, color_scheme=theme
+                )
+                page = _open_page(context, base_url, None)
+                labels = {**tab_labels(), **learn_tab_labels(page)}
+                for slug in slugs:
+                    select_tab(page, slug, labels.get(slug, ""))
+                    result.views += 1
+                    _sample_live_regions(page, f"{label}/{theme}/{slug} click", result, space=False)
+                run_tab = SR_RUN_TAB if SR_RUN_TAB in slugs else (slugs[0] if slugs else "")
+                if run_tab:
+                    select_tab(page, run_tab, labels.get(run_tab, ""))
+                    button = _run_button(page)
+                    if button is not None and button.evaluate(_JS_RUN_DISABLED) is False:
+                        name = (button.inner_text() or "run").strip()
+                        button.click()
+                        result.runs.append(f"{label}/{theme}/{run_tab} {name}")
+                        _sample_live_regions(
+                            page, f"{label}/{theme}/{run_tab} {name}", result, space=True
+                        )
+                context.close()
+        finally:
+            browser.close()
+    return result
+
+
 def _overlaps(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
     """Two boxes share some horizontal extent."""
     return a["left"] < b["right"] and a["right"] > b["left"]
@@ -3869,6 +4077,24 @@ def eco_table_audit_for(ctx: Any) -> EcoTableAudit:
             )
             fail(_eco_table_errors[base])
     return _eco_table_audits[base]
+
+
+def srlive_audit_for(ctx: Any) -> SrLiveAudit:
+    base = ctx.base_url.rstrip("/")
+    if base in _srlive_errors:
+        fail(_srlive_errors[base])
+    if base not in _srlive_audits:
+        try:
+            _srlive_audits[base] = run_srlive_audit(base)
+        except _SIGNALS["skip"]:
+            raise
+        except Exception as exc:  # noqa: BLE001 - reported as the gate's failure
+            _srlive_errors[base] = (
+                f"the live-region probe did not complete: {type(exc).__name__}:"
+                f" {_first_line_of(exc)}"
+            )
+            fail(_srlive_errors[base])
+    return _srlive_audits[base]
 
 
 def permalink_audit_for(ctx: Any) -> PermalinkAudit:
@@ -4306,6 +4532,32 @@ def eco_table_fits(ctx: Any) -> str:
     return f"the Hub table fits its block at {widths} px ({len(result.samples)} loads)"
 
 
+def srlive_no_raw_keys(ctx: Any) -> str:
+    """Gradio's own screen-reader status region never speaks a raw i18n key — round 12 heard
+    `common.complete` after every request, a key the client's catalogue lacks; the app hands the
+    mount a catalogue entry (`app.SR_TRANSLATIONS`) — and the Space's own live region
+    (`.alg-status`) announced the run it owns (`running now`, `done in …`)."""
+    probe = srlive_audit_for(ctx)
+    if probe.samples == 0:
+        fail("the live regions were not sampled")
+    if probe.raw_keys:
+        fail(
+            f"{len(probe.raw_keys)} sample(s) of Gradio's live region carried a bare i18n key:"
+            f" {'; '.join(probe.raw_keys[:3])}"
+        )
+    if not probe.runs:
+        fail("no Run was pressed, so the Space's live region was not exercised")
+    if not probe.space_texts:
+        fail(f"the Space's live region announced nothing during {', '.join(probe.runs)}")
+    said = ", ".join(repr(t) for t in probe.gradio_texts[:3]) or "nothing"
+    announced = ", ".join(repr(t[:40]) for t in probe.space_texts[:2])
+    return (
+        f"{probe.samples} samples over {probe.views} tab views and {len(probe.runs)} run(s) in"
+        f" {len(SR_CONTEXTS)} contexts: Gradio's region said {said}, never a bare key; the"
+        f" Space's region announced {announced}"
+    )
+
+
 def _seconds_of(text: str) -> float | None:
     m = re.search(r"(\d+(?:\.\d+)?)\s*s\b", text)
     return float(m.group(1)) if m else None
@@ -4490,6 +4742,7 @@ ENDPOINT_CHECKS: tuple[Callable[[Any], str], ...] = (
     race_cell,
     llm_rmsnorm_parity,
     governed_lane,
+    governed_profiles,
     receipt_tone,
     webhook_privacy,
     ecosystem_counts,
@@ -4522,6 +4775,7 @@ BROWSER_CHECKS: tuple[Callable[[Any], str], ...] = (
     exact_integers,
     refusal_convention,
     eco_table_fits,
+    srlive_no_raw_keys,
 )
 CHECKS: tuple[Callable[[Any], str], ...] = ENDPOINT_CHECKS + PAGE_CHECKS + BROWSER_CHECKS
 

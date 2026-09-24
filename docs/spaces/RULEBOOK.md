@@ -55,12 +55,13 @@ in its How-measured disclosure: a rule that is not on the card is not a rule.
 
 * the hero figure (the ratio, or the kernel-call median for a parity cell) and one log-scaled
   bar per lane labelled with its real median;
-* the lane table: median, MAD, CV, P95 (or max), min – max, each with its unit through
+* the lane table: median, MAD, spread, CV, P95 (or max), min – max, each with its unit through
   `cards.fmt_ms` (three significant figures in the unit that fits: `2.17 ms`, `0.122 ms`,
   `86.9 µs`);
 * chips: the parity label, the seed, **`n = 21` or `n = 21 × k calls`** (`cards.n_chips`;
   per lane — `n = 21 × 16 calls · algenta-text`, `n = 21 × 1 call · nltk` — when a race's
-  lanes batched differently), the stability gate (`stable · CV 4.0% ≤ 15%`), the UTC stamp;
+  lanes batched differently), the stability gate (`stable · spread 4.0% ≤ 15%`; no CV chip —
+  the CV is a lane-table statistic), the UTC stamp;
 * the hardware footer above, then `host load 14.1` — the machine's 1-minute load average when the
   cell ran (v0.6) — and the UTC stamp;
 * a cell that did not clear the gate: the kernel's result and its parity chip stay (the value
@@ -159,6 +160,11 @@ so a reader sees the machine's state beside the number, and the gate is the spre
 mean/median guard alone. A future rule may read the container's own CPU pressure
 (`/sys/fs/cgroup/cpu.pressure`) once the deployed Space has shown it; a rule that is not measured
 is not a rule.
+
+*Round 12 (2026-09-24, v0.6 unchanged): the `CV n%` chip leaves every card face — beside
+`stable · spread 1.6% ≤ 15%` three reviewers read `CV 19%` as a contradiction — and the CV stays a
+lane-table statistic; the How-measured sentence (`cards.HOW_TIMED`) says "the CV is shown in the
+lane table".*
 
 ## Round 7 autopsy — where a kernel call's time goes (2026-09-23)
 

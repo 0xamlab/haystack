@@ -309,13 +309,14 @@ def test_nav_and_footer_are_lists_whose_separators_cannot_wrap_alone():
 # ---------------------------------------------- head scripts: disclosure state, tab strip
 
 
-def test_head_fragment_carries_the_five_scripts_without_an_exclamation_mark():
+def test_head_fragment_carries_the_six_scripts_without_an_exclamation_mark():
     assert shell.HEAD_SCRIPTS == (
         shell.NAV_ROWS_SCRIPT,
         shell.DISCLOSURE_SCRIPT,
         shell.TABSTRIP_SCRIPT,
         shell.CHIP_WRAP_SCRIPT,
         shell.DROPDOWN_CLOSE_SCRIPT,
+        shell.TABS_KEYBOARD_SCRIPT,
     )
     assert shell.NAV_ROWS_HEAD == "".join(f"<script>{s}</script>" for s in shell.HEAD_SCRIPTS)
     assert shell.SHELL_HEAD == shell.NAV_ROWS_HEAD
@@ -514,6 +515,39 @@ def test_dropdown_close_script_closes_what_gradio_leaves_open_without_touching_t
     assert "window.setTimeout(function () { queued = false; closeUnfocused(); }, 0);" in script
     for forbidden in (".value", "dispatch('change'", "dispatch('input'", "click()"):
         assert forbidden not in script, f"the script never writes a value: {forbidden}"
+    assert "!" not in script.replace("!==", ""), "no exclamation mark (copy lint)"
+    assert script.startswith("(function () {") and script.endswith(" })();")
+
+
+def test_tabs_keyboard_script_is_the_wai_aria_tabs_pattern_gradio_leaves_out():
+    """Round 12: six tab buttons were six Tab stops and the arrow keys did nothing. The script
+    roves `tabindex` (the selected tab alone is `0`, every other visible tab `-1`), re-applied on
+    every `aria-selected` change and strip rebuild, and moves plus selects on Right / Left /
+    Home / End — a trusted, unmodified key on a tab; Tab itself is never touched, so the
+    dropdown script's Tab-arrival reading stands."""
+    script = shell.TABS_KEYBOARD_SCRIPT
+    assert "var TABS = '[role=\"tab\"]';" in script
+    assert "var LISTS = '[role=\"tablist\"]';" in script
+    # the roving tabindex, from the visible tabs of every strip that is not Gradio's clone
+    assert "var want = tabs[j] === selected ? '0' : '-1';" in script
+    assert "tabs[j].setAttribute('tabindex', want)" in script
+    assert "getBoundingClientRect().width > 0" in script, "only visible tabs rove"
+    assert "var MEASURING = '.visually-hidden';" in script
+    assert "lists[i].closest(MEASURING) === null" in script, "Gradio's clipped copy is left alone"
+    assert "if (selected === null && tabs.length > 0) { selected = tabs[0]; }" in script
+    # re-applied on selection changes and rebuilds; the attribute it writes is not observed
+    assert "attributeFilter: ['aria-selected']" in script and "childList: true" in script
+    assert "attributeFilter: ['tabindex']" not in script
+    # the four keys, wrapping at both ends; a trusted key without a modifier; Tab untouched
+    for key in ("'ArrowRight'", "'ArrowLeft'", "'Home'", "'End'"):
+        assert key in script, key
+    assert "tabs[(index + 1) % tabs.length]" in script
+    assert "tabs[(index + tabs.length - 1) % tabs.length]" in script
+    assert "event.isTrusted === false || event.altKey || event.ctrlKey || event.metaKey" in script
+    assert "'Tab'" not in script and "dispatchEvent" not in script
+    assert "event.preventDefault();" in script and "next.focus();" in script
+    assert "if (next.getAttribute('aria-selected') !== 'true') { next.click(); }" in script
+    assert "addEventListener('keydown', onKey, true)" in script
     assert "!" not in script.replace("!==", ""), "no exclamation mark (copy lint)"
     assert script.startswith("(function () {") and script.endswith(" })();")
 

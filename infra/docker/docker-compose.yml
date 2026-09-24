@@ -39,7 +39,8 @@ services:
 
   # ─── MinIO (S3-compatible object store) ─────────────────────────────────────
   minio:
-    image: minio/minio:latest
+    # docker.io/minio/minio was withdrawn (401, 2026-09-24) — Chainguard's build, by digest
+    image: cgr.dev/chainguard/minio@sha256:bd014394a80898e68c149f2311fdf8d5a2c2f3bb2c33b9327ae6d02b4b065ae1
     container_name: decision-engine-minio
     command: server /data --console-address ":9001"
     environment:

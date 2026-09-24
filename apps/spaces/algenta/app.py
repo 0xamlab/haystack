@@ -102,6 +102,18 @@ RESTORE_APPLIED_KEY = "applied"
 #: `permalink` is the link box, so a tab that switches the strip itself (the Try tab's "Race it"
 #: chip) can rewrite the link in the same event — a programmatic switch fires no strip event.
 SHELL_HANDLE = "shell"
+#: Gradio 6.28's own screen-reader status region (`div.sr-only[role="status"]`, the client's
+#: StatusTracker) announces `common.complete` after every request: the client asks its catalogue
+#: for the key and the English catalogue has no such entry, so the raw key was read aloud (launch
+#: review round 12, every tab, both themes, 1440 and 375). The Blocks-level catalogue is merged
+#: into the client's (`config.i18n_translations` → svelte-i18n `addMessages`; a flat key resolves
+#: before the dotted path, and every other locale falls back to `en`), so the region speaks a
+#: sentence. The Space's own live region (`common.render_status`, `.alg-status`) still says what
+#: ran (`running now`, `done in 6.07 ms · this container · <UTC>`); this only keeps Gradio's from
+#: speaking a key. The catalogue is handed to `gr.mount_gradio_app(i18n=)` — the mount's
+#: parameter, as `launch()`'s is; `gr.Blocks` takes none. The verifier's `srlive_no_raw_keys`
+#: gate holds both regions to it.
+SR_TRANSLATIONS: Mapping[str, str] = {"common.complete": "Request complete"}
 #: Text after the family count in the header pill: the count is this container's, not the Hub's.
 PILL_WHERE = "this container"
 PILL_FLOOR = "host below the published floor"
@@ -296,13 +308,37 @@ def module_css(module: Any) -> str:
 #: the shell 16 px inside the card column at every viewport (launch review round 3); the card
 #: blocks already zero it (`common.TABS_CSS`), the shell blocks do the same here.
 SHELL_BLOCK_CLASS = "alg-shell-block"
+#: The permalink row's Copy chip: the copy rows' 96 px minimum, at its own width beside the box.
+COPY_MIN_WIDTH = 96
 
 APP_CSS = stylesheet(
     rule("alg-page", "max-width: var(--alg-content-max); margin: 0 auto; padding: 0 16px 48px;"),
     rule(SHELL_BLOCK_CLASS, "padding: 0;"),
     rule(SHELL_BLOCK_CLASS, "padding: 0;", suffix=" > div"),
     rule("alg-tabs", "margin: 24px 0 0;"),
-    rule("alg-permalink-row", "margin: 24px 0 0;"),
+    # The permalink row is the card: surface, hairline, card radius (round 12: the Copy chip sat
+    # detached under Gradio's bordered form wrapper, right-aligned alone). The form wrapper
+    # inside it (the row's one div child) drops its own frame, the block keeps its 12 / 16 px
+    # pads, and the Copy chip — top-aligned, offset by the label's line
+    # (`common.FIELD_BOX_OFFSET_PX`, the form rows' Run pattern), at its own width — sits level
+    # with the box inside the card's padding: 16 px from the box, 16 px from the card's edge.
+    rule(
+        "alg-permalink-row",
+        "margin: 24px 0 0; align-items: flex-start; background: var(--alg-surface);"
+        " border: 1px solid var(--alg-hairline); border-radius: var(--alg-radius-card);"
+        " padding: 0 16px 0 0; box-sizing: border-box;",
+    ),
+    rule(
+        "alg-permalink-row",
+        "border: 0; background: transparent; box-shadow: none; padding: 0;",
+        suffix=" > div",
+    ),
+    rule(
+        "alg-permalink-row",
+        f"margin-top: {common.FIELD_BOX_OFFSET_PX}px; min-width: {COPY_MIN_WIDTH}px;"
+        " flex: 0 0 auto;",
+        suffix=" > .alg-chip-btn",
+    ),
     rule("alg-boot-disclosure", "margin: 16px 0 0;"),
     block(
         f"@media (width <= {design.PHONE_MAX_WIDTH}px)",
@@ -459,7 +495,8 @@ def build_blocks(
             label=LABEL_PERMALINK,
             interactive=False,
             buttons=[],
-            elem_classes=["alg-permalink"],
+            max_lines=1,
+            elem_classes=["alg-permalink", common.LINK_BOX_CLASS],
             render=False,
         )
         handles[SHELL_HANDLE] = {"permalink": link_box, "base": base}
@@ -478,9 +515,15 @@ def build_blocks(
                     blocks.load(fn, None, outputs, api_name=False)
             with gr.Row(elem_classes=["alg-permalink-row"]):
                 link_box.render()
-            with gr.Row(elem_classes=["alg-copy-row"]):
+                # the 44 px Copy chip on the box's own row, level with the box inside the card
+                # (round 12: it sat detached under the card, right-aligned alone); `APP_CSS`
+                # makes the row the card and offsets the chip by the label's line
                 link_copy = gr.Button(
-                    common.LABEL_COPY, variant="secondary", elem_classes=["alg-chip-btn"], scale=0
+                    common.LABEL_COPY,
+                    variant="secondary",
+                    elem_classes=["alg-chip-btn"],
+                    scale=0,
+                    min_width=COPY_MIN_WIDTH,
                 )
             with gr.Accordion(
                 LABEL_BOOT, open=False, elem_classes=["alg-disclosure", "alg-boot-disclosure"]
@@ -604,6 +647,7 @@ def create_app(
         theme=design.theme(),
         css=page_css(used_modules),
         head=BOOT_HEAD,
+        i18n=gr.I18n(en=dict(SR_TRANSLATIONS)),  # Gradio's live region speaks a sentence
     )
 
 

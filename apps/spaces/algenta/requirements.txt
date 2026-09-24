@@ -6,20 +6,23 @@
 #       --emit-index-url requirements.txt -o requirements.lock
 #
 # torch comes from the CPU index (the PyPI wheel bundles CUDA); `+cpu` is what makes `kernels`
-# resolve the torch29-cxx11-cpu-x86_64-linux variant. huggingface_hub is held at 1.26.1, the
+# resolve the torch29-cxx11-cpu-x86_64-linux variant — the one build the twenty Hub repositories
+# publish for Linux, so torch is held at 2.9.1 until they ship a torch212 variant (a bot bump
+# to 2.12.1 in #1157 never reached the lock; the lock is what the image installs, and this
+# file is kept equal to it). huggingface_hub is held at 1.26.1, the
 # version kernels 0.17.1 is published against. algenta is the hosted-API client the Governed
 # tab calls; its native runtime comes with it. The incumbents (statsmodels, scipy, networkx,
 # nltk, sympy) are the reference libraries the races and parity chips compare against.
 --extra-index-url https://download.pytorch.org/whl/cpu
 gradio[mcp]==6.28.0
-torch==2.12.1+cpu
+torch==2.9.1+cpu
 kernels==0.17.1
 huggingface_hub==1.26.1
-algenta==1.0.24
+algenta==1.0.28
 # The hosted-API routes (me/recommend/log_decision/execute_decision) live in the separate
 # algenta-sdk package (algenta's `cloud` extra); without it AlgentaClient imports but every
 # governed call raises ImportError. Pinned explicitly so the lock carries its hash.
-algenta-sdk==1.0.25
+algenta-sdk==1.0.28
 numpy==2.5.3
 scipy==1.18.1
 statsmodels==0.15.0

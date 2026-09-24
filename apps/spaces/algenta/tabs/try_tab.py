@@ -694,7 +694,8 @@ def render_hero_card(hero: HeroResult, *, kernel_label: str = "") -> str:
     chips.append(common.chip(f"P95 {cards.fmt_ms(ours.p95_ms)}"))
     chips.append(common.chip(f"MAD {cards.fmt_ms(ours.mad_ms)}"))
     chips.append(cards.stability_chip([ours]))  # the gate's verdict, as on every race card
-    chips.append(common.chip(f"CV {cards.fmt_cv(ours.cv)}"))
+    # no CV chip beside the verdict (round 12: `CV 19%` next to `stable · spread 1.6% ≤ 15%`
+    # read as a contradiction); the CV is a lane-table statistic, and How-measured says so
     chips.append(common.chip(common.TRANSPORT_NOTE))
     chips.append(cards.status_chip("measured", f"measured {cell.ts_utc}"))
     return (
@@ -1303,6 +1304,8 @@ def build(deps: Deps) -> TabSpec:
                 label=LABEL_PERMALINK,
                 interactive=False,
                 buttons=[],
+                max_lines=1,
+                elem_classes=[common.LINK_BOX_CLASS],
             )
             with gr.Row(elem_classes=["alg-copy-row"]):
                 link_copy = gr.Button(

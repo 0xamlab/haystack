@@ -59,7 +59,10 @@ the SDK and the MCP registry, every number computed here.
   never a remembered number.
 * **SDK and MCP.** Versions come from the facts record (`facts.py`, installed
   distributions); the MCP tool count is `len(algenta_mcp.registry.TOOLS)` from the
-  installed package, or omitted.
+  installed package, or omitted. The MCP endpoint is a row of code to copy, never a
+  link: the endpoint is a Streamable HTTP MCP server, and a browser GET on it opens an
+  event stream that never ends (HTTP 200, a blank tab that never loads — owner walkthrough,
+  round 17); the card's second pill opens the MCP guide on docs.algenta.ai instead.
 
 Refresh answers at once with loading cards and then with the result, so Gradio's
 progress chrome never shows (`show_progress="hidden"`). Nothing here imports gradio at
@@ -166,6 +169,18 @@ MCP_LIVE_LABEL = "MCP tools · live · hosted API"
 #: The SDK card's toolchain row: what compiled the libraries every call runs through.
 MOJO_ROW_LABEL = "Mojo toolchain"
 MOJO_ROW_NOTE = "compiled shared libraries, in-process"
+#: The SDK card's endpoint row: the remote MCP server's address (`gov_tab.MCP_ENDPOINT`) as
+#: inline code to copy into a client's configuration. Never an anchor: a browser GET on a
+#: Streamable HTTP MCP endpoint answers 200 with a `text/event-stream` that never ends, so a
+#: visitor who clicked it got a blank tab that never loaded (owner walkthrough, round 17).
+MCP_ENDPOINT_ROW_LABEL = "MCP endpoint"
+#: The endpoint's own class: plain inline code inside the row's mono value (Gradio's prose
+#: gives `code` a fill, a border and padding of its own).
+MCP_CODE_CLASS = "alg-eco-code"
+#: Where the card's second pill sends a visitor instead: the MCP server guide on the docs site
+#: (`gitbook/sdk/mcp.md`; the published path answers 200 — checked 2026-09-24).
+MCP_GUIDE_URL = "https://docs.algenta.ai/sdks/mcp"
+MCP_GUIDE_TEXT = "MCP guide"
 #: The revision column's word after the sha: the capped v1 revision, or a later snapshot.
 REVISION_PINNED = "pinned"
 REVISION_MOVED = "moved"
@@ -831,6 +846,11 @@ def render_sdk_card(facts: Mapping[str, Any]) -> str:
             f'<span class="alg-eco-val">{_esc(data["mojo_version"])} · {_esc(MOJO_ROW_NOTE)}'
             "</span></div>"
         )
+    rows.append(
+        f'<div class="alg-eco-row"><span class="alg-eco-key">{_esc(MCP_ENDPOINT_ROW_LABEL)}</span>'
+        f'<span class="alg-eco-val"><code class="{MCP_CODE_CLASS}">{_esc(gov_mcp_endpoint())}'
+        "</code></span></div>"
+    )
     tools = data["mcp_tools"]
     if tools is None:
         # No count in this process yet and the hosted API unreachable now: say so, with the code;
@@ -859,14 +879,15 @@ def render_sdk_card(facts: Mapping[str, Any]) -> str:
         f'<div class="alg-chips">{"".join(chips)}</div>'
         '<div class="alg-eco-actions">'
         f'<a class="alg-eco-pill" href="{shell.DOCS_URL}" target="_blank" rel="noopener">Docs</a>'
-        f'<a class="alg-eco-pill" href="{gov_mcp_endpoint()}" target="_blank" rel="noopener">'
-        "MCP endpoint</a>"
+        f'<a class="alg-eco-pill" href="{MCP_GUIDE_URL}" target="_blank" rel="noopener">'
+        f"{_esc(MCP_GUIDE_TEXT)}</a>"
         "</div>"
         "</article>"
     )
 
 
 def gov_mcp_endpoint() -> str:
+    """The remote MCP server's address, the one the Governed tab's client config carries."""
     from .gov_tab import MCP_ENDPOINT
 
     return MCP_ENDPOINT
@@ -1036,6 +1057,11 @@ ECO_CSS = stylesheet(
         rule("alg-eco-table", "white-space: normal;", suffix=" td.alg-stack-num"),
         rule("alg-eco-table", "white-space: normal;", suffix=" td.alg-eco-mono"),
     ),
+    # the backends cell is one line at every width it is shown (round 12: `cpu, cuda, metal`
+    # broke at a comma into two lines in a 109 px column at 1024–1200); the attribute selector
+    # outranks the wrapping `td` rule above, and the composite cells beside it still wrap
+    # between their parts, so the table keeps fitting its block (`eco_table_fits`)
+    rule("alg-eco-table", "white-space: nowrap;", suffix=f' td[data-col="{COLUMN_BACKENDS}"]'),
     block(
         f"@media (width <= {BACKENDS_MIN_WIDTH}px)",
         rule("alg-eco-table", "display: none;", suffix=f' [data-col="{COLUMN_BACKENDS}"]'),
@@ -1066,6 +1092,13 @@ ECO_CSS = stylesheet(
     rule("alg-eco-row", f"display: flex; flex-wrap: wrap; gap: 4px 16px; {_CAPTION}"),
     rule("alg-eco-key", "flex: 0 0 160px; color: var(--alg-text-2);"),
     rule("alg-eco-val", f"flex: 1 1 160px; {_MONO}"),
+    # the endpoint row's inline code: the row's own mono type, no fill, no border, no padding
+    # (Gradio's prose styles `code`), and it breaks anywhere so the address fits a phone column
+    rule(
+        MCP_CODE_CLASS,
+        "font: inherit; color: inherit; background: transparent; border: 0; padding: 0;"
+        " overflow-wrap: anywhere;",
+    ),
     rule("alg-eco-actions", "display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0;"),
     rule("alg-eco-pill", _PILL),
     rule("alg-eco-pill", "border-color: var(--alg-text-2);", suffix=":hover"),

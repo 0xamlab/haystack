@@ -141,7 +141,7 @@ INFO = {
             _param("duel", "betweenness", "Radio"), _param("size", "M", "Radio")
         ),
         "/llm_run": _endpoint(_param("rows", 64, "Number"), _param("cols", 1024, "Number")),
-        "/gov_run": _endpoint(_param("amount", 120.0, "Number")),
+        "/gov_run": _endpoint(_param("p", "execute", "Radio"), _param("amount", 120.0, "Number")),
         "/eco_refresh": _endpoint(),
     },
     "unnamed_endpoints": {},
@@ -360,6 +360,13 @@ CLEAN_PERMALINKS = vc.PermalinkAudit(
     ]
 )
 CLEAN_EXACT_INT = vc.ExactIntAudit(typed=str(vc.EXACT_INT), request=str(vc.EXACT_INT))
+CLEAN_SRLIVE = vc.SrLiveAudit(
+    samples=2 * (6 + 1) * (vc.SR_WINDOW_MS // vc.SR_SAMPLE_MS),
+    views=12,
+    gradio_texts=["Request complete", "Loading"],
+    space_texts=["running now", "done in 6.07 msthis container · 2026-09-24 11:51 UTC"],
+    runs=[f"{label}/{theme}/try Run" for label, _w, _h, theme in vc.SR_CONTEXTS],
+)
 CLEAN_REFUSALS = vc.RefusalAudit(
     probes=[
         f"{label}/{theme}/{slug} '{control}'={value}: 2 message(s) — refused"
@@ -398,6 +405,7 @@ def _fresh(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(vc, "run_exact_int_audit", lambda base_url: CLEAN_EXACT_INT)
     monkeypatch.setattr(vc, "run_refusal_audit", lambda base_url: CLEAN_REFUSALS)
     monkeypatch.setattr(vc, "run_eco_table_audit", lambda base_url: CLEAN_ECO_TABLE)
+    monkeypatch.setattr(vc, "run_srlive_audit", lambda base_url: CLEAN_SRLIVE)
     posts: list[tuple[str, dict]] = []
 
     def refused_post(url: str, body, timeout: float) -> tuple[int, str]:
@@ -596,6 +604,7 @@ def test_every_check_passes_on_a_healthy_flagship(ctx, client, http) -> None:
         "race_cell",
         "llm_rmsnorm_parity",
         "governed_lane",
+        "governed_profiles",
         "receipt_tone",
         "webhook_privacy",
         "ecosystem_counts",
@@ -628,7 +637,13 @@ def test_every_check_passes_on_a_healthy_flagship(ctx, client, http) -> None:
         "exact_integers",
         "refusal_convention",
         "eco_table_fits",
+        "srlive_no_raw_keys",
     ]
+    assert _detail(report, "srlive_no_raw_keys") == (
+        "560 samples over 12 tab views and 2 run(s) in 2 contexts: Gradio's region said"
+        " 'Request complete', 'Loading', never a bare key; the Space's region announced"
+        " 'running now', 'done in 6.07 msthis container · 2026-09-'"
+    )
     assert _detail(report, "receipt_tone").startswith(
         f"/gov_run {_snake(hosted_api.NOT_CONFIGURED_CODE)}: no key on this Space"
     )
@@ -1019,6 +1034,133 @@ def test_governed_lane_outcomes(ctx, client) -> None:
     assert "neither" in _detail(_run(ctx, "governed_lane"), "governed_lane")
 
 
+def _intercept_outcome(profile: str, *, logged: bool | None = None) -> object:
+    """An Outcome for a run under `profile` as `gov_tab.run_chain` leaves it: the recommendation,
+    the intercepted tool, and a logged decision exactly when the profile exposes `log_decision`
+    (`logged` forces either, for the cards the gate must refuse)."""
+    tool = gov_tab.first_tool_outside_profile(profile)
+    out = gov_tab.Outcome(
+        recommendation=hosted_api.Recommendation("expand_eu", 0.87, "Highest value.", 2, raw={}),
+        intercepted_profile=profile,
+        intercepted_tool=tool,
+    )
+    if gov_tab.allows(profile, "log_decision") if logged is None else logged:
+        out.decision = hosted_api.Decision(
+            GOV_DECISION, "expand_eu", 0.93, 0.02, None, dict(GOV_INTEGRITY), raw={}
+        )
+    return out
+
+
+def _intercept_card(profile: str, *, logged: bool | None = None) -> str:
+    return gov_tab.render_intercepted(_intercept_outcome(profile, logged=logged), GOV_HOSTED)
+
+
+def test_governed_profiles_reads_the_intercept_cards(ctx, client, monkeypatch) -> None:
+    """Round 17 (owner walkthrough): the observe profile's card carried a decision id. The gate
+    calls `/gov_run` once per lower profile through the form's Radio parameter and reads the card
+    the tab renders: the title names the profile, the sentence the intercepted tool, the sub-line
+    the call that never reached the engine, and a Decision row stands under govern alone."""
+    by_profile = {"observe": _intercept_card("observe"), "govern": _intercept_card("govern")}
+    assert vc.DECISION_ROW_RE.search(by_profile["observe"]) is None
+    assert vc.DECISION_ROW_RE.search(by_profile["govern"]) is not None
+    client.outputs["/gov_run"] = lambda **kw: (by_profile[kw["p"]], "{}", "", {})
+    report = _run(ctx, "governed_profiles")
+    assert report.ok, report.lines()
+    assert _detail(report, "governed_profiles") == (
+        "/gov_run observe intercepted at log_decision, no Decision row;"
+        " govern intercepted at execute_decision, a Decision row"
+    )
+    assert [kw["p"] for api, kw in client.calls if api == "/gov_run"] == ["observe", "govern"]
+    # the mirrored words are the tab's own
+    assert vc.INTERCEPT_TITLE == gov_tab.TITLE_INTERCEPTED
+    assert vc.INTERCEPT_SUB_TEXT == gov_tab.INTERCEPT_SUB_TEXT
+    assert vc.INTERCEPT_LOG_TEXT == gov_tab.INTERCEPT_LOG_TEXT
+    assert vc.INTERCEPT_EXECUTE_TEXT == gov_tab.INTERCEPT_TEXT
+    for profile, tool, call, sentence, wants_decision in vc.PROFILE_INTERCEPTS:
+        assert gov_tab.first_tool_outside_profile(profile) == tool
+        assert gov_tab.call_word(tool) == call and gov_tab.intercept_text(tool) == sentence
+        assert gov_tab.allows(profile, "log_decision") is wants_decision
+    # the round-17 defect: a decision id on the observe card
+    bad_observe = _intercept_card("observe", logged=True)
+    client.outputs["/gov_run"] = lambda **kw: (
+        bad_observe if kw["p"] == "observe" else by_profile["govern"],
+        "{}",
+        "",
+        {},
+    )
+    report = _run(ctx, "governed_profiles")
+    assert not report.ok
+    assert _detail(report, "governed_profiles") == (
+        "/gov_run p=observe: a Decision row, though the profile exposes no log_decision"
+    )
+    # govern without the decision it logs first
+    thin_govern = _intercept_card("govern", logged=False)
+    client.outputs["/gov_run"] = lambda **kw: (
+        by_profile["observe"] if kw["p"] == "observe" else thin_govern,
+        "{}",
+        "",
+        {},
+    )
+    assert _detail(_run(ctx, "governed_profiles"), "governed_profiles") == (
+        "/gov_run p=govern: no Decision row, though the profile logs the decision first"
+    )
+    # the pre-round-17 sub-line, and a receipt where the intercept card should be
+    stale = by_profile["govern"].replace(
+        "before the execute call reached the engine", "before the engine was called"
+    )
+    client.outputs["/gov_run"] = lambda **kw: (
+        by_profile["observe"] if kw["p"] == "observe" else stale,
+        "{}",
+        "",
+        {},
+    )
+    assert _detail(_run(ctx, "governed_profiles"), "governed_profiles") == (
+        "/gov_run p=govern: the sub-line is not 'before the execute call reached the engine'"
+    )
+    client.outputs["/gov_run"] = (_rendered_receipt("delivered", 200), "{}", "", {})
+    detail = _detail(_run(ctx, "governed_profiles"), "governed_profiles")
+    assert detail.startswith("/gov_run p=observe: not the intercept card (no 'Not in the observe")
+    assert "the card does not say 'Logging a decision" in detail
+    # the documented states, and the keyed phase
+    client.outputs["/gov_run"] = NOT_CONFIGURED_CARD
+    report = _run(ctx, "governed_profiles")
+    assert report.ok and _detail(report, "governed_profiles") == (
+        "/gov_run hosted_not_configured: no key on this Space, the profiles are not exercised"
+    )
+    client.outputs["/gov_run"] = cards.render_unavailable_card(
+        title="Hosted API", error_code="hosted_rate_limited", hint="Try again in a minute."
+    )
+    assert "throttled" in _detail(_run(ctx, "governed_profiles"), "governed_profiles")
+    client.outputs["/gov_run"] = cards.render_unavailable_card(
+        title="Hosted API", error_code="hosted_unavailable", hint="The engine answered 503."
+    )
+    assert _detail(_run(ctx, "governed_profiles"), "governed_profiles") == (
+        "/gov_run p=observe returned the unavailable card (hosted_unavailable)"
+    )
+    monkeypatch.setitem(vc._PHASE, "value", vc.PHASE_KEYED)
+    client.outputs["/gov_run"] = NOT_CONFIGURED_CARD
+    report = _run(ctx, "governed_profiles")
+    assert not report.ok and "in the keyed phase" in _detail(report, "governed_profiles")
+    client.outputs["/gov_run"] = lambda **kw: (by_profile[kw["p"]], "{}", "", {})
+    assert _run(ctx, "governed_profiles").ok
+    assert "governed_profiles" in vc.KEYED_REQUIRED
+
+
+def test_profile_parameter_is_the_forms_radio() -> None:
+    """The gate finds the profile through the endpoint's one Radio (Gradio names parameters after
+    the handler's arguments), else a parameter called `profile` or `p`; nothing else will do."""
+    assert vc.profile_parameter(INFO["named_endpoints"]["/gov_run"]) == "p"
+    assert vc.profile_parameter({"parameters": [_param("profile", "execute", "Dropdown")]}) == (
+        "profile"
+    )
+    assert vc.profile_parameter({"parameters": [_param("p", "x"), _param("q", "y")]}) == "p"
+    two = {"parameters": [_param("a", "x", "Radio"), _param("b", "y", "Radio")]}
+    with pytest.raises(vc._SIGNALS["fail"], match="no profile radio"):
+        vc.profile_parameter(two)
+    with pytest.raises(vc._SIGNALS["fail"], match=r"\(amount\)"):
+        vc.profile_parameter({"parameters": [_param("amount", 1.0, "Number")]})
+
+
 # The Governed card exactly as the tab renders it — never a hand-built card: round 3's gate
 # expected an `engine <status>` chip the tab never paints and failed on every real receipt.
 gov_tab = _import("tabs.gov_tab", ALGENTA_DIR)
@@ -1198,7 +1340,7 @@ def test_keyed_phase_turns_the_not_configured_card_into_a_failure(ctx, client, m
     broken precondition on every Governed gate, and `KEYED_REQUIRED` stays selected."""
     monkeypatch.setitem(vc._PHASE, "value", vc.PHASE_KEYED)
     assert vc.keyed() and vc.phase() == "keyed"
-    for name in ("governed_lane", "receipt_tone", "webhook_privacy"):
+    for name in ("governed_lane", "governed_profiles", "receipt_tone", "webhook_privacy"):
         report = _run(ctx, name)
         assert not report.ok, name
         assert "in the keyed phase" in _detail(report, name)
@@ -1720,7 +1862,7 @@ def test_exact_integers_accepts_the_contracts_refusal_and_never_a_rounded_echo(c
         f"API path refuses {vc.EXACT_INT} as a JSON number ({vc.REFUSAL_WORDS!r}), nothing ran;"
         f" browser: typed {vc.EXACT_INT}, request {vc.EXACT_INT}"
     )
-    assert vc.REFUSAL_WORDS == "is above the range the browser can enter exactly"
+    assert vc.REFUSAL_WORDS == "is too large"
 
     def refusing_but_echoing(**kwargs):
         return (
@@ -2285,6 +2427,51 @@ def test_round_3_gates_fail_on_each_defect(ctx, client, monkeypatch) -> None:
     assert "not measured" in _detail(_run(ctx, "eco_table_fits"), "eco_table_fits")
     vc.reset_clients()
     monkeypatch.setattr(vc, "run_eco_table_audit", lambda base_url: CLEAN_ECO_TABLE)
+    # Gradio's live region speaking a bare key, a run the Space's region never announced, and
+    # a probe that pressed nothing (round 12: `common.complete` read aloud after every request)
+    vc.reset_clients()
+    spoken = vc.SrLiveAudit(
+        samples=CLEAN_SRLIVE.samples,
+        views=12,
+        gradio_texts=["common.complete"],
+        raw_keys=[
+            "desktop/light/play click 'common.complete'",
+            "phone/dark/try Run 'common.complete'",
+        ],
+        space_texts=list(CLEAN_SRLIVE.space_texts),
+        runs=list(CLEAN_SRLIVE.runs),
+    )
+    monkeypatch.setattr(vc, "run_srlive_audit", lambda base_url: spoken)
+    detail = _detail(_run(ctx, "srlive_no_raw_keys"), "srlive_no_raw_keys")
+    assert detail.startswith(
+        "2 sample(s) of Gradio's live region carried a bare i18n key: desktop/light/play click"
+        " 'common.complete'; phone/dark/try Run 'common.complete'"
+    )
+    vc.reset_clients()
+    silent = vc.SrLiveAudit(
+        samples=CLEAN_SRLIVE.samples,
+        views=12,
+        gradio_texts=["Request complete"],
+        runs=list(CLEAN_SRLIVE.runs),
+    )
+    monkeypatch.setattr(vc, "run_srlive_audit", lambda base_url: silent)
+    detail = _detail(_run(ctx, "srlive_no_raw_keys"), "srlive_no_raw_keys")
+    assert detail.startswith(
+        "the Space's live region announced nothing during desktop/light/try Run"
+    )
+    vc.reset_clients()
+    unpressed = vc.SrLiveAudit(samples=40, views=12, gradio_texts=["Request complete"])
+    monkeypatch.setattr(vc, "run_srlive_audit", lambda base_url: unpressed)
+    assert "no Run was pressed" in _detail(_run(ctx, "srlive_no_raw_keys"), "srlive_no_raw_keys")
+    vc.reset_clients()
+    monkeypatch.setattr(vc, "run_srlive_audit", lambda base_url: vc.SrLiveAudit())
+    assert "not sampled" in _detail(_run(ctx, "srlive_no_raw_keys"), "srlive_no_raw_keys")
+    for text in ("common.complete", "status.queue_position", "a.b.c"):
+        assert vc.BARE_KEY_RE.match(text), text
+    for text in ("Request complete", "Loading", "done in 6.07 ms", "In queue: 1 of 3", "v1.0.28"):
+        assert vc.BARE_KEY_RE.match(text) is None, text
+    vc.reset_clients()
+    monkeypatch.setattr(vc, "run_srlive_audit", lambda base_url: CLEAN_SRLIVE)
     # the pure judge behind the table audit
     fits = {
         "tableRight": 976.0,
@@ -2648,6 +2835,9 @@ def test_browser_checks_skip_loudly_without_playwright_or_axe(ctx, client, monke
     monkeypatch.setattr(
         vc, "run_eco_table_audit", lambda base_url: vc.skip("playwright not installed")
     )
+    monkeypatch.setattr(
+        vc, "run_srlive_audit", lambda base_url: vc.skip("playwright not installed")
+    )
     report = _run(
         ctx,
         "console_clean",
@@ -2656,6 +2846,7 @@ def test_browser_checks_skip_loudly_without_playwright_or_axe(ctx, client, monke
         "permalink_truth",
         "exact_integers",
         "eco_table_fits",
+        "srlive_no_raw_keys",
     )
     assert report.ok and report.skipped == [
         "console_clean",
@@ -2664,6 +2855,7 @@ def test_browser_checks_skip_loudly_without_playwright_or_axe(ctx, client, monke
         "permalink_truth",
         "exact_integers",
         "eco_table_fits",
+        "srlive_no_raw_keys",
     ]
     assert report.results[0].tag == "SKIP"
     assert "playwright not installed" in report.results[0].detail

@@ -564,6 +564,17 @@ def permalink_payload(fn: str | None, args: Mapping[str, Any] | None) -> str:
     return json.dumps({"fn": fn, "args": dict(args) if args else None}, ensure_ascii=False)
 
 
+#: A read-only single-row link box (the shell's Permalink, the Try tab's Reproduce link), built
+#: with `max_lines=1`: Gradio 6.28 renders that as a single-line `<input type="text">`, which
+#: never wraps and scrolls sideways on its own, so the box is the 44 px row at every width
+#: (round 12: the autogrowing textarea wrapped a two-line URL into 64 px at 375). The class lands
+#: on the block and its wrapper alike; its `textarea` rules in `TABS_CSS` — `white-space: pre`,
+#: sideways scroll with no scrollbar chrome — hold the same row for a build that still renders
+#: the box as a textarea.
+LINK_BOX_CLASS = "alg-link-box"
+#: Below this width the Try tab's three chip buttons stack one per row, full width, one line each
+#: (round 12: at 375 they folded into a 2 + 1 grid with two-line labels).
+CHIP_STACK_MAX_WIDTH = 479
 #: The client-side copy: writes the first input to the clipboard, relabels the chip.
 COPY_JS = (
     "async (text) => { try { await navigator.clipboard.writeText(text ?? ''); return 'Copied'; }"
@@ -819,6 +830,38 @@ TABS_CSS = stylesheet(
     ),
     rule("alg-copy-row", "justify-content: flex-end; gap: 8px;"),
     rule("alg-copy-row", f"{_TARGET} min-width: 96px; flex-grow: 0;", suffix=" button"),
+    # a link box is one row: the URL scrolls sideways instead of wrapping, no scrollbar chrome
+    # (Gradio 6.28 renders a `max_lines=1` box as an `<input>`; these hold for a textarea)
+    rule(
+        LINK_BOX_CLASS,
+        "white-space: pre; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;",
+        suffix=" textarea",
+    ),
+    rule(LINK_BOX_CLASS, "display: none;", suffix=" textarea::-webkit-scrollbar"),
+    # the single-line input is the 44 px control every box is (measured 48: the body line inside
+    # 12 px pads), and its label the caption line every field label is (`alg-field` below), so
+    # the box starts FIELD_BOX_OFFSET_PX under its block and a chip beside it sits level with it
+    rule(
+        LINK_BOX_CLASS,
+        f"{_TARGET} height: var(--alg-target); padding-top: 0; padding-bottom: 0;"
+        " box-sizing: border-box; line-height: 20px;",
+        suffix=' input[type="text"]',
+    ),
+    rule(
+        LINK_BOX_CLASS,
+        f"{_CAPTION} display: block; margin: 0 0 {FIELD_LABEL_GAP_PX}px; color: var(--alg-text-2);",
+        suffix=' [data-testid="block-info"]',
+    ),
+    # the Try tab's chip row on a narrow phone: one chip per row, full width, one-line labels
+    block(
+        f"@media (width <= {CHIP_STACK_MAX_WIDTH}px)",
+        rule("alg-chip-row", "flex-direction: column; align-items: stretch;"),
+        rule(
+            "alg-chip-row",
+            "flex: 0 0 auto; width: 100%; min-width: 100%; white-space: nowrap;",
+            suffix=" > button",
+        ),
+    ),
     block(
         "@media (width <= 768px)",
         rule("alg-tiles", "grid-template-columns: minmax(0, 1fr);"),

@@ -131,7 +131,9 @@ cell). The chips carry the stability gate: `stable · spread 4.0% ≤ 15%`
 mean/median gap both inside `bench.CV_MAX`, `LaneResult.stable` — else the amber
 `spread 18% above 15%`, or `mean 22% off the median, above 15%` when the spread
 cleared and the mean did not. `spread_chips(lane)` gives a tab that draws its
-own card (the Try hero) the same P95 · MAD · spread · CV chips.
+own card (the Try hero) the same P95 · MAD · spread chips. The CV is a lane-table
+statistic, not a chip: beside `stable · spread 1.6% ≤ 15%` a `CV 19%` chip read as
+a contradiction to three launch reviewers (round 12), so no card face prints it.
 
 `fmt_ms` is adaptive: three significant figures in the unit that fits — `1.23 s`,
 `189 ms`, `42.2 ms`, `2.17 ms`, `0.122 ms`, and microseconds below 0.1 ms
@@ -151,7 +153,7 @@ The not-recorded card keeps the result. A run whose timing did not clear the
 gate still ran the kernel and the parity check — the value is not noisy, only
 its timing is — so `render_not_recorded_card(cell, …, result_html=, chips=,
 subtitle=)` prints the caller's result block and parity chips and replaces the
-timing rows (bars, table, P95 · MAD · CV) with one quiet `alg-card-timing` row
+timing rows (bars, table, P95 · MAD · spread) with one quiet `alg-card-timing` row
 carrying the rulebook's reason and the neutral `not recorded` chip. The parity
 chip the cell's own gate produced (`cell.parity_label`) is printed by the card
 itself, so the race card gets it with no wiring. Same hairline, same
@@ -238,7 +240,7 @@ HOW_TIMED = (
     f"warm call, so a sample usually lasts a few ms), the per-call time is the sample over k, "
     f"and the card says n = {bench.REPEATS_FAST} × k calls; the spread the stability gate reads "
     f"is {bench.ROBUST_SCALE} × MAD over the median, with the mean within {bench.CV_MAX:.0%} of "
-    f"the median (the CV is printed beside it)"
+    f"the median (the CV is shown in the lane table)"
 )
 #: The not-recorded card's timing row, in place of the bars and the table.
 TIMING_LABEL = "timing"
@@ -522,15 +524,15 @@ def n_chips(cell: CellResult) -> list[str]:
 
 
 def spread_chips(lane: LaneResult) -> list[str]:
-    """P95 (or max under 20 samples), MAD and CV of one lane as neutral chips, each with its
-    unit — for a tab that draws its own card around a lane."""
+    """P95 (or max under 20 samples), MAD and the spread of one lane as neutral chips, each
+    with its unit — for a tab that draws its own card around a lane. No CV chip: the CV is
+    printed in the lane table (module docstring, round 12)."""
     tail = "P95" if lane.n >= bench.P95_MIN_N else "max"
     tail_ms = lane.p95_ms if lane.n >= bench.P95_MIN_N else lane.max_ms
     return [
         _chip(f"{tail} {fmt_ms(tail_ms)}"),
         _chip(f"MAD {fmt_ms(lane.mad_ms)}"),
         _chip(f"spread {fmt_cv(lane.spread)}"),
-        _chip(f"CV {fmt_cv(lane.cv)}"),
     ]
 
 

@@ -144,7 +144,8 @@ def test_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_current_spaces_report_the_known_split_and_prerelease(apps_spaces_dir: Path) -> None:
-    """The baseline the plan names, after M2 moved the flagship to 1.0.24: the algenta split
+    """The baseline the plan names, after M2 moved the flagship to 1.0.24 (1.0.28 since round
+    12): the algenta split
     between the flagship and the two other Spaces (1.0.17) and the bm25_mojo dev wheel."""
     findings = pd.check_spaces(
         [
@@ -154,7 +155,7 @@ def test_current_spaces_report_the_known_split_and_prerelease(apps_spaces_dir: P
         ]
     )
     messages = {f.message for f in findings}
-    assert any(m.startswith("algenta: 1.0.17 (requirements.txt) vs 1.0.24") for m in messages)
+    assert any(m.startswith("algenta: 1.0.17 (requirements.txt) vs 1.0.28") for m in messages)
     flagship = pd.check_spaces([apps_spaces_dir / "algenta"], require_hashes=False)
     assert flagship == [], "the flagship pins every requirement exactly and ships no pre-release"
     assert "bm25-mojo 0.1.4.dev1 is a pre-release" in messages

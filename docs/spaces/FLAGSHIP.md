@@ -62,9 +62,9 @@ the keyed phase the not-configured card is a broken precondition (`governed_lane
 probe must find the Governed form, `axe_serious_critical` must have audited a page with the
 Governed controls on it (the open Engine responses block is the one scrollable Code block, and
 round 3's keyed audits recorded its `scrollable-region-focusable` without a gate failing), and
-`KEYED_REQUIRED` (`governed_lane`, `receipt_tone`, `webhook_privacy`, `refusal_convention`,
-`axe_serious_critical`, `console_clean`, `no_toasts`, `voids`) stays selected whatever `--only`
-names. The report's first line says the phase and the number of checks. Every browser gate runs
+`KEYED_REQUIRED` (`governed_lane`, `governed_profiles`, `receipt_tone`, `webhook_privacy`,
+`refusal_convention`, `axe_serious_critical`, `console_clean`, `no_toasts`, `voids`) stays
+selected whatever `--only` names. The report's first line says the phase and the number of checks. Every browser gate runs
 in both phases; axe runs on every tab view in every context (1440 and 375 px, light and dark)
 rather than the desktop alone.
 
@@ -86,6 +86,7 @@ a visitor makes.
 | `race_cell` | a Races cell returns a result card with both lane latencies, or one of the documented states: held, not recorded, unavailable + code |
 | `llm_rmsnorm_parity` | the RMSNorm call carries the parity chip — torch agreed within the printed tolerance (strict: an unavailable card fails) |
 | `governed_lane` | `hosted_not_configured` without a key, `hosted_rate_limited` on a throttled demo tenant, else a receipt or a gate denial; `hosted_unavailable` fails. Codes are compared in lowercase snake_case (`verify_checks.same_code`), the fleet's one spelling: the cards print it, `hosted_api.NOT_CONFIGURED_CODE` / `RATE_LIMITED_CODE` / `UNAVAILABLE_CODE` are it |
+| `governed_profiles` | with a key, the chain stops at the first tool the profile does not expose and the card says so: `/gov_run` is called once per lower profile through the form's Radio parameter (`profile_parameter`: the endpoint's one Radio — Gradio names parameters after the handler's arguments); the `observe` profile's answer is the intercept card `Not in the observe profile` with the sub-line `before the log call reached the engine`, the sentence `Logging a decision is not in this profile; the recommendation stands, nothing was logged or run.` and **no Decision row** (round 17's owner walkthrough found a decision id on it: `run_chain` logged under every profile and gated `execute_decision` alone), the `govern` profile's the intercept card with the `execute` sub-line, the `Executing a decision …` sentence and a Decision row; a receipt, a stale sub-line or a card in the wrong profile fails by name. Without a key the not-configured card is the documented state; in the keyed phase it is a broken precondition |
 | `receipt_tone` | the Governed card tells the truth about the execution, read from the card `gov_tab.render_receipt` renders (`receipt_status` parses the tab's own status chip — `delivered · HTTP 200`, `webhook_failed · HTTP 502` / `no HTTP response`, `engine <status> · …` — round 3's gate expected an `engine <status>` chip the tab never paints and failed on every real receipt while its unit test passed on a hand-built card): a delivered execution is the live chip on the quiet card; a failed one (`execution_status: failed`) the red chip on the red card (`alg-card-err`) with no `webhook received` block and no "reported delivery" claim; `webhook received` is painted on a delivered receipt alone; any other engine status is the neutral chip, red only for a failure word (`FAILED_STATUS_WORDS`). A failure during the run (`webhook_url_unavailable` without a public https base, an engine or transport error) is the red card, never the quiet one. Without a key the not-configured card is the documented state; in the keyed phase it fails. The unit test renders every card through `gov_tab` (`_rendered_receipt`, a real `webhook.Hook` accepting the engine's own POST for the received block) — no hand-built card anywhere in the verifier tests |
 | `webhook_privacy` | the nonce that gates the engine's webhook stays inside the process: `/health` names the route's prefix and whether it is public (`webhook: {prefix, public}`, `app.public_health`), never a `/hook/<nonce>` path (round 3 published it, and a forged POST to it was painted `webhook received · nonce verified` on a failed receipt); the Governed card prints no URL carrying the nonce (the receipt's raw `Webhook` row); a POST to `<prefix>/<guessed nonce>` answers 400 or 404 and a POST to the bare prefix 400/404/405 |
 | `family_dropdown_foreign_value` | the Playground answers an API or MCP value naming a family this container did not load (`nope_family`) with a coded card (`unavailable · unknown_family`), never Gradio's stock `is not in the list of choices` error — on the run endpoint and on the family cascade endpoint (`play_modules`), which may also answer with no-op updates |
@@ -116,6 +117,7 @@ a visitor makes.
 | `boot_card_timings` | the boot disclosure is opened and every stage row read: a row prints the time `/health` records for that stage (`finished_at − started_at`, ±0.06 s of the card's `0.0 s` rounding) and a stage that ran ≥ 0.05 s never prints `0.0 s`; the rows sum to the `booted in` foot (±0.06 s per row + 0.1 s) and the foot is the snapshot's boot (`boot_duration`). Round 2's `kernels 0.0 s` beside `warm in 1.7 s` (progress events restarting the stage clock) is what it catches |
 | `footer_stamp_one_line` | at 375 px, in both themes, `.alg-shell-stamp` renders on one line (rect height ÷ line-height) and reads `build <7–64 hex | dev>`; the detail names the form (`12 hex`) and the size |
 | `exact_integers` | `2^53 + 1` (`9007199254740993`) through both paths of the Playground: the API call sends it as a JSON number and the accepted answers are the exact echo in the Request JSON or the contract's refusal (`playground.REASON_ABOVE_BROWSER_RANGE` — a whole number at or above `BROWSER_EXACT_MAX` is refused because a client's JSON double cannot be told from a browser's rounded one; the exact route is the snippet under Reproduce) with nothing run; a float, a `2^53` echo or a refusal beside a request that still carries a value fails. In Chromium it is typed into the default form's `n_a` box and Run pressed — the Request JSON must carry it exactly, or a message must appear under the field; a request that silently carries `9007199254740992` fails. Round 2 measured the silent rounding |
+| `srlive_no_raw_keys` | Gradio's own screen-reader status region (`div.sr-only[role="status"]`, the client's StatusTracker, re-created per request) never carries a bare i18n key: every tab is clicked and the Try tab's Run pressed at 1440 light and 375 dark, the region sampled every 100 ms for 4 s after each (`SR_SAMPLE_MS`, `SR_WINDOW_MS`) and no sample may match `BARE_KEY_RE` (`^[a-z_]+(\.[a-z_]+)+$` — round 12 heard `common.complete` after every request, a key Gradio 6.28's English catalogue lacks; the app hands the mount a catalogue entry, `app.SR_TRANSLATIONS`, so the region says `Request complete`); the Space's own `.alg-status` live region must have announced the run (`running now`, `done in …`). The detail says what both regions said |
 
 `targets_44px` measures a radio or checkbox by its `<label>` (a click anywhere on it toggles the
 control) and a text-like control — number, text, range, textarea, the dropdown's combobox — by
@@ -182,7 +184,11 @@ Regeneration is one command and reproducible by construction — or it refuses:
    minutes later) and `SPACE_ID` is set. `--accept-hero-status noisy`, `--accept-hub-state
    <code>` and `--allow-local` record another state deliberately, never by accident. The
    Ecosystem pages are read again during the capture and a table in another state than
-   `/config` promised is refused, not captured. **The golden state rule:** the committed set
+   `/config` promised is refused, not captured. One more state the manifest cannot record:
+   the Races board (`races.Board`) lives in the process's memory, so regenerate from a freshly
+   booted app before any Run is pressed — round 12's first capture followed two verifier runs
+   and pictured two board rows (race-phone 473 px taller than the empty board every fresh
+   boot shows). **The golden state rule:** the committed set
    pictures the deployed state and nothing else; a comparison — the CLI or the pytest gate —
    first reads the live app's state and, when it differs from the manifest's or the manifest
    records none, refuses loudly with the reason (`[SKIP] the goldens picture another state than
@@ -622,8 +628,9 @@ quiet when the stage is offline; the kernel lane is split once more into the Pyt
 envelope, `json.loads` of a same-shape reply, measured on the same payload) and the remainder.
 
 Layout (round 4): each panel is one stack — its controls two to a row (`CONTROL_MIN_WIDTH` each,
-one under the other on a phone), the Run button under them at its own width, then the result card
-across the panel's full width and the Reproduce disclosure — so a tall result never leaves a void
+one under the other on a phone), the Run button under them across the panel (`RUN_VARIANT`, the
+gradient primary every other tab's Run wears — round 12: three grey 240 px secondaries read as a
+different control), then the result card across the panel's full width and the Reproduce disclosure — so a tall result never leaves a void
 beside a short set of sliders (round 3 measured 469 px under the RMSNorm controls after a run; the
 `voids` gate reads 0 gaps over 240 px now). The page at rest is taller for it on the desktop
 (1,982 → 2,759 px). The two-column tabs (Governed, Ecosystem) moved to the shared two-column
@@ -643,9 +650,12 @@ integration contract's profiles mirrored as data and asserted against
 `algenta-integrations/contracts/integration-tool-contract.json` when that checkout is present;
 default `execute` so one click reaches the engine), action name, pessimistic / optimistic
 values and a hold outcome (the two `NamedAction`s `/v1/recommend` compares, hold ± 1 %, `runs`
-100 — the API minimum), confidence, risk p5, then **Run governed execution** (`gov_run`):
-`recommend` → `log_decision` → profile gate (below `execute` the step is intercepted before the
-engine is called, as every algenta-* integration filters `execute_decision`) →
+100 — the API minimum), the declared confidence (`Declared confidence`: the visitor's own,
+`log_decision.confidence`) and the risk at the 5th percentile (`Risk (P5)`: `log_decision.risk_p5`,
+the decision's pessimistic outcome — not the policy's risk floor it is compared against, which
+stays the gate's name, `GATE_NAMES["risk_floor"]`), then **Run governed execution** (`gov_run`):
+`recommend` → `log_decision` → `execute_decision`, stopping at the first tool the profile does
+not expose (below) →
 `execute_decision(webhook_url=<this Space>/hook/<nonce>)` → receipt card (engine status,
 response code, integrity ids, the engine's webhook POST with its received stamp and what was
 verified) or denial card ("Held by the <gate> gate", code, HTTP status, override hint). The
@@ -654,6 +664,37 @@ live on the quiet card, `webhook_failed · HTTP <code>` (or `no HTTP response`) 
 card with no `webhook received` block and no "reported delivery" note; the `receipt_tone` gate
 reads that chip from the card the tab renders (round 2 painted `engine failed` in the live tone;
 round 3's gate looked for an `engine <status>` chip the tab never paints).
+
+**The per-tool profile gate (round 17).** The profile radio is the integration contract's four
+profiles, and the chain is gated per tool, not per profile: `first_tool_outside_profile(profile,
+CHAIN_TOOLS)` names the first of `recommend`, `log_decision`, `execute_decision` that the
+profile's tool list (`PROFILE_TOOLS`; `*` under `full`) leaves out, and `run_chain` calls every
+tool before it and none after — exactly as every algenta-* integration filters the tools outside
+the profile out of the model-facing list. Under `observe` (`get_contract`, `query_data`,
+`simulate`, `recommend`) the intercepted tool is `log_decision`: `recommend` runs, nothing is
+logged, nothing runs, `state["decisions"]` and `last_decision_id` stay as they were, and the
+audit row is `Decision log · intercepted · profile` with no decision id. Under `govern` it is
+`execute_decision`: `recommend` and `log_decision` run and the audit row is `Execution ·
+intercepted · profile · <id>`. `execute` and `full` run the whole chain (`EXECUTE_PROFILES` is
+derived from the lists, never a second copy). The Outcome records `intercepted_profile` and
+`intercepted_tool`, and `render_intercepted` tells that truth: the title `Not in the <profile>
+profile`, the sub-line `before the <log|execute> call reached the engine` (the engine was called
+for every step before it — the old `before the engine was called` was false under `govern`), the
+sentence for the tool (`INTERCEPT_LOG_TEXT`: "Logging a decision is not in this profile; the
+recommendation stands, nothing was logged or run." / `INTERCEPT_TEXT`: "Executing a decision is
+not in this profile; the decision is logged and nothing ran."), and the steps list only what ran
+— under `observe` the Recommendation row alone, no Decision or Chosen action row. The loading
+card names the steps the profile will run (`loading_text`). **Execute again** after an observe
+run has no logged decision to send and answers the quiet `no_decision_yet` card; under a lower
+profile with a decision in the session, the repeat's one tool (`execute_decision`) is intercepted
+by the same rule. The owner's production walkthrough found the observe card showing a decision
+id and "the decision is logged and nothing ran" — `run_chain` logged under every profile and gated
+`execute_decision` alone; `governed_profiles` now reads both lower profiles' cards in the keyed
+phase. The same round named the two confidences apart on the card — `engine confidence 1.00`
+on the Recommendation row (`Recommendation.confidence`, the engine's ranking confidence) and
+`declared confidence 0.93` on the Chosen action row (`Decision.confidence`, the form's field) —
+and the Chosen action row's `risk P5 0.02` (it read `risk floor`, the gate's name, for the
+decision's own P5).
 
 **The webhook verification model.** There is no signature: the engine's decision webhook sends
 no header worth trusting, and `spaces.toml` sets no `ALGENTA_WEBHOOK_SECRET`. What makes a POST
@@ -768,7 +809,14 @@ recovers without a request per click), the SDK and MCP card (installed
 versions from the facts record, each row labelled with the distribution's name as `pip` spells
 it — `huggingface-hub`, never the import name — the MCP tool count from
 `algenta_mcp.registry.TOOLS` or `mcp_registry_not_installed`), and the shell's links as 44 px
-pills.
+pills. Round 17 (owner walkthrough): the SDK card's `MCP endpoint` pill pointed a browser at
+`https://api.algenta.ai/mcp`, a Streamable HTTP MCP server whose GET answers 200 with a
+`text/event-stream` that never ends — a blank tab that never loads. The endpoint is now a row of
+the card (`MCP endpoint` · `<code class="alg-eco-code">https://api.algenta.ai/mcp</code>`, plain
+inline code in the row's mono type, breaking anywhere on a phone; `code` is outside
+`no_identifiers_in_copy`'s primary copy) to copy into a client's configuration, and the second
+pill is `MCP guide` → `https://docs.algenta.ai/sdks/mcp` (`MCP_GUIDE_URL`, `gitbook/sdk/mcp.md`;
+`/sdk/mcp` answers 307 to it, the published path answers 200).
 
 Layout (round 4): the table takes the full page width in the 13 px mono face with tabular
 numerals, one line per cell; the two counted columns (functions, on the Hub) are right-aligned and
@@ -813,7 +861,7 @@ before anything imports `kernels`, boots (`boot_sequence.run_boot()`), and build
 |---|---|
 | header (eyebrow, headline, subline, pills, nav, Duplicate) | `shell.render_header(headline(facts), SUBLINE, badges(state), active="Flagship")`. **Counts have one truth**: `app.headline` *is* `boot_sequence.headline` — `f"{functions_loaded:,} compiled kernels, live"`, the functions that loaded in this container, never the umbrella's published catalogue (`function_count` / `catalogue_functions`, 6,040), so a container that lost a family says the smaller number in the header, on the Try tab's Hub tile and on the boot card alike (round 1 said 6,040 in the header and 5,683 on the tile of the same page). The pills are words: `19 kernel families · this container` (neutral), `18 of 19 kernel families · this container` (amber) from `boot_sequence.families_loaded` / `families_published`, the hardware tier in words (`tier_label`: `cpu-upgrade` → `CPU upgrade`, `l4x1` → `L4 GPU`), `host below the published floor` (amber). No build-variant string (`torch25-cpu-aarch64-darwin`), revision or timing anywhere in the shell — the boot disclosure carries those; `shell.machine_token` is the rule and the tests hold every pill to it |
 | tab strip | `gr.Tabs(elem_id="alg-tabs", selected="try")`, one `gr.Tab(label, id=<tab id>)` per `tabs/<id>_tab.py` in `TAB_IDS` order; `spec.render(gr)` inside, then every `spec.connect` |
-| permalink row | a read-only `gr.Textbox` (no stock icon panel) with the tabs' 44 px Copy chip (`common.COPY_JS`) under it. `Blocks.load` writes **only the state the page restored** (see the protocol below): a link's `fn` and `args` reach the box when the tab applied them, else `?tab=<id>` alone. `tabs.select` (a click on the strip) rewrites it. A programmatic switch (`gr.Tabs(selected=…)` from a handler, the Try tab's "Race it against Python" chip) fires no strip event — measured live: `tabs.change` never ran, and wiring it made Gradio raise an Error toast on every page because `gr.Tabs` is not an input component — so the box is built before the tabs with `render=False`, drawn in the row afterwards, and offered to every tab's `connect(gr, tabs, handles)` as `handles["shell"]["permalink"]` (with `"base"`): the tab that switches the strip names the box as an output of the same event and writes `common.permalink(...)` — the Try tab's "Race it against Python" chip does (`try_tab.SHELL_HANDLE`), so the box reads `?tab=race` the moment the strip moves; without the handle (an older shell) the chip still switches the strip |
+| permalink row | a read-only single-row `gr.Textbox` (no stock icon panel; `max_lines=1`, which Gradio 6.28 renders as a single-line `<input type="text">` that never wraps and scrolls sideways on its own — the 44 px row at 375 px too, round 12; `common.LINK_BOX_CLASS` marks the box and holds the same row for a textarea rendering) with the tabs' 44 px Copy chip (`common.COPY_JS`) on the same row: the row is the card (`APP_CSS`: surface, hairline, card radius; the form wrapper inside drops its frame), the box's label is the fleet's caption line and its input the 44 px control (`common.LINK_BOX_CLASS`), and the chip — offset by the label's line, `common.FIELD_BOX_OFFSET_PX` — sits level with the box inside the card's padding (round 12 found it detached under the card, right-aligned alone). `Blocks.load` writes **only the state the page restored** (see the protocol below): a link's `fn` and `args` reach the box when the tab applied them, else `?tab=<id>` alone. `tabs.select` (a click on the strip) rewrites it. A programmatic switch (`gr.Tabs(selected=…)` from a handler, the Try tab's "Race it against Python" chip) fires no strip event — measured live: `tabs.change` never ran, and wiring it made Gradio raise an Error toast on every page because `gr.Tabs` is not an input component — so the box is built before the tabs with `render=False`, drawn in the row afterwards, and offered to every tab's `connect(gr, tabs, handles)` as `handles["shell"]["permalink"]` (with `"base"`): the tab that switches the strip names the box as an output of the same event and writes `common.permalink(...)` — the Try tab's "Race it against Python" chip does (`try_tab.SHELL_HANDLE`), so the box reads `?tab=race` the moment the strip moves; without the handle (an older shell) the chip still switches the strip |
 | boot disclosure | `gr.Accordion("How this booted")` around `BootRegistry.render_html()`, re-rendered from the registry by a private `blocks.load` on every page load — so a stage detail that changes after boot (the hero tracker recording a measurement, once the boot owner writes it back to the registry) reaches the card a visitor opens instead of the one the page was built with; `boot_row_live` holds the hero row to `/health` |
 | footer | `shell.render_footer(active="Flagship", stamp=shell.shared_sha())` — the stamp is `.shared_sha` next to the vendored package, `dev` locally |
 
@@ -878,6 +926,18 @@ the class, and `select_tab` calls it first, so the audit and the goldens (`_gold
 through `select_tab`) never measure a held page. `tests/spaces/test_flagship_app.py` asserts the
 fragment, the chained step (private, `trigger_only_on_success = False` — a failed load still
 reveals) and the two bounds.
+
+### Accessibility — live regions and the tab strip
+
+Two screen-reader live regions speak on this page and each says only what it owns: the Space's
+`.alg-status` row (`common.render_status`, `aria-live="polite"`) announces the run — `running
+now`, `done in 6.07 ms · this container · <UTC>` — and Gradio's own `div.sr-only[role="status"]`
+(the client's StatusTracker) announces the request's state with a sentence, never a raw key:
+Gradio 6.28's English catalogue has no `common.complete`, so the client read the key aloud after
+every request (round 12) until `app.SR_TRANSLATIONS` gave the mount a catalogue entry for it
+(`gr.mount_gradio_app(i18n=)`; the `srlive_no_raw_keys` gate holds both regions to this). The tab
+strip follows the WAI-ARIA tabs pattern through `shell.TABS_KEYBOARD_SCRIPT`: the selected tab is
+the strip's one Tab stop (a roving `tabindex`), Left / Right / Home / End move and select.
 
 ### Permalink (`permalink.py`)
 

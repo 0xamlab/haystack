@@ -24,7 +24,7 @@ from _rules import (
     _assert_four_class_selectors,
     _assert_stylesheet_discipline,
 )
-from algenta_spaces import bench, cards, css, design, hosted_api, hubkernel, playground
+from algenta_spaces import bench, cards, css, design, hosted_api, hubkernel, playground, shell
 from algenta_spaces.hosted_api import HostedGoverned
 from algenta_spaces.killswitch import KillSwitch
 from algenta_spaces.lane import Lane, LaneBusyError
@@ -591,7 +591,9 @@ def test_llm_copy_and_css_discipline():
         llm_tab.STATE_CSS
     )
     assert llm_tab.API_NAMES[0] == "llm_run"
-    assert llm_tab.RUN_VARIANT == "secondary", "three peer panels share one button hierarchy"
+    assert llm_tab.RUN_VARIANT == "primary", (
+        "round 12: each panel's Run is the primary action of its card, as on every other tab"
+    )
     # round 10: the disclosure describes the parity card the tab shows — no medians, no split
     assert "parity check" in llm_tab.HOW_TEXT and "prints no time" in llm_tab.HOW_TEXT
     assert "medians on the card" not in llm_tab.HOW_TEXT
@@ -1263,19 +1265,146 @@ def test_full_chain_returns_a_receipt_with_the_webhook_post():
 
 
 @pytest.mark.parametrize("profile", ["observe", "govern"])
-def test_lower_profiles_intercept_before_the_engine_executes(profile: str):
+def test_lower_profiles_intercept_at_the_first_tool_outside_the_profile(profile: str):
+    """Round 17 (owner walkthrough): the observe profile exposes no `log_decision`, yet its card
+    showed a decision id and said "the decision is logged". The chain now stops at the first
+    tool the profile does not expose — observe at `log_decision` (recommend ran; nothing was
+    logged or run; no Decision row), govern at `execute_decision` (recommend and log ran) — and
+    the card names the tool, the call it stopped and only the steps that ran."""
     hook = make_hook()
     hosted, made = make_hosted(hook=hook)
     card, raw, audit, state = run(gov_deps(), hosted, hook, profile=profile)
+    tool = gov_tab.first_tool_outside_profile(profile)
+    text = flat(card)
     assert f"Not in the {profile} profile" in card
-    assert gov_tab.INTERCEPT_CODE in card and gov_tab.INTERCEPT_TEXT in card
-    for tool in gov_tab.PROFILE_TOOLS[profile]:
-        assert gov_tab.tool_name(tool) in card, "tools as chips with human names"
+    assert gov_tab.INTERCEPT_CODE in card and gov_tab.intercept_text(tool) in text
+    assert "before the engine was called" not in card, "the engine was called for what ran"
+    assert gov_tab.INTERCEPT_SUB_TEXT.format(call=gov_tab.call_word(tool)) in text
+    for allowed in gov_tab.PROFILE_TOOLS[profile]:
+        assert gov_tab.tool_name(allowed) in card, "tools as chips with human names"
     assert not SNAKE_RE.search(primary_text(card).replace("expand_eu", "")), primary_text(card)
-    assert [c[0] for c in made[0].calls] == ["recommend", "log_decision"]
-    assert state["audit"][-1]["outcome"] == "intercepted"
-    assert "execute_decision" not in json.loads(raw)
+    assert [c[0] for c in made[0].calls] == list(gov_tab.chain_steps(profile))
+    assert set(json.loads(raw)) == set(gov_tab.chain_steps(profile))
+    assert "Recommendation" in card and "engine confidence 0.87 · 2 actions compared" in text
+    last = state["audit"][-1]
+    assert (last["step"], last["outcome"], last["gate"]) == (tool, "intercepted", "profile")
+    assert gov_tab.step_name(tool) in audit and "intercepted" in audit
+    if profile == "observe":
+        assert tool == "log_decision"
+        assert [c[0] for c in made[0].calls] == ["recommend"], "nothing was logged"
+        assert gov_tab.INTERCEPT_LOG_TEXT in text and gov_tab.INTERCEPT_TEXT not in text
+        assert "before the log call reached the engine" in card
+        assert 'alg-gov-key">Decision<' not in card and DECISION_ID not in card
+        assert "Chosen action" not in card and "declared confidence" not in text
+        assert state["decisions"] == {} and state["last_decision_id"] == ""
+        assert last["decision_id"] == "" and "logged" not in audit
+        assert gov_tab.again_label(state) == gov_tab.AGAIN_TEXT
+        # Execute again has no logged decision to send: the quiet no-decision card, no call
+        again, again_raw, _, state = gov_tab.on_execute_again(
+            gov_deps(), hosted, hook, profile, False, False, state
+        )
+        assert code_of(again) == gov_tab.CODE_NO_DECISION and "alg-card-quiet" in again
+        assert again_raw.strip() == "{}" and [c[0] for c in made[0].calls] == ["recommend"]
+    else:
+        assert tool == "execute_decision"
+        assert [c[0] for c in made[0].calls] == ["recommend", "log_decision"]
+        assert gov_tab.INTERCEPT_TEXT in text and gov_tab.INTERCEPT_LOG_TEXT not in text
+        assert "before the execute call reached the engine" in card
+        assert 'alg-gov-key">Decision<' in card and DECISION_ID in card
+        assert "Chosen action" in card and "declared confidence 0.93 · risk P5 0.02" in text
+        assert state["last_decision_id"] == DECISION_ID and last["decision_id"] == DECISION_ID
+        assert gov_tab.again_label(state) == gov_tab.AGAIN_TEXT
     _assert_clean_copy(card)
+    _assert_clean_copy(audit)
+
+
+def test_profile_gate_is_derived_from_the_tool_lists():
+    """`first_tool_outside_profile` models the integration contract in general: the chain stops
+    at the first tool the profile's list leaves out, the `*` profile exposes everything, and
+    `EXECUTE_PROFILES` is derived from the lists rather than kept beside them."""
+    assert gov_tab.CHAIN_TOOLS == ("recommend", "log_decision", "execute_decision")
+    assert gov_tab.first_tool_outside_profile("observe") == "log_decision"
+    assert gov_tab.first_tool_outside_profile("govern") == "execute_decision"
+    assert gov_tab.first_tool_outside_profile("execute") == ""
+    assert gov_tab.first_tool_outside_profile("full") == ""
+    assert (
+        gov_tab.first_tool_outside_profile("observe", ("execute_decision",)) == "execute_decision"
+    )
+    assert gov_tab.first_tool_outside_profile("full", ("anything_at_all",)) == "", "the wildcard"
+    assert gov_tab.chain_steps("observe") == ("recommend",)
+    assert gov_tab.chain_steps("govern") == ("recommend", "log_decision")
+    assert gov_tab.chain_steps("execute") == gov_tab.CHAIN_TOOLS == gov_tab.chain_steps("full")
+    assert gov_tab.EXECUTE_PROFILES == frozenset({"execute", "full"})
+    assert gov_tab.allows("govern", "log_decision") and not gov_tab.allows(
+        "observe", "log_decision"
+    )
+    with pytest.raises(KeyError):
+        gov_tab.first_tool_outside_profile("nope")
+    # the loading card names the steps the profile will run, never one it will not
+    assert gov_tab.loading_text("execute") == gov_tab.LOADING_TEXT == gov_tab.loading_text("full")
+    assert gov_tab.loading_text("observe") == "Asking the hosted engine: recommend."
+    assert (
+        gov_tab.loading_text("govern") == "Asking the hosted engine: recommend, log the decision."
+    )
+    assert gov_tab.loading_text("nope") == gov_tab.LOADING_TEXT
+    assert gov_tab.loading_text("observe") in gov_tab.loading_card(profile="observe")
+    assert "execute it" not in gov_tab.loading_card(profile="observe")
+    assert gov_tab.LOADING_TEXT in gov_tab.loading_card()
+    # the intercepted card's words, by tool
+    assert gov_tab.intercept_text("log_decision") == gov_tab.INTERCEPT_LOG_TEXT
+    assert gov_tab.intercept_text("execute_decision") == gov_tab.INTERCEPT_TEXT
+    assert gov_tab.intercept_text("recommend") == (
+        "Recommend is not in this profile; nothing past it ran."
+    )
+    assert gov_tab.call_word("execute_decision") == "execute"
+    assert gov_tab.call_word("log_decision") == "log"
+    assert gov_tab.INTERCEPT_SUB_TEXT.format(call="execute") == (
+        "before the execute call reached the engine"
+    )
+    for text in (
+        gov_tab.INTERCEPT_LOG_TEXT,
+        gov_tab.INTERCEPT_TEXT,
+        *(
+            gov_tab.INTERCEPT_SUB_TEXT.format(call=gov_tab.call_word(t))
+            for t in gov_tab.CHAIN_TOOLS
+        ),
+        *(gov_tab.loading_text(p) for p in gov_tab.PROFILES),
+    ):
+        _assert_clean_copy(text)
+        assert not SNAKE_RE.search(text), text
+    # the audit's step name stays true beside `intercepted` (`Decision logged · intercepted` did not)
+    assert gov_tab.STEP_NAMES["log_decision"] == "Decision log"
+    assert (
+        gov_tab.render_outcome(
+            gov_tab.Outcome(intercepted_profile="observe", intercepted_tool="log_decision"), None
+        ).count("alg-gov-row")
+        == 0
+    ), "nothing ran, nothing to list"
+
+
+def test_execute_again_under_a_lower_profile_intercepts_the_execute_call():
+    """A decision logged under `execute`, then Execute again under `observe` or `govern`: the
+    repeat's one tool is `execute_decision`, intercepted by the same rule and audited as such."""
+    hook = make_hook()
+    hosted, made = make_hosted(hook=hook)
+    deps = gov_deps()
+    _, _, _, state = run(deps, hosted, hook)
+    for profile in ("observe", "govern"):
+        card, raw, audit, state = gov_tab.on_execute_again(
+            deps, hosted, hook, profile, False, False, state
+        )
+        assert f"Not in the {profile} profile" in card and gov_tab.INTERCEPT_TEXT in flat(card)
+        assert "before the execute call reached the engine" in card
+        last = state["audit"][-1]
+        assert (last["step"], last["outcome"], last["gate"], last["decision_id"]) == (
+            "execute_decision",
+            "intercepted",
+            "profile",
+            DECISION_ID,
+        )
+        assert json.loads(raw) == {}, "no engine body: nothing was called"
+        _assert_clean_copy(card)
+    assert [c[0] for c in made[0].calls] == ["recommend", "log_decision", "execute_decision"]
 
 
 def test_gate_denial_renders_the_gate_and_the_hint():
@@ -1739,6 +1868,12 @@ def test_gov_copy_and_css_discipline():
         gov_tab.WEBHOOK_BODY_CAPTION,
         gov_tab.BODY_ROW_LABEL,
         gov_tab.EXECUTED_TEXT.format(stamp="2026-09-23 07:28 UTC"),
+        gov_tab.INTERCEPT_TEXT,
+        gov_tab.INTERCEPT_LOG_TEXT,
+        gov_tab.INTERCEPT_SUB_TEXT.format(call="log"),
+        gov_tab.loading_text("observe"),
+        gov_tab.LABEL_CONFIDENCE,
+        gov_tab.LABEL_RISK,
         *gov_tab.PROFILE_LINES.values(),
     ):
         _assert_clean_copy(text)
@@ -1767,7 +1902,15 @@ def test_gov_primary_copy_carries_human_names_not_identifiers():
         assert not SNAKE_RE.search(label), label
     assert gov_tab.LABEL_FORCE == "Force execution (operators only)"
     assert gov_tab.LABEL_OVERRIDE == "Override the safety gate (operators only)"
-    assert gov_tab.LABEL_RISK == "Risk floor (5th percentile)"
+    # round 17: `risk_p5` is the decision's pessimistic outcome at the 5th percentile, not the
+    # policy's risk floor it is compared against (that stays the gate's name); and the form's
+    # confidence is the visitor's own, apart from the engine's ranking confidence on the card
+    assert gov_tab.LABEL_RISK == "Risk (P5)" == gov_tab.FIELD_LABELS["risk_p5"]
+    assert gov_tab.LABEL_CONFIDENCE == "Declared confidence" == gov_tab.FIELD_LABELS["confidence"]
+    assert gov_tab.GATE_NAMES["risk_floor"] == "risk floor"
+    assert gov_tab.check_inputs("a", 80_000, 200_000, 100_000, 0.93, 0.9) == gov_tab.Refusal(
+        "risk_p5", "Risk (P5) must be between -0.5 and 0.5."
+    )
     note = gov_tab.profile_html("execute")
     assert note.count('<span class="alg-chip ') == len(gov_tab.PROFILE_TOOLS["execute"])
     assert not SNAKE_RE.search(text_of(note)), text_of(note)
@@ -1792,6 +1935,12 @@ def test_gov_primary_copy_carries_human_names_not_identifiers():
         "Webhook",
     ):
         assert human in card
+    # round 17: two "confidence" figures sat on adjacent rows (the engine's 0.87, the visitor's
+    # 0.93); each is named for what it is, and the P5 risk is not called a floor
+    rows = flat(card)
+    assert "Recommendation expand_eu · engine confidence 0.87 · 2 actions compared" in rows
+    assert "Chosen action expand_eu · declared confidence 0.93 · risk P5 0.02" in rows
+    assert "· confidence " not in rows and "risk floor" not in rows
     assert not SNAKE_RE.search(primary_text(card).replace("expand_eu", "")), primary_text(card)
     assert "https://" not in primary_text(card), "no raw URL in primary copy"
     assert hosted.base_url not in card and "api.algenta.ai" not in card, "the address is not copy"
@@ -1802,7 +1951,8 @@ def test_gov_primary_copy_carries_human_names_not_identifiers():
     assert preview["recommend"]["actions"] == gov_tab.recommend_actions(
         gov_tab.DEFAULT_ACTION, gov_tab.LOW[3], gov_tab.HIGH[3], gov_tab.HOLD_VALUE[3]
     ), "the editor opens on the request the default run sends"
-    assert "Execution" in audit and "Decision logged" in audit and "alg-stack-table" in audit
+    assert "Execution" in audit and gov_tab.STEP_NAMES["log_decision"] in audit
+    assert "alg-stack-table" in audit
     assert 'class="alg-card alg-card-empty"' in gov_tab.empty_card()
     for row in gov_tab.EMPTY_ROWS:
         assert f'alg-empty-key">{row}<' in gov_tab.empty_card()
@@ -1953,16 +2103,36 @@ def test_hub_table_shows_counts_with_stamp_then_unavailable_after_a_failed_fetch
     for anchor in anchors:
         assert 'target="_blank"' in anchor and 'rel="noopener"' in anchor, anchor
         assert f'href="{eco_tab.HUB_REPO_URL}thyn-ai/algenta' in anchor, anchor
-    for card in (
-        eco_tab.render_sdk_card({"versions": {}, "mcp_tools": 140}),
-        eco_tab.render_oss_card(
-            eco_tab.OssFacts(44, "v0.1.4", "2026-09-22 14:54 UTC", "2026-09-22 15:00 UTC")
-        ),
-    ):
+    sdk = eco_tab.render_sdk_card({"versions": {}, "mcp_tools": 140})
+    oss = eco_tab.render_oss_card(
+        eco_tab.OssFacts(44, "v0.1.4", "2026-09-22 14:54 UTC", "2026-09-22 15:00 UTC")
+    )
+    for card in (sdk, oss):
         outbound = re.findall(r"<a [^>]*>", card)
         assert outbound and all(
             'target="_blank"' in a and 'rel="noopener"' in a for a in outbound
         ), outbound
+    # round 17 (owner walkthrough): a browser GET on the MCP endpoint opens an event stream that
+    # never ends (HTTP 200, a blank tab), so the SDK card's anchors are the docs and the MCP
+    # guide, and the endpoint is a row of plain inline code to copy — never a link
+    pills = re.findall(r'<a class="alg-eco-pill" href="([^"]+)"[^>]*>([^<]+)</a>', sdk)
+    assert pills == [(shell.DOCS_URL, "Docs"), (eco_tab.MCP_GUIDE_URL, eco_tab.MCP_GUIDE_TEXT)]
+    assert eco_tab.MCP_GUIDE_URL == "https://docs.algenta.ai/sdks/mcp"
+    assert eco_tab.MCP_GUIDE_TEXT == "MCP guide"
+    assert f'href="{gov_tab.MCP_ENDPOINT}"' not in sdk and "MCP endpoint</a>" not in sdk
+    assert (
+        f'<span class="alg-eco-key">{eco_tab.MCP_ENDPOINT_ROW_LABEL}</span>'
+        f'<span class="alg-eco-val"><code class="{eco_tab.MCP_CODE_CLASS}">{gov_tab.MCP_ENDPOINT}'
+        "</code></span>"
+    ) in sdk
+    assert (
+        eco_tab.MCP_ENDPOINT_ROW_LABEL == "MCP endpoint"
+        and eco_tab.MCP_CODE_CLASS == "alg-eco-code"
+    )
+    code_rule = _css_rules(eco_tab.ECO_CSS)[(eco_tab.MCP_CODE_CLASS, "")]
+    assert code_rule["background"] == "transparent" and code_rule["padding"] == "0"
+    assert code_rule["border"] == "0" and code_rule["overflow-wrap"] == "anywhere"
+    assert code_rule["font"] == "inherit", "the row's own mono type, not the prose's code style"
     assert eco_tab.HUB_API_URL not in table and eco_tab.SOURCE_HUB in table, "source, not a URL"
     assert "next refresh" not in table
     _assert_clean_copy(table)
@@ -2187,7 +2357,8 @@ def test_sdk_card_reads_facts_and_omits_a_missing_registry(monkeypatch):
     # gradio[mcp] (mcp 2.x vs < 2.0); the count is the live hosted one, labelled so
     assert "algenta-mcp" not in card and eco_tab.MCP_NOT_INSTALLED_TEXT not in card
     assert all(name != "algenta-mcp" for name, _ in eco_tab.SDK_DISTS)
-    assert gov_tab.MCP_ENDPOINT in card
+    assert gov_tab.MCP_ENDPOINT in card and f'href="{gov_tab.MCP_ENDPOINT}"' not in card
+    assert f'<code class="{eco_tab.MCP_CODE_CLASS}">{gov_tab.MCP_ENDPOINT}</code>' in card
     _assert_clean_copy(card)
     monkeypatch.setattr(
         eco_tab,
@@ -2305,10 +2476,11 @@ def test_llm_tab_builds_with_gradio(deps: Deps):
     assert set(spec.api_names) <= _api_names(blocks)
     assert handles["run_rmsnorm"].value == llm_tab.RUN_RMSNORM
     for name in ("run_rmsnorm", "run_rope", "run_sampling"):
-        assert handles[name].variant == "secondary", f"{name}: three peers, one hierarchy"
-    for name in ("run_rmsnorm", "run_rope", "run_sampling"):
-        assert handles[name].scale == 0 and handles[name].min_width == llm_tab.RUN_MIN_WIDTH, (
-            f"{name}: its own width under the controls, never the panel's"
+        # round 12: the gradient primary across the panel, the Playground's Run shape — the
+        # three grey 240 px secondaries read as a different control beside five primary Runs
+        assert handles[name].variant == "primary", f"{name}: the primary action of its card"
+        assert handles[name].scale is None and "alg-run" in handles[name].elem_classes, (
+            f"{name}: across the panel like every other tab's Run, not at its own width"
         )
     ids = [b._id for b in blocks.blocks.values()]
     for panel in ("rmsnorm", "rope", "sampling"):
@@ -2555,7 +2727,8 @@ def test_gov_tab_configured_builds_and_defaults():
     assert 'alg-sr">not run yet<' in handles["card"].value
     assert handles["force"].label == gov_tab.LABEL_FORCE
     assert handles["override"].label == gov_tab.LABEL_OVERRIDE
-    assert handles["risk_p5"].label == gov_tab.LABEL_RISK
+    assert handles["risk_p5"].label == gov_tab.LABEL_RISK == "Risk (P5)"
+    assert handles["confidence"].label == gov_tab.LABEL_CONFIDENCE == "Declared confidence"
     assert 'class="alg-card alg-card-empty"' in handles["card"].value
     assert handles["run"].interactive is not False
     assert (
@@ -3107,6 +3280,12 @@ def test_round_5_launch_review_regressions(deps: Deps, fake_kernel):
         f'<span class="{eco_tab.PART_CLASS}">1</span> · <span class="{eco_tab.PART_CLASS}">2</span>'
     )
     assert f".{eco_tab.PART_CLASS}" * 4 + " { white-space: nowrap; }" in eco_tab.ECO_CSS
+    # round 12: the backends cell (`cpu, cuda, metal`) is one line wherever the column shows;
+    # the attribute selector outranks the wrapping `td` rule inside WRAP_MAX_WIDTH
+    assert (
+        ".alg-eco-table" * 4
+        + f' td[data-col="{eco_tab.COLUMN_BACKENDS}"] {{ white-space: nowrap; }}'
+    ) in eco_tab.ECO_CSS
     assert f"@media (width <= {eco_tab.WRAP_MAX_WIDTH}px)" in eco_tab.ECO_CSS
     assert "alg-eco-table td.alg-stack-num { white-space: normal; }" in eco_tab.ECO_CSS
     assert f".{eco_tab.TABLE_BLOCK_CLASS}" * 4 + " { overflow-x: auto; }" in eco_tab.ECO_CSS

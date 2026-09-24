@@ -3,15 +3,15 @@
 --index-url https://pypi.org/simple
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-algenta==1.0.24 \
-    --hash=sha256:98e8565d017d27c1c9e9bb61f77cf1d2c5554770860bff35e6efaf7cc4b756b5
+algenta==1.0.28 \
+    --hash=sha256:2098b4ecaf633189bbf5869ec4b520f95b416ac9908630a21dfb9051f06b8951
     # via -r requirements.txt
 algenta-runtime-native==1.0.7 \
     --hash=sha256:984a05e390b694893876813f52d84c73b565046d0a9a79eb76066717ba81a70d
     # via algenta
-algenta-sdk==1.0.25 \
-    --hash=sha256:362c546da131c4e9e787bf1ee8423527edb442db1e80b49282ad344b6fc6ec59 \
-    --hash=sha256:eec4e03365557481e1d0feb2f94e80b7c9b66fdc5134d20dae3af040b5347a04
+algenta-sdk==1.0.28 \
+    --hash=sha256:10066736673add6ff05f7d25abc618ddbf9ba9b1cd7ef22d48d0d6001575dc14 \
+    --hash=sha256:9ae241cccae1238d63558c0c8680182a1b3c01213bf4369d15be33519d5cbd3b
     # via -r requirements.txt
 annotated-doc==0.0.5 \
     --hash=sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101 \
