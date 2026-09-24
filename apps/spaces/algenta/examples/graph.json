@@ -1,0 +1,4902 @@
+{
+ "family": "graph",
+ "generated_utc": "2026-09-24T02:21:02Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 252,
+  "verified": 249,
+  "plain": 1,
+  "timeouts": 0,
+  "unverified": 3
+ },
+ "functions": {
+  "autograd_graph.checkpointing_cost": {
+   "args": {
+    "memory_saved_bytes": 1.5,
+    "recompute_flops": 1.5,
+    "flops_per_second": 1.5,
+    "memory_bandwidth": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 12.029
+  },
+  "autograd_graph.dead_node_prune_score": {
+   "args": {
+    "grad_magnitude": 1.5,
+    "threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "autograd_graph.grad_accumulate": {
+   "args": {
+    "current_grad": 1.5,
+    "incoming_grad": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "autograd_graph.grad_scale_loss": {
+   "args": {
+    "loss": 1.5,
+    "scale_factor": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "autograd_graph.gradient_norm_clip_scale": {
+   "args": {
+    "global_grad_norm": 1.5,
+    "max_norm": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "autograd_graph.jacobian_vector_product": {
+   "args": {
+    "jvp_tangent": 1.5,
+    "local_jacobian": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "autograd_graph.memory_efficient_backward_step": {
+   "args": {
+    "segment_memory_bytes": 1.5,
+    "n_segments": 5.0,
+    "total_activation_bytes": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "autograd_graph.node_output_count": {
+   "args": {
+    "current_count": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.028
+  },
+  "autograd_graph.topological_sort_key": {
+   "args": {
+    "node_depth": 2.0,
+    "node_id": 1.5,
+    "n_nodes": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "autograd_graph.vector_jacobian_product": {
+   "args": {
+    "upstream_grad": 1.5,
+    "local_jacobian": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "cartography.contour_interval_suggestion": {
+   "args": {
+    "elevation_range": 1.5,
+    "n_contours": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.129
+  },
+  "cartography.declination_correction": {
+   "args": {
+    "bearing": 90.0,
+    "declination": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "cartography.equirectangular_x": {
+   "args": {
+    "longitude_rad": -0.1278,
+    "central_meridian": 1.5,
+    "cos_lat": 51.5074
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.174
+  },
+  "cartography.equirectangular_y": {
+   "args": {
+    "latitude_rad": 51.5074
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "cartography.great_circle_distance": {
+   "args": {
+    "lat1": 51.5074,
+    "lon1": -0.1278,
+    "lat2": 48.8566,
+    "lon2": 2.3522,
+    "radius": 6371.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "cartography.ground_distance_from_map": {
+   "args": {
+    "map_distance": 10.0,
+    "scale_denominator": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "cartography.latitude_to_utm_zone": {
+   "args": {
+    "longitude": -0.1278
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "cartography.map_area_at_scale": {
+   "args": {
+    "real_area": 12.0,
+    "scale_denominator": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.125
+  },
+  "cartography.map_distance_from_ground": {
+   "args": {
+    "ground_distance": 10.0,
+    "scale_denominator": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "cartography.mercator_y": {
+   "args": {
+    "latitude_rad": 51.5074
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "cartography.representative_fraction": {
+   "args": {
+    "map_cm": 1.5,
+    "ground_cm": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "cartography.scale_factor": {
+   "args": {
+    "map_distance": 10.0,
+    "ground_distance": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "cellular_automata.elementary_rule": {
+   "args": {
+    "rule_number": 5,
+    "left": 0,
+    "center": 5,
+    "right": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "cellular_automata.game_of_life_cell": {
+   "args": {
+    "alive": true,
+    "neighbors": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "cellular_automata.game_of_life_step": {
+   "args": {
+    "grid": [
+     3,
+     1,
+     4,
+     1,
+     5,
+     3,
+     1,
+     4,
+     1
+    ],
+    "rows": 3,
+    "cols": 3,
+    "i": 0,
+    "j": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.133
+  },
+  "cellular_automata.langtons_ant_step": {
+   "args": {
+    "dir": 5,
+    "cell_color": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "cellular_automata.majority_rule": {
+   "args": {
+    "neighbors_on": 3,
+    "total_neighbors": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "cellular_automata.parity_rule": {
+   "args": {
+    "neighbors_on": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "cellular_automata.rule110_cell": {
+   "args": {
+    "left": 0,
+    "center": 5,
+    "right": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.117
+  },
+  "cellular_automata.rule_step_1d": {
+   "args": {
+    "cells": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n": 5,
+    "rule_number": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "cellular_automata.totalistic_rule": {
+   "args": {
+    "k": 3,
+    "rule_number": 5,
+    "total": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "cellular_automata.wireworld_cell": {
+   "args": {
+    "state": 5,
+    "copper_neighbors_excited": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "chromatography.mobile_phase_velocity": {
+   "args": {
+    "column_length": 5.0,
+    "dead_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "chromatography.peak_capacity": {
+   "args": {
+    "n_plates": 5.0,
+    "tr_last": 1.5,
+    "tr_first": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "chromatography.plate_count": {
+   "args": {
+    "retention_time": 1.0,
+    "peak_width": 4.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "chromatography.plate_height": {
+   "args": {
+    "column_length": 5.0,
+    "n_plates": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "chromatography.resolution": {
+   "args": {
+    "tr2": 1.5,
+    "tr1": 1.5,
+    "w1": 1.0,
+    "w2": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "chromatography.retention_factor": {
+   "args": {
+    "retention_time": 1.0,
+    "dead_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "chromatography.retention_index_kovats": {
+   "args": {
+    "tr_x": 1.5,
+    "tr_n": 5.0,
+    "tr_n1": 5.0,
+    "n": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "chromatography.selectivity_factor": {
+   "args": {
+    "k2": 105.0,
+    "k1": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "chromatography.separation_number": {
+   "args": {
+    "tr_n": 5.0,
+    "tr_n1": 5.0,
+    "w_n": 5.0,
+    "w_n1": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "chromatography.van_deemter_h": {
+   "args": {
+    "a_term": 1.0,
+    "b_term": 2.0,
+    "c_term": 3.0,
+    "velocity": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "crystallography.atomic_packing_factor_bcc": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "crystallography.atomic_packing_factor_fcc": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "crystallography.bragg_angle": {
+   "args": {
+    "n": 5.0,
+    "wavelength": 1.5,
+    "d_spacing": 4.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "crystallography.d_spacing_cubic": {
+   "args": {
+    "a": 1.0,
+    "h": 0.01,
+    "k": 105.0,
+    "l": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "crystallography.density_from_crystal": {
+   "args": {
+    "z": 3.5,
+    "molar_mass": 1.0,
+    "avogadro": 1.5,
+    "volume": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "crystallography.interplanar_angle_cubic": {
+   "args": {
+    "h1": 0.01,
+    "k1": 105.0,
+    "l1": 0.1,
+    "h2": 0.01,
+    "k2": 105.0,
+    "l2": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "crystallography.lattice_parameter_from_d": {
+   "args": {
+    "d": 4.0,
+    "h": 0.01,
+    "k": 105.0,
+    "l": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "crystallography.scherrer_crystallite_size": {
+   "args": {
+    "k": 105.0,
+    "wavelength": 1.5,
+    "fwhm_rad": 1.5,
+    "theta": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "crystallography.structure_factor_magnitude": {
+   "args": {
+    "f_real": 1.5,
+    "f_imag": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "crystallography.unit_cell_volume_cubic": {
+   "args": {
+    "a": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "crystallography.unit_cell_volume_orthorhombic": {
+   "args": {
+    "a": 1.0,
+    "b": 2.0,
+    "c": 3.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "crystallography.unit_cell_volume_tetragonal": {
+   "args": {
+    "a": 1.0,
+    "c": 3.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "demographics.crude_birth_rate": {
+   "args": {
+    "births": 1.5,
+    "population": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "demographics.crude_death_rate": {
+   "args": {
+    "deaths": 1.5,
+    "population": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "demographics.dependency_ratio": {
+   "args": {
+    "young": 1.5,
+    "old": 1.5,
+    "working_age": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "demographics.doubling_time": {
+   "args": {
+    "growth_rate_pct": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "demographics.infant_mortality_rate": {
+   "args": {
+    "infant_deaths": 1.5,
+    "live_births": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "demographics.life_expectancy_approx": {
+   "args": {
+    "total_person_years": 1.0,
+    "population": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "demographics.median_age_estimate": {
+   "args": {
+    "young_pct": 50.0,
+    "old_pct": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "demographics.natural_increase_rate": {
+   "args": {
+    "cbr": 1.5,
+    "cdr": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "demographics.population_growth_rate": {
+   "args": {
+    "births": 1.5,
+    "deaths": 1.5,
+    "net_migration": 1.5,
+    "population": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "demographics.sex_ratio": {
+   "args": {
+    "males": 1.5,
+    "females": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.029
+  },
+  "demographics.total_fertility_rate": {
+   "args": {
+    "age_specific_rates_sum": 15.0,
+    "interval": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "demographics.urbanization_rate": {
+   "args": {
+    "urban_pop": 1.5,
+    "total_pop": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "graph.algorithms.bfs": {
+   "args": {
+    "g": {
+     "n_nodes": 5,
+     "_adj_targets": [
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ]
+     ],
+     "_adj_weights": [
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ]
+     ]
+    },
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.188
+  },
+  "graph.algorithms.connected_components": {
+   "args": {
+    "g": {
+     "n_nodes": 5,
+     "_adj_targets": [
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ]
+     ],
+     "_adj_weights": [
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ]
+     ]
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "graph.algorithms.dfs": {
+   "args": {
+    "g": {
+     "n_nodes": 5,
+     "_adj_targets": [
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ]
+     ],
+     "_adj_weights": [
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ]
+     ]
+    },
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "graph.algorithms.dijkstra": {
+   "args": {
+    "g": {
+     "n_nodes": 5,
+     "_adj_targets": [
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ]
+     ],
+     "_adj_weights": [
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ]
+     ]
+    },
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "graph.algorithms.graph_add_edge": {
+   "args": {
+    "g": {
+     "n_nodes": 5,
+     "_adj_targets": [
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ]
+     ],
+     "_adj_weights": [
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ]
+     ]
+    },
+    "from_node": 0,
+    "to_node": 1,
+    "weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.139
+  },
+  "graph.algorithms.graph_new": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.243
+  },
+  "graph.algorithms.shortest_path": {
+   "args": {
+    "g": {
+     "n_nodes": 5,
+     "_adj_targets": [
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ]
+     ],
+     "_adj_weights": [
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ]
+     ]
+    },
+    "source": 0,
+    "target": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "graph.algorithms.topological_sort": {
+   "args": {
+    "g": {
+     "n_nodes": 5,
+     "_adj_targets": [
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ],
+      [
+       3,
+       1,
+       4
+      ]
+     ],
+     "_adj_weights": [
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ],
+      [
+       0.2,
+       0.2,
+       0.2
+      ]
+     ]
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.12
+  },
+  "graph.weighted.bellman_ford": {
+   "args": {
+    "n": 100,
+    "edges": [
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     }
+    ],
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.152
+  },
+  "graph.weighted.floyd_warshall": {
+   "args": {
+    "n": 100,
+    "edges": [
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 4.829
+  },
+  "graph.weighted.has_negative_cycle": {
+   "args": {
+    "n": 100,
+    "edges": [
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.144
+  },
+  "graph.weighted.kruskal_mst": {
+   "args": {
+    "n_nodes": 5,
+    "edges": [
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "graph.weighted.mst_total_weight": {
+   "args": {
+    "mst_edges": [
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "graph.weighted.shortest_path_dijkstra": {
+   "args": {
+    "n": 100,
+    "edges": [
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     },
+     {
+      "src": 0,
+      "dst": 1,
+      "weight": 1.0
+     }
+    ],
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.128
+  },
+  "graph.weighted.union_find_create": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.211
+  },
+  "graph.weighted.union_find_find": {
+   "args": {
+    "parent": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "x": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.185
+  },
+  "graph.weighted.union_find_union": {
+   "args": {
+    "parent": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "x": 3,
+    "y": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "graph_algorithms.bellman_ford_relax": {
+   "args": {
+    "dist_u": 0.3,
+    "edge_weight": 1.0,
+    "dist_v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.188
+  },
+  "graph_algorithms.betweenness_centrality_norm": {
+   "args": {
+    "raw_betweenness": 1.5,
+    "n_nodes": 5.0,
+    "directed": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "graph_algorithms.closeness_centrality": {
+   "args": {
+    "sum_shortest_paths": 15.0,
+    "n_nodes": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "graph_algorithms.clustering_coefficient": {
+   "args": {
+    "triangles": 1.5,
+    "degree": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "graph_algorithms.degree_centrality": {
+   "args": {
+    "degree": 1.5,
+    "n_nodes": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "graph_algorithms.dijkstra_relax": {
+   "args": {
+    "dist_u": 0.3,
+    "edge_weight": 1.0,
+    "dist_v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "graph_algorithms.eigenvector_centrality_update": {
+   "args": {
+    "neighbor_scores_sum": 15.0,
+    "lambda_max": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "graph_algorithms.graph_density": {
+   "args": {
+    "n_edges": 5.0,
+    "n_nodes": 5.0,
+    "directed": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "graph_algorithms.modularity_contribution": {
+   "args": {
+    "edge_in_community": 1.5,
+    "degree_u": 0.3,
+    "degree_v": 0.7,
+    "total_edges": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "graph_algorithms.pagerank_update": {
+   "args": {
+    "in_neighbor_pr": 1.5,
+    "out_degree": 1.5,
+    "damping": 1.5,
+    "n_nodes": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "graph_analytics.adjacency.graph_bfs_levels_from_triplets": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.18
+  },
+  "graph_analytics.adjacency.graph_csr_bfs_levels": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    },
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.152
+  },
+  "graph_analytics.adjacency.graph_csr_bfs_levels_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "graph_analytics.adjacency.graph_csr_build": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "graph_analytics.adjacency.graph_csr_dedupe_min": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "graph_analytics.adjacency.graph_csr_dedupe_min_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "graph_analytics.adjacency.graph_csr_degree_sequence": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "graph_analytics.adjacency.graph_csr_degree_sequence_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.132
+  },
+  "graph_analytics.adjacency.graph_csr_dijkstra": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    },
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "graph_analytics.adjacency.graph_csr_dijkstra_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "graph_analytics.adjacency.graph_csr_edge_min_weight": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    },
+    "u": 0,
+    "v": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "graph_analytics.adjacency.graph_csr_edge_min_weight_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "u": 0,
+    "v": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "graph_analytics.adjacency.graph_csr_empty": {
+   "args": {
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "graph_analytics.adjacency.graph_csr_from_arrays": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "graph_analytics.adjacency.graph_csr_from_triplets": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "graph_analytics.adjacency.graph_csr_has_edge": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    },
+    "u": 0,
+    "v": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "graph_analytics.adjacency.graph_csr_has_negative_weight": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "graph_analytics.adjacency.graph_csr_in_degrees": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "graph_analytics.adjacency.graph_csr_in_degrees_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "graph_analytics.adjacency.graph_csr_out_degrees": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "graph_analytics.adjacency.graph_csr_out_degrees_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "graph_analytics.adjacency.graph_csr_reverse": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "graph_analytics.adjacency.graph_csr_reverse_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.113
+  },
+  "graph_analytics.adjacency.graph_csr_shortest_path": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    },
+    "source": 0,
+    "target": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.119
+  },
+  "graph_analytics.adjacency.graph_csr_shortest_path_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "target": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.144
+  },
+  "graph_analytics.adjacency.graph_csr_sorted": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "graph_analytics.adjacency.graph_csr_symmetry": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    },
+    "tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "graph_analytics.adjacency.graph_csr_symmetry_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "graph_analytics.adjacency.graph_csr_to_dense": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    },
+    "absent": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "graph_analytics.adjacency.graph_csr_to_dense_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "absent": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "graph_analytics.adjacency.graph_csr_validate": {
+   "args": {
+    "g": {
+     "row_ptr": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "targets": [
+      1,
+      0,
+      1,
+      1,
+      0
+     ],
+     "weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "n_nodes": 5,
+     "sorted_targets": true,
+     "deduplicated": true,
+     "skipped_edges": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "graph_analytics.adjacency.graph_csr_validate_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "graph_analytics.adjacency.graph_csr_validate_flat": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "graph_analytics.adjacency.graph_dijkstra_from_triplets": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.12
+  },
+  "graph_analytics.adjacency.graph_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "graph_analytics.centrality.centrality_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "graph_analytics.centrality.graph_betweenness_from_triplets": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "weighted": true,
+    "normalized": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.119
+  },
+  "graph_analytics.centrality.graph_betweenness_unweighted": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "normalized": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "graph_analytics.centrality.graph_betweenness_weighted": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "normalized": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "graph_analytics.centrality.graph_closeness_centrality": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "weighted": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "graph_analytics.centrality.graph_degree_centrality": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "normalized": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.223
+  },
+  "graph_analytics.centrality.graph_eigenvector_centrality": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "graph_analytics.centrality.graph_harmonic_centrality": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "weighted": true,
+    "normalized": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "graph_analytics.centrality.graph_pagerank": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "damping": 1.5,
+    "max_iter": 100,
+    "tol": 1e-06,
+    "dangling_uniform": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "graph_analytics.community.community_aggregate_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "label": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "graph_analytics.community.community_canonical_labels": {
+   "args": {
+    "label": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "graph_analytics.community.community_compare_labels": {
+   "args": {
+    "label_a": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "label_b": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "graph_analytics.community.community_default_tolerance": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "graph_analytics.community.community_label_propagation_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "seed": 42,
+    "max_rounds": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "graph_analytics.community.community_label_propagation_from_triplets": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "seed": 42,
+    "max_rounds": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.101
+  },
+  "graph_analytics.community.community_local_moving_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "seed": 42,
+    "max_passes": 10,
+    "tolerance": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "graph_analytics.community.community_louvain_default_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "seed": 42
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "graph_analytics.community.community_louvain_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "seed": 42,
+    "max_levels": 3,
+    "max_passes": 10,
+    "tolerance": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "graph_analytics.community.community_louvain_from_triplets": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "seed": 42,
+    "max_levels": 3,
+    "max_passes": 10,
+    "tolerance": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "graph_analytics.community.community_louvain_levels_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "seed": 42,
+    "max_levels": 3,
+    "max_passes": 10,
+    "tolerance": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "graph_analytics.community.community_modularity_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "label": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "graph_analytics.community.community_modularity_from_triplets": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "label": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.119
+  },
+  "graph_analytics.community.community_modularity_gain": {
+   "args": {
+    "weight_to_community": 1.0,
+    "node_degree": 1.5,
+    "community_degree": 1.5,
+    "total_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "graph_analytics.community.community_modularity_pairwise_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5,
+    "label": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "graph_analytics.community.community_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "graph_analytics.community.community_symmetrized_driver": {
+   "args": {
+    "row_ptr": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "graph_analytics.community.community_version": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "graph_analytics.community.community_visit_order": {
+   "args": {
+    "n_nodes": 5,
+    "seed": 42,
+    "level": 1,
+    "pass_index": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "graph_analytics.temporal.temporal_activity_summary": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.125
+  },
+  "graph_analytics.temporal.temporal_earliest_arrival": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "start_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.109
+  },
+  "graph_analytics.temporal.temporal_earliest_arrival_instant": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "start_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "graph_analytics.temporal.temporal_earliest_arrival_path": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "target": 1,
+    "start_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "graph_analytics.temporal.temporal_earliest_arrival_window": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "start_time": 1.0,
+    "window_start": 0.0,
+    "window_end": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "graph_analytics.temporal.temporal_fastest_durations": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "graph_analytics.temporal.temporal_fastest_path": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "target": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "graph_analytics.temporal.temporal_node_activity": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "node": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.16
+  },
+  "graph_analytics.temporal.temporal_reachable_set": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "start_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "graph_analytics.temporal.temporal_reaches": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "target": 1,
+    "start_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "graph_analytics.temporal.temporal_sorted_by_time": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.132
+  },
+  "graph_analytics.temporal.temporal_static_gap": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "source": 0,
+    "start_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.16
+  },
+  "graph_analytics.temporal.temporal_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "graph_analytics.temporal.temporal_validate": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "graph_analytics.temporal.temporal_validate_driver": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "graph_analytics.temporal.temporal_window_subgraph": {
+   "args": {
+    "src": [
+     0,
+     0,
+     1,
+     2,
+     3
+    ],
+    "dst": [
+     1,
+     2,
+     2,
+     3,
+     4
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_nodes": 5,
+    "window_start": 0.0,
+    "window_end": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.13
+  },
+  "graph_compiler.common_subexpr_hash": {
+   "args": {
+    "op_type": 1.5,
+    "input_hash_a": 1.0,
+    "input_hash_b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "graph_compiler.constant_folding_value": {
+   "args": {
+    "is_constant": 1.5,
+    "computed_value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "graph_compiler.dead_op_elimination_check": {
+   "args": {
+    "output_consumer_count": 5.0,
+    "grad_flow": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "graph_compiler.fusion_benefit_score": {
+   "args": {
+    "op_a_memory_bytes": 1.0,
+    "op_b_memory_bytes": 2.0,
+    "shared_intermediate_bytes": 1.5,
+    "fusion_overhead": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "graph_compiler.graph_partition_cost": {
+   "args": {
+    "n_cross_edges": 5.0,
+    "edge_bandwidth_bytes": 1.0,
+    "n_devices": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "graph_compiler.kernel_selection_score": {
+   "args": {
+    "kernel_flops_per_ns": 1.5,
+    "shape_match_score": 0.8,
+    "memory_efficiency": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "graph_compiler.memory_layout_transform_cost": {
+   "args": {
+    "n_elements": 5.0,
+    "src_stride": 1.5,
+    "dst_stride": 1.5,
+    "dtype_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "graph_compiler.op_reorder_priority": {
+   "args": {
+    "cache_miss_cost": 100.0,
+    "compute_intensity": 1.5,
+    "dependency_depth": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "graph_compiler.shape_inference_broadcast": {
+   "args": {
+    "dim_a": 1.0,
+    "dim_b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "graph_compiler.type_promotion_bits": {
+   "args": {
+    "dtype_a_bits": 1.0,
+    "dtype_b_bits": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "graph_decision.decision_graph_utility": {
+   "args": {
+    "outcome_value": 2.5,
+    "probability": 0.5,
+    "discount_factor": 2.0,
+    "time_steps": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "graph_decision.dynamic_edge_weight_decay": {
+   "args": {
+    "base_weight": 1.0,
+    "time_elapsed": 1.0,
+    "decay_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "graph_decision.flow_augment_amount": {
+   "args": {
+    "path_min_residual": 0.1,
+    "new_edge_residual": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "graph_decision.flow_residual_capacity": {
+   "args": {
+    "capacity": 1.5,
+    "current_flow": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "graph_decision.multi_constraint_relax": {
+   "args": {
+    "dist_u": 0.3,
+    "edge_cost": 100.0,
+    "edge_risk": 0.2,
+    "dist_v_cost": 100.0,
+    "dist_v_risk": 0.2,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "graph_decision.network_criticality": {
+   "args": {
+    "edge_betweenness": 1.5,
+    "flow": 1.5,
+    "capacity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "graph_decision.probabilistic_route_score": {
+   "args": {
+    "deterministic_cost": 100.0,
+    "probability": 0.5,
+    "risk_penalty": 1.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "graph_decision.resource_constrained_cost": {
+   "args": {
+    "current_cost": 100.0,
+    "edge_cost": 100.0,
+    "resource_used": 1.5,
+    "resource_budget": 100.0,
+    "penalty": 1.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "graph_decision.supply_chain_slack": {
+   "args": {
+    "deadline": 1.5,
+    "current_time": 1.0,
+    "remaining_duration": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "graph_decision.temporal_edge_validity": {
+   "args": {
+    "current_time": 1.0,
+    "edge_open": 1.5,
+    "edge_close": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "heap.heap_peek_max": {
+   "args": {
+    "heap": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "heap.heap_peek_min": {
+   "args": {
+    "heap": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "heap.heap_pop_max": {
+   "args": {
+    "heap": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "heap.heap_pop_min": {
+   "args": {
+    "heap": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "heap.heap_push_max": {
+   "args": {
+    "heap": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "heap.heap_push_min": {
+   "args": {
+    "heap": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "heap.heapify_max": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "heap.heapify_min": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "heap.is_min_heap": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "heap.k_largest": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "heap.k_smallest": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "heap.merge_sorted_lists": {
+   "args": {
+    "lists": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "heap.running_median": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "oceanography.buoyancy_frequency": {
+   "args": {
+    "rho_upper": 1.0,
+    "rho_lower": 0.0,
+    "layer_thickness": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "oceanography.ekman_depth": {
+   "args": {
+    "wind_stress": 1.5,
+    "coriolis": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "oceanography.freshwater_flux": {
+   "args": {
+    "evaporation": 1.5,
+    "precipitation": 1.5,
+    "area": 12.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "oceanography.geostrophic_velocity": {
+   "args": {
+    "pressure_gradient": 1.5,
+    "density": 1.5,
+    "coriolis": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "oceanography.mixed_layer_heat_flux": {
+   "args": {
+    "density": 1.5,
+    "heat_capacity": 1.5,
+    "depth": 2.0,
+    "delta_temp": 0.7,
+    "delta_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "oceanography.salinity_from_chlorinity": {
+   "args": {
+    "chlorinity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "oceanography.seawater_density": {
+   "args": {
+    "temperature": 0.7,
+    "salinity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "oceanography.tidal_force": {
+   "args": {
+    "mass_moon": 1.0,
+    "distance_m": 10.0,
+    "radius_earth": 6371.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "oceanography.wave_celerity_deep": {
+   "args": {
+    "period": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "oceanography.wave_celerity_shallow": {
+   "args": {
+    "depth": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "rag_retrieval.answer_faithfulness_score": {
+   "args": {
+    "answer_claims_supported": 1.5,
+    "total_answer_claims": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "rag_retrieval.bm25_term_score": {
+   "args": {
+    "tf": 1.5,
+    "df": 10.0,
+    "n_docs": 5.0,
+    "doc_len": 1.5,
+    "avg_doc_len": 1.5,
+    "k1": 105.0,
+    "b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "rag_retrieval.chunk_overlap_ratio": {
+   "args": {
+    "chunk_size": 5.0,
+    "overlap_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "rag_retrieval.citation_coverage": {
+   "args": {
+    "cited_chunks": 1.5,
+    "total_retrieved": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "rag_retrieval.context_relevance_score": {
+   "args": {
+    "query_terms_in_context": 1.5,
+    "total_query_terms": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "rag_retrieval.cross_encoder_logit": {
+   "args": {
+    "query_repr": 1.5,
+    "doc_repr": 1.5,
+    "bias": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "rag_retrieval.hybrid_search_score": {
+   "args": {
+    "vector_score": 0.8,
+    "bm25_score": 0.8,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "rag_retrieval.mmr_diversity_score": {
+   "args": {
+    "relevance": 1.5,
+    "max_similarity_to_selected": 0.8,
+    "lambda_mmr": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "rag_retrieval.retrieval_precision": {
+   "args": {
+    "relevant_retrieved": 1.5,
+    "total_retrieved": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "rag_retrieval.rrf_score": {
+   "args": {
+    "rank_dense": 1.5,
+    "rank_sparse": 1.5,
+    "k": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "retrieval.fuse.rrf_fuse_flat": {
+   "args": {
+    "doc_ids": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "lane_lengths": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_lanes": 100,
+    "k": 105.0,
+    "top_k": 3
+   },
+   "verified": false,
+   "outcome": "lane_count_does_not_match_lane_lengths",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "retrieval.fuse.rrf_provenance_flat": {
+   "args": {
+    "doc_ids": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "lane_lengths": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_lanes": 100,
+    "k": 105.0,
+    "top_k": 3
+   },
+   "verified": false,
+   "outcome": "lane_count_does_not_match_lane_lengths",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "retrieval.score.hybrid_rank_flat": {
+   "args": {
+    "dense": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "sparse": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "alpha": 0.5,
+    "top_k": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.087
+  },
+  "retrieval.score.mmr_select_flat": {
+   "args": {
+    "relevance": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "similarity": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 100,
+    "k": 3,
+    "lambda_mmr": 0.5
+   },
+   "verified": false,
+   "outcome": "declared_count_exceeds_payload",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "retrieval.score.retrieval_ceiling_report": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "retrieval.score.retrieval_finite": {
+   "args": {
+    "v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "retrieval.score.retrieval_quality_flat": {
+   "args": {
+    "relevant_retrieved": 5,
+    "cited_chunks": 5,
+    "total_retrieved": 5,
+    "query_terms_in_context": 5,
+    "total_query_terms": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "retrieval.score.retrieval_rank_order": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "ordinals": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "retrieval.score.retrieval_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "retrieval.score.retrieval_truncation": {
+   "args": {
+    "n_available": 100,
+    "top_k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "stratigraphy.age_from_depth": {
+   "args": {
+    "depth_m": 2.0,
+    "surface_age_ma": 1.5,
+    "sed_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "stratigraphy.compaction_correction": {
+   "args": {
+    "observed_thickness": 1.2,
+    "initial_porosity": 1.5,
+    "current_porosity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "stratigraphy.isotope_fractionation": {
+   "args": {
+    "sample_ratio": 0.5,
+    "standard_ratio": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "stratigraphy.radiocarbon_age": {
+   "args": {
+    "activity_fraction": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "stratigraphy.radiometric_age": {
+   "args": {
+    "parent_to_daughter_ratio": 0.5,
+    "decay_constant": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "stratigraphy.sea_level_proxy": {
+   "args": {
+    "d18o_benthic": 1.5,
+    "d18o_reference": 1.5,
+    "ice_volume_factor": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "stratigraphy.sedimentation_rate": {
+   "args": {
+    "thickness_m": 1.5,
+    "duration_my": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.029
+  },
+  "stratigraphy.stratigraphic_column_depth": {
+   "args": {
+    "layer_thickness1": 1.5,
+    "layer_thickness2": 1.5,
+    "n_layers": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "stratigraphy.thermal_maturity_vitrinite": {
+   "args": {
+    "max_temperature": 0.7,
+    "duration_my": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "stratigraphy.unconformity_gap": {
+   "args": {
+    "section_above_age": 1.5,
+    "section_below_age": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "topology.betti_0": {
+   "args": {
+    "n": 100,
+    "edges": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "topology.bottleneck_distance": {
+   "args": {
+    "d1": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "d2": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "topology.connected_components_from_edges": {
+   "args": {
+    "n": 100,
+    "edges": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "topology.distance_matrix": {
+   "args": {
+    "points": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "topology.euler_characteristic": {
+   "args": {
+    "n_vertices": 5,
+    "n_edges": 5,
+    "n_triangles": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "topology.rips_triangle_count": {
+   "args": {
+    "n": 100,
+    "edges": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "topology.total_persistence": {
+   "args": {
+    "diagram": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  }
+ }
+}

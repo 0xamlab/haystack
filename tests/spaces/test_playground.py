@@ -285,7 +285,11 @@ def test_parse_inputs_optional_tail_can_be_left_to_the_kernel(stats: FakeKernel)
         ({"n_a": "abc"}, "n_a", "must be an int"),
         ({"n_a": 12.5}, "n_a", "whole number"),
         ({"n_a": True}, "n_a", "not a bool"),
-        ({"n_a": 1 << 63}, "n_a", "64-bit"),
+        ({"n_a": 1 << 63}, "n_a", "browser can enter exactly"),
+        ({"n_a": "9223372036854775808"}, "n_a", "64-bit"),
+        ({"n_a": (1 << 53) + 1}, "n_a", "browser can enter exactly"),
+        ({"n_a": float(1 << 53)}, "n_a", "browser can enter exactly"),
+        ({"n_a": -(1 << 53)}, "n_a", "browser can enter exactly"),
         ({"n_a": None}, "n_a", "is required"),
         ({"n_a": "  "}, "n_a", "is required"),
         ({"n_a": [1]}, "n_a", "must be an int"),
@@ -322,7 +326,7 @@ def test_parse_inputs_lists_json_and_element_types(stats: FakeKernel):
     ]
     with pytest.raises(pg.ValidationError, match=r"x: x\[1\] must be a number"):
         pg.parse_inputs(spec, {"x": [1, "two", 3], "y": [1, 2, 3]})
-    with pytest.raises(pg.ValidationError, match="x: x must be a list of numbers"):
+    with pytest.raises(pg.ValidationError, match="x: must be a list of numbers"):
         pg.parse_inputs(spec, {"x": "3.0", "y": [1, 2, 3]})
     with pytest.raises(pg.ValidationError, match="x: is not valid JSON"):
         pg.parse_inputs(spec, {"x": "[1, 2,", "y": [1, 2, 3]})
@@ -372,6 +376,101 @@ def test_parse_inputs_enforces_count_relations(hero_kernels: dict[str, FakeKerne
     assert pg.parse_inputs(spec, {**ok, "n_rows": 0})[2] == 0
 
 
+def test_whole_numbers_below_two_to_the_53_stay_exact_and_text_digits_always_do(stats: FakeKernel):
+    """A number box hands the server a JavaScript double, so a JSON number at or above 2^53 is
+    refused (it may already be rounded — 9007199254740993 typed, 9007199254740992 received);
+    digits typed as text are exact and go to the 64-bit check instead."""
+    spec = form(stats, "ab_testing", "z_test_proportions")
+    full = {"successes_a": 1, "n_a": 2, "successes_b": 3, "n_b": 4}
+    exact = (1 << 53) - 1
+    assert pg.parse_inputs(spec, {**full, "n_a": exact}) == [1, exact, 3, 4]
+    assert pg.parse_inputs(spec, {**full, "n_a": float(exact)}) == [1, exact, 3, 4]
+    assert pg.parse_inputs(spec, {**full, "n_a": str((1 << 63) - 1)}) == [1, (1 << 63) - 1, 3, 4]
+    assert pg.parse_inputs(spec, {**full, "n_a": str((1 << 53) + 1)}) == [1, (1 << 53) + 1, 3, 4]
+    with pytest.raises(pg.ValidationError) as err:
+        pg.parse_inputs(spec, {**full, "n_a": 1 << 53})
+    assert err.value.reason == pg.REASON_ABOVE_BROWSER_RANGE
+    assert pg.BROWSER_EXACT_MAX == 9007199254740992
+    assert "_" not in pg.REASON_ABOVE_BROWSER_RANGE and "!" not in pg.REASON_ABOVE_BROWSER_RANGE
+
+
+def test_field_rules_refuse_what_the_contract_cannot_say(stats: FakeKernel):
+    """Counts are never negative, successes never exceed trials, levels lie strictly inside
+    (0, 1): the `ab_testing` table, applied by `parse_inputs` in field order."""
+    z = form(stats, "ab_testing", "z_test_proportions")
+    cases = [
+        (
+            {"successes_a": -5, "n_a": 1000, "successes_b": 65, "n_b": 1000},
+            "successes_a",
+            pg.REASON_NEGATIVE,
+        ),
+        (
+            {"successes_a": 50, "n_a": 0, "successes_b": 65, "n_b": 1000},
+            "n_a",
+            "must be at least 1",
+        ),
+        (
+            {"successes_a": 2000, "n_a": 1000, "successes_b": 65, "n_b": 1000},
+            "successes_a",
+            "cannot exceed n_a",
+        ),
+        (
+            {"successes_a": 50, "n_a": 1000, "successes_b": 1001, "n_b": 1000},
+            "successes_b",
+            "cannot exceed n_b",
+        ),
+        (
+            {"successes_a": 50, "n_a": 1000, "successes_b": 65, "n_b": -1},
+            "n_b",
+            "must be at least 1",
+        ),
+    ]
+    for raw, field_name, reason in cases:
+        with pytest.raises(pg.ValidationError) as err:
+            pg.parse_inputs(z, raw)
+        assert (err.value.field, err.value.reason) == (field_name, reason), raw
+    assert pg.parse_inputs(z, {"successes_a": 0, "n_a": 1, "successes_b": 1, "n_b": 1}) == [
+        0,
+        1,
+        1,
+        1,
+    ]
+    assert pg.field_rule_error(
+        "ab_testing", "z_test_proportions", {"successes_a": 3, "n_a": 2}
+    ) == (
+        "successes_a",
+        "cannot exceed n_a",
+    )
+    assert pg.field_rule_error("ab_testing", "z_test_proportions", {"successes_a": 3}) is None
+    assert pg.field_rule_error("text.fuzzy", "levenshtein_distance", {"a": "x"}) is None
+    ci = form(stats, "ab_testing", "confidence_interval_proportion")
+    with pytest.raises(pg.ValidationError, match="confidence: must be above 0 and below 1"):
+        pg.parse_inputs(ci, {"successes": 5, "n": 10, "confidence": 1.0})
+    assert pg.parse_inputs(ci, {"successes": 5, "n": 10, "confidence": 0.95}) == [5, 10, 0.95]
+    sig = form(stats, "ab_testing", "is_significant")
+    assert pg.parse_inputs(sig, {"p_value": 0.0, "alpha": 0.05}) == [0.0, 0.05]
+    with pytest.raises(pg.ValidationError, match="p_value: must be between 0 and 1"):
+        pg.parse_inputs(sig, {"p_value": 1.5, "alpha": 0.05})
+    mde = form(stats, "ab_testing", "mde")
+    with pytest.raises(pg.ValidationError, match="n: must be at least 1"):
+        pg.parse_inputs(mde, {"n": 0, "baseline_rate": 0.1, "alpha": 0.05, "power": 0.8})
+    # every rule names a real field of a real function of the fixture, in field order
+    contract = stats.CONTRACT["modules"]
+    for qualname, rules in pg.FIELD_RULES.items():
+        module, function = qualname.rsplit(".", 1)
+        params = [p["name"] for p in contract[module]["functions"][function]["params"]]
+        for rule in rules:
+            assert rule.field in params, (qualname, rule)
+            if rule.kind == "at_most":
+                assert rule.bound in params, (qualname, rule)
+    with pytest.raises(ValueError):
+        pg.FieldRule("n", "bogus")
+    with pytest.raises(ValueError):
+        pg.FieldRule("n", "at_most")
+    with pytest.raises(ValueError):
+        pg.FieldRule("n", "min", 1.5)
+
+
 def test_count_fits_matches_the_kernel_guard():
     assert pg.count_fits([2, 4], 8)
     assert not pg.count_fits([2, 4], 7)
@@ -414,9 +513,9 @@ def test_parse_inputs_bools_strings_and_uint_ranges():
         pg.parse_inputs(spec, {"flag": "maybe", "label": "", "byte": 1})
     with pytest.raises(pg.ValidationError, match="label: must be a string"):
         pg.parse_inputs(spec, {"flag": True, "label": 3, "byte": 1})
-    with pytest.raises(pg.ValidationError, match="byte: byte must be an int from 0 to 255"):
+    with pytest.raises(pg.ValidationError, match="byte: must be an int from 0 to 255"):
         pg.parse_inputs(spec, {"flag": True, "label": "", "byte": 256})
-    with pytest.raises(pg.ValidationError, match="label: label contains unpaired surrogate"):
+    with pytest.raises(pg.ValidationError, match="label: contains unpaired surrogate"):
         pg.parse_inputs(spec, {"flag": True, "label": "\ud800", "byte": 1})
     with pytest.raises(pg.ValidationError, match="label: is required"):
         pg.parse_inputs(spec, {"flag": True, "label": None, "byte": 1})

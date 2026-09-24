@@ -1,36 +1,46 @@
-# Algenta — the flagship Space
+# Algenta — the flagship Space (thyn-ai/algenta).
 #
-# python:3.14-slim is REQUIRED for the main app: `algenta-runtime-native`
-# publishes wheels for CPython 3.14 only (>=3.14,<3.15). The arena's pinned
-# incumbents (ruptures<3.14, numba, ...) cannot share that interpreter, so
-# duel cells run in a dedicated CPython 3.12 venv (/opt/arena) via
-# arena_runner.py — same harness code as the standalone Speed Arena Space.
+# python:3.14-slim: `algenta` (the hosted-API client behind the Governed tab) and its native
+# runtime ship CPython 3.14 wheels only; everything else is pure Python or ships cp314 wheels,
+# and requirements.lock pins each one by hash (uv pip compile --generate-hashes, see
+# requirements.txt for the exact command). Build from the tree tools/stage.py produces: the
+# shared package is vendored there as algenta_spaces/ next to app.py, with its .shared_sha.
+#
+# The Hub kernel cache is baked into the image as the runtime user and the runtime loads with
+# HF_HUB_OFFLINE=1, so boot never downloads. Set the Space variable HF_HUB_OFFLINE=0 to let
+# get_kernel reach the Hub instead (a host without the baked cache); the boot card then shows
+# the load times it paid.
 FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     GRADIO_SERVER_NAME=0.0.0.0 \
-    GRADIO_SERVER_PORT=7860
+    GRADIO_SERVER_PORT=7860 \
+    GRADIO_ANALYTICS_ENABLED=False \
+    HF_HUB_DISABLE_TELEMETRY=1
 
-RUN useradd --create-home --shell /bin/bash space
+# Hub Spaces run the container as uid 1000; the app and the cache belong to that user.
+RUN useradd --create-home --uid 1000 --shell /bin/bash user
 WORKDIR /app
 
-# --- arena interpreter: CPython 3.12 (uv-managed, world-readable under /opt) ---
-ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
-COPY arena-requirements.txt .
-RUN pip install --no-cache-dir uv \
-    && uv python install 3.12 \
-    && uv venv --python 3.12 /opt/arena \
-    && uv pip install --python /opt/arena/bin/python -r arena-requirements.txt
+# Dependencies first, so a copy edit does not reinstall torch. Every line is hash-pinned.
+COPY requirements.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 
-# --- main app deps (CPython 3.14) ---
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user:user . .
+USER user
+ENV HOME=/home/user \
+    HF_HOME=/home/user/.cache/huggingface
 
-COPY . .
+# Bake the kernel cache: the twenty capped repositories at v1, this platform's build variant
+# only, with the user-agent shim applied before `kernels` (boot_sequence imports hf_ua_shim
+# first), then the Hub tree listings pruned so the offline loader accepts a variant-only cache.
+RUN python boot_sequence.py --bake
+# Prove the runtime never downloads: every family loads with the Hub unreachable.
+RUN HF_HUB_OFFLINE=1 python boot_sequence.py --verify-cache
 
-RUN chown -R space:space /app /opt/arena
-USER space
-ENV HOME=/home/space
-
+ENV HF_HUB_OFFLINE=1
 EXPOSE 7860
 CMD ["python", "app.py"]

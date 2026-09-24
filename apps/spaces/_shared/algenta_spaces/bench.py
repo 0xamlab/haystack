@@ -1,22 +1,49 @@
-"""Benchmark rulebook v0.3 — the measurement protocol every race in the fleet runs under.
+"""Benchmark rulebook v0.5 — the measurement protocol every race in the fleet runs under.
 
 Lifted from `apps/spaces/speed-arena/arena/harness.py` (correctness gate before
 timing, interleaved round-robin repeats, median with spread, the hardware
 footer) and from `apps/spaces/governed-agent/space_core.py` (cgroup-aware CPU
-quota). What v0.3 adds, all printed on the card by `cards.py`:
+quota). What v0.3 added, all printed on the card by `cards.py`:
 
 * two discarded warm-ups after the gate call;
 * N = 21 interleaved repeats when the warm call takes under 250 ms, else 11;
 * a cell budget (60 s) — over it the cell is "not measurable here", no numbers;
 * median, P95 (N >= 20) or max, MAD, CV, min and max per lane;
 * the ratio best-incumbent / algenta, both absolute times always kept;
-* a stability gate: CV <= 0.15 on every lane and the 1-minute load average
-  <= CPU quota x 1.5, else "noisy — not recorded" and no numbers;
+* a stability gate (v0.5/v0.6): the robust spread 1.4826 x MAD / median <= 0.15
+  on every lane and the mean within 15 % of the median, else "noisy — not
+  recorded" and no numbers; the 1-minute load average is read and disclosed
+  on the card's foot (`host load 14.1`), never a gate — inside a Space it is
+  the host's load, not the container's (v0.6);
 * the machine from `/proc/cpuinfo`, `/sys/fs/cgroup/cpu.max` and the
   `SPACE_HARDWARE` variable — never a hardcoded tier.
 
+What v0.4 changed — one thing, the way `timeit` does it (`docs/spaces/RULEBOOK.md`;
+v0.5 then made the stability gate read the robust spread and a mean/median guard, see
+`LaneResult.spread`):
+
+* **each timed sample is k back-to-back calls that together last at least
+  `SAMPLE_MIN_MS` (10 ms)**, and the per-call time is the sample divided by k.
+  k is chosen per lane from its fastest warm-up call (`calls_per_sample`:
+  `ceil(10 ms / warm call)`, at most `CALLS_MAX`, 1 for any call already at or
+  over 10 ms — a slow lane is timed exactly as before). N stays 21 interleaved
+  round-robin samples per lane; median, P95, MAD and CV are computed on the
+  per-call figures; the stability gate is unchanged (CV <= 15 % on every lane).
+  The card prints `n = 21 × k calls` and the rule in its How-measured text.
+
+  Why: a sub-millisecond call timed one at a time measures the scheduler and
+  the timer, not the kernel. On the deployed host (AMD EPYC, 8 vCPU) the hero
+  z-test at a 0.09 ms median came back "noisy — not recorded — spread above
+  15 percent" on every visitor run after boot. The floor was measured, not
+  guessed: on the build Mac under two busy loops beside other sessions (load
+  25–30 on 16 vCPU) 2 ms samples recorded the hero 2 of 3 times and the
+  Levenshtein S cell 1 of 3, 10 ms samples 3 of 3 and 3 of 3 (hero CV 3.8 %,
+  S 12.5 %), 20 ms samples fewer again (`fix5-shots/shared-bench-cards/
+  measure_floors.log`); 21 samples of 10 ms cost a fast lane 0.2 s.
+
 Every clock, load reading and quota is injectable so the protocol is tested
-without sleeping.
+without sleeping; `sample_min_ms=0` runs a cell the v0.3 way (one call per
+sample) for side-by-side comparisons.
 """
 
 from __future__ import annotations
@@ -36,15 +63,26 @@ from .runtime import pinned_versions, utc_stamp
 
 log = logging.getLogger(__name__)
 
-RULEBOOK_VERSION = "0.3"
+RULEBOOK_VERSION = "0.6"
+#: What every kernel timing on a card includes (rulebook rule 10); the chip on every result card.
+TRANSPORT_NOTE = "compiled Mojo kernel over the C ABI · includes JSON marshalling"
 WARMUPS = 2
 REPEATS_FAST = 21
 REPEATS_SLOW = 11
 FAST_CALL_MS = 250.0
 BUDGET_S = 60.0
 CV_MAX = 0.15
-LOAD_FACTOR = 1.5
+#: v0.5 — MAD scaled to a standard deviation (normal sample); the gate reads
+#: `ROBUST_SCALE × MAD / median`.
+ROBUST_SCALE = 1.4826
 P95_MIN_N = 20
+#: v0.4 — a timed sample is k back-to-back calls that together last at least this long; the
+#: per-call time is the sample over k. Below it the sample measures the scheduler and the timer
+#: (the sweep in the module docstring: 2 and 5 ms samples still failed the gate under noise).
+SAMPLE_MIN_MS = 10.0
+#: The ceiling on k: a warm-up call that clocked at nearly nothing never runs unbounded
+#: (10 ms / 200 = a 50 µs call; anything faster is timed at 200 calls a sample).
+CALLS_MAX = 200
 
 SIDE_ALGENTA = "algenta"
 SIDE_INCUMBENT = "incumbent"
@@ -60,6 +98,13 @@ NOISY_TEXT = "noisy — not recorded"
 OVER_BUDGET_TEXT = "not measurable here"
 
 THREAD_ENV_KEYS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
+#: The library each thread-count variable pins, as people write it (for the footer when the
+#: variables disagree; when they agree the footer says `threads 8` and no name).
+THREAD_ENV_NAMES: Mapping[str, str] = {
+    "OMP_NUM_THREADS": "OpenMP",
+    "OPENBLAS_NUM_THREADS": "OpenBLAS",
+    "MKL_NUM_THREADS": "MKL",
+}
 
 Gate = Callable[[dict[str, Any]], tuple[bool, str]]
 
@@ -95,10 +140,39 @@ class LaneResult:
     version: str = ""
     config: str = ""
     samples_ms: list[float] = field(default_factory=list)
+    #: v0.4 — calls per timed sample (1 = one call per sample, the v0.3 way). Every figure above
+    #: is per call: a sample of k calls is divided by k before it is recorded (SAMPLE_MIN_MS).
+    k: int = 1
+
+    @property
+    def spread(self) -> float:
+        """v0.5 — the robust spread the stability gate reads: `1.4826 × MAD / median` (the
+        MAD scaled to a standard deviation for a normal sample). On a shared cloud host a few
+        scheduler spikes inflate the sample standard deviation (the classical CV read 13–15 %
+        on the deployed Space) while the median and MAD of the same 21 samples barely move
+        (MAD 0.7–1.2 µs on an 85 µs median). The CV stays printed beside it."""
+        if self.median_ms <= 0:
+            return 0.0
+        return ROBUST_SCALE * self.mad_ms / self.median_ms
+
+    @property
+    def skew(self) -> float:
+        """How far the mean sits from the median, as a share of the median: a 50/50 alternation
+        of two timings (coarse-clock jitter one call at a time) has MAD 0 but a mean far from
+        its median — the spread alone would call it stable while its median is wrong. 0 when
+        the per-call samples were not kept."""
+        if not self.samples_ms or self.median_ms <= 0:
+            return 0.0
+        return abs(statistics.fmean(self.samples_ms) - self.median_ms) / self.median_ms
 
     @property
     def stable(self) -> bool:
-        return self.cv <= CV_MAX
+        return self.spread <= CV_MAX and self.skew <= CV_MAX
+
+    @property
+    def sample_ms(self) -> float:
+        """The median timed sample as the clock saw it: `median_ms × k` (the rule is ≥ 10 ms)."""
+        return self.median_ms * self.k
 
 
 @dataclass
@@ -120,6 +194,14 @@ class CellResult:
     @property
     def measured(self) -> bool:
         return self.status == STATUS_MEASURED
+
+    @property
+    def k(self) -> int | None:
+        """Calls per timed sample when every lane batched alike (1 = one call per sample); None
+        when the lanes differ (a race whose lanes run at different speeds) or nothing was timed.
+        `cards.n_chips` prints `n = 21 × k calls` from this, per lane when it is None."""
+        calls = {lane.k for lane in self.lanes}
+        return calls.pop() if len(calls) == 1 else None
 
     def lane(self, side: str) -> LaneResult | None:
         """The algenta lane, or the fastest incumbent lane by median."""
@@ -151,8 +233,16 @@ def mad(samples: Sequence[float]) -> float:
     return statistics.median(abs(x - med) for x in samples)
 
 
+def robust_cv(samples: Sequence[float]) -> float:
+    """The gate's spread: `ROBUST_SCALE × MAD / median` (0 for a non-positive median)."""
+    med = statistics.median(samples)
+    if med <= 0:
+        return 0.0
+    return ROBUST_SCALE * mad(samples) / med
+
+
 def cv(samples: Sequence[float]) -> float:
-    """Coefficient of variation (sample standard deviation over mean)."""
+    """Coefficient of variation (sample standard deviation over mean): printed, not gated."""
     if len(samples) < 2:
         return 0.0
     mean = statistics.fmean(samples)
@@ -161,7 +251,10 @@ def cv(samples: Sequence[float]) -> float:
     return statistics.stdev(samples) / mean
 
 
-def summarise(spec: LaneSpec, samples_ms: Sequence[float]) -> LaneResult:
+def summarise(spec: LaneSpec, samples_ms: Sequence[float], *, k: int = 1) -> LaneResult:
+    """Every statistic of one lane from its per-call figures; `k` is the calls per sample."""
+    if k < 1:
+        raise ValueError("calls per sample is at least 1")
     return LaneResult(
         name=spec.name,
         side=spec.side,
@@ -175,6 +268,7 @@ def summarise(spec: LaneSpec, samples_ms: Sequence[float]) -> LaneResult:
         version=spec.version,
         config=spec.config,
         samples_ms=list(samples_ms),
+        k=k,
     )
 
 
@@ -198,6 +292,28 @@ def auto_repeats(warm_call_ms: float) -> int:
     return REPEATS_FAST if warm_call_ms < FAST_CALL_MS else REPEATS_SLOW
 
 
+def calls_per_sample(
+    warm_call_ms: float, sample_min_ms: float = SAMPLE_MIN_MS, cap: int = CALLS_MAX
+) -> int:
+    """v0.4: the k back-to-back calls that make one timed sample last `sample_min_ms` or more.
+
+    `ceil(sample_min_ms / warm_call_ms)`, never above `cap`, and 1 for a call already at or
+    over the floor — so a lane at 10 ms or slower is timed exactly as v0.3 timed it. A warm
+    call of zero (or less) gets the cap; `sample_min_ms <= 0` switches batching off (k = 1).
+    """
+    if sample_min_ms <= 0:
+        return 1
+    if cap < 1:
+        raise ValueError("the cap on calls per sample is at least 1")
+    if not warm_call_ms > 0:
+        return cap
+    if warm_call_ms >= sample_min_ms:
+        return 1
+    # the ratio is rounded before the ceiling so a call clocked at 1.0000000000000009 ms gets
+    # k = 2, not 3: the floor is a rule about the sample, not about the clock's last digit
+    return max(1, min(cap, math.ceil(round(sample_min_ms / warm_call_ms, 6))))
+
+
 # ---------------------------------------------------------------------------
 # Hardware disclosure
 # ---------------------------------------------------------------------------
@@ -206,6 +322,15 @@ _CPUINFO = Path("/proc/cpuinfo")
 _CPU_MAX = Path("/sys/fs/cgroup/cpu.max")
 _CFS_QUOTA = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
 _CFS_PERIOD = Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+
+
+#: The architecture as people write it: no snake_case token in a caption.
+ARCH_NAMES = {"x86_64": "x86-64", "amd64": "x86-64", "aarch64": "arm64", "arm64": "arm64"}
+
+
+def arch_name(machine: str) -> str:
+    """`platform.machine()` spelled the human way (`x86-64`, `arm64`); other values unchanged."""
+    return ARCH_NAMES.get(machine.strip().lower(), machine.strip())
 
 
 def cpu_model(cpuinfo: Path | str = _CPUINFO) -> str:
@@ -269,10 +394,18 @@ def load_1m() -> float:
 
 
 def thread_env(env: Mapping[str, str] | None = None) -> str:
-    """`OMP=1 · OPENBLAS=1` from the thread-count variables that are set (same for all lanes)."""
+    """`threads 8` from the thread-count variables that are set (the same for every lane).
+
+    One figure when the variables that are set agree; `threads OpenMP 8 · OpenBLAS 1` when they
+    differ; empty when none is set. Written as words — `OMP=8` is an env-style token, and the
+    footer is a caption on the primary card."""
     env = os.environ if env is None else env
-    parts = [f"{key.split('_', 1)[0]}={env[key]}" for key in THREAD_ENV_KEYS if key in env]
-    return " · ".join(parts)
+    found = [(THREAD_ENV_NAMES[key], env[key].strip()) for key in THREAD_ENV_KEYS if key in env]
+    if not found:
+        return ""
+    if len({value for _, value in found}) == 1:
+        return f"threads {found[0][1]}"
+    return "threads " + " · ".join(f"{name} {value}" for name, value in found)
 
 
 def hardware_footer(
@@ -294,7 +427,7 @@ def hardware_footer(
         host,
         cpu_model(cpuinfo),
         f"{cpu_quota(cpu_max)} vCPU",
-        f"{platform.system()} {platform.machine()}",
+        f"{platform.system()} {arch_name(platform.machine())}",
         f"Python {platform.python_version()}",
     ]
     threads = thread_env(env)
@@ -317,6 +450,14 @@ def _round_robin(lanes: Sequence[LaneSpec], rounds: int, interleave: bool) -> li
     return [lane for lane in lanes for _ in range(rounds)]
 
 
+def _calls_note(calls: Mapping[str, int]) -> str:
+    """` × 16 calls` for the progress line when a lane batches; `× 16/1 calls` when lanes differ."""
+    distinct = sorted(set(calls.values()), reverse=True)
+    if distinct == [1]:
+        return ""
+    return " × " + "/".join(str(k) for k in distinct) + " calls"
+
+
 def run_cell(
     lanes: Sequence[LaneSpec],
     *,
@@ -330,12 +471,17 @@ def run_cell(
     loadavg: Callable[[], float] = load_1m,
     quota: int | None = None,
     progress: Callable[[str], None] | None = None,
+    sample_min_ms: float = SAMPLE_MIN_MS,
+    calls_max: int = CALLS_MAX,
 ) -> CellResult:
-    """Run one cell under rulebook v0.3 and return every statistic the card prints.
+    """Run one cell under the rulebook (`RULEBOOK_VERSION`); every statistic the card prints.
 
     `correctness_gate` receives the gate-call outputs keyed by lane name and
     returns `(ok, parity_label)`. `repeats=None` picks 21 or 11 from the slowest
-    warm-up call. `clock` returns seconds; `loadavg` the 1-minute load.
+    lane's fastest warm-up call. Each lane's k (`calls_per_sample`) comes from
+    that same fastest warm-up call and `sample_min_ms`; `sample_min_ms=0` is the
+    v0.3 protocol, one call per sample. `clock` returns seconds; `loadavg` the
+    1-minute load.
     """
     if not lanes:
         raise ValueError("no lanes")
@@ -376,16 +522,22 @@ def run_cell(
             say(f"held — {result.reason}")
             return result
 
-        warm_ms: dict[str, float] = dict.fromkeys(names, 0.0)
+        # the fastest warm-up call per lane is the least jittered estimate of its cost
+        warm_ms: dict[str, float] = {}
         for lane in _round_robin(lanes, warmups, interleave):
             t0 = clock()
             lane.fn()
-            warm_ms[lane.name] = (clock() - t0) * 1e3
-        n = auto_repeats(max(warm_ms.values())) if repeats is None else repeats
+            elapsed = (clock() - t0) * 1e3
+            warm_ms[lane.name] = min(warm_ms.get(lane.name, elapsed), elapsed)
+        n = auto_repeats(max(warm_ms.values(), default=0.0)) if repeats is None else repeats
         if n < 2:
             raise ValueError("repeats must be at least 2")
         result.n = n
-        say(f"timing {n} interleaved runs")
+        calls = {
+            name: calls_per_sample(warm_ms.get(name, math.inf), sample_min_ms, calls_max)
+            for name in names
+        }
+        say(f"timing {n} interleaved runs{_calls_note(calls)}")
 
         samples: dict[str, list[float]] = {name: [] for name in names}
         for lane in _round_robin(lanes, n, interleave):
@@ -394,22 +546,22 @@ def run_cell(
                 result.reason = f"{OVER_BUDGET_TEXT} — over {budget_s:g} s"
                 say(result.reason)
                 return result
+            k = calls[lane.name]
+            fn = lane.fn
             t0 = clock()
-            lane.fn()
-            samples[lane.name].append((clock() - t0) * 1e3)
+            for _ in range(k):
+                fn()
+            samples[lane.name].append((clock() - t0) * 1e3 / k)
 
-        result.lanes = [summarise(lane, samples[lane.name]) for lane in lanes]
+        result.lanes = [summarise(lane, samples[lane.name], k=calls[lane.name]) for lane in lanes]
+        # v0.6: the 1-minute load average is read and disclosed on the card (`host load 14.1`),
+        # never a gate — inside a Space the container reads the host's /proc/loadavg, not its
+        # own, and the spread + mean/median guard already measure what the load only predicts
         result.load_1m = float(loadavg())
         unstable = [lane.name for lane in result.lanes if not lane.stable]
-        overloaded = result.load_1m > quota_n * LOAD_FACTOR
-        if unstable or overloaded:
+        if unstable:
             result.status = STATUS_NOISY
-            causes = []
-            if unstable:
-                causes.append("spread above 15 percent on " + ", ".join(unstable))
-            if overloaded:
-                causes.append(f"load {result.load_1m:.1f} on {quota_n} vCPU")
-            result.reason = f"{NOISY_TEXT} — " + "; ".join(causes)
+            result.reason = f"{NOISY_TEXT} — spread above 15 percent on " + ", ".join(unstable)
             say(result.reason)
             return result
 

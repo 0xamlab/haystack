@@ -5,7 +5,6 @@ extend-exclude = [
     # Space app sources copied verbatim from the live Hub Spaces (docs/spaces/README.md): each joins
     # the lint gate when it is migrated onto apps/spaces/_shared in M2; _retired is deleted then.
     "apps/spaces/_retired",
-    "apps/spaces/algenta",
     "apps/spaces/speed-arena",
     "apps/spaces/governed-agent",
     ".codex",

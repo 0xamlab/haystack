@@ -1,0 +1,1558 @@
+{
+ "family": "signal",
+ "generated_utc": "2026-09-24T02:21:31Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 114,
+  "verified": 114,
+  "plain": 0,
+  "timeouts": 0,
+  "unverified": 0
+ },
+ "functions": {
+  "acoustics.decibel_sum_2": {
+   "args": {
+    "db1": 1.5,
+    "db2": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 11.721
+  },
+  "acoustics.distance_doubling_attenuation": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "acoustics.doppler_frequency": {
+   "args": {
+    "f0": 1.5,
+    "v_sound": 0.7,
+    "v_source": 0.7,
+    "v_observer": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "acoustics.inverse_square_law_pressure": {
+   "args": {
+    "spl_ref": 1.5,
+    "d_ref": 4.0,
+    "d": 4.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.141
+  },
+  "acoustics.noise_reduction_coefficient": {
+   "args": {
+    "alpha_250": 0.05,
+    "alpha_500": 0.05,
+    "alpha_1000": 0.05,
+    "alpha_2000": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.15
+  },
+  "acoustics.resonant_frequency_pipe_closed": {
+   "args": {
+    "speed_of_sound": 60.0,
+    "length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "acoustics.resonant_frequency_pipe_open": {
+   "args": {
+    "speed_of_sound": 60.0,
+    "length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "acoustics.reverberation_time_sabine": {
+   "args": {
+    "volume": 60.0,
+    "absorption": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "acoustics.sound_intensity_level": {
+   "args": {
+    "i": 1.5,
+    "i_ref": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "acoustics.sound_power_level": {
+   "args": {
+    "w": 1.0,
+    "w_ref": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "acoustics.sound_pressure_level": {
+   "args": {
+    "p": 0.5,
+    "p_ref": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "acoustics.wavelength": {
+   "args": {
+    "speed_of_sound": 60.0,
+    "frequency": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "audio.amplitude_to_db": {
+   "args": {
+    "amplitude": 1.0,
+    "reference": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "audio.db_to_amplitude": {
+   "args": {
+    "db": 1.5,
+    "reference": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "audio.envelope": {
+   "args": {
+    "samples": [
+     0.0,
+     1.0,
+     0.0,
+     -1.0,
+     0.0
+    ],
+    "window": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.156
+  },
+  "audio.frequency_to_midi": {
+   "args": {
+    "freq": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "audio.generate_sine": {
+   "args": {
+    "freq": 50.0,
+    "sample_rate": 100.0,
+    "n_samples": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.209
+  },
+  "audio.midi_to_frequency": {
+   "args": {
+    "midi": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "audio.mix_signals": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "weight_a": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.117
+  },
+  "audio.normalize_audio": {
+   "args": {
+    "samples": [
+     0.0,
+     1.0,
+     0.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "audio.rms_amplitude": {
+   "args": {
+    "samples": [
+     0.0,
+     1.0,
+     0.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "audio.zero_crossing_rate": {
+   "args": {
+    "samples": [
+     0.0,
+     1.0,
+     0.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "fft.fft": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.128
+  },
+  "fft.fft_magnitude": {
+   "args": {
+    "X": [
+     {
+      "re": 1.5,
+      "im": 1.5
+     },
+     {
+      "re": 1.5,
+      "im": 1.5
+     },
+     {
+      "re": 1.5,
+      "im": 1.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.165
+  },
+  "fft.fft_phase": {
+   "args": {
+    "X": [
+     {
+      "re": 1.5,
+      "im": 1.5
+     },
+     {
+      "re": 1.5,
+      "im": 1.5
+     },
+     {
+      "re": 1.5,
+      "im": 1.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "fft.ifft": {
+   "args": {
+    "X": [
+     {
+      "re": 1.5,
+      "im": 1.5
+     },
+     {
+      "re": 1.5,
+      "im": 1.5
+     },
+     {
+      "re": 1.5,
+      "im": 1.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.144
+  },
+  "fft.next_power_of_2": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "fft.power_spectrum": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "fft.zero_pad": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "target_len": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "psychoacoustics.bark_scale": {
+   "args": {
+    "frequency_hz": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "psychoacoustics.binaural_masking_level_diff": {
+   "args": {
+    "monaural_threshold": 0.5,
+    "binaural_advantage_db": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "psychoacoustics.critical_bandwidth": {
+   "args": {
+    "center_freq_hz": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "psychoacoustics.equal_loudness_correction": {
+   "args": {
+    "frequency_hz": 50.0,
+    "spl_db": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "psychoacoustics.frequency_just_noticeable": {
+   "args": {
+    "center_freq_hz": 50.0,
+    "jnd_fraction": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "psychoacoustics.loudness_phon_to_sone": {
+   "args": {
+    "phon": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "psychoacoustics.loudness_sone_to_phon": {
+   "args": {
+    "sone": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "psychoacoustics.masking_threshold": {
+   "args": {
+    "masker_spl": 1.5,
+    "masker_freq_hz": 50.0,
+    "target_freq_hz": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "psychoacoustics.speech_intelligibility_index": {
+   "args": {
+    "speech_spl": 1.5,
+    "noise_spl": 0.1,
+    "band_importance": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "psychoacoustics.temporal_masking_decay": {
+   "args": {
+    "time_after_offset_ms": 1.0,
+    "initial_masking_db": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "signal.dsp.autocorrelation": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "max_lag": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.118
+  },
+  "signal.dsp.convolve": {
+   "args": {
+    "signal_data": [
+     0.0,
+     1.0,
+     0.0,
+     -1.0,
+     0.0
+    ],
+    "kernel": [
+     0.25,
+     0.5,
+     0.25
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "signal.dsp.cumsum": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "signal.dsp.detrend_linear": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "signal.dsp.diff": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "signal.dsp.exponential_moving_average": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "signal.dsp.moving_average": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "window": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "signal.dsp.normalize_signal": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "signal.dsp.peak_detect": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "signal.dsp.zero_crossings": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "signal.filter.bandpass": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "alpha_low": 0.0,
+    "alpha_high": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "signal.filter.diff_filter": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "signal.filter.highpass_ema": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.128
+  },
+  "signal.filter.iir_filter_1st": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "a": 1.0,
+    "b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "signal.filter.integrate_filter": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "dt": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "signal.filter.lowpass_ema": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "signal.filter.median_filter": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "window": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "signal.filter.moving_average_filter": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "window": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "signal.filter.rms": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "signal.filter.savitzky_golay_3": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "signal.filter.snr": {
+   "args": {
+    "signal": [
+     0.0,
+     1.0,
+     0.0,
+     -1.0,
+     0.0
+    ],
+    "noise": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.607
+  },
+  "signal_processing.apply_window": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "window": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.101
+  },
+  "signal_processing.blackman_window": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.142
+  },
+  "signal_processing.hamming_window": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.135
+  },
+  "signal_processing.hann_window": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.132
+  },
+  "signal_processing.peak_detect": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "signal_processing.signal_power": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "signal_processing.spectral_centroid": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "sample_rate": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "signal_processing.spectral_energy": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.113
+  },
+  "signal_processing.spectral_flatness": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.153
+  },
+  "signal_processing.zero_crossings": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "spectral.band_energy": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "frequencies": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "low": 0.0,
+    "high": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.119
+  },
+  "spectral.coherence": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "fs": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "spectral.cross_spectral_density": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "fs": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.145
+  },
+  "spectral.peak_frequency": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "frequencies": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "spectral.power_spectral_density": {
+   "args": {
+    "signal": [
+     0.0,
+     1.0,
+     0.0,
+     -1.0,
+     0.0
+    ],
+    "fs": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "spectral.spectral_bandwidth": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "frequencies": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "centroid": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "spectral.spectral_centroid": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "frequencies": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "spectral.spectral_entropy": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "spectral.spectral_flatness": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "spectral.spectral_rolloff": {
+   "args": {
+    "magnitudes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "frequencies": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "spectroscopy.absorbance_from_transmittance": {
+   "args": {
+    "transmittance_pct": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "spectroscopy.beer_lambert_concentration": {
+   "args": {
+    "absorbance": 1.5,
+    "path_length": 5.0,
+    "molar_absorptivity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "spectroscopy.energy_from_wavelength": {
+   "args": {
+    "wavelength_m": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "spectroscopy.fluorescence_quantum_yield": {
+   "args": {
+    "photons_emitted": 1.5,
+    "photons_absorbed": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "spectroscopy.raman_shift": {
+   "args": {
+    "excitation_nm": 1.5,
+    "scattered_nm": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "spectroscopy.resolution_spectrometer": {
+   "args": {
+    "wavelength": 1.5,
+    "delta_wavelength": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "spectroscopy.snr_coadd": {
+   "args": {
+    "snr_single": 1.5,
+    "n_scans": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "spectroscopy.spectral_bandwidth": {
+   "args": {
+    "fwhm": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "spectroscopy.stokes_shift": {
+   "args": {
+    "excitation_nm": 1.5,
+    "emission_nm": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "spectroscopy.transmittance_from_absorbance": {
+   "args": {
+    "absorbance": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "spectroscopy.wavelength_from_wavenumber": {
+   "args": {
+    "wavenumber_cm": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "spectroscopy.wavenumber_from_wavelength": {
+   "args": {
+    "wavelength_um": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "traffic_signal.all_red_interval": {
+   "args": {
+    "width": 4.0,
+    "length": 5.0,
+    "velocity": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "traffic_signal.capacity_lane": {
+   "args": {
+    "saturation_flow": 1.5,
+    "green_ratio_val": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "traffic_signal.cycle_length_webster": {
+   "args": {
+    "total_lost_time": 1.0,
+    "critical_vc_ratio": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "traffic_signal.delay_uniform": {
+   "args": {
+    "cycle": 1.5,
+    "green_ratio_val": 0.5,
+    "vc_ratio": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "traffic_signal.effective_green": {
+   "args": {
+    "actual_green": 1.2,
+    "start_loss": 0.0,
+    "end_gain": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "traffic_signal.green_ratio": {
+   "args": {
+    "effective_green_val": 1.5,
+    "cycle_length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "traffic_signal.intersection_capacity_utilization": {
+   "args": {
+    "sum_critical_vc": 15.0,
+    "total_lost": 10.0,
+    "cycle_length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "traffic_signal.level_of_service_delay": {
+   "args": {
+    "delay_sec": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "traffic_signal.peak_hour_factor": {
+   "args": {
+    "peak_volume": 60.0,
+    "peak_15min_volume": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "traffic_signal.pedestrian_crossing_time": {
+   "args": {
+    "distance": 10.0,
+    "walk_speed": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "traffic_signal.volume_to_capacity": {
+   "args": {
+    "volume": 60.0,
+    "capacity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "traffic_signal.yellow_interval": {
+   "args": {
+    "perception_time": 1.0,
+    "velocity": 60.0,
+    "deceleration": 1.5,
+    "grade": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "wavelet.approx_coefficients": {
+   "args": {
+    "coeffs": [
+     1.0,
+     -2.0,
+     1.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "wavelet.denoise_haar": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "threshold": 0.5,
+    "levels": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "wavelet.detail_coefficients": {
+   "args": {
+    "coeffs": [
+     1.0,
+     -2.0,
+     1.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "wavelet.energy_ratio": {
+   "args": {
+    "coeffs": [
+     1.0,
+     -2.0,
+     1.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "wavelet.haar_forward": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "wavelet.haar_inverse": {
+   "args": {
+    "coeffs": [
+     1.0,
+     -2.0,
+     1.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "wavelet.haar_multilevel": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "levels": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "wavelet.haar_multilevel_inverse": {
+   "args": {
+    "coeffs": [
+     1.0,
+     -2.0,
+     1.0
+    ],
+    "levels": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "wavelet.threshold_hard": {
+   "args": {
+    "coeffs": [
+     1.0,
+     -2.0,
+     1.0
+    ],
+    "threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "wavelet.threshold_soft": {
+   "args": {
+    "coeffs": [
+     1.0,
+     -2.0,
+     1.0
+    ],
+    "threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  }
+ }
+}

@@ -10,7 +10,7 @@ import pytest
 CLEAN_README = """---
 title: Algenta
 emoji: ⚡
-short_description: 6,000+ compiled kernels, live. Race them against Python.
+short_description: 6,000+ compiled Mojo kernels. Race them against Python.
 ---
 
 # Algenta
@@ -211,12 +211,28 @@ def test_cli_exit_codes_and_summary(tmp_path: Path, capsys: pytest.CaptureFixtur
 
 
 def test_current_apps_report_the_known_canon_violations(apps_spaces_dir: Path) -> None:
-    """The M0 baseline: findings are reported, the copy is fixed in M2."""
+    """M2 rewrote the flagship: no banned phrase, no jargon, no emoji in its copy."""
     findings = cl.lint_space(apps_spaces_dir / "algenta")
-    messages = {f.message for f in findings}
-    assert "decision engine" in messages, "the flagship README still carries the banned phrase"
-    for space in ("speed-arena", "governed-agent"):
-        assert isinstance(cl.lint_space(apps_spaces_dir / space), list)
+    codes = {f.code for f in findings}
+    assert "decision engine" not in {f.message for f in findings}, findings
+    assert not codes & {"banned", "jargon", "emoji", "headline", "subline", "link-missing"}, (
+        findings
+    )
+
+
+def test_the_flagship_is_clean_through_the_cli(
+    apps_spaces_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """What the QA table claims (`copy_lint.py apps/spaces/algenta` → 0 findings) is asserted
+    here through the CLI itself, so an exclamation mark inside the audit JavaScript
+    (`verify_checks.py`, round 2's `!t`) fails the unit suite and not only the release gate."""
+    assert cl.main([str(apps_spaces_dir / "algenta")]) == 0
+    out = capsys.readouterr().out
+    assert out.strip().endswith("apps/spaces/algenta: 0 finding(s) (clean)") or (
+        "0 finding(s) (clean)" in out
+    )
+    exclaims = [f for f in cl.lint_space(apps_spaces_dir / "algenta") if f.code == "exclaim"]
+    assert exclaims == [], [f.format(apps_spaces_dir.parents[1]) for f in exclaims]
 
 
 STUB_README = """---
@@ -338,12 +354,9 @@ Real copy with a shout! And a ``double `tick` span!`` too.
     ]
 
 
-def test_shared_package_and_redirect_stubs_are_clean_today(apps_spaces_dir: Path) -> None:
-    """The copy gate that is green today: the shared package and the three redirect stubs."""
+def test_shared_package_is_clean_today_and_no_redirect_stub_remains(apps_spaces_dir: Path) -> None:
+    """The copy gate that is green today: the shared package. The three redirect stubs left the
+    fleet on 2026-09-23 (deleted from the Hub); the stub rules stay covered by `_stub` above."""
     assert cl.lint_space(apps_spaces_dir / "_shared") == []
-    stubs = sorted(p for p in (apps_spaces_dir / "_redirects").iterdir() if p.is_dir())
-    assert [p.name for p in stubs] == ["for-llm-agents", "governed-tool-calls", "llm-modules"]
-    for stub in stubs:
-        assert cl.is_redirect(stub)
-        assert cl.lint_space(stub) == [], stub.name
-    assert cl.main([str(apps_spaces_dir / "_shared"), *map(str, stubs)]) == 0
+    assert not (apps_spaces_dir / "_redirects").exists(), "a redirect stub came back"
+    assert cl.main([str(apps_spaces_dir / "_shared")]) == 0

@@ -80,7 +80,11 @@ EVENT_HEADER = "x-webhook-event"
 SIGNATURE_PREFIX = "sha256="
 WEBHOOK_EVENT = "decision.execute"
 HOOK_PREFIX = "/hook"
-NOT_CONFIGURED_CODE = "HOSTED-NOT-CONFIGURED"
+#: The lane's three codes, in the fleet's one spelling (`cards.normalize_code`: lowercase
+#: snake_case) so a constant equals what the card prints and what the verifier compares.
+NOT_CONFIGURED_CODE = "hosted_not_configured"
+RATE_LIMITED_CODE = "hosted_rate_limited"
+UNAVAILABLE_CODE = "hosted_unavailable"
 NOT_CONFIGURED_TITLE = "Hosted API not configured"
 NOT_CONFIGURED_REASON = "No API key is set for this Space, so the governed lane is off."
 REJECTED_KEY_REASON = "The hosted API rejected this Space's key, so the governed lane is off."
@@ -731,8 +735,8 @@ def render_status_card(status: HostedStatus) -> str:
         return ""
     code = {
         ConfigState.NOT_CONFIGURED: NOT_CONFIGURED_CODE,
-        ConfigState.UNAVAILABLE: "HOSTED-UNAVAILABLE",
-        ConfigState.RATE_LIMITED: "HOSTED-RATE-LIMITED",
+        ConfigState.UNAVAILABLE: UNAVAILABLE_CODE,
+        ConfigState.RATE_LIMITED: RATE_LIMITED_CODE,
     }[status.state]
     return cards.render_unavailable_card(
         title=NOT_CONFIGURED_TITLE if status.state is ConfigState.NOT_CONFIGURED else "Hosted API",

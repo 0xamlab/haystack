@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -272,9 +273,10 @@ def test_plan_step_reads_spaces_toml_through_the_strict_loader(wf: dict) -> None
 def test_plan_on_push_dry_runs_every_space_in_the_manifest(tmp_path: Path, wf: dict) -> None:
     proc, outputs = _run_plan(tmp_path, wf, EVENT_NAME="push")
     assert proc.returncode == 0, proc.stderr
-    assert json.loads(outputs["matrix"]) == list(load_manifest().spaces)
+    # the fleet is the flagship alone since 2026-09-23
+    assert json.loads(outputs["matrix"]) == list(load_manifest().spaces) == ["algenta"]
     assert outputs["dry_run"] == "true"
-    assert proc.stdout.startswith("dry run:")
+    assert proc.stdout == "dry run: algenta\n"
 
 
 def test_plan_default_dispatch_names_exist_in_the_manifest(tmp_path: Path, wf: dict) -> None:
@@ -286,10 +288,11 @@ def test_plan_default_dispatch_names_exist_in_the_manifest(tmp_path: Path, wf: d
     assert proc.returncode == 0, proc.stderr
     manifest = load_manifest()
     names = json.loads(outputs["matrix"])
-    assert set(names) == set(manifest.spaces)
-    assert {manifest.space(n).sdk for n in names} >= {"docker", "gradio", "static"}
+    assert names == list(manifest.spaces) == ["algenta"]
+    # one docker Space: the deep-dives and the static redirect stubs left the fleet on 2026-09-23
+    assert {manifest.space(n).sdk for n in names} == {"docker"}
     assert outputs["dry_run"] == "false"
-    assert proc.stdout.startswith("DEPLOY:")
+    assert proc.stdout == "DEPLOY: algenta\n"
 
 
 def test_plan_dispatch_dry_run_true_never_deploys(tmp_path: Path, wf: dict) -> None:
@@ -300,16 +303,64 @@ def test_plan_dispatch_dry_run_true_never_deploys(tmp_path: Path, wf: dict) -> N
     assert outputs["dry_run"] == "true"
 
 
+# An inline two-Space fleet for the plan step's ordering rules: the real manifest holds the
+# flagship alone since 2026-09-23, so ordering across names is exercised on this file instead.
+TWO_SPACE_TOML = """\
+[fleet]
+org = "thyn-ai"
+shared_package = "_shared/algenta_spaces"
+budget_usd = 10
+
+[spaces.algenta]
+repo_id = "thyn-ai/algenta"
+sdk = "docker"
+source = "algenta"
+python = "3.14"
+hardware = "cpu-upgrade"
+sleep_time = -1
+shared_shell = true
+verify = "verify_remote:check_algenta"
+api_names = ["try_run"]
+
+[spaces.arena]
+repo_id = "thyn-ai/algenta-arena"
+sdk = "gradio"
+source = "arena"
+python = "3.12"
+hardware = "cpu-upgrade"
+sleep_time = -1
+shared_shell = false
+verify = "verify_remote:check_algenta"
+api_names = ["run_duel_ui"]
+"""
+
+
 def test_plan_selects_named_spaces_in_order_without_duplicates(tmp_path: Path, wf: dict) -> None:
+    # the same name twice on the real manifest collapses to one matrix entry
     proc, outputs = _run_plan(
         tmp_path,
         wf,
         EVENT_NAME="workflow_dispatch",
-        SPACES_INPUT="llm-modules algenta llm-modules",
+        SPACES_INPUT="algenta algenta",
         DRY_RUN_INPUT="false",
     )
     assert proc.returncode == 0, proc.stderr
-    assert json.loads(outputs["matrix"]) == ["llm-modules", "algenta"]
+    assert json.loads(outputs["matrix"]) == ["algenta"]
+    # request order wins and repeats collapse, on an inline two-Space manifest: only the step's
+    # MANIFEST env changes, the script under bash is the workflow's own
+    inline = tmp_path / "spaces.toml"
+    inline.write_text(TWO_SPACE_TOML, encoding="utf-8")
+    assert list(load_manifest(inline).spaces) == ["algenta", "arena"]
+    proc, outputs = _run_plan(
+        tmp_path,
+        wf,
+        EVENT_NAME="workflow_dispatch",
+        SPACES_INPUT="arena algenta arena",
+        DRY_RUN_INPUT="false",
+        MANIFEST=str(inline),
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(outputs["matrix"]) == ["arena", "algenta"]
 
 
 def test_plan_treats_an_empty_selection_as_all(tmp_path: Path, wf: dict) -> None:
@@ -401,14 +452,14 @@ def test_every_run_block_fails_fast(wf: dict) -> None:
 
 def test_test_job_runs_the_documented_gates(wf: dict) -> None:
     runs = "\n".join(s.get("run", "") for s in wf["jobs"]["test"]["steps"])
-    scope = "apps/spaces/_shared apps/spaces/tools apps/spaces/_redirects tests/spaces"
+    scope = "apps/spaces/_shared apps/spaces/tools tests/spaces"
     assert f"ruff check {scope}" in runs and f"ruff format --check {scope}" in runs
     # --confcutdir: the root tests/conftest.py needs the API server's dependencies, which the
     # test job does not install; the fleet tests use tests/spaces/conftest.py only.
     assert "python -m pytest tests/spaces -q -p no:cacheprovider --confcutdir=tests/spaces" in runs
     assert "copy_lint.py apps/spaces/_shared" in runs
-    for stub in load_manifest().redirects:
-        assert f"copy_lint.py apps/spaces/{stub.source}" in runs
+    # the redirect stubs left the fleet on 2026-09-23: no stub directory is linted or ruffed
+    assert load_manifest().redirects == [] and "_redirects" not in runs
     assert "pyyaml" in runs  # so this file's tests run in CI rather than skip
 
 
@@ -424,14 +475,14 @@ def test_pin_drift_is_report_only_because_it_fails_today() -> None:
         if "pin_drift.py" in s.get("run", "")
     )
     assert '|| echo "::warning' in step_run and "M2" in step_run
+    # the directories the step really scans, read off its own command line
+    command = next(line for line in step_run.splitlines() if "pin_drift.py" in line)
+    args = shlex.split(command.rstrip(" \\"))
+    app_dirs = [a for a in args if a.startswith("apps/spaces/") and not a.endswith(".py")]
+    assert f"apps/spaces/{load_manifest().space('algenta').source}" in app_dirs, command
+    assert all((REPO_ROOT / d).is_dir() for d in app_dirs), app_dirs
     proc = subprocess.run(
-        [
-            sys.executable,
-            str(TOOLS / "pin_drift.py"),
-            "apps/spaces/algenta",
-            "apps/spaces/speed-arena",
-            "apps/spaces/governed-agent",
-        ],
+        [sys.executable, str(TOOLS / "pin_drift.py"), *app_dirs],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

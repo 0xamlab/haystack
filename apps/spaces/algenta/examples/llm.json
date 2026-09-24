@@ -1,0 +1,6385 @@
+{
+ "family": "llm",
+ "generated_utc": "2026-09-24T02:21:03Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 357,
+  "verified": 308,
+  "plain": 17,
+  "timeouts": 0,
+  "unverified": 49
+ },
+ "functions": {
+  "accel.contract.accel_backend_name": {
+   "args": {
+    "backend": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 12.547
+  },
+  "accel.contract.accel_policy_known": {
+   "args": {
+    "policy": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.133
+  },
+  "accel.contract.accel_policy_name": {
+   "args": {
+    "policy": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "accel.contract.accel_resolve": {
+   "args": {
+    "policy": 5,
+    "gpu_backend": 0,
+    "gpu_usable": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "accel.contract.accel_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "accel.contract.accel_worth_offloading": {
+   "args": {
+    "cells": 5,
+    "arithmetic_intensity": 1.5,
+    "peak_tflops": 1.5,
+    "peak_bandwidth_tbs": 1.0,
+    "launch_overhead_us": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "accel.device.accel_device_name_len": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 24.549
+  },
+  "accel.device.accel_device_probe": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.27
+  },
+  "accel.device.accel_has_device": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "accel.gemm_metal.gemm_metal_agreement": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "m": 3,
+    "n": 3,
+    "k": 3
+   },
+   "verified": false,
+   "outcome": "shader_toolchain_absent",
+   "source": "rules",
+   "ms": 0.18
+  },
+  "accel.gemm_metal.gemm_metal_available": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "accel.gemm_metal.gemm_metal_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "m": 3,
+    "n": 3,
+    "k": 3
+   },
+   "verified": false,
+   "outcome": "shader_toolchain_absent",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "attnk.backward.attn_bwd_gradcheck_flat": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ],
+    "n_tok_q": 3,
+    "n_tok_k": 3,
+    "h_q": 3,
+    "h_kv": 3,
+    "d": 3,
+    "scale": 1.0,
+    "step": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.279
+  },
+  "attnk.backward.sdpa_bwd_flat": {
+   "args": {
+    "dout": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ],
+    "n_tok_q": 3,
+    "n_tok_k": 3,
+    "h_q": 3,
+    "h_kv": 3,
+    "d": 3,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.284
+  },
+  "attnk.contract.attn_backend_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "attnk.contract.attn_dims_check": {
+   "args": {
+    "n_seq": 4,
+    "h_q": 89,
+    "h_kv": 5,
+    "s_q": 89,
+    "s_k": 3,
+    "d": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "attnk.contract.attn_scalars_ok": {
+   "args": {
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "attnk.contract.attn_scale_ok": {
+   "args": {
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "attnk.contract.attn_score_bytes_fit": {
+   "args": {
+    "s_q": 89,
+    "s_kv": 5,
+    "n_workers": 100,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.136
+  },
+  "attnk.contract.attn_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "attnk.contract.attn_work_cells_varlen": {
+   "args": {
+    "cu_seqlens": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_seq": 0,
+    "h_q": 89,
+    "d": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.132
+  },
+  "attnk.contract.attn_work_fits": {
+   "args": {
+    "n_seq": 4,
+    "h_q": 89,
+    "s": 5,
+    "d": 5,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "attnk.contract.attn_ws_bytes_direct": {
+   "args": {
+    "s_q": 89,
+    "s_kv": 5,
+    "d": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "attnk.contract.attn_ws_bytes_tiled": {
+   "args": {
+    "br": 5,
+    "bc": 5,
+    "d": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "attnk.flash.flash_agrees_with_sdpa": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ],
+    "bias": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_tok_q": 3,
+    "n_tok_k": 3,
+    "h_q": 3,
+    "h_kv": 3,
+    "d": 3,
+    "scale": 1.0,
+    "use_bias": true,
+    "block_k": 3
+   },
+   "verified": false,
+   "outcome": "length_mismatch",
+   "source": "rules",
+   "ms": 0.268
+  },
+  "attnk.flash.flash_block_plan": {
+   "args": {
+    "s_k": 3,
+    "d": 5,
+    "cache_bytes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "attnk.flash.flash_forward_flat": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ],
+    "bias": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_tok_q": 3,
+    "n_tok_k": 3,
+    "h_q": 3,
+    "h_kv": 3,
+    "d": 3,
+    "scale": 1.0,
+    "use_bias": true,
+    "block_k": 3
+   },
+   "verified": false,
+   "outcome": "length_mismatch",
+   "source": "rules",
+   "ms": 0.2
+  },
+  "attnk.mask.mask_block_diagonal_flat": {
+   "args": {
+    "cu_seqlens": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_seq": 0,
+    "total": 5,
+    "causal": true
+   },
+   "verified": false,
+   "outcome": "bad_cu_seqlens",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "attnk.mask.mask_causal_flat": {
+   "args": {
+    "s_q": 89,
+    "s_k": 3,
+    "offset": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.145
+  },
+  "attnk.mask.mask_combine_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "attnk.mask.mask_convention_agreement": {
+   "args": {
+    "query_pos": 1.5,
+    "key_pos": 1.5,
+    "logit": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "attnk.mask.mask_padding_flat": {
+   "args": {
+    "valid_len": 2,
+    "s_q": 2,
+    "s_k": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.049
+  },
+  "attnk.mask.mask_row_fully_masked": {
+   "args": {
+    "bias": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "s_q": 89,
+    "s_k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "attnk.mask.mask_sliding_window_flat": {
+   "args": {
+    "s_q": 89,
+    "s_k": 3,
+    "window": 3,
+    "offset": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.787
+  },
+  "attnk.rope.rope_apply_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "cos_t": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "sin_t": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "n_tok": 5,
+    "n_heads": 2,
+    "head_dim": 16,
+    "pos": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "interleaved": true
+   },
+   "verified": false,
+   "outcome": "length_mismatch",
+   "source": "rules",
+   "ms": 0.432
+  },
+  "attnk.rope.rope_apply_inverse_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "cos_t": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "sin_t": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "n_tok": 5,
+    "n_heads": 2,
+    "head_dim": 16,
+    "pos": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "interleaved": true
+   },
+   "verified": false,
+   "outcome": "length_mismatch",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "attnk.rope.rope_inv_freq": {
+   "args": {
+    "head_dim": 16,
+    "theta": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "attnk.rope.rope_inv_freq_llama3": {
+   "args": {
+    "head_dim": 16,
+    "theta": 0.5,
+    "factor": 2.0,
+    "low_freq_factor": 2.0,
+    "high_freq_factor": 2.0,
+    "original_max_position_embeddings": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.107
+  },
+  "attnk.rope.rope_table": {
+   "args": {
+    "head_dim": 2,
+    "max_pos": 2,
+    "theta": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.1
+  },
+  "attnk.rope.rope_table_freq_factors": {
+   "args": {
+    "head_dim": 16,
+    "max_pos": 0,
+    "theta": 0.5,
+    "freq_factors": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": false,
+   "outcome": "empty_dimension",
+   "source": "rules",
+   "ms": 0.305
+  },
+  "attnk.rope.rope_table_llama3": {
+   "args": {
+    "head_dim": 2,
+    "max_pos": 2,
+    "theta": 0.5,
+    "factor": 0.5,
+    "low_freq_factor": 0.5,
+    "high_freq_factor": 0.5,
+    "original_max_position_embeddings": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.082
+  },
+  "attnk.rope.rope_theta_agreement": {
+   "args": {
+    "base": 10.0,
+    "original_context": 1.5,
+    "target_context": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "attnk.rope.rope_theta_for": {
+   "args": {
+    "base": 10.0,
+    "factor": 2.0,
+    "scaling_code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "attnk.sdpa.sdpa_forward_flat": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ],
+    "bias": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_tok_q": 3,
+    "n_tok_k": 3,
+    "h_q": 3,
+    "h_kv": 3,
+    "d": 3,
+    "scale": 1.0,
+    "use_bias": true
+   },
+   "verified": false,
+   "outcome": "length_mismatch",
+   "source": "rules",
+   "ms": 0.348
+  },
+  "attnk.sdpa.sdpa_scores_flat": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0
+    ],
+    "n_tok_q": 3,
+    "n_tok_k": 3,
+    "h_q": 3,
+    "h_kv": 3,
+    "d": 3,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.173
+  },
+  "attnk.sdpa.sdpa_softmax_rows_flat": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3,
+     0.9,
+     0.2,
+     0.8,
+     0.6
+    ],
+    "rows": 3,
+    "cols": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "attnk.tiled.attn_flop_count": {
+   "args": {
+    "batch": 4,
+    "h_q": 89,
+    "s_q": 89,
+    "s_kv": 5,
+    "d": 5,
+    "causal": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "attnk.tiled.attn_forward_direct": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "batch": 4,
+    "h_q": 89,
+    "h_kv": 5,
+    "s_q": 89,
+    "s_kv": 5,
+    "d": 5,
+    "scale": 1.0,
+    "causal": true,
+    "workers": 5
+   },
+   "verified": false,
+   "outcome": "gqa_heads_not_divisible",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "attnk.tiled.attn_forward_tiled": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "batch": 4,
+    "h_q": 89,
+    "h_kv": 5,
+    "s_q": 89,
+    "s_kv": 5,
+    "d": 5,
+    "scale": 1.0,
+    "causal": true,
+    "br": 5,
+    "bc": 5,
+    "workers": 5
+   },
+   "verified": false,
+   "outcome": "gqa_heads_not_divisible",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "attnk.tiled.attn_forward_unstable": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "batch": 4,
+    "h_q": 89,
+    "h_kv": 5,
+    "s_q": 89,
+    "s_kv": 5,
+    "d": 5,
+    "scale": 1.0,
+    "causal": true,
+    "workers": 5
+   },
+   "verified": false,
+   "outcome": "gqa_heads_not_divisible",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "attnk.tiled.attn_reference_delta": {
+   "args": {
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "k": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "batch": 4,
+    "h_q": 89,
+    "h_kv": 5,
+    "s_q": 89,
+    "s_kv": 5,
+    "d": 5,
+    "scale": 1.0,
+    "causal": true
+   },
+   "verified": false,
+   "outcome": "gqa_heads_not_divisible",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "bpe_tokenizer.bpe_merge_rank_score": {
+   "args": {
+    "frequency": 50.0,
+    "rank": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "bpe_tokenizer.bpe_merge_score": {
+   "args": {
+    "pair_frequency": 50.0,
+    "vocab_frequency_a": 1.0,
+    "vocab_frequency_b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "bpe_tokenizer.bpe_pair_frequency": {
+   "args": {
+    "joint_count": 5.0,
+    "total_pairs": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "bpe_tokenizer.byte_fallback_encode": {
+   "args": {
+    "text_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "bpe_tokenizer.oov_rate": {
+   "args": {
+    "oov_tokens": 1.5,
+    "total_tokens": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "bpe_tokenizer.sentencepiece_vocab_size_est": {
+   "args": {
+    "char_coverage": 1.5,
+    "corpus_chars": 1.5,
+    "target_coverage": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "bpe_tokenizer.streaming_token_boundary": {
+   "args": {
+    "char_code": 1.5,
+    "prev_char_code": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "bpe_tokenizer.subword_log_probability": {
+   "args": {
+    "token_count": 5.0,
+    "total_tokens": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "bpe_tokenizer.tokenization_compression_ratio": {
+   "args": {
+    "n_chars": 5.0,
+    "n_tokens": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "bpe_tokenizer.vocab_fertility": {
+   "args": {
+    "n_tokens": 5.0,
+    "n_words": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "causal_inference.propensity.ipw_ate": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "trim_eps": 1e-06,
+    "extreme_weight_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "causal_inference.propensity.match_nearest": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "caliper": 1.5,
+    "with_replacement": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "causal_inference.propensity.match_optimal": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "caliper": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "causal_inference.propensity.overlap_report": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "causal_inference.propensity.propensity_fit": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_units": 100,
+    "n_features": 100,
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "l2": 0.1,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "embeddings.centroid": {
+   "args": {
+    "vectors": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "embeddings.cosine_similarity": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "embeddings.cosine_similarity_matrix": {
+   "args": {
+    "vectors": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "embeddings.cosine_similarity_matrix_strict": {
+   "args": {
+    "vectors": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "embeddings.cosine_similarity_strict": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "embeddings.dot_product": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "embeddings.dot_product_strict": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "embeddings.euclidean_distance": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "embeddings.euclidean_distance_strict": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "embeddings.k_nearest_neighbors": {
+   "args": {
+    "query": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "candidates": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "embeddings.k_nearest_neighbors_strict": {
+   "args": {
+    "query": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "candidates": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "k": 3
+   },
+   "verified": false,
+   "outcome": "mojo_library_execution_failed",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "embeddings.manhattan_distance": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "embeddings.manhattan_distance_strict": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "embeddings.nearest_neighbor": {
+   "args": {
+    "query": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "candidates": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "embeddings.nearest_neighbor_strict": {
+   "args": {
+    "query": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "candidates": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": false,
+   "outcome": "mojo_library_execution_failed",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "embeddings.normalize_vector": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "embeddings.vector_add": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "embeddings.vector_add_strict": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "embeddings.vector_magnitude": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "embeddings.vector_scale": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "s": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "flash_attention.flash_block_max": {
+   "args": {
+    "current_max": 1.0,
+    "new_score": 0.8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "flash_attention.flash_block_output": {
+   "args": {
+    "current_output": 1.5,
+    "old_max": 1.0,
+    "new_max": 1.0,
+    "attention_weight": 1.0,
+    "value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "flash_attention.flash_block_sum_exp": {
+   "args": {
+    "current_sum": 15.0,
+    "old_max": 1.0,
+    "new_max": 1.0,
+    "new_score": 0.8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "flash_attention.flash_final_normalize": {
+   "args": {
+    "output": 1.5,
+    "normalizer": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "flash_attention.flash_rescale_output": {
+   "args": {
+    "output": 1.5,
+    "old_sum": 15.0,
+    "old_max": 1.0,
+    "new_max": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "flash_attention.grouped_query_attention_scale": {
+   "args": {
+    "n_query_heads": 5.0,
+    "n_kv_heads": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "flash_attention.paged_attention_block_score": {
+   "args": {
+    "query_elem": 1.5,
+    "key_elem": 1.5,
+    "block_max_key": 1.0,
+    "head_dim": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "flash_attention.ring_attention_chunk_size": {
+   "args": {
+    "seq_len": 1.5,
+    "n_devices": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "flash_attention.sliding_window_attention": {
+   "args": {
+    "query_pos": 1.5,
+    "key_pos": 1.5,
+    "window_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "flash_attention.sparse_attention_block_density": {
+   "args": {
+    "n_attended": 5.0,
+    "block_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "gemm.blocked.gemm_reference_delta_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "m": 3,
+    "n": 100,
+    "k": 3
+   },
+   "verified": false,
+   "outcome": "a_length_mismatch",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "gemm.blocked.gemm_tile_plan": {
+   "args": {
+    "m": 3,
+    "n": 100,
+    "k": 3,
+    "cache_bytes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "gemm.blocked.gemv_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "m": 3,
+    "n": 100,
+    "trans": true
+   },
+   "verified": false,
+   "outcome": "a_length_mismatch",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "gemm.blocked.sgemm_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "m": 3,
+    "n": 100,
+    "k": 3,
+    "alpha": 0.05,
+    "beta": 0.2,
+    "trans_a": true,
+    "trans_b": true
+   },
+   "verified": false,
+   "outcome": "a_length_mismatch",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "gemm.contract.gemm_backend_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "gemm.contract.gemm_dims_check": {
+   "args": {
+    "m": 3,
+    "n": 100,
+    "k": 3,
+    "len_a": 6,
+    "len_b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "gemm.contract.gemm_scalars_ok": {
+   "args": {
+    "alpha": 0.05,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "gemm.contract.gemm_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "gemm.contract.gemm_work_fits": {
+   "args": {
+    "m": 3,
+    "n": 100,
+    "k": 3,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "gemm.quantized.gemm_nf4_flat": {
+   "args": {
+    "w_codes": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "w_scales": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "x": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "m": 2,
+    "n": 2,
+    "k": 2,
+    "block": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.083
+  },
+  "gemm.quantized.gemv_int_flat": {
+   "args": {
+    "w_codes": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "w_scales": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "x": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "m": 2,
+    "n": 2,
+    "block": 2,
+    "bits": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.074
+  },
+  "gemm.quantized.gemv_nf4_flat": {
+   "args": {
+    "w_codes": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "w_scales": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "x": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "m": 2,
+    "n": 2,
+    "block": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.423
+  },
+  "gemm.quantized.quantized_gemv_golden_delta": {
+   "args": {
+    "w_codes": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "w_scales": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "x": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "m": 2,
+    "n": 2,
+    "block": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.321
+  },
+  "kv_cache.incremental_decode_kv_append": {
+   "args": {
+    "current_len": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "kv_cache.kv_cache_memory_per_layer": {
+   "args": {
+    "batch_size": 5.0,
+    "seq_len": 1.5,
+    "n_heads": 5.0,
+    "head_dim": 1.5,
+    "dtype_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "kv_cache.kv_cache_total_memory": {
+   "args": {
+    "per_layer_bytes": 1.5,
+    "n_layers": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "kv_cache.kv_cache_utilization": {
+   "args": {
+    "cached_tokens": 1.5,
+    "max_tokens": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "kv_cache.kv_eviction_score_h2o": {
+   "args": {
+    "attention_sum": 15.0,
+    "recency_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "kv_cache.kv_eviction_score_lru": {
+   "args": {
+    "last_access_time": 1.0,
+    "current_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "kv_cache.kv_quantization_error": {
+   "args": {
+    "value": 2.5,
+    "scale": 1.0,
+    "zero_point": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "kv_cache.paged_attention_block_count": {
+   "args": {
+    "seq_len": 1.5,
+    "block_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "kv_cache.prefix_cache_hit_bytes": {
+   "args": {
+    "shared_prefix_len": 1.5,
+    "n_heads": 5.0,
+    "head_dim": 1.5,
+    "n_layers": 5.0,
+    "dtype_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "kv_cache.radix_cache_shared_prefix_len": {
+   "args": {
+    "prefix_a_len": 1.0,
+    "prefix_b_len": 2.0,
+    "match_len": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "llm_sampling.beam_score_update": {
+   "args": {
+    "current_score": 0.8,
+    "next_log_prob": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "llm_sampling.greedy_token_id": {
+   "args": {
+    "max_logit": 1.0,
+    "current_logit": 1.5,
+    "current_id": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.029
+  },
+  "llm_sampling.length_penalty": {
+   "args": {
+    "log_prob_sum": 15.0,
+    "length": 5.0,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "llm_sampling.min_p_threshold": {
+   "args": {
+    "max_prob": 0.5,
+    "min_p": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "llm_sampling.pow_approx": {
+   "args": {
+    "base": 10.0,
+    "exponent": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "llm_sampling.repetition_penalty_scale": {
+   "args": {
+    "logit": 1.5,
+    "penalty": 1.1,
+    "token_appeared": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "llm_sampling.temperature_scale": {
+   "args": {
+    "logit": 1.5,
+    "temperature": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "llm_sampling.token_frequency_penalty": {
+   "args": {
+    "logit": 1.5,
+    "token_count": 5.0,
+    "frequency_penalty": 1.1,
+    "presence_penalty": 1.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "llm_sampling.top_k_threshold": {
+   "args": {
+    "k_th_logit": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "llm_sampling.top_p_cumulative": {
+   "args": {
+    "sorted_prob": 0.5,
+    "cumulative_so_far": 1.5,
+    "p": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "llm_sampling.typical_p_score": {
+   "args": {
+    "token_log_prob": 0.5,
+    "entropy": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "llmk.contract.llmk_argmax_dims_check": {
+   "args": {
+    "n": 100,
+    "len_logits": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "llmk.contract.llmk_gemv_dims_check": {
+   "args": {
+    "m": 3,
+    "n": 100,
+    "len_a": 6,
+    "len_x": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "llmk.contract.llmk_kv_append_dims_check": {
+   "args": {
+    "cache_len": 5,
+    "len_cache": 5,
+    "n_new": 100,
+    "len_new": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "llmk.contract.llmk_residual_dims_check": {
+   "args": {
+    "n": 100,
+    "len_a": 6,
+    "len_b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "llmk.contract.llmk_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.029
+  },
+  "llmk.gemv_fast.gemv_transposed_parallel_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "m": 3,
+    "n": 100
+   },
+   "verified": false,
+   "outcome": "llmk_gemv_a_length_mismatch",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "llmk.generate.greedy_argmax_flat": {
+   "args": {
+    "logits": [
+     2.0,
+     -1.0,
+     0.5,
+     1.5,
+     -0.5
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "llmk.generate.kv_cache_append_flat": {
+   "args": {
+    "cache": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "new_vals": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "cache_len": 5,
+    "n_new": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "llmk.residual.residual_add_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.319
+  },
+  "lossk.contract.loss_chunk_check": {
+   "args": {
+    "chunk": 5,
+    "vocab": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "lossk.contract.loss_dims_check": {
+   "args": {
+    "n_tok": 100,
+    "d_model": 16,
+    "vocab": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "lossk.contract.loss_logit_cells": {
+   "args": {
+    "chunk": 5,
+    "vocab": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "lossk.contract.loss_scalars_ok": {
+   "args": {
+    "value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "lossk.contract.loss_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "lossk.contract.loss_targets_in_range": {
+   "args": {
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "n_tok": 5,
+    "vocab": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "lossk.contract.loss_tol_for": {
+   "args": {
+    "magnitude": 1.5,
+    "reduction_width": 8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "lossk.contract.loss_work_fits": {
+   "args": {
+    "n_tok": 100,
+    "d_model": 16,
+    "vocab": 100,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "lossk.cross_entropy.ce_chunk_invariance_flat": {
+   "args": {
+    "hidden": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "n_tok": 5,
+    "d_model": 3,
+    "vocab": 3
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:hidden: n_tok=5, d_model=3 counts more elements than hidden holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "lossk.cross_entropy.ce_from_logits_flat": {
+   "args": {
+    "logits": [
+     2.0,
+     -1.0,
+     0.5,
+     1.5,
+     -0.5,
+     2.0,
+     -1.0,
+     0.5,
+     1.5
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "n_tok": 5,
+    "vocab": 3
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:logits: n_tok=5, vocab=3 counts more elements than logits holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "lossk.cross_entropy.ce_peak_logit_cells": {
+   "args": {
+    "n_tok": 100,
+    "vocab": 100,
+    "chunk": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "lossk.cross_entropy.fused_linear_ce_bwd_flat": {
+   "args": {
+    "hidden": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "n_tok": 5,
+    "d_model": 3,
+    "vocab": 3
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:hidden: n_tok=5, d_model=3 counts more elements than hidden holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "lossk.cross_entropy.fused_linear_ce_flat": {
+   "args": {
+    "hidden": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "targets": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "n_tok": 5,
+    "d_model": 3,
+    "vocab": 3,
+    "chunk": 5
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:hidden: n_tok=5, d_model=3 counts more elements than hidden holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "metaldispatch.contract.metaldispatch_dispatch_budget": {
+   "args": {
+    "n_layers": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "metaldispatch.contract.metaldispatch_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "metaldispatch.qwen3_decode.qwen3_i8_allsimd7_decode_flat": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_batched_prefill_decode_anyqwen3": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_msl_parity_all_roles": true,
+    "wire_prompt_ids": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "prompt_lens": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_native_grouped_fa_attn": true
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_msl": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_native_grouped_fa_attn": true,
+    "use_msl_parity_all_roles": true
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_native_grouped_fa_attn_no_mirror": true,
+    "use_qkv_proj_bm64": true
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_native_grouped_fa_attn_no_mirror": true,
+    "use_msl_parity_all_roles": true,
+    "warmup_prefills": 5
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_native_grouped_fa_attn_no_mirror": true,
+    "use_qkv_proj_bm64": true,
+    "use_vecload4_all_roles": true
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_native_grouped_fa_attn": true,
+    "use_vecload4_all_roles": true,
+    "warmup_prefills": 5
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "use_native_grouped_fa_attn_no_mirror": true,
+    "use_msl_parity_all_roles": true,
+    "wire_prompt_ids": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "warmup_prefills": 5
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled": {
+   "args": {
+    "checkpoint_dir": "reports",
+    "max_new_tokens": 4,
+    "temperature": 0.7,
+    "top_k": 3,
+    "top_p": 0.9,
+    "min_p": 0.5,
+    "repeat_penalty": 1.1,
+    "presence_penalty": 1.1,
+    "frequency_penalty": 1.1,
+    "seed": 42,
+    "wire_prompt_ids": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": false,
+   "outcome": "metaldispatch_checkpoint_unreadable",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "metaldispatch.session_prefill_policy.decode_path_name": {
+   "args": {
+    "path": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "metaldispatch.session_prefill_policy.kv_contract_name": {
+   "args": {
+    "contract": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "metaldispatch.session_prefill_policy.pf_attn_path_name": {
+   "args": {
+    "path": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "metaldispatch.session_prefill_policy.pf_gemm_path_name": {
+   "args": {
+    "path": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.029
+  },
+  "metaldispatch.session_prefill_policy.resolve_prefill_execution_plan": {
+   "args": {
+    "requested": {
+     "attention_requested": 5,
+     "gemm_requested": 5
+    },
+    "af_grouped_fa_available": true,
+    "bm64_available": true,
+    "vecload4_qkv_available": true,
+    "vecload4_accum_available": true,
+    "vecload4_swiglu_available": true,
+    "msl_parity_qkv_available": true,
+    "msl_parity_accum_available": true,
+    "msl_parity_swiglu_available": true,
+    "parametric_native_decode_available": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "mlpk.activation.gated_ffn_bwd_flat": {
+   "args": {
+    "dy": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "value": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gate": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "n_tok": 3,
+    "d_ff": 3,
+    "kind": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.117
+  },
+  "mlpk.activation.gated_ffn_fwd_flat": {
+   "args": {
+    "value": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gate": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "n_tok": 3,
+    "d_ff": 3,
+    "kind": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "mlpk.activation.mlp_gelu_agreement": {
+   "args": {
+    "lo": 0.0,
+    "hi": 1.0,
+    "samples": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "mlpk.activation.mlp_gelu_erf": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "mlpk.activation.mlp_gelu_erf_grad": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "mlpk.activation.mlp_gelu_tanh_grad": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "mlpk.activation.swiglu_gradcheck_flat": {
+   "args": {
+    "value": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gate": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "n_tok": 3,
+    "d_ff": 3,
+    "kind": 5,
+    "step": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "mlpk.contract.mlp_activation_known": {
+   "args": {
+    "kind": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "mlpk.contract.mlp_backend_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "mlpk.contract.mlp_block_dims_ok": {
+   "args": {
+    "tokens": 4,
+    "d_model": 16,
+    "d_ff": 5,
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "wg": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "wu": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "wd": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "mlpk.contract.mlp_dims_check": {
+   "args": {
+    "n_tok": 100,
+    "d_model": 16,
+    "d_ff": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "mlpk.contract.mlp_pair_ok": {
+   "args": {
+    "n": 100,
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "mlpk.contract.mlp_scalars_ok": {
+   "args": {
+    "value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.028
+  },
+  "mlpk.contract.mlp_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "mlpk.contract.mlp_tol_for": {
+   "args": {
+    "magnitude": 1.5,
+    "reduction_width": 8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "mlpk.contract.mlp_vocab_check": {
+   "args": {
+    "n_tok": 100,
+    "vocab": 100,
+    "d_model": 16
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "mlpk.contract.mlp_work_fits": {
+   "args": {
+    "n_tok": 100,
+    "d_model": 16,
+    "d_ff": 5,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "mlpk.contract.mlp_workers_for": {
+   "args": {
+    "n": 100,
+    "requested": 5,
+    "physical_cores": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "mlpk.embedding.embedding_bwd_flat": {
+   "args": {
+    "dy": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "ids": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "n_tok": 5,
+    "vocab": 100,
+    "d_model": 3
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:dy: n_tok=5, d_model=3 counts more elements than dy holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "mlpk.embedding.embedding_fwd_flat": {
+   "args": {
+    "weight": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "ids": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "n_tok": 5,
+    "vocab": 3,
+    "d_model": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "mlpk.embedding.embedding_ids_in_range": {
+   "args": {
+    "ids": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "n_tok": 5,
+    "vocab": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "mlpk.gated_ffn.gate_bytes_moved": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.144
+  },
+  "mlpk.gated_ffn.geglu_erf_gate": {
+   "args": {
+    "gate": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "up": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "requested_workers": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.133
+  },
+  "mlpk.gated_ffn.geglu_tanh_fast_gate": {
+   "args": {
+    "gate": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "up": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "requested_workers": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.09
+  },
+  "mlpk.gated_ffn.geglu_tanh_gate": {
+   "args": {
+    "gate": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "up": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "requested_workers": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.111
+  },
+  "mlpk.gated_ffn.swiglu_ffn_block": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "wg": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "wu": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "wd": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "tokens": 4,
+    "d_model": 16,
+    "d_ff": 5
+   },
+   "verified": false,
+   "outcome": "length_mismatch",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "mlpk.gated_ffn.swiglu_gate": {
+   "args": {
+    "gate": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "up": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "requested_workers": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.078
+  },
+  "normk.contract.norm_dims_check": {
+   "args": {
+    "n_rows": 3,
+    "n_cols": 3,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "normk.contract.norm_eps_ok": {
+   "args": {
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "normk.contract.norm_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "normk.contract.norm_tol_for": {
+   "args": {
+    "magnitude": 1.5,
+    "n_cols": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "normk.contract.norm_work_fits": {
+   "args": {
+    "n_rows": 3,
+    "n_cols": 3,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "normk.layernorm.layernorm_bwd_flat": {
+   "args": {
+    "dy": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gamma": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "mean": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "rstd": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_rows": 5,
+    "n_cols": 5
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:dy: n_rows=5, n_cols=5 counts more elements than dy holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "normk.layernorm.layernorm_fwd_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gamma": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "beta": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_rows": 3,
+    "n_cols": 5,
+    "eps": 1e-06
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:x: n_rows=3, n_cols=5 counts more elements than x holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "normk.layernorm.layernorm_gradcheck_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gamma": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "beta": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_rows": 3,
+    "n_cols": 5,
+    "eps": 1e-06,
+    "step": 1.5
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:x: n_rows=3, n_cols=5 counts more elements than x holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "normk.layernorm.layernorm_variance_agrees_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "n_rows": 3,
+    "n_cols": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.141
+  },
+  "normk.rmsnorm.rmsnorm_agrees_with_frozen_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gamma": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_rows": 3,
+    "n_cols": 5,
+    "eps": 1e-06
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:x: n_rows=3, n_cols=5 counts more elements than x holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "normk.rmsnorm.rmsnorm_bwd_flat": {
+   "args": {
+    "dy": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gamma": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "rstd": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_rows": 5,
+    "n_cols": 5
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:dy: n_rows=5, n_cols=5 counts more elements than dy holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "normk.rmsnorm.rmsnorm_fwd_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gamma": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_rows": 3,
+    "n_cols": 5,
+    "eps": 1e-06
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:x: n_rows=3, n_cols=5 counts more elements than x holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "normk.rmsnorm.rmsnorm_gradcheck_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "gamma": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_rows": 3,
+    "n_cols": 5,
+    "eps": 1e-06,
+    "step": 1.5
+   },
+   "verified": false,
+   "outcome": "invalid:ValidationError:x: n_rows=3, n_cols=5 counts more elements than x holds (9)",
+   "source": "rules",
+   "ms": 0.0
+  },
+  "paged_kv_cache.block_copy_cost": {
+   "args": {
+    "block_size_tokens": 5.0,
+    "n_layers": 5.0,
+    "n_heads": 5.0,
+    "head_dim": 1.5,
+    "dtype_bytes": 1.5,
+    "bandwidth_gbs": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "paged_kv_cache.cache_compaction_gain": {
+   "args": {
+    "fragmented_blocks": 1.5,
+    "block_size_tokens": 5.0,
+    "dtype_bytes": 1.5,
+    "n_layers": 5.0,
+    "n_heads": 5.0,
+    "head_dim": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.117
+  },
+  "paged_kv_cache.cache_eviction_beladys_score": {
+   "args": {
+    "next_access_step": 1.5,
+    "current_step": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "paged_kv_cache.cache_eviction_lru_score": {
+   "args": {
+    "last_access_step": 1.5,
+    "current_step": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "paged_kv_cache.cache_hit_latency_saving": {
+   "args": {
+    "prompt_tokens": 1.5,
+    "prefill_throughput_tps": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "paged_kv_cache.context_extension_factor": {
+   "args": {
+    "original_max_len": 1.0,
+    "target_max_len": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "paged_kv_cache.dynamic_ntk_rope_scale": {
+   "args": {
+    "seq_len": 1.5,
+    "base_context": 10.0,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "paged_kv_cache.page_table_lookup": {
+   "args": {
+    "virtual_block_id": 1.5,
+    "page_table_entry": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "paged_kv_cache.prefix_sharing_savings": {
+   "args": {
+    "shared_prefix_tokens": 1.5,
+    "n_sequences": 5.0,
+    "n_layers": 5.0,
+    "n_heads": 5.0,
+    "head_dim": 1.5,
+    "dtype_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "paged_kv_cache.speculative_branch_memory": {
+   "args": {
+    "n_branches": 5.0,
+    "speculation_depth": 2.0,
+    "n_layers": 5.0,
+    "n_heads": 5.0,
+    "head_dim": 1.5,
+    "dtype_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "propensity.balance_check": {
+   "args": {
+    "features_treated": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "features_control": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "propensity.caliper_match": {
+   "args": {
+    "scores_treated": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "scores_control": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "caliper": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "propensity.match_quality": {
+   "args": {
+    "matches": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "propensity.matched_ate": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "matches": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "propensity.nearest_neighbor_match": {
+   "args": {
+    "scores_treated": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "scores_control": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "propensity.propensity_overlap": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "propensity.propensity_scores": {
+   "args": {
+    "features": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "propensity.stratified_estimate": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "n_strata": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "propensity.trimmed_sample": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "lo": 0.0,
+    "hi": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "residentk.contract.residentk_cache_elements": {
+   "args": {
+    "n_layers": 2,
+    "h_kv": 5,
+    "d_head": 5,
+    "max_ctx": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "residentk.contract.residentk_context_check": {
+   "args": {
+    "n_prompt": 100,
+    "n_new": 100,
+    "max_ctx": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "residentk.contract.residentk_dims_check": {
+   "args": {
+    "d_model": 16,
+    "h_q": 89,
+    "h_kv": 5,
+    "d_head": 5,
+    "d_ff": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "residentk.contract.residentk_dispatch_budget": {
+   "args": {
+    "n_layers": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "residentk.contract.residentk_dispatch_budget_deep": {
+   "args": {
+    "n_layers": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "residentk.contract.residentk_prefill_gemm_use_narrow_tile": {
+   "args": {
+    "m_rows": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "residentk.contract.residentk_scalars_ok": {
+   "args": {
+    "eps": 1e-06,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "residentk.contract.residentk_splitk_max_n_splits": {
+   "args": {
+    "n_cores": 100,
+    "h_q": 89
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "residentk.contract.residentk_splitk_policy": {
+   "args": {
+    "n_keys": 100,
+    "n_cores": 100,
+    "h_q": 89
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "residentk.contract.residentk_splitk_should_split": {
+   "args": {
+    "n_keys": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "residentk.contract.residentk_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "residentk.contract.residentk_weight_elems": {
+   "args": {
+    "d_model": 16,
+    "h_q": 89,
+    "h_kv": 5,
+    "d_head": 5,
+    "d_ff": 5,
+    "n_layers": 2,
+    "vocab": 100,
+    "max_ctx": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "residentk.probe.resident_available": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "residentk.probe.resident_gpu_kernels_compiled": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.023
+  },
+  "residentk.probe.resident_session_probe": {
+   "args": {
+    "d_model": 16,
+    "h_q": 89,
+    "h_kv": 5,
+    "d_head": 5,
+    "d_ff": 5,
+    "n_layers": 2,
+    "vocab": 100
+   },
+   "verified": false,
+   "outcome": "resident_head_geometry_unsupported",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "sparse_attention.bigbird_random_block_select": {
+   "args": {
+    "block_id": 1.5,
+    "n_blocks": 5.0,
+    "random_seed": 1.5,
+    "n_random": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "sparse_attention.block_sparse_density": {
+   "args": {
+    "n_attended_blocks": 5.0,
+    "total_blocks": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "sparse_attention.chunk_cross_attention_weight": {
+   "args": {
+    "chunk_query": 1.5,
+    "chunk_key": 1.5,
+    "n_chunks": 5.0,
+    "head_dim": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "sparse_attention.hyper_attention_estimate": {
+   "args": {
+    "high_attn_score": 0.8,
+    "random_sample_score": 0.8,
+    "n_high": 1.0,
+    "n_random": 5.0,
+    "seq_len": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "sparse_attention.landmark_token_score": {
+   "args": {
+    "landmark_attention": 1.5,
+    "block_attention": 1.5,
+    "is_landmark": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "sparse_attention.linear_attention_kernel": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "sparse_attention.local_window_mask": {
+   "args": {
+    "query_pos": 1.5,
+    "key_pos": 1.5,
+    "window_left": 1.5,
+    "window_right": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "sparse_attention.longformer_global_score": {
+   "args": {
+    "query": 1.5,
+    "key": 1.5,
+    "head_dim": 1.5,
+    "is_global": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "sparse_attention.recurrent_memory_update": {
+   "args": {
+    "memory": 1.5,
+    "new_key": 1.5,
+    "new_value": 2.5,
+    "decay": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "sparse_attention.streaming_llm_sink_score": {
+   "args": {
+    "position": 1.5,
+    "n_sink_tokens": 5.0,
+    "window_size": 5.0,
+    "seq_len": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "tensorx.buffer.tx_buf_decode_flat": {
+   "args": {
+    "data": [
+     0,
+     64,
+     128,
+     192,
+     255
+    ],
+    "n": 100,
+    "dtype": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "tensorx.buffer.tx_buf_element_width_bytes": {
+   "args": {
+    "dtype": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "tensorx.buffer.tx_buf_encode_flat": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "dtype": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "tensorx.buffer.tx_buf_make": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "dims": [
+     3,
+     3
+    ],
+    "rank": 2,
+    "dtype": 5
+   },
+   "verified": false,
+   "outcome": "shape_mismatch",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "tensorx.buffer.tx_buf_required_bytes": {
+   "args": {
+    "dims": [
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "rank": 5,
+    "dtype": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "tensorx.buffer.tx_buf_required_bytes_flat": {
+   "args": {
+    "n": 100,
+    "dtype": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "tensorx.buffer.tx_buf_to_values": {
+   "args": {
+    "buf": {
+     "data": [
+      0,
+      64,
+      128,
+      192,
+      255
+     ],
+     "dims": [
+      3,
+      3
+     ],
+     "rank": 2,
+     "dtype": 5,
+     "status": 200
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "tensorx.contract.tx_all_finite": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "tensorx.contract.tx_count_ok": {
+   "args": {
+    "n": 100,
+    "length": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "tensorx.contract.tx_dims_fit": {
+   "args": {
+    "rows": 3,
+    "cols": 3,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "tensorx.contract.tx_finite": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "tensorx.contract.tx_numel_checked": {
+   "args": {
+    "dims": [
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "n": 5,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "tensorx.contract.tx_shape_ok": {
+   "args": {
+    "rows": 3,
+    "cols": 3,
+    "data_len": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "tensorx.contract.tx_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "tensorx.dtype.dtx_accum_dtype": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "tensorx.dtype.dtx_bf16_frozen_delta": {
+   "args": {
+    "value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "tensorx.dtype.dtx_bits": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "tensorx.dtype.dtx_bytes_per_1024": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "tensorx.dtype.dtx_dtype_from_name": {
+   "args": {
+    "name": "alpha"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "tensorx.dtype.dtx_dtype_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "tensorx.dtype.dtx_eps": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "tensorx.dtype.dtx_is_float": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.028
+  },
+  "tensorx.dtype.dtx_is_sub_byte": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "tensorx.dtype.dtx_is_supported": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "tensorx.dtype.dtx_max_finite": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "tensorx.dtype.dtx_round_trip": {
+   "args": {
+    "value": 2.5,
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "tensorx.dtype.dtx_round_trip_list": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "tensorx.dtype.dtx_tol_for": {
+   "args": {
+    "quantity": 1.5,
+    "code": 200,
+    "abs_tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "tensorx.elementwise.tx_ew_add": {
+   "args": {
+    "a_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_rank": 2,
+    "a_dtype": 6,
+    "b_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_rank": 2,
+    "b_dtype": 4
+   },
+   "verified": false,
+   "outcome": "dtype_mismatch",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "tensorx.elementwise.tx_ew_cast": {
+   "args": {
+    "bytes": [
+     0,
+     64,
+     128,
+     192,
+     255
+    ],
+    "n": 100,
+    "from_dtype": 5,
+    "to_dtype": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "tensorx.elementwise.tx_ew_div": {
+   "args": {
+    "a_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_rank": 2,
+    "a_dtype": 6,
+    "b_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_rank": 2,
+    "b_dtype": 4
+   },
+   "verified": false,
+   "outcome": "dtype_mismatch",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "tensorx.elementwise.tx_ew_mul": {
+   "args": {
+    "a_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_rank": 2,
+    "a_dtype": 6,
+    "b_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_rank": 2,
+    "b_dtype": 4
+   },
+   "verified": false,
+   "outcome": "dtype_mismatch",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "tensorx.elementwise.tx_ew_sub": {
+   "args": {
+    "a_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "a_rank": 2,
+    "a_dtype": 6,
+    "b_bytes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_dims": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "b_rank": 2,
+    "b_dtype": 4
+   },
+   "verified": false,
+   "outcome": "dtype_mismatch",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "tensorx.pack.calibrate_absmax": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "tensorx.pack.calibrate_percentile": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "p": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "tensorx.pack.dequantize_blockwise": {
+   "args": {
+    "codes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scales": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "block": 5,
+    "n_bits": 8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "tensorx.pack.dequantize_nf4": {
+   "args": {
+    "codes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scales": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "block": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "tensorx.pack.double_quant_scales": {
+   "args": {
+    "scales": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_blocks": 5,
+    "outer_block": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "tensorx.pack.int4_error_vs_frozen": {
+   "args": {
+    "x": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "tensorx.pack.nf4_levels": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "tensorx.pack.pack_int4": {
+   "args": {
+    "codes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "tensorx.pack.quant_error_report": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "recon": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "tensorx.pack.quantize_blockwise": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "block": 5,
+    "n_bits": 8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "tensorx.pack.quantize_nf4": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5,
+    "block": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "tensorx.pack.unpack_int4": {
+   "args": {
+    "packed": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_values": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "tensorx.reduce.tx_reduce_max": {
+   "args": {
+    "data": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "n": 2,
+    "dtype": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.087
+  },
+  "tensorx.reduce.tx_reduce_mean": {
+   "args": {
+    "data": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "n": 2,
+    "dtype": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.054
+  },
+  "tensorx.reduce.tx_reduce_min": {
+   "args": {
+    "data": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "n": 2,
+    "dtype": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.054
+  },
+  "tensorx.reduce.tx_reduce_stddev": {
+   "args": {
+    "data": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "n": 2,
+    "dtype": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.052
+  },
+  "tensorx.reduce.tx_reduce_sum": {
+   "args": {
+    "data": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "n": 2,
+    "dtype": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.054
+  },
+  "tensorx.reduce.tx_reduce_sum_narrow_accum": {
+   "args": {
+    "data": [
+     0,
+     64,
+     128,
+     192,
+     255
+    ],
+    "n": 100,
+    "dtype": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "tensorx.reduce.tx_reduce_variance": {
+   "args": {
+    "data": [
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "n": 2,
+    "dtype": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.043
+  },
+  "tensorx.shape.tx_shape_broadcast_dims": {
+   "args": {
+    "dims_a": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "rank_a": 5,
+    "dims_b": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "rank_b": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "tensorx.shape.tx_shape_broadcast_status": {
+   "args": {
+    "dims_a": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "rank_a": 5,
+    "dims_b": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "rank_b": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "tensorx.shape.tx_shape_broadcastable": {
+   "args": {
+    "dims_a": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "rank_a": 6,
+    "dims_b": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "rank_b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "tensorx.shape.tx_shape_is_contiguous": {
+   "args": {
+    "dims": [
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "strides": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "rank": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "tensorx.shape.tx_shape_make": {
+   "args": {
+    "dims": [
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "rank": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "tensorx.shape.tx_shape_numel": {
+   "args": {
+    "dims": [
+     3,
+     3
+    ],
+    "rank": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "tensorx.shape.tx_shape_status": {
+   "args": {
+    "dims": [
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "rank": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "tensorx.shape.tx_shape_strides": {
+   "args": {
+    "dims": [
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "rank": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "tensorx.shape.tx_shape_validate": {
+   "args": {
+    "dims": [
+     3,
+     3,
+     3,
+     3,
+     3
+    ],
+    "rank": 5,
+    "data_len": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.109
+  },
+  "text.tokenizer.char_ngrams": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog",
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "text.tokenizer.is_stopword": {
+   "args": {
+    "word": "kernel"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "text.tokenizer.pad_sequence": {
+   "args": {
+    "tokens": [
+     "the",
+     "quick",
+     "brown",
+     "fox",
+     "jumps"
+    ],
+    "max_len": 10,
+    "pad_token": "kernel"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "text.tokenizer.remove_stopwords": {
+   "args": {
+    "tokens": [
+     "the",
+     "quick",
+     "brown",
+     "fox",
+     "jumps"
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "text.tokenizer.sentence_tokenize": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "text.tokenizer.stem_simple": {
+   "args": {
+    "word": "kernel"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "text.tokenizer.token_frequency": {
+   "args": {
+    "tokens": [
+     "the",
+     "quick",
+     "brown",
+     "fox",
+     "jumps"
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "text.tokenizer.vocabulary_size": {
+   "args": {
+    "tokens": [
+     "the",
+     "quick",
+     "brown",
+     "fox",
+     "jumps"
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "text.tokenizer.word_ngrams": {
+   "args": {
+    "tokens": [
+     "the",
+     "quick",
+     "brown",
+     "fox",
+     "jumps"
+    ],
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "text.tokenizer.word_tokenize": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "token_bucket.lb_add": {
+   "args": {
+    "bucket": {
+     "capacity": 1.5,
+     "current": 1.5,
+     "leak_rate": 0.05,
+     "last_leak": 1.5
+    },
+    "amount": 100.0,
+    "current_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "token_bucket.lb_create": {
+   "args": {
+    "capacity": 1.5,
+    "leak_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "token_bucket.lb_leak": {
+   "args": {
+    "bucket": {
+     "capacity": 1.5,
+     "current": 1.5,
+     "leak_rate": 0.05,
+     "last_leak": 1.5
+    },
+    "current_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "token_bucket.lb_level": {
+   "args": {
+    "bucket": {
+     "capacity": 1.5,
+     "current": 1.5,
+     "leak_rate": 0.05,
+     "last_leak": 1.5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "token_bucket.sw_allow": {
+   "args": {
+    "window": {
+     "timestamps": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0
+     ],
+     "window_size": 5.0,
+     "max_requests": 10
+    },
+    "current_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "token_bucket.sw_count": {
+   "args": {
+    "window": {
+     "timestamps": [
+      0.0,
+      1.0,
+      2.0,
+      3.0,
+      4.0
+     ],
+     "window_size": 5.0,
+     "max_requests": 10
+    },
+    "current_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "token_bucket.sw_create": {
+   "args": {
+    "window_size": 5.0,
+    "max_requests": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "token_bucket.tb_available": {
+   "args": {
+    "bucket": {
+     "capacity": 1.5,
+     "tokens": 1.5,
+     "refill_rate": 0.05,
+     "last_refill": 1.5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "token_bucket.tb_consume": {
+   "args": {
+    "bucket": {
+     "capacity": 1.5,
+     "tokens": 1.5,
+     "refill_rate": 0.05,
+     "last_refill": 1.5
+    },
+    "tokens": 1.5,
+    "current_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "token_bucket.tb_create": {
+   "args": {
+    "capacity": 1.5,
+    "refill_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "token_bucket.tb_refill": {
+   "args": {
+    "bucket": {
+     "capacity": 1.5,
+     "tokens": 1.5,
+     "refill_rate": 0.05,
+     "last_refill": 1.5
+    },
+    "current_time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "transformer_attention.attention_entropy": {
+   "args": {
+    "attention_weight": 1.0,
+    "n_keys": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "transformer_attention.attention_softmax_stable": {
+   "args": {
+    "score": 0.8,
+    "max_score": 0.8,
+    "sum_exp": 15.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "transformer_attention.causal_mask_value": {
+   "args": {
+    "query_pos": 1.5,
+    "key_pos": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "transformer_attention.cross_attention_score": {
+   "args": {
+    "decoder_q": 0.5,
+    "encoder_k": 105.0,
+    "d_k": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "transformer_attention.flash_attention_block_score": {
+   "args": {
+    "q_dot_k_sum": 15.0,
+    "block_size": 5.0,
+    "d_k": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "transformer_attention.kv_cache_memory_bytes": {
+   "args": {
+    "n_layers": 5.0,
+    "n_heads": 5.0,
+    "d_head": 4.0,
+    "seq_len": 1.5,
+    "batch_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "transformer_attention.multi_head_split": {
+   "args": {
+    "d_model": 4.0,
+    "n_heads": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "transformer_attention.pow_approx": {
+   "args": {
+    "base": 10.0,
+    "exponent": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "transformer_attention.relative_position_bias": {
+   "args": {
+    "query_pos": 1.5,
+    "key_pos": 1.5,
+    "num_buckets": 1.5,
+    "max_distance": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "transformer_attention.rope_rotation_angle": {
+   "args": {
+    "position": 1.5,
+    "dimension_idx": 1.5,
+    "d_model": 4.0,
+    "base": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "transformer_attention.scaled_dot_product_attention": {
+   "args": {
+    "q_dot_k": 105.0,
+    "d_k": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "transformer_blocks.attention_head_output": {
+   "args": {
+    "value": 2.5,
+    "attention_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "transformer_blocks.causal_mask_logit": {
+   "args": {
+    "logit": 1.5,
+    "query_pos": 1.5,
+    "key_pos": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "transformer_blocks.dropout_scale": {
+   "args": {
+    "x": 1.5,
+    "keep_prob": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.028
+  },
+  "transformer_blocks.feedforward_layer1": {
+   "args": {
+    "x": 1.5,
+    "weight": 1.0,
+    "bias": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "transformer_blocks.feedforward_layer2": {
+   "args": {
+    "x": 1.5,
+    "weight": 1.0,
+    "bias": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "transformer_blocks.gated_feedforward": {
+   "args": {
+    "x": 1.5,
+    "gate": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "transformer_blocks.multi_head_split_head": {
+   "args": {
+    "embedding_val": 1.5,
+    "head": 1.5,
+    "head_dim": 1.5,
+    "d_model": 4.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "transformer_blocks.post_norm": {
+   "args": {
+    "x": 1.5,
+    "sublayer_out": 1.5,
+    "norm_scale": 1.0,
+    "norm_bias": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "transformer_blocks.pre_norm": {
+   "args": {
+    "x": 1.5,
+    "norm_out": 1.5,
+    "sublayer_out": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "transformer_blocks.residual_connection": {
+   "args": {
+    "x": 1.5,
+    "sublayer_out": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  }
+ }
+}

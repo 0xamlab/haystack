@@ -41,7 +41,11 @@ def _assert_stylesheet_discipline(css: str) -> None:
     allowed = {0, *design.SPACING}
     for match in SPACING_DECL_RE.finditer(css):
         for value in PX_RE.findall(match.group(1)):
-            assert float(value) in allowed, f"{value}px is off the 8-pt scale in {match.group(0)!r}"
+            # a negative margin that pulls a block into its parent's padding is on the scale
+            # when its magnitude is
+            assert abs(float(value)) in allowed, (
+                f"{value}px is off the 8-pt scale in {match.group(0)!r}"
+            )
 
 
 def _luminance(hex_color: str) -> float:

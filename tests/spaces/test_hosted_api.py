@@ -586,7 +586,7 @@ def test_status_card_is_empty_when_ready_and_a_clean_unavailable_card_otherwise(
     _assert_clean_copy(html)
     hg, _ = make({"me": SdkRateLimitError(retry_after=9)})
     html = hosted_api.render_status_card(hg.status())
-    assert "HOSTED-RATE-LIMITED" in html
+    assert hosted_api.RATE_LIMITED_CODE in html
     _assert_clean_copy(html)
     for text in (hosted_api.NOT_CONFIGURED_REASON, hosted_api.REJECTED_KEY_REASON):
         _assert_clean_copy(text)

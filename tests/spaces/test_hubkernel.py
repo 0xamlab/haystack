@@ -17,8 +17,10 @@ import pytest
 from _rules import _assert_clean_copy
 from algenta_spaces import hubkernel as hk
 
-STATS_SHA = "ac35ffe20385f0eb7d2a1d2f1f935dc3a287c886"
-TEXT_SHA = "fb2cab4558c5ace333d832d0a0c4b807ba0357f1"
+STATS_SHA = hk.FROZEN_CAPPED_V1_SHAS[
+    "thyn-ai/algenta-stats"
+]  # the capped v1 the fixtures were recorded at
+TEXT_SHA = hk.FROZEN_CAPPED_V1_SHAS["thyn-ai/algenta-text"]
 VARIANT = "torch29-cxx11-cpu-x86_64-linux"
 
 
@@ -332,8 +334,8 @@ def test_load_passes_trust_and_reads_variant_and_shas(stats):
     assert loaded.kernel is stats
     assert loaded.variant == VARIANT
     assert loaded.capped_v1_sha == STATS_SHA and loaded.snapshot_sha == STATS_SHA
-    assert loaded.pinned is True and loaded.short_sha == "ac35ffe"
-    assert loaded.label() == "algenta-stats@ac35ffe"
+    assert loaded.pinned is True and loaded.short_sha == STATS_SHA[:7]
+    assert loaded.label() == f"algenta-stats@{STATS_SHA[:7]}"
     assert loaded.load_s == pytest.approx(0.25)
     assert loaded.warm is False and loaded.warmup_ms is None and loaded.is_umbrella is False
 
@@ -347,6 +349,87 @@ def test_load_passes_trust_and_reads_variant_and_shas(stats):
     assert other.backend == "metal" and other.version == 2
     assert other.pinned is False  # the cache holds another revision than the capped one
     assert other.capped_v1_sha == TEXT_SHA and other.snapshot_sha == "0" * 40
+
+
+def test_labels_name_the_snapshot_that_loaded_not_the_manifest():
+    """Round 2 P1: the LLM lane read `algenta-llm@a01e2b2` and the Ecosystem row `v1 · a01e2b2`
+    while the cache had loaded snapshot `92ef06d7…` — the page labelled code it did not run.
+    `label()`, `short_sha` and `wheel_sha` come from the snapshot; the manifest's sha stays
+    beside it as `capped_v1_sha`, and the disagreement is a fact, not a log line."""
+    capped = hk.FROZEN_CAPPED_V1_SHAS["thyn-ai/algenta-llm"]
+    moved = "deadbeef" * 5  # a v1 that moved past the frozen capped sha, whatever that is today
+    assert moved != capped
+    llm = fake_kernel("algenta-llm", moved, TEXT_CONTRACT)
+    loaded = hk.load("llm", get_kernel=FakeGetKernel(algenta_llm=llm))
+    assert loaded.snapshot_sha == moved and loaded.capped_v1_sha == capped
+    assert loaded.revision_known is True and loaded.pinned is False
+    assert loaded.loaded_sha == moved and loaded.wheel_sha == moved
+    assert loaded.short_sha == "deadbee" and loaded.label() == "algenta-llm@deadbee"
+    assert capped[:7] not in loaded.label()
+    assert loaded.revision_note() == (
+        f"algenta-llm: v1 moved past the recorded capped revision — loaded deadbee, capped {capped[:7]}"
+    )
+    assert hk.REVISION_MOVED_NOTE in loaded.revision_note()
+    assert loaded.provenance() == {
+        "capped_v1_sha": capped,
+        "snapshot_sha": moved,
+        "wheel_sha": moved,
+        "pinned": False,
+        "revision_note": loaded.revision_note(),
+    }
+    view = hk.describe(loaded)
+    assert view["snapshot_sha"] == moved and view["wheel_sha"] == moved
+    assert view["pinned"] is False and view["revision_note"] == loaded.revision_note()
+    assert view["capped_v1_sha"] == capped
+    _assert_clean_copy(loaded.revision_note())
+    note = hk.platform_note(loaded, dists=[])
+    assert "algenta-llm@deadbee" in note and capped[:7] not in note
+
+    # the pinned case: the same seven characters either way, and no note
+    stats = fake_kernel("algenta-stats", STATS_SHA, STATS_CONTRACT)
+    pinned = hk.load("stats", get_kernel=FakeGetKernel(algenta_stats=stats))
+    assert pinned.pinned is True and pinned.revision_known is True
+    assert pinned.wheel_sha == STATS_SHA and pinned.label() == f"algenta-stats@{STATS_SHA[:7]}"
+    assert pinned.revision_note() == "" and pinned.provenance()["revision_note"] == ""
+    assert hk.describe(pinned)["pinned"] is True
+
+    # a module outside a Hub snapshot (a local build) has no snapshot: the capped sha is the
+    # only name for it, and it is not reported as moved
+    local = fake_kernel("algenta-text", TEXT_SHA, TEXT_CONTRACT)
+    local.__file__ = "/site-packages/algenta_text/build/torch-universal/__init__.py"
+    unknown = hk.load("text", get_kernel=FakeGetKernel(algenta_text=local))
+    assert unknown.snapshot_sha == "" and unknown.revision_known is False
+    assert unknown.pinned is True and unknown.revision_note() == ""
+    assert unknown.wheel_sha == TEXT_SHA and unknown.label() == f"algenta-text@{TEXT_SHA[:7]}"
+
+
+def test_preload_records_the_families_whose_v1_moved_as_facts(stats):
+    moved_umbrella, moved_llm = "c0ffee00" * 5, "deadbeef" * 5  # past the frozen capped shas
+    capped_umbrella = hk.FROZEN_CAPPED_V1_SHAS["thyn-ai/algenta"][:7]
+    capped_llm = hk.FROZEN_CAPPED_V1_SHAS["thyn-ai/algenta-llm"][:7]
+    umbrella = fake_kernel("algenta", moved_umbrella, STATS_CONTRACT, variant="torch-universal")
+    llm = fake_kernel("algenta-llm", moved_llm, TEXT_CONTRACT)
+    fetch = FakeGetKernel(algenta_stats=stats, algenta=umbrella, algenta_llm=llm)
+    outcome = hk.preload(["stats", "algenta", "llm"], get_kernel=fetch, warm=False, clock=Clock())
+    assert outcome.unpinned == ["algenta", "algenta-llm"]
+    assert outcome.revision_notes() == [
+        f"algenta: v1 moved past the recorded capped revision — loaded c0ffee0, capped {capped_umbrella}",
+        f"algenta-llm: v1 moved past the recorded capped revision — loaded deadbee, capped {capped_llm}",
+    ]
+    assert outcome.summary().endswith(
+        "; v1 moved past the recorded capped revision for algenta, algenta-llm"
+    )
+    assert outcome.summary().startswith("3 families loaded in ")
+    prov = outcome.provenance()
+    assert list(prov) == ["algenta", "algenta-llm", "algenta-stats"]
+    assert prov["algenta-llm"]["wheel_sha"] == moved_llm
+    assert prov["algenta-stats"]["pinned"] is True and prov["algenta-stats"]["revision_note"] == ""
+    for text in (outcome.summary(), *outcome.revision_notes()):
+        _assert_clean_copy(text)
+    # every family pinned: nothing is said
+    quiet = hk.preload(["stats"], get_kernel=FakeGetKernel(algenta_stats=stats), warm=False)
+    assert quiet.unpinned == [] and quiet.revision_notes() == []
+    assert "moved" not in quiet.summary()
 
 
 def test_load_maps_every_failure_to_a_code(stats):
@@ -470,6 +553,8 @@ def test_describe_returns_plain_json_with_excluded_functions_removed(loaded_stat
     json.dumps(view)
     assert view["family"] == "algenta-stats" and view["variant"] == VARIANT
     assert view["capped_v1_sha"] == STATS_SHA and view["backend"] == "cpu"
+    assert view["snapshot_sha"] == STATS_SHA and view["wheel_sha"] == STATS_SHA
+    assert view["pinned"] is True and view["revision_note"] == ""
     assert list(view["modules"]) == ["ab_testing", "env", "matrix_decomp"]
     ab = view["modules"]["ab_testing"]
     assert ab["family"] == "algenta-stats" and ab["description"] == "A/B testing"
@@ -650,13 +735,13 @@ def test_cpu_flags_parse_and_version_helpers(tmp_path: Path):
 
 def test_platform_note_lists_variants_pins_and_the_one_worker_rule(loaded_stats, text):
     note = hk.platform_note(loaded_stats, dists=["pytest", "no-such-dist-xyz"])
-    assert note.startswith(f"Hub kernels · {VARIANT} · algenta-stats@ac35ffe · pytest ")
+    assert note.startswith(f"Hub kernels · {VARIANT} · algenta-stats@{STATS_SHA[:7]} · pytest ")
     assert "no-such-dist-xyz not installed" in note
     assert note.endswith(" · one native call at a time")
     _assert_clean_copy(note)
     loaded_text = hk.load("text", get_kernel=FakeGetKernel(algenta_text=text))
     both = hk.platform_note([loaded_stats, loaded_text], dists=[])
-    assert "algenta-stats@ac35ffe, algenta-text@fb2cab4" in both
+    assert f"algenta-stats@{STATS_SHA[:7]}, algenta-text@{TEXT_SHA[:7]}" in both
     bare = hk.platform_note(dists=[])
     assert bare.startswith("Hub kernels · ") and VARIANT not in bare
     assert "kernels" in hk.platform_note() and "torch" in hk.platform_note()
@@ -681,3 +766,77 @@ def test_verified_extra_card_examples_win_over_the_frozen_table(monkeypatch):
     table = hk.load_card_examples(Path("/nonexistent/module_descriptions.json"))
     m, f, _args = hk.EXTRA_CARD_EXAMPLES[family]
     assert (table[family].module, table[family].function) == (m, f)
+
+
+def test_native_proof_reads_the_package_manifest_and_the_live_ctypes_handle(tmp_path, monkeypatch):
+    """Owner (2026-09-23): "make sure we use true mojo kernels and not some python fallback".
+    The proof is read from the package (manifest, library bytes) and the live runtime handle
+    (`_native.runtime()`), never asserted: `loaded` is True only when the handle names the
+    manifest's library and `algenta_runtime_version()` answers the manifest's ABI."""
+    import json as _json
+    import sys as _sys
+    import types
+
+    pkg = tmp_path / "fakepkg"
+    (pkg / "_native").mkdir(parents=True)
+    (pkg / "_native" / "libalgenta_fake.so").write_bytes(b"\x7fELF fake library bytes")
+    (pkg / "_native" / "manifest.json").write_text(
+        _json.dumps(
+            {
+                "library": "libalgenta_fake.so",
+                "abi_version": 1,
+                "mojo_version": "Mojo 1.0.0 (ed45d567)",
+                "source_commit": "9069cc40272b3095b7c172c75bc1d780d0f24fbd",
+                "platform": "x86_64-linux",
+                "files": {},
+                "load_order": [],
+            }
+        )
+    )
+    defining = types.ModuleType("fakepkg")
+    defining.__file__ = str(pkg / "__init__.py")
+
+    def execute(module, function, args):
+        return {"result": 1}
+
+    execute.__module__ = "fakepkg"
+    defining.execute = execute
+
+    class Lib:
+        @staticmethod
+        def algenta_runtime_version():
+            return 1
+
+    class Runtime:
+        library = "libalgenta_fake.so"
+        _lib = Lib()
+
+    native = types.ModuleType("fakepkg._native")
+    native.runtime = lambda: Runtime()
+    monkeypatch.setitem(_sys.modules, "fakepkg", defining)
+    monkeypatch.setitem(_sys.modules, "fakepkg._native", native)
+    kernel = types.ModuleType("_fake_top")
+    kernel.execute = execute
+    proof = hk.native_proof(kernel)
+    assert proof["library"] == "libalgenta_fake.so" and proof["loaded"] is True
+    assert proof["abi_version"] == 1 and proof["abi_answered"] == 1
+    assert proof["mojo_version"] == "Mojo 1.0.0 (ed45d567)" and proof["source_commit"] == "9069cc4"
+    assert len(proof["sha256"]) == hk.NATIVE_SHA_CHARS and proof["loader"] == "ctypes"
+    # the handle names another library, or answers another ABI: not loaded
+    Runtime.library = "something_else.so"
+    assert hk.native_proof(kernel)["loaded"] is False
+    Runtime.library = "libalgenta_fake.so"
+    Lib.algenta_runtime_version = staticmethod(lambda: 2)
+    assert hk.native_proof(kernel)["loaded"] is False
+    # a runtime that refuses to load: loaded False, the reason kept
+
+    def refuse():
+        raise OSError("dlopen failed")
+
+    native.runtime = refuse
+    broken = hk.native_proof(kernel)
+    assert broken["loaded"] is False and broken["error"].startswith("OSError: dlopen failed")
+    # no execute, or no manifest: no proof at all (never a fabricated one)
+    assert hk.native_proof(types.ModuleType("empty")) is None
+    (pkg / "_native" / "manifest.json").unlink()
+    assert hk.native_proof(kernel) is None

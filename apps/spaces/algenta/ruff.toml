@@ -1,0 +1,5 @@
+# The flagship runs on CPython 3.14 in its image and on 3.12 in the repository test suite
+# (the shared package is vendored next to app.py), so it is linted against the lower floor.
+# Rules come from the repository configuration.
+extend = "../../../pyproject.toml"
+target-version = "py312"

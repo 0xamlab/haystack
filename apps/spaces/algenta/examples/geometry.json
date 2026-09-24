@@ -1,0 +1,1864 @@
+{
+ "family": "geometry",
+ "generated_utc": "2026-09-24T02:21:01Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 116,
+  "verified": 115,
+  "plain": 0,
+  "timeouts": 0,
+  "unverified": 1
+ },
+ "functions": {
+  "biogeochemistry.carbon_use_efficiency": {
+   "args": {
+    "npp": 1.5,
+    "gpp": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 11.791
+  },
+  "biogeochemistry.denitrification_rate": {
+   "args": {
+    "nitrate_conc": 1.5,
+    "denitrifier_biomass": 1.5,
+    "anaerobic_fraction": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.128
+  },
+  "biogeochemistry.global_carbon_budget": {
+   "args": {
+    "fossil_emissions": 1.5,
+    "land_use_change": 1.5,
+    "land_sink": 1.5,
+    "ocean_sink": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "biogeochemistry.methane_oxidation": {
+   "args": {
+    "ch4_conc": 1.5,
+    "oxidation_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "biogeochemistry.net_ecosystem_production": {
+   "args": {
+    "gpp": 1.5,
+    "ecosystem_respiration": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "biogeochemistry.nitrogen_fixation_estimate": {
+   "args": {
+    "acetylene_reduction": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "biogeochemistry.nitrogen_mineralisation": {
+   "args": {
+    "organic_n": 5.0,
+    "mineralisation_rate": 0.05,
+    "temperature_factor": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "biogeochemistry.phosphorus_sorption": {
+   "args": {
+    "dissolved_p": 0.5,
+    "max_sorption": 1.0,
+    "binding_constant": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.105
+  },
+  "biogeochemistry.soil_carbon_turnover": {
+   "args": {
+    "soc_pool": 1.5,
+    "decomposition_rate": 0.05,
+    "clay_protection": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "biogeochemistry.weathering_co2_consumption": {
+   "args": {
+    "cation_flux": 1.5,
+    "charge_equivalents": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "geochemistry.batch_melting": {
+   "args": {
+    "c0": 2.5,
+    "d0": 4.0,
+    "melt_fraction": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "geochemistry.carbonate_saturation": {
+   "args": {
+    "ca_conc": 1.5,
+    "co3_conc": 1.5,
+    "ksp": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "geochemistry.distribution_coefficient": {
+   "args": {
+    "conc_solid": 1.5,
+    "conc_liquid": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "geochemistry.henry_law_gas": {
+   "args": {
+    "partial_pressure": 1.5,
+    "henry_constant": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "geochemistry.isotope_mass_balance": {
+   "args": {
+    "delta_a": 1.0,
+    "fraction_a": 1.0,
+    "delta_b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.043
+  },
+  "geochemistry.organic_carbon_toc": {
+   "args": {
+    "total_carbon": 10.0,
+    "inorganic_carbon": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "geochemistry.partition_melt": {
+   "args": {
+    "c0": 2.5,
+    "d0": 4.0,
+    "melt_fraction": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "geochemistry.rare_earth_normalization": {
+   "args": {
+    "sample_conc": 1.5,
+    "chondrite_conc": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "geochemistry.redox_potential_pe": {
+   "args": {
+    "eh_mv": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "geochemistry.weathering_index": {
+   "args": {
+    "al2o3": 1.5,
+    "cao": 1.5,
+    "na2o": 1.5,
+    "k2o": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "geodesy.along_track_distance": {
+   "args": {
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "start_lat": 51.5074,
+    "start_lon": -0.1278,
+    "end_lat": 51.5074,
+    "end_lon": -0.1278
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "geodesy.cross_track_distance": {
+   "args": {
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "start_lat": 51.5074,
+    "start_lon": -0.1278,
+    "end_lat": 51.5074,
+    "end_lon": -0.1278
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "geodesy.destination_point": {
+   "args": {
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "bearing_deg": 90.0,
+    "distance_km": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "geodesy.ecef_to_geodetic": {
+   "args": {
+    "x": 1.5,
+    "y": 2.5,
+    "z": 3.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "geodesy.geodetic_to_ecef": {
+   "args": {
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "alt": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "geodesy.haversine_distance": {
+   "args": {
+    "lat1": 51.5074,
+    "lon1": -0.1278,
+    "lat2": 48.8566,
+    "lon2": 2.3522
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "geodesy.initial_bearing": {
+   "args": {
+    "lat1": 51.5074,
+    "lon1": -0.1278,
+    "lat2": 48.8566,
+    "lon2": 2.3522
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "geodesy.midpoint": {
+   "args": {
+    "lat1": 51.5074,
+    "lon1": -0.1278,
+    "lat2": 48.8566,
+    "lon2": 2.3522
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "geodesy.rhumb_distance": {
+   "args": {
+    "lat1": 51.5074,
+    "lon1": -0.1278,
+    "lat2": 48.8566,
+    "lon2": 2.3522
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "geodesy.vincenty_distance": {
+   "args": {
+    "lat1": 51.5074,
+    "lon1": -0.1278,
+    "lat2": 48.8566,
+    "lon2": 2.3522
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "geometry.bounding_box": {
+   "args": {
+    "points": [
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.14
+  },
+  "geometry.centroid": {
+   "args": {
+    "polygon": [
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "geometry.convex_hull": {
+   "args": {
+    "points": [
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "geometry.cross_product_2d": {
+   "args": {
+    "o": {
+     "x": 1.5,
+     "y": 2.5
+    },
+    "a": {
+     "x": 1.5,
+     "y": 2.5
+    },
+    "b": {
+     "x": 1.5,
+     "y": 2.5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "geometry.distance_2d": {
+   "args": {
+    "a": {
+     "x": 1.5,
+     "y": 2.5
+    },
+    "b": {
+     "x": 1.5,
+     "y": 2.5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "geometry.line_intersection": {
+   "args": {
+    "p1": {
+     "x": 1.5,
+     "y": 2.5
+    },
+    "p2": {
+     "x": 1.5,
+     "y": 2.5
+    },
+    "p3": {
+     "x": 1.5,
+     "y": 2.5
+    },
+    "p4": {
+     "x": 1.5,
+     "y": 2.5
+    }
+   },
+   "verified": false,
+   "outcome": "mojo_library_execution_failed",
+   "source": "rules",
+   "ms": 0.107
+  },
+  "geometry.point_in_polygon": {
+   "args": {
+    "p": {
+     "x": 1.5,
+     "y": 2.5
+    },
+    "polygon": [
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "geometry.polygon_area": {
+   "args": {
+    "polygon": [
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "geometry.polygon_perimeter": {
+   "args": {
+    "polygon": [
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     },
+     {
+      "x": 1.5,
+      "y": 2.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.118
+  },
+  "geophysics.depth_from_reflection": {
+   "args": {
+    "two_way_time": 1.0,
+    "velocity": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "geophysics.earth_radius_at_latitude": {
+   "args": {
+    "latitude_rad": 51.5074
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "geophysics.free_air_correction": {
+   "args": {
+    "elevation_m": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "geophysics.gravitational_acceleration": {
+   "args": {
+    "latitude_rad": 51.5074,
+    "elevation_m": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "geophysics.gravity_anomaly_bouguer": {
+   "args": {
+    "observed_g": 9.81,
+    "latitude_rad": 51.5074,
+    "elevation_m": 1.5,
+    "rock_density": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "geophysics.isostasy_airy": {
+   "args": {
+    "topography_m": 1.5,
+    "crust_density": 1.5,
+    "mantle_density": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "geophysics.magnetic_inclination": {
+   "args": {
+    "bz": 1.5,
+    "bh": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "geophysics.seismic_p_wave_velocity": {
+   "args": {
+    "bulk_modulus": 1.5,
+    "shear_modulus": 1.5,
+    "density": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "geophysics.seismic_s_wave_velocity": {
+   "args": {
+    "shear_modulus": 1.5,
+    "density": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "geophysics.vp_vs_ratio": {
+   "args": {
+    "vp": 1.5,
+    "vs": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "geospatial.contract.geo_cells_fit": {
+   "args": {
+    "rows": 3,
+    "cols": 3,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "geospatial.contract.geo_degree_box_half": {
+   "args": {
+    "radius_m": 6371.0,
+    "lat_deg": 51.5074
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "geospatial.contract.geo_finite": {
+   "args": {
+    "v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "geospatial.contract.geo_finite_or_zero": {
+   "args": {
+    "v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "geospatial.contract.geo_frame_defect": {
+   "args": {
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "geospatial.contract.geo_frame_name": {
+   "args": {
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "geospatial.contract.geo_gap_lower_m": {
+   "args": {
+    "gap_coord": 1.5,
+    "frame": 5,
+    "lat_a_deg": 1.0,
+    "lat_b_deg": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "geospatial.contract.geo_is_degree_frame": {
+   "args": {
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "geospatial.contract.geo_lat_of": {
+   "args": {
+    "x": 1.5,
+    "y": 2.5,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "geospatial.contract.geo_lon_delta": {
+   "args": {
+    "from_lon": -0.1278,
+    "to_lon": -0.1278
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "geospatial.contract.geo_lon_of": {
+   "args": {
+    "x": 1.5,
+    "y": 2.5,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "geospatial.contract.geo_m_per_deg_lon_lower": {
+   "args": {
+    "lat_a_deg": 1.0,
+    "lat_b_deg": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "geospatial.contract.geo_metric_defect": {
+   "args": {
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "geospatial.contract.geo_metric_name": {
+   "args": {
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "geospatial.contract.geo_normalise_lon": {
+   "args": {
+    "lon": -0.1278
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "geospatial.contract.geo_offsets_defect": {
+   "args": {
+    "offsets": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "n_groups": 100,
+    "n_items": 5,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "geospatial.contract.geo_pair_range_defect": {
+   "args": {
+    "x": 1.5,
+    "y": 2.5,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "geospatial.contract.geo_points_defect": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5,
+    "ceiling": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "geospatial.contract.geo_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "geospatial.frame.frame_census_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "geospatial.frame.frame_distance_flat": {
+   "args": {
+    "x1": 1.5,
+    "y1": 2.5,
+    "frame_a": 6,
+    "x2": 2.0,
+    "y2": 3.0,
+    "frame_b": 4,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "geospatial.frame.frame_metric_distance": {
+   "args": {
+    "x1": 1.5,
+    "y1": 2.5,
+    "x2": 2.0,
+    "y2": 3.0,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "geospatial.frame.frame_metric_undefined": {
+   "args": {
+    "distance_m": 10.0,
+    "x1": 1.5,
+    "y1": 2.5,
+    "x2": 2.0,
+    "y2": 3.0,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "geospatial.frame.frame_pair_defect": {
+   "args": {
+    "frame_a": 6,
+    "frame_b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "geospatial.frame.frame_path_length_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "geospatial.frame.frame_project_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5,
+    "ref_lat_deg": 51.5074,
+    "ref_lon_deg": -0.1278
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "geospatial.frame.frame_ring_census_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "geospatial.index.grid_build_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5,
+    "target_per_cell": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "geospatial.index.grid_knn_flat": {
+   "args": {
+    "cell_start": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "cell_items": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "side": 5,
+    "min_x": 1.5,
+    "min_y": 2.5,
+    "cell_w": 1.0,
+    "cell_h": 0.01,
+    "qx": 1.5,
+    "qy": 1.5,
+    "k": 3,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "geospatial.index.grid_validate_flat": {
+   "args": {
+    "cell_start": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "cell_items": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n": 100,
+    "side": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "geospatial.index.grid_window_flat": {
+   "args": {
+    "cell_start": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "cell_items": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "side": 5,
+    "min_x": 1.5,
+    "min_y": 2.5,
+    "cell_w": 1.0,
+    "cell_h": 0.01,
+    "qminx": 1.5,
+    "qminy": 1.5,
+    "qmaxx": 1.5,
+    "qmaxy": 1.5,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "geospatial.index.knn_scan_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "qx": 1.5,
+    "qy": 1.5,
+    "k": 3,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "geospatial.index.window_scan_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "qminx": 1.5,
+    "qminy": 1.5,
+    "qmaxx": 1.5,
+    "qmaxy": 1.5,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "geospatial.join.join_point_in_rings_flat": {
+   "args": {
+    "pxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "pys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_points": 100,
+    "ring_xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ring_ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "ring_offsets": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_rings": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.137
+  },
+  "geospatial.join.join_within_flat": {
+   "args": {
+    "lxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "lys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_left": 0,
+    "rxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "rys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_right": 5,
+    "radius_m": 6371.0,
+    "frame": 5,
+    "metric": 5,
+    "max_pairs": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "geospatial.join.network_route_matrix_flat": {
+   "args": {
+    "node_xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "node_ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_nodes": 5,
+    "edge_src": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "edge_dst": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_edges": 5,
+    "origin_nodes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_origins": 100,
+    "dest_nodes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_dests": 100,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "geospatial.join.route_matrix_flat": {
+   "args": {
+    "oxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "oys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_origins": 100,
+    "dxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "dys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_dests": 100,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "geospatial.mapmatch.map_match_flat": {
+   "args": {
+    "txs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "tys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_track": 100,
+    "nxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "nys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "line_offsets": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_lines": 100,
+    "search_radius_m": 6371.0,
+    "beta": 0.2,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "geospatial.mapmatch.point_to_segment_flat": {
+   "args": {
+    "px": 1.5,
+    "py": 1.5,
+    "ax": 1.5,
+    "ay": 1.5,
+    "bx": 1.5,
+    "by": 1.5,
+    "frame": 5,
+    "metric": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "geospatial.polygon.point_in_ring_flat": {
+   "args": {
+    "px": 1.5,
+    "py": 1.5,
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "geospatial.polygon.points_in_ring_flat": {
+   "args": {
+    "pxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "pys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_points": 100,
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_vertices": 5,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "geospatial.polygon.ring_area_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "geospatial.polygon.ring_intersect_convex_flat": {
+   "args": {
+    "sxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "sys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_subject": 100,
+    "cxs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "cys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_clip": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "geospatial.polygon.ring_planar_defect_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "geospatial.polygon.ring_report_flat": {
+   "args": {
+    "xs": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "ys": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "frame": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "geotechnical.active_earth_pressure": {
+   "args": {
+    "ka": 1.5,
+    "sigma_v": 0.7,
+    "cohesion": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "geotechnical.bearing_capacity_terzaghi": {
+   "args": {
+    "c": 3.0,
+    "gamma": 0.9,
+    "d": 4.0,
+    "b": 2.0,
+    "nc": 1.5,
+    "nq": 1.5,
+    "ngamma": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "geotechnical.coefficient_of_earth_pressure_at_rest": {
+   "args": {
+    "phi": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "geotechnical.degree_of_saturation": {
+   "args": {
+    "water_content": 1.5,
+    "e": 1.5,
+    "gs": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "geotechnical.effective_stress": {
+   "args": {
+    "total_stress": 10.0,
+    "pore_pressure": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "geotechnical.factor_of_safety_slope": {
+   "args": {
+    "resisting_force": 10.0,
+    "driving_force": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.026
+  },
+  "geotechnical.overburden_pressure": {
+   "args": {
+    "depth": 2.0,
+    "unit_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "geotechnical.porosity_from_void_ratio": {
+   "args": {
+    "e": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "geotechnical.rankine_ka": {
+   "args": {
+    "phi": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "geotechnical.rankine_kp": {
+   "args": {
+    "phi": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "geotechnical.settlement_elastic": {
+   "args": {
+    "load": 0.5,
+    "width": 4.0,
+    "modulus": 1.5,
+    "poisson": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "geotechnical.void_ratio": {
+   "args": {
+    "porosity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "hydrogeology.capillary_rise_height": {
+   "args": {
+    "surface_tension": 1.5,
+    "contact_angle_rad": 45.0,
+    "density": 1.5,
+    "pore_radius": 6371.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "hydrogeology.darcy_velocity": {
+   "args": {
+    "hydraulic_conductivity": 1.5,
+    "gradient": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "hydrogeology.dupuit_discharge": {
+   "args": {
+    "hydraulic_conductivity": 1.5,
+    "h1": 0.01,
+    "h2": 0.01,
+    "length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "hydrogeology.groundwater_age_mixing": {
+   "args": {
+    "tracer_young": 1.5,
+    "tracer_sample": 1.5,
+    "tracer_old": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "hydrogeology.hydraulic_gradient": {
+   "args": {
+    "head_diff": 1.5,
+    "flow_length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "hydrogeology.leakance_factor": {
+   "args": {
+    "transmissivity": 1.5,
+    "confining_thickness": 1.5,
+    "confining_k": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "hydrogeology.specific_yield": {
+   "args": {
+    "porosity": 1.5,
+    "residual_moisture": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "hydrogeology.storativity": {
+   "args": {
+    "specific_storage": 1.5,
+    "aquifer_thickness": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "hydrogeology.theis_drawdown": {
+   "args": {
+    "pumping_rate": 0.05,
+    "transmissivity": 1.5,
+    "well_function": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "hydrogeology.transmissivity": {
+   "args": {
+    "hydraulic_conductivity": 1.5,
+    "aquifer_thickness": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.027
+  }
+ }
+}

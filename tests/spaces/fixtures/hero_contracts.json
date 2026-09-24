@@ -2987,7 +2987,7 @@
   "excluded_functions": [],
   "kernels_version": "0.17.1",
   "repo_id": "thyn-ai/algenta-llm",
-  "revision": "a01e2b232875ced70b3dbd925996f913d5126370",
+  "revision": "92ef06d7b01116a70d8a8a6179c492aac5462146",
   "variant": "torch25-cpu-aarch64-darwin"
  },
  "ml": {

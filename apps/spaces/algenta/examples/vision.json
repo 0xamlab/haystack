@@ -1,0 +1,2123 @@
+{
+ "family": "vision",
+ "generated_utc": "2026-09-24T02:25:06Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 113,
+  "verified": 113,
+  "plain": 0,
+  "timeouts": 0,
+  "unverified": 0
+ },
+ "functions": {
+  "document_vision.adaptive_mean_binarize_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "window_radius": 3,
+    "bias": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 12.34
+  },
+  "document_vision.binarize_otsu_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.129
+  },
+  "document_vision.document_scan_quality_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "document_vision.horizontal_projection": {
+   "args": {
+    "mask_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "document_vision.horizontal_text_score_flat": {
+   "args": {
+    "mask_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "document_vision.mask_content_bbox_flat": {
+   "args": {
+    "mask_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "document_vision.otsu_threshold_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "document_vision.skew_angle_estimate_flat": {
+   "args": {
+    "mask_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.14
+  },
+  "document_vision.vertical_projection": {
+   "args": {
+    "mask_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "endocrinology.cortisol_circadian": {
+   "args": {
+    "time_hours": 1.0,
+    "peak_value": 2.5,
+    "trough_value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "endocrinology.feedback_gain": {
+   "args": {
+    "open_loop_gain": 1.5,
+    "feedback_fraction": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "endocrinology.growth_rate_igf": {
+   "args": {
+    "igf1_nmol": 1.5,
+    "baseline_rate": 0.05,
+    "sensitivity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "endocrinology.hormone_clearance_rate": {
+   "args": {
+    "dose": 1.5,
+    "auc": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "endocrinology.hormone_pulsatility": {
+   "args": {
+    "n_pulses": 5.0,
+    "observation_hours": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "endocrinology.insulin_sensitivity_index": {
+   "args": {
+    "fasting_glucose_mmol": 1.5,
+    "fasting_insulin_pmol": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "endocrinology.negative_feedback_strength": {
+   "args": {
+    "response_at_half_max": 1.0,
+    "hill_n": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "endocrinology.receptor_binding_bmax": {
+   "args": {
+    "bound": 1.5,
+    "free_conc": 1.5,
+    "kd": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "endocrinology.testosterone_free": {
+   "args": {
+    "total_t": 1.0,
+    "shbg": 1.5,
+    "albumin": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "endocrinology.thyroid_free_fraction": {
+   "args": {
+    "total_t4": 1.0,
+    "tbg_conc": 1.5,
+    "binding_constant": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "geomorphology.drainage_density": {
+   "args": {
+    "total_stream_length": 5.0,
+    "basin_area": 12.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "geomorphology.erosion_rate_spl": {
+   "args": {
+    "k": 105.0,
+    "area": 12.0,
+    "slope": 1.5,
+    "m": 1.5,
+    "n": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "geomorphology.hack_law_length": {
+   "args": {
+    "c": 3.0,
+    "area": 12.0,
+    "h": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "geomorphology.hillslope_diffusion": {
+   "args": {
+    "kd": 1.5,
+    "curvature": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "geomorphology.hypsometric_integral": {
+   "args": {
+    "mean_elev": 0.0,
+    "min_elev": 0.0,
+    "max_elev": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "geomorphology.relief_ratio": {
+   "args": {
+    "relief": 1.5,
+    "basin_length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "geomorphology.ruggedness_number": {
+   "args": {
+    "relief": 1.5,
+    "drainage_density_val": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "geomorphology.settling_velocity_stokes": {
+   "args": {
+    "density_s": 100.0,
+    "density_f": 1.5,
+    "g": 9.81,
+    "diameter": 1.5,
+    "viscosity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "geomorphology.shear_stress_flow": {
+   "args": {
+    "density": 1.5,
+    "g": 9.81,
+    "depth": 2.0,
+    "slope": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "geomorphology.shields_parameter": {
+   "args": {
+    "shear_stress": 1.5,
+    "density_s": 100.0,
+    "density_f": 1.5,
+    "g": 9.81,
+    "grain_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "geomorphology.sinuosity": {
+   "args": {
+    "channel_length": 5.0,
+    "valley_length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "geomorphology.stream_power": {
+   "args": {
+    "discharge": 1.5,
+    "slope": 1.5,
+    "density": 1.5,
+    "g": 9.81
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "image_features.color_histogram": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "bins_per_channel": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "image_features.dominant_colors": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "levels": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "image_features.edge_density": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "mag_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "image_features.edge_density_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "mag_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "image_features.histogram_chi_square": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "image_features.histogram_correlation": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "image_features.histogram_intersection": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "image_features.most_salient_cell": {
+   "args": {
+    "saliency": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "image_features.most_salient_cell_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "grid_rows": 3,
+    "grid_cols": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "image_features.saliency_grid": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "grid_rows": 3,
+    "grid_cols": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "image_features.sobel_magnitude": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "image_morphology.binary_close_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "kernel_size": 5,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "image_morphology.binary_dilate_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "kernel_size": 5,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "image_morphology.binary_erode_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "kernel_size": 5,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "image_morphology.binary_fill_holes_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "image_morphology.binary_open_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "kernel_size": 5,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "image_morphology.connected_components_4_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "image_morphology.distance_transform_cityblock_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "image_morphology.foreground_area_ratio_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "image_morphology.largest_component_bbox_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "image_ops.brightness": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "delta": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.107
+  },
+  "image_ops.contrast": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "factor": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "image_ops.convolve_2d": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "kernel": [
+     [
+      0.25,
+      0.5,
+      0.25
+     ],
+     [
+      0.25,
+      0.5,
+      0.25
+     ],
+     [
+      0.25,
+      0.5,
+      0.25
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "image_ops.gaussian_kernel_3x3": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "image_ops.histogram": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "n_bins": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "image_ops.invert": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "image_ops.mean_pixel": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "image_ops.sharpen_kernel": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "image_ops.sobel_x_kernel": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "image_ops.sobel_y_kernel": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "image_ops.threshold": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "thresh": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "image_palette.accent_color_hex": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "levels": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "image_palette.dominant_palette_rgb255": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "levels": 3,
+    "top_k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "image_palette.is_monochrome_palette": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "levels": 3,
+    "min_weight": 1.0,
+    "max_mean_saturation": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "image_palette.mean_saturation_rgb255": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "image_palette.palette_contrast_score": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "levels": 3,
+    "top_k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "image_palette.palette_entropy": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "levels": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "image_palette.palette_size_estimate": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "levels": 3,
+    "min_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "image_palette.warm_color_ratio_rgb255": {
+   "args": {
+    "flat_rgb": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "min_saturation": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "image_quality.blur_score": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "image_quality.blur_score_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "image_quality.brightness_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "image_quality.brightness_mean": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "image_quality.contrast_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "image_quality.contrast_std": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "image_quality.entropy_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "image_quality.is_blurry": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "image_quality.is_near_blank": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "std_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "image_quality.is_over_or_under_exposed": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "low": 0.0,
+    "high": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "image_quality.noise_estimate": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "image_quality.quality_score": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "image_quality.quality_score_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "image_quality.shannon_entropy": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "image_quality.uniformity": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "image_regions.box_iou": {
+   "args": {
+    "box_a": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "box_b": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "image_regions.connected_component_boxes_flat": {
+   "args": {
+    "mask_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "fg_threshold": 0.5,
+    "max_regions": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "image_regions.extract_box_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "x0": 3,
+    "y0": 4,
+    "x1": 3,
+    "y1": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "image_regions.foreground_mask_otsu_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "image_regions.largest_foreground_box_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "image_regions.saliency_box_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3,
+    "grid_rows": 3,
+    "grid_cols": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "image_resize.bilinear_downscale": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "out_w": 5,
+    "out_h": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "image_resize.box_downscale": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "out_w": 5,
+    "out_h": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "image_resize.box_sum": {
+   "args": {
+    "integral": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "r0": 5,
+    "c0": 2,
+    "r1": 5,
+    "c1": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "image_resize.downscale_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "in_w": 5,
+    "in_h": 5,
+    "out_w": 5,
+    "out_h": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "image_resize.flatten_grid": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "image_resize.integral_image": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "image_resize.reshape_to_grid": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "image_resize.resize_for_dhash": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "hash_w": 5,
+    "hash_h": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "image_resize.resize_for_hash": {
+   "args": {
+    "image": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "size": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "image_similarity.crop_region_similarity_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3,
+    "x0": 3,
+    "y0": 4,
+    "x1": 3,
+    "y1": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "image_similarity.diff_fraction_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3,
+    "diff_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "image_similarity.duplicate_score_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "image_similarity.mean_abs_error_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "image_similarity.mean_squared_error_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "image_similarity.normalized_cross_correlation_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "image_similarity.psnr_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3,
+    "max_value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "image_similarity.ssim_global_flat": {
+   "args": {
+    "flat_a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "flat_b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "width": 8,
+    "height": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "vision_gate.is_text_heavy": {
+   "args": {
+    "edge_density": 1.5,
+    "entropy": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "vision_gate.needs_clearer_image": {
+   "args": {
+    "blur_score": 0.8,
+    "brightness": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "vision_gate.quality_gate_passed": {
+   "args": {
+    "blur_score": 0.8,
+    "brightness": 1.5,
+    "entropy": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "vision_gate.route_image_request": {
+   "args": {
+    "blur_score": 0.8,
+    "brightness": 1.5,
+    "entropy": 1.5,
+    "edge_density": 1.5,
+    "is_duplicate_flag": true,
+    "intent_code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "vision_gate.should_use_cache": {
+   "args": {
+    "is_duplicate_flag": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  }
+ }
+}

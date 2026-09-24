@@ -1,0 +1,2172 @@
+{
+ "family": "networking",
+ "generated_utc": "2026-09-24T02:21:28Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 156,
+  "verified": 156,
+  "plain": 0,
+  "timeouts": 0,
+  "unverified": 0
+ },
+ "functions": {
+  "compiler_theory.ast_depth": {
+   "args": {
+    "left_depth": 3,
+    "right_depth": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 11.556
+  },
+  "compiler_theory.ast_node_count": {
+   "args": {
+    "left_count": 5,
+    "right_count": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "compiler_theory.basic_block_throughput": {
+   "args": {
+    "n_instructions": 100,
+    "cycles": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "compiler_theory.first_follow_conflict": {
+   "args": {
+    "first_has_epsilon": true,
+    "follow_overlap": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "compiler_theory.grammar_is_ambiguous": {
+   "args": {
+    "has_sr_conflict": true,
+    "has_rr_conflict": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "compiler_theory.instruction_latency_sum": {
+   "args": {
+    "latencies": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.166
+  },
+  "compiler_theory.is_nonterminal": {
+   "args": {
+    "symbol_type": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "compiler_theory.is_terminal": {
+   "args": {
+    "symbol_type": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "compiler_theory.loop_unroll_benefit": {
+   "args": {
+    "iterations": 100,
+    "overhead_per_iter": 5,
+    "unroll_factor": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "compiler_theory.lr_shift_reduce_conflict": {
+   "args": {
+    "can_shift": true,
+    "can_reduce": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "compiler_theory.reduce_reduce_conflict": {
+   "args": {
+    "reduce1": true,
+    "reduce2": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "compiler_theory.register_pressure": {
+   "args": {
+    "live_in": 5,
+    "defined": 5,
+    "used": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "epigenetics.chromatin_accessibility": {
+   "args": {
+    "atac_reads": 1.5,
+    "background_reads": 1.5,
+    "library_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "epigenetics.cpg_observed_expected": {
+   "args": {
+    "cpg_count": 5.0,
+    "c_count": 5.0,
+    "g_count": 5.0,
+    "length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "epigenetics.dna_methylation_age": {
+   "args": {
+    "beta_value": 2.5,
+    "intercept": 1.5,
+    "slope": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "epigenetics.enhancer_activity_index": {
+   "args": {
+    "h3k27ac_signal": 1.5,
+    "h3k4me3_signal": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "epigenetics.gene_silencing_efficiency": {
+   "args": {
+    "control_expression": 1.5,
+    "treated_expression": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "epigenetics.histone_acetylation_ratio": {
+   "args": {
+    "acetylated_signal": 1.5,
+    "total_histone_signal": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "epigenetics.imprinting_ratio": {
+   "args": {
+    "maternal_expr": 1.5,
+    "paternal_expr": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "epigenetics.methylation_index": {
+   "args": {
+    "methylated_reads": 1.5,
+    "total_reads": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "epigenetics.polycomb_enrichment": {
+   "args": {
+    "h3k27me3_chip": 1.5,
+    "h3k27me3_input": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "epigenetics.transcription_factor_occupancy": {
+   "args": {
+    "chip_enrichment": 1.5,
+    "motif_score": 0.8,
+    "accessibility": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "genetic.best_individual": {
+   "args": {
+    "population": [
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     },
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     },
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     }
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.184
+  },
+  "genetic.crossover_single_point": {
+   "args": {
+    "parent1": {
+     "genes": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "fitness": 1.5
+    },
+    "parent2": {
+     "genes": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "fitness": 1.5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "genetic.crossover_uniform": {
+   "args": {
+    "parent1": {
+     "genes": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "fitness": 1.5
+    },
+    "parent2": {
+     "genes": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "fitness": 1.5
+    },
+    "rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "genetic.evolve_one_generation": {
+   "args": {
+    "population": [
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     },
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     },
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     }
+    ],
+    "config": {
+     "population_size": 5,
+     "n_genes": 100,
+     "mutation_rate": 0.05,
+     "crossover_rate": 0.05,
+     "elitism": 5,
+     "gene_min": 0.0,
+     "gene_max": 1.0
+    },
+    "eval_fn_id": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.208
+  },
+  "genetic.initialize_population": {
+   "args": {
+    "config": {
+     "population_size": 5,
+     "n_genes": 100,
+     "mutation_rate": 0.05,
+     "crossover_rate": 0.05,
+     "elitism": 5,
+     "gene_min": 0.0,
+     "gene_max": 1.0
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.488
+  },
+  "genetic.mutate_gaussian": {
+   "args": {
+    "ind": {
+     "genes": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "fitness": 1.5
+    },
+    "rate": 0.05,
+    "sigma": 1.0,
+    "gene_min": 0.0,
+    "gene_max": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "genetic.run_ga": {
+   "args": {
+    "config": {
+     "population_size": 5,
+     "n_genes": 100,
+     "mutation_rate": 0.05,
+     "crossover_rate": 0.05,
+     "elitism": 5,
+     "gene_min": 0.0,
+     "gene_max": 1.0
+    },
+    "n_generations": 100,
+    "eval_fn_id": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 1.032
+  },
+  "genetic.tournament_select": {
+   "args": {
+    "population": [
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     },
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     },
+     {
+      "genes": [
+       1.0,
+       2.0,
+       3.0,
+       4.0,
+       5.0
+      ],
+      "fitness": 1.5
+     }
+    ],
+    "tournament_size": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.139
+  },
+  "kinetics.activation_energy": {
+   "args": {
+    "k1": 105.0,
+    "k2": 105.0,
+    "t1_k": 105.0,
+    "t2_k": 105.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "kinetics.arrhenius_rate_constant": {
+   "args": {
+    "pre_exponential": 1.5,
+    "activation_energy": 100.0,
+    "temperature": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "kinetics.collision_frequency": {
+   "args": {
+    "n_density": 5.0,
+    "diameter": 1.5,
+    "temperature": 0.7,
+    "mass": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "kinetics.concentration_first_order": {
+   "args": {
+    "c0": 2.5,
+    "rate_constant": 0.05,
+    "time": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "kinetics.half_life_first_order": {
+   "args": {
+    "rate_constant": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "kinetics.half_life_second_order": {
+   "args": {
+    "rate_constant": 0.05,
+    "initial_concentration": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "kinetics.michaelis_menten_rate": {
+   "args": {
+    "vmax": 1.5,
+    "substrate": 1.5,
+    "km": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "kinetics.reaction_rate_first_order": {
+   "args": {
+    "rate_constant": 0.05,
+    "concentration": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "kinetics.reaction_rate_second_order": {
+   "args": {
+    "rate_constant": 0.05,
+    "conc_a": 1.0,
+    "conc_b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "kinetics.turnover_number": {
+   "args": {
+    "vmax": 1.5,
+    "enzyme_total": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "magnetism.biot_savart_infinite_wire": {
+   "args": {
+    "current": 1.5,
+    "distance": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "magnetism.cyclotron_radius": {
+   "args": {
+    "mass": 1.0,
+    "velocity": 60.0,
+    "charge": 1.5,
+    "field": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "magnetism.hall_voltage": {
+   "args": {
+    "current": 1.5,
+    "field": 1.5,
+    "carrier_density": 1.5,
+    "thickness": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "magnetism.inductance_solenoid": {
+   "args": {
+    "turns": 1.5,
+    "area": 12.0,
+    "length": 5.0,
+    "mu_r": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "magnetism.larmor_frequency": {
+   "args": {
+    "charge": 1.5,
+    "field": 1.5,
+    "mass": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "magnetism.magnetic_energy_density": {
+   "args": {
+    "field": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "magnetism.magnetic_flux": {
+   "args": {
+    "field": 1.5,
+    "area": 12.0,
+    "angle_rad": 45.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "magnetism.magnetic_force_wire": {
+   "args": {
+    "current": 1.5,
+    "length": 5.0,
+    "field": 1.5,
+    "angle_rad": 45.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "magnetism.solenoid_field": {
+   "args": {
+    "current": 1.5,
+    "turns": 1.5,
+    "length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "magnetism.toroid_field": {
+   "args": {
+    "current": 1.5,
+    "turns": 1.5,
+    "radius": 6371.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "memory_system.activation_memory_bytes": {
+   "args": {
+    "batch_size": 5.0,
+    "seq_len": 1.5,
+    "d_model": 4.0,
+    "n_layers": 5.0,
+    "dtype_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "memory_system.cache_line_padding_bytes": {
+   "args": {
+    "struct_size": 5.0,
+    "cache_line": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "memory_system.gradient_memory_bytes": {
+   "args": {
+    "n_parameters": 5.0,
+    "dtype_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "memory_system.memory_bandwidth_utilization": {
+   "args": {
+    "actual_throughput_gbs": 1.2,
+    "peak_bandwidth_gbs": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "memory_system.numa_locality_score": {
+   "args": {
+    "local_accesses": 1.5,
+    "remote_accesses": 1.5,
+    "remote_penalty": 1.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "memory_system.optimizer_state_bytes": {
+   "args": {
+    "n_parameters": 5.0,
+    "optimizer_type": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "memory_system.peak_memory_estimate": {
+   "args": {
+    "model_weights_bytes": 1.5,
+    "activation_bytes": 1.5,
+    "gradient_bytes": 1.5,
+    "optimizer_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "memory_system.pool_fragmentation_ratio": {
+   "args": {
+    "allocated_bytes": 1.5,
+    "used_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "memory_system.slab_alloc_waste": {
+   "args": {
+    "object_size": 5.0,
+    "slab_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "memory_system.strided_access_penalty": {
+   "args": {
+    "stride_bytes": 1.5,
+    "cache_line": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "net.url.query_build": {
+   "args": {
+    "params": [
+     [
+      "alpha",
+      "beta",
+      "gamma"
+     ],
+     [
+      "alpha",
+      "beta",
+      "gamma"
+     ],
+     [
+      "alpha",
+      "beta",
+      "gamma"
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.131
+  },
+  "net.url.query_get": {
+   "args": {
+    "query": "quick fox",
+    "key": "alpha"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "net.url.query_parse": {
+   "args": {
+    "query": "quick fox"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "net.url.url_decode": {
+   "args": {
+    "s": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "net.url.url_encode": {
+   "args": {
+    "s": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "net.url.url_parse": {
+   "args": {
+    "raw": "hello world"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "net.url.url_to_string": {
+   "args": {
+    "u": {
+     "scheme": "https",
+     "host": "algenta.ai",
+     "port": 8080,
+     "path": "reports/q3.csv",
+     "query": "quick fox",
+     "fragment": "hello world"
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "network_analysis.avg_clustering_coefficient": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "network_analysis.bfs_distances": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "start": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "network_analysis.closeness_centrality": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "network_analysis.clustering_coefficient": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "node": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.119
+  },
+  "network_analysis.connected_components": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "network_analysis.degree": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "node": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "network_analysis.degree_centrality": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "network_analysis.degree_distribution": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "network_analysis.density": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "network_analysis.is_connected": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "network_analysis.pagerank": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "damping": 1.5,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "network_protocol.build_query_string": {
+   "args": {
+    "keys": [
+     "alpha",
+     "beta",
+     "gamma",
+     "delta",
+     "epsilon"
+    ],
+    "values": [
+     "alpha",
+     "beta",
+     "gamma",
+     "delta",
+     "epsilon"
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "network_protocol.http_status_text": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "network_protocol.is_client_error": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "network_protocol.is_json_type": {
+   "args": {
+    "mime": "hello world"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "network_protocol.is_redirect": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "network_protocol.is_server_error": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "network_protocol.is_success": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "network_protocol.is_text_type": {
+   "args": {
+    "mime": "hello world"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "network_protocol.mime_type": {
+   "args": {
+    "extension": "csv"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "network_protocol.parse_content_type": {
+   "args": {
+    "header": "hello world"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "network_protocol.parse_query_string": {
+   "args": {
+    "query": "quick fox"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "paleomagnetism.anhysteretic_remanence": {
+   "args": {
+    "arm": 1.5,
+    "bias_field_mt": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "paleomagnetism.atan_approx": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "paleomagnetism.coercivity_spectrum_median": {
+   "args": {
+    "h_upper": 1.0,
+    "h_lower": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "paleomagnetism.cos_approx": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "paleomagnetism.declination_correction": {
+   "args": {
+    "observed_dec": 1.2,
+    "site_azimuth": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "paleomagnetism.geomagnetic_intensity": {
+   "args": {
+    "nrm": 1.5,
+    "susceptibility": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "paleomagnetism.koenigsberger_ratio": {
+   "args": {
+    "nrm": 1.5,
+    "field_strength": 1.5,
+    "susceptibility": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "paleomagnetism.magnetic_reversal_rate": {
+   "args": {
+    "n_reversals": 5.0,
+    "timespan_myr": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "paleomagnetism.paleolatitude": {
+   "args": {
+    "inclination_deg": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "paleomagnetism.rock_magnetic_susceptibility": {
+   "args": {
+    "measured_susceptibility": 1.5,
+    "mass_g": 9.81
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "paleomagnetism.sin_approx": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "paleomagnetism.stability_index": {
+   "args": {
+    "nrm_before": 1.5,
+    "nrm_after_heating": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "paleomagnetism.virtual_geomagnetic_pole_lat": {
+   "args": {
+    "inclination_deg": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "petri_net.coverability_check": {
+   "args": {
+    "marking_val": 5,
+    "target_val": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "petri_net.fire_transition_2p": {
+   "args": {
+    "m0": 3,
+    "m1": 3,
+    "in0": 5,
+    "in1": 5,
+    "out0": 5,
+    "out1": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "petri_net.fire_transition_list": {
+   "args": {
+    "marking": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "input_arcs": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "output_arcs": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_places": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "petri_net.incidence_value": {
+   "args": {
+    "output_weight": 5,
+    "input_weight": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "petri_net.is_deadlocked_1t_2p": {
+   "args": {
+    "m0": 3,
+    "m1": 3,
+    "in0": 5,
+    "in1": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "petri_net.is_deadlocked_2t_2p": {
+   "args": {
+    "m0": 3,
+    "m1": 3,
+    "t0_in0": 5,
+    "t0_in1": 5,
+    "t1_in0": 5,
+    "t1_in1": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "petri_net.is_live_transition": {
+   "args": {
+    "enabled_count": 5,
+    "total_markings": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "petri_net.is_transition_enabled_2p": {
+   "args": {
+    "m0": 3,
+    "m1": 3,
+    "in0": 5,
+    "in1": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "petri_net.is_transition_enabled_list": {
+   "args": {
+    "marking": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "input_arcs": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_places": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "petri_net.place_bounded": {
+   "args": {
+    "max_tokens": 4,
+    "bound": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "petri_net.reachable_from_firing": {
+   "args": {
+    "marking_sum": 5,
+    "input_sum": 5,
+    "output_sum": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "petri_net.siphon_empty_3p": {
+   "args": {
+    "t0": 5,
+    "t1": 5,
+    "t2": 5,
+    "s0": true,
+    "s1": true,
+    "s2": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "petri_net.token_count_3p": {
+   "args": {
+    "m0": 3,
+    "m1": 3,
+    "m2": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "pharmacokinetics.accumulation_factor": {
+   "args": {
+    "ke": 1.5,
+    "tau": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "pharmacokinetics.bioavailability": {
+   "args": {
+    "auc_oral": 1.5,
+    "auc_iv": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "pharmacokinetics.clearance": {
+   "args": {
+    "ke": 1.5,
+    "vd": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "pharmacokinetics.drug_auc_trapezoidal": {
+   "args": {
+    "c1": 3.0,
+    "c2": 3.5,
+    "t1": 1.0,
+    "t2": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "pharmacokinetics.elimination_rate": {
+   "args": {
+    "half_life_val": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "pharmacokinetics.half_life": {
+   "args": {
+    "ke": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "pharmacokinetics.loading_dose": {
+   "args": {
+    "css": 1.5,
+    "vd": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "pharmacokinetics.maintenance_dose": {
+   "args": {
+    "css": 1.5,
+    "cl": 1.5,
+    "tau": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "pharmacokinetics.one_compartment_iv": {
+   "args": {
+    "dose": 1.5,
+    "ke": 1.5,
+    "vd": 1.5,
+    "t": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "pharmacokinetics.one_compartment_oral": {
+   "args": {
+    "dose": 1.5,
+    "ka": 1.5,
+    "ke": 1.5,
+    "vd": 1.5,
+    "t": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "pharmacokinetics.steady_state_concentration": {
+   "args": {
+    "dose": 1.5,
+    "tau": 1.0,
+    "cl": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "pharmacokinetics.time_to_peak": {
+   "args": {
+    "ka": 1.5,
+    "ke": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "population_genetics.allele_frequency_drift": {
+   "args": {
+    "p": 0.5,
+    "effective_pop_size": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "population_genetics.effective_population_size": {
+   "args": {
+    "n_female": 5.0,
+    "n_male": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "population_genetics.fst_wright": {
+   "args": {
+    "ht": 1.5,
+    "hs": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "population_genetics.hardy_weinberg_freq": {
+   "args": {
+    "p": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "population_genetics.inbreeding_coefficient": {
+   "args": {
+    "p": 0.5,
+    "observed_het": 1.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "population_genetics.linkage_disequilibrium": {
+   "args": {
+    "p_ab": 0.5,
+    "p_a": 0.5,
+    "p_b": 0.55
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "population_genetics.mutation_load": {
+   "args": {
+    "mutation_rate": 0.05,
+    "dominance_h": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "population_genetics.nucleotide_diversity": {
+   "args": {
+    "n_sequences": 5.0,
+    "pairwise_differences": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "population_genetics.selection_coefficient": {
+   "args": {
+    "p": 0.5,
+    "s": 100.0,
+    "h": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "population_genetics.tajimas_d_simplified": {
+   "args": {
+    "n": 5.0,
+    "seg_sites": 1.5,
+    "avg_pairwise_diff": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "social_network.average_path_length_estimate": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "n_samples": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "social_network.community_label_propagation": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "max_iter": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "social_network.in_degree": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "node": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.109
+  },
+  "social_network.influence_spread_ic": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "seeds": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "p": 0.5,
+    "n_simulations": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.107
+  },
+  "social_network.local_clustering_directed": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "node": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "social_network.network_density": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "social_network.out_degree": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "node": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "social_network.reciprocity": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "social_network.strongly_connected_check": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "toxicokinetics.apparent_volume_distribution": {
+   "args": {
+    "dose_mg": 1.5,
+    "c0_mg_per_l": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "toxicokinetics.bioconcentration_factor": {
+   "args": {
+    "tissue_conc": 1.5,
+    "water_conc": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "toxicokinetics.elimination_half_life": {
+   "args": {
+    "elimination_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "toxicokinetics.internal_dose": {
+   "args": {
+    "external_dose": 1.5,
+    "bioavailability": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "toxicokinetics.margin_of_exposure": {
+   "args": {
+    "noael_mg_per_kg": 1.5,
+    "human_dose_mg_per_kg": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "toxicokinetics.peak_plasma_concentration": {
+   "args": {
+    "dose_mg": 1.5,
+    "volume_of_distribution_l": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "toxicokinetics.plasma_auc": {
+   "args": {
+    "c1": 3.0,
+    "c2": 3.5,
+    "t1": 1.0,
+    "t2": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "toxicokinetics.systemic_clearance": {
+   "args": {
+    "elimination_rate": 0.05,
+    "volume_of_distribution": 60.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "toxicokinetics.time_to_peak": {
+   "args": {
+    "absorption_rate": 0.05,
+    "elimination_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "toxicokinetics.toxic_equivalency_factor": {
+   "args": {
+    "congener_conc": 1.5,
+    "tef": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  }
+ }
+}

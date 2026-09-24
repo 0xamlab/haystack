@@ -351,15 +351,9 @@ def test_real_tree_stages_every_live_space(tmp_path: Path) -> None:
     assert len(shas) == 1, "every live Space vendors the same shared package"
 
 
-def test_real_tree_stages_every_redirect_stub_without_python(tmp_path: Path) -> None:
+def test_real_tree_has_no_redirect_stub_left_to_stage() -> None:
+    """The retired stubs left the fleet on 2026-09-23 (deleted from the Hub); the static staging
+    path stays covered by the fake fleet in `test_stage_redirect_has_no_shared_package`."""
     mf = load_manifest()
-    assert len(mf.redirects) == 3
-    for space in mf.redirects:
-        result = stage.stage_space(space.name, tmp_path / space.name, manifest=mf, git_sha=GIT_SHA)
-        assert result.files == (".git_sha", "README.md", "index.html", "style.css"), space.name
-        assert result.shared_sha is None
-        staged_readme = (tmp_path / space.name / "README.md").read_text(encoding="utf-8")
-        assert stage.frontmatter_sdk(staged_readme) == "static"
-        assert space.redirect_to in (tmp_path / space.name / "index.html").read_text(
-            encoding="utf-8"
-        )
+    assert mf.redirects == []
+    assert not (mf.path.parent / "_redirects").exists()

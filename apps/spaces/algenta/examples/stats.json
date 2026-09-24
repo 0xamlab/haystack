@@ -1,0 +1,2933 @@
+{
+ "family": "stats",
+ "generated_utc": "2026-09-24T02:21:54Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 172,
+  "verified": 172,
+  "plain": 3,
+  "timeouts": 0,
+  "unverified": 0
+ },
+ "functions": {
+  "ab_testing.confidence_interval_proportion": {
+   "args": {
+    "successes": 50,
+    "n": 100,
+    "confidence": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 11.027
+  },
+  "ab_testing.epsilon_greedy_select": {
+   "args": {
+    "rewards": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "counts": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "epsilon": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.207
+  },
+  "ab_testing.is_significant": {
+   "args": {
+    "p_value": 0.03,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.12
+  },
+  "ab_testing.mde": {
+   "args": {
+    "n": 100,
+    "baseline_rate": 0.05,
+    "alpha": 0.05,
+    "power": 0.8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "ab_testing.power_analysis": {
+   "args": {
+    "effect_size": 0.2,
+    "n": 100,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.103
+  },
+  "ab_testing.relative_uplift": {
+   "args": {
+    "control_rate": 0.05,
+    "treatment_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "ab_testing.sample_size_proportion": {
+   "args": {
+    "p1": 0.6,
+    "p2": 0.55,
+    "alpha": 0.05,
+    "power": 0.8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "ab_testing.sequential_test": {
+   "args": {
+    "successes_a": 50,
+    "n_a": 1000,
+    "successes_b": 65,
+    "n_b": 1000,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "ab_testing.ucb1_select": {
+   "args": {
+    "rewards": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "counts": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "total": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "ab_testing.z_test_proportions": {
+   "args": {
+    "successes_a": 50,
+    "n_a": 1000,
+    "successes_b": 65,
+    "n_b": 1000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.107
+  },
+  "bayesian.bayes_factor": {
+   "args": {
+    "likelihood_h1": 0.01,
+    "likelihood_h0": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "bayesian.bayesian_ab_test": {
+   "args": {
+    "successes_a": 50,
+    "trials_a": 1000,
+    "successes_b": 65,
+    "trials_b": 1000,
+    "n_samples": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.145
+  },
+  "bayesian.beta_credible_interval": {
+   "args": {
+    "alpha": 0.05,
+    "beta": 0.2,
+    "mass": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "bayesian.beta_mean": {
+   "args": {
+    "alpha": 0.05,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "bayesian.beta_posterior": {
+   "args": {
+    "prior_alpha": 0.05,
+    "prior_beta": 0.2,
+    "successes": 50,
+    "failures": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "bayesian.beta_variance": {
+   "args": {
+    "alpha": 0.05,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "bayesian.hpd_interval_normal": {
+   "args": {
+    "mean": 0.0,
+    "std": 1.0,
+    "mass": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "bayesian.normal_posterior": {
+   "args": {
+    "prior_mean": 0.0,
+    "prior_var": 1.0,
+    "data_mean": 0.0,
+    "data_var": 1.0,
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "bayesian.poisson_posterior": {
+   "args": {
+    "prior_alpha": 0.05,
+    "prior_beta": 0.2,
+    "sum_x": 3,
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "bayesian.posterior_predictive_beta": {
+   "args": {
+    "alpha": 0.05,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "distribution_fit.aic": {
+   "args": {
+    "log_likelihood": 1.5,
+    "k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "distribution_fit.best_fit": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "distribution_fit.bic": {
+   "args": {
+    "log_likelihood": 1.5,
+    "k": 3,
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "distribution_fit.fit_exponential": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.122
+  },
+  "distribution_fit.fit_normal": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "distribution_fit.fit_uniform": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.123
+  },
+  "distribution_fit.fit_weibull": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "distribution_fit.log_likelihood_exponential": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "distribution_fit.log_likelihood_normal": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "mean": 0.0,
+    "std": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "distribution_fit.qq_residuals": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "mean": 0.0,
+    "std": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "distributions.acos_approx": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "distributions.sample_arcsine": {
+   "args": {
+    "lo": 0.0,
+    "hi": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "distributions.sample_bernoulli": {
+   "args": {
+    "p": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "distributions.sample_beta": {
+   "args": {
+    "alpha": 0.05,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "distributions.sample_cauchy": {
+   "args": {
+    "location": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "distributions.sample_exponential": {
+   "args": {
+    "rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "distributions.sample_gamma_mt": {
+   "args": {
+    "shape": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "distributions.sample_gumbel": {
+   "args": {
+    "mu": 0.0,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "distributions.sample_halfnormal": {
+   "args": {
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "distributions.sample_hypergeometric": {
+   "args": {
+    "N": 5.0,
+    "K": 105.0,
+    "n": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "distributions.sample_laplace": {
+   "args": {
+    "mu": 0.0,
+    "b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "distributions.sample_logistic": {
+   "args": {
+    "mu": 0.0,
+    "s": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "distributions.sample_lognormal": {
+   "args": {
+    "mu": 0.0,
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "distributions.sample_neg_binomial": {
+   "args": {
+    "r": 0.05,
+    "p": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "distributions.sample_normal": {
+   "args": {
+    "mu": 0.0,
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "distributions.sample_one": {
+   "args": {
+    "dt": 5,
+    "p0": 0.5,
+    "p1": 0.6,
+    "p2": 0.55,
+    "p3": 0.5,
+    "dv": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "dp": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.116
+  },
+  "distributions.sample_pareto": {
+   "args": {
+    "alpha": 0.05,
+    "x_m": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "distributions.sample_pert": {
+   "args": {
+    "lo": 0.0,
+    "likely": 1.5,
+    "hi": 1.0,
+    "g": 9.81
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "distributions.sample_poisson": {
+   "args": {
+    "lam": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "distributions.sample_rayleigh": {
+   "args": {
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "distributions.sample_student_t": {
+   "args": {
+    "df": 10.0,
+    "mu": 0.0,
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "distributions.sample_triangular": {
+   "args": {
+    "lo": 0.0,
+    "mode": 0.0,
+    "hi": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "distributions.sample_uniform": {
+   "args": {
+    "lo": 0.0,
+    "hi": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "distributions.sample_vonmises": {
+   "args": {
+    "mu": 0.0,
+    "kappa": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "distributions.sample_weibull": {
+   "args": {
+    "shape": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "forecasting.interval.interval_bootstrap_flat": {
+   "args": {
+    "error": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_origins": 100,
+    "horizon": 3,
+    "point": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "level": 0.95,
+    "n_draws": 100,
+    "seed": 42,
+    "stream": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.137
+  },
+  "forecasting.interval.interval_coverage_flat": {
+   "args": {
+    "actual": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "lower": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "upper": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.113
+  },
+  "forecasting.interval.interval_empirical_flat": {
+   "args": {
+    "error": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_origins": 100,
+    "horizon": 3,
+    "point": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "level": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "hypothesis.fisher_exact_2x2": {
+   "args": {
+    "a": 6,
+    "b": 4,
+    "c": 2,
+    "d": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "hypothesis.kruskal_wallis": {
+   "args": {
+    "groups": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.135
+  },
+  "hypothesis.mann_whitney_u": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.118
+  },
+  "hypothesis.rank_data": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "hypothesis.sign_test": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "median": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "hypothesis.wilcoxon_signed_rank": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "interval.empty_interval": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "interval.interval": {
+   "args": {
+    "lo": 0.0,
+    "hi": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "interval.interval_add": {
+   "args": {
+    "a": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    },
+    "b": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.12
+  },
+  "interval.interval_contains": {
+   "args": {
+    "iv": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    },
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "interval.interval_div": {
+   "args": {
+    "a": {
+     "lo": 0.5,
+     "hi": 0.5,
+     "empty": true
+    },
+    "b": {
+     "lo": 0.5,
+     "hi": 0.5,
+     "empty": true
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.09
+  },
+  "interval.interval_intersection": {
+   "args": {
+    "a": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    },
+    "b": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "interval.interval_midpoint": {
+   "args": {
+    "iv": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.109
+  },
+  "interval.interval_mul": {
+   "args": {
+    "a": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    },
+    "b": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "interval.interval_overlaps": {
+   "args": {
+    "a": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    },
+    "b": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "interval.interval_radius": {
+   "args": {
+    "iv": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.103
+  },
+  "interval.interval_sub": {
+   "args": {
+    "a": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    },
+    "b": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.117
+  },
+  "interval.interval_union_hull": {
+   "args": {
+    "a": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    },
+    "b": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "interval.interval_width": {
+   "args": {
+    "iv": {
+     "lo": 0.0,
+     "hi": 1.0,
+     "empty": false
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "ml.naive_bayes.accuracy": {
+   "args": {
+    "predicted": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "actual": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.105
+  },
+  "ml.naive_bayes.compute_priors": {
+   "args": {
+    "y": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "n_classes": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.135
+  },
+  "ml.naive_bayes.confusion_matrix": {
+   "args": {
+    "predicted": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "actual": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_classes": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 2.913
+  },
+  "ml.naive_bayes.gaussian_log_likelihood": {
+   "args": {
+    "x": 1.5,
+    "mean": 0.0,
+    "std": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "ml.naive_bayes.gaussian_nb_fit": {
+   "args": {
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "y": [
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "n_classes": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.126
+  },
+  "ml.naive_bayes.gaussian_nb_predict": {
+   "args": {
+    "params": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "priors": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.146
+  },
+  "ml.naive_bayes.gaussian_nb_predict_batch": {
+   "args": {
+    "params": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "priors": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.136
+  },
+  "ml.naive_bayes.precision_recall": {
+   "args": {
+    "predicted": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "actual": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "target_class": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "probability.bayes": {
+   "args": {
+    "prior": 1.5,
+    "likelihood": 1.5,
+    "evidence": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "probability.binomial_pmf": {
+   "args": {
+    "k": 3,
+    "n": 100,
+    "p": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "probability.combinations": {
+   "args": {
+    "n": 100,
+    "k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "probability.entropy": {
+   "args": {
+    "probs": [
+     0.1,
+     0.2,
+     0.3,
+     0.25,
+     0.15
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "probability.factorial": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "probability.joint_probability": {
+   "args": {
+    "p_a": 0.5,
+    "p_b_given_a": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "probability.kl_divergence": {
+   "args": {
+    "p": [
+     0.1,
+     0.2,
+     0.3,
+     0.25,
+     0.15
+    ],
+    "q": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "probability.mutual_information": {
+   "args": {
+    "joint": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.103
+  },
+  "probability.permutations": {
+   "args": {
+    "n": 100,
+    "k": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "probability.poisson_pmf": {
+   "args": {
+    "k": 3,
+    "lam": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "probability.total_probability": {
+   "args": {
+    "priors": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "likelihoods": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.104
+  },
+  "regression.mse": {
+   "args": {
+    "y_actual": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "y_predicted": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "regression.ols_multiple": {
+   "args": {
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.118
+  },
+  "regression.ols_simple": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "regression.polynomial_features": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "degree": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "regression.predict": {
+   "args": {
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "coefficients": [
+     1.0,
+     -2.0,
+     1.0
+    ],
+    "intercept": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "regression.r_squared": {
+   "args": {
+    "y_actual": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "y_predicted": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "regression.ridge_regression": {
+   "args": {
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.128
+  },
+  "regression.rmse": {
+   "args": {
+    "y_actual": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "y_predicted": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "regression_tree.best_split": {
+   "args": {
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "regression_tree.build_tree": {
+   "args": {
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "max_depth": 3,
+    "min_samples": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.105
+  },
+  "regression_tree.mse_reduction": {
+   "args": {
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "left_idx": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "right_idx": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "regression_tree.predict_batch": {
+   "args": {
+    "tree": {
+     "split_feature": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "split_value": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "left_child": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "right_child": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "leaf_value": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "n_nodes": 5
+    },
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.151
+  },
+  "regression_tree.predict_single": {
+   "args": {
+    "tree": {
+     "split_feature": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "split_value": [
+      0.5,
+      0.5,
+      0.5,
+      0.5
+     ],
+     "left_child": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "right_child": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "leaf_value": [
+      0.5,
+      0.5,
+      0.5,
+      0.5
+     ],
+     "n_nodes": 2
+    },
+    "x": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 11.532
+  },
+  "regression_tree.tree_depth": {
+   "args": {
+    "tree": {
+     "split_feature": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "split_value": [
+      0.5,
+      0.5,
+      0.5,
+      0.5
+     ],
+     "left_child": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "right_child": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "leaf_value": [
+      0.5,
+      0.5,
+      0.5,
+      0.5
+     ],
+     "n_nodes": 2
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 11.61
+  },
+  "regression_tree.tree_mse": {
+   "args": {
+    "tree": {
+     "split_feature": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "split_value": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "left_child": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "right_child": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "leaf_value": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "n_nodes": 5
+    },
+    "X": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.219
+  },
+  "regression_tree.tree_n_leaves": {
+   "args": {
+    "tree": {
+     "split_feature": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "split_value": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "left_child": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "right_child": [
+      3,
+      1,
+      4,
+      1,
+      5
+     ],
+     "leaf_value": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "n_nodes": 5
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.167
+  },
+  "sampling.discrepancy_l2_star": {
+   "args": {
+    "points": [
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ],
+     [
+      1.0,
+      2.0,
+      3.0
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.144
+  },
+  "sampling.halton_2d": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.305
+  },
+  "sampling.halton_sequence": {
+   "args": {
+    "n": 100,
+    "base": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.167
+  },
+  "sampling.latin_hypercube_sample": {
+   "args": {
+    "n": 100,
+    "d": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.559
+  },
+  "sampling.sobol_like_2d": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.275
+  },
+  "sampling.stratified_sample_1d": {
+   "args": {
+    "n_strata": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.148
+  },
+  "scipy_stats_ops.beta_pdf_unnorm": {
+   "args": {
+    "x": 1.5,
+    "alpha": 0.05,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "scipy_stats_ops.chi2_pdf": {
+   "args": {
+    "x": 1.5,
+    "df": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "scipy_stats_ops.exponential_pdf": {
+   "args": {
+    "x": 1.5,
+    "rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "scipy_stats_ops.gamma_pdf_unnorm": {
+   "args": {
+    "x": 1.5,
+    "shape": 1.5,
+    "rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "scipy_stats_ops.logistic_pdf": {
+   "args": {
+    "x": 1.5,
+    "mu": 0.0,
+    "s": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "scipy_stats_ops.normal_cdf_approx": {
+   "args": {
+    "x": 1.5,
+    "mu": 0.0,
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "scipy_stats_ops.normal_pdf": {
+   "args": {
+    "x": 1.5,
+    "mu": 0.0,
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "scipy_stats_ops.poisson_pmf": {
+   "args": {
+    "k": 105.0,
+    "lam": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "scipy_stats_ops.t_distribution_pdf": {
+   "args": {
+    "x": 1.5,
+    "df": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "scipy_stats_ops.weibull_pdf": {
+   "args": {
+    "x": 1.5,
+    "shape": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "stat_tests.anderson_darling_normal": {
+   "args": {
+    "sample": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.103
+  },
+  "stat_tests.chi_squared_test": {
+   "args": {
+    "observed": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "expected": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.102
+  },
+  "stat_tests.ks_test_2sample": {
+   "args": {
+    "sample1": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "sample2": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "stat_tests.ks_test_normal": {
+   "args": {
+    "sample": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "stat_tests.pearson_r": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "stat_tests.pearson_r_strict": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "stat_tests.shapiro_wilk_approx": {
+   "args": {
+    "sample": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "stat_tests.spearman_r": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "stat_tests.spearman_r_strict": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "stat_tests.t_test_1sample": {
+   "args": {
+    "sample": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "mu0": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "stat_tests.t_test_2sample": {
+   "args": {
+    "sample1": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "sample2": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "stats.compute_mean": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "stats.compute_std": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "n": 5,
+    "mean": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "stats.compute_std_from_values": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "stats.compute_variance": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "n": 5,
+    "mean": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "stats.count_below_zero": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "stats.fast_sort": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "stats.ilog2": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "stats.ins_sort": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "lo": 0,
+    "hi": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "stats.median": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "stats.part3": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "lo": 0,
+    "hi": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "stats.pctile": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "n": 5,
+    "p": 97
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "stats.percentile": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "n": 100,
+    "p": 97
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.118
+  },
+  "stats.quantile": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "n": 100,
+    "q": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "stats.sort_values": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ],
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "stats_bootstrap.bca_correction": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bootstrap": 100,
+    "confidence": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.126
+  },
+  "stats_bootstrap.bootstrap_bias": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bootstrap": 100,
+    "stat_type": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.116
+  },
+  "stats_bootstrap.bootstrap_mean_ci": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bootstrap": 100,
+    "confidence": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.124
+  },
+  "stats_bootstrap.bootstrap_median_ci": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bootstrap": 100,
+    "confidence": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.157
+  },
+  "stats_bootstrap.bootstrap_replicate": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "stats_bootstrap.bootstrap_se": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bootstrap": 100,
+    "stat_type": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.12
+  },
+  "stats_bootstrap.bootstrap_std_ci": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bootstrap": 100,
+    "confidence": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "stats_bootstrap.bootstrap_test": {
+   "args": {
+    "data1": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "data2": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bootstrap": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.148
+  },
+  "stats_bootstrap.jackknife_mean": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "stats_bootstrap.jackknife_se": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "timeseries_stats.adf_test_statistic": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "timeseries_stats.autocorrelation": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "lag": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "timeseries_stats.autocorrelation_function": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "max_lag": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "timeseries_stats.difference": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "order": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "timeseries_stats.exponential_smoothing": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "timeseries_stats.holt_linear": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "alpha": 0.05,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "timeseries_stats.partial_autocorrelation": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "max_lag": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "timeseries_stats.rolling_mean": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "window": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "timeseries_stats.rolling_std": {
+   "args": {
+    "data": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "window": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  }
+ }
+}

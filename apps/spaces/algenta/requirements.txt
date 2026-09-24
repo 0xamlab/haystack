@@ -1,12 +1,32 @@
-# --- flagship app (CPython 3.14 — required by the signed runtime) ---
-gradio>=6.0,<7.0
-numpy>=1.26,<3
-pandas>=2.2
-
-# --- Algenta: public wrapper + signed native Mojo runtime (manylinux_2_35_x86_64, cp314) ---
-algenta==1.0.18
-algenta-runtime-native==1.0.5
-
-# --- governed engine adapter (hosted mode) + the live MCP registry surface ---
-algenta-sdk==1.0.18
-algenta-mcp==1.0.18
+# The flagship's direct dependencies (CPython 3.14, linux x86_64). requirements.lock is what the
+# image installs; regenerate it from this file, from this directory:
+#
+#   uv pip compile --python-version 3.14 --python-platform x86_64-manylinux_2_35 \
+#       --generate-hashes --only-binary :all: --index-strategy unsafe-best-match \
+#       --emit-index-url requirements.txt -o requirements.lock
+#
+# torch comes from the CPU index (the PyPI wheel bundles CUDA); `+cpu` is what makes `kernels`
+# resolve the torch29-cxx11-cpu-x86_64-linux variant. huggingface_hub is held at 1.26.1, the
+# version kernels 0.17.1 is published against. algenta is the hosted-API client the Governed
+# tab calls; its native runtime comes with it. The incumbents (statsmodels, scipy, networkx,
+# nltk, sympy) are the reference libraries the races and parity chips compare against.
+--extra-index-url https://download.pytorch.org/whl/cpu
+gradio[mcp]==6.28.0
+torch==2.9.1+cpu
+kernels==0.17.1
+huggingface_hub==1.26.1
+algenta==1.0.24
+# The hosted-API routes (me/recommend/log_decision/execute_decision) live in the separate
+# algenta-sdk package (algenta's `cloud` extra); without it AlgentaClient imports but every
+# governed call raises ImportError. Pinned explicitly so the lock carries its hash.
+algenta-sdk==1.0.25
+numpy==2.5.3
+scipy==1.18.1
+statsmodels==0.15.0
+networkx==3.7
+nltk==3.10.3
+sympy==1.14.0
+# The two remaining race incumbents (Option chain Greeks, Haversine distance); without them the
+# Races tab prints a permanent 'Not offered here' line (launch review round 3).
+py_vollib==1.0.12
+geopy==2.5.0

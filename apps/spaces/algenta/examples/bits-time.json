@@ -1,0 +1,882 @@
+{
+ "family": "bits-time",
+ "generated_utc": "2026-09-24T02:26:21Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 82,
+  "verified": 82,
+  "plain": 0,
+  "timeouts": 0,
+  "unverified": 0
+ },
+ "functions": {
+  "agent_runtime.action_value_estimate": {
+   "args": {
+    "immediate_reward": 1.0,
+    "future_value": 2.5,
+    "discount": 0.05,
+    "steps_remaining": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 10.747
+  },
+  "agent_runtime.agent_cost_budget_remaining": {
+   "args": {
+    "total_budget": 100.0,
+    "spent_tokens": 1.5,
+    "spent_tool_calls": 1.5,
+    "cost_per_token": 100.0,
+    "cost_per_tool_call": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.122
+  },
+  "agent_runtime.agent_step_reward": {
+   "args": {
+    "goal_progress": 1.0,
+    "step_cost": 100.0,
+    "constraint_violation": 1.5,
+    "penalty": 1.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "agent_runtime.context_window_budget": {
+   "args": {
+    "max_tokens": 1.0,
+    "used_tokens": 1.5,
+    "reserved_output_tokens": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "agent_runtime.memory_retrieval_relevance": {
+   "args": {
+    "query_embed_dot": 1.5,
+    "query_norm": 1.5,
+    "memory_norm": 1.5,
+    "recency_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "agent_runtime.plan_step_dependency_ready": {
+   "args": {
+    "completed_steps_mask": 1.5,
+    "required_steps_mask": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "agent_runtime.retry_should_attempt": {
+   "args": {
+    "attempt": 1.5,
+    "max_attempts": 1.0,
+    "last_error_type": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "agent_runtime.structured_output_match": {
+   "args": {
+    "output_schema_hash": 1.5,
+    "actual_output_hash": 1.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "agent_runtime.tool_call_cost_estimate": {
+   "args": {
+    "tool_latency_ms": 1.5,
+    "input_tokens": 1.5,
+    "output_tokens": 1.5,
+    "cost_per_1k_tokens": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "agent_runtime.tool_selection_score": {
+   "args": {
+    "tool_relevance": 1.5,
+    "tool_cost": 100.0,
+    "tool_reliability": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "bitops.bit_clear": {
+   "args": {
+    "x": 3,
+    "pos": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "bitops.bit_set": {
+   "args": {
+    "x": 3,
+    "pos": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "bitops.bit_test": {
+   "args": {
+    "x": 3,
+    "pos": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "bitops.bit_toggle": {
+   "args": {
+    "x": 3,
+    "pos": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "bitops.fnv1a_hash": {
+   "args": {
+    "data": "hello world"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "bitops.is_power_of_2": {
+   "args": {
+    "x": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "bitops.leading_zeros": {
+   "args": {
+    "x": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "bitops.next_power_of_2": {
+   "args": {
+    "x": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "bitops.popcount": {
+   "args": {
+    "x": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "bitops.reverse_bits": {
+   "args": {
+    "x": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "bitops.rotate_left": {
+   "args": {
+    "x": 3,
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "bitops.rotate_right": {
+   "args": {
+    "x": 3,
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "bitops.trailing_zeros": {
+   "args": {
+    "x": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "datetime.add_days": {
+   "args": {
+    "epoch": 1758700000,
+    "days": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "datetime.day": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "datetime.day_of_week": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "datetime.days_between": {
+   "args": {
+    "epoch1": 1758700000,
+    "epoch2": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "datetime.epoch_to_iso": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "datetime.format_duration_ms": {
+   "args": {
+    "ms": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "datetime.hour": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "datetime.is_leap_year": {
+   "args": {
+    "y": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "datetime.iso_to_epoch": {
+   "args": {
+    "iso": "2026-09-24T12:30:00Z"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "datetime.minute": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "datetime.month": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "datetime.second": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "datetime.year": {
+   "args": {
+    "epoch": 1758700000
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "discrete_event.calendar.calendar_order_audit": {
+   "args": {
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "priority": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "sequence": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.149
+  },
+  "discrete_event.calendar.calendar_replay_flat": {
+   "args": {
+    "time": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "priority": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "kind": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "entity": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_events": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.146
+  },
+  "discrete_event.calendar.calendar_stress_flat": {
+   "args": {
+    "n_events": 100,
+    "distinct_times": 5,
+    "n_priorities": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.259
+  },
+  "discrete_event.calendar.de_key_less": {
+   "args": {
+    "time_a": 1.0,
+    "priority_a": 6,
+    "sequence_a": 6,
+    "time_b": 2.0,
+    "priority_b": 4,
+    "sequence_b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "number_theory.euler_totient": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "number_theory.extended_gcd": {
+   "args": {
+    "a": 6,
+    "b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "number_theory.fibonacci": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "number_theory.gcd": {
+   "args": {
+    "a": 6,
+    "b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "number_theory.is_coprime": {
+   "args": {
+    "a": 6,
+    "b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "number_theory.is_perfect_square": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "number_theory.is_prime": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.194
+  },
+  "number_theory.lcm": {
+   "args": {
+    "a": 6,
+    "b": 4
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "number_theory.mod_inverse": {
+   "args": {
+    "a": 6,
+    "m": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "number_theory.mod_pow": {
+   "args": {
+    "base": 10,
+    "exp": 5,
+    "modulus": 97
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "number_theory.prime_factors": {
+   "args": {
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "number_theory.sieve_of_eratosthenes": {
+   "args": {
+    "limit": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "sentiment.count_negative_words": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "sentiment.count_positive_words": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "sentiment.most_negative_word": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "sentiment.most_positive_word": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "sentiment.polarity": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "sentiment.sentiment_label": {
+   "args": {
+    "score": 0.8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "sentiment.sentiment_score": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "sentiment.subjectivity": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "sentiment.tokenize_lower": {
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "sentiment.word_sentiment": {
+   "args": {
+    "word": "kernel"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "stateful_runtime.long_term_retrieval_score": {
+   "args": {
+    "semantic_similarity": 0.8,
+    "temporal_relevance": 1.5,
+    "importance_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "stateful_runtime.memory_consolidation_score": {
+   "args": {
+    "access_frequency": 50.0,
+    "memory_importance": 1.5,
+    "short_term_capacity_pressure": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "stateful_runtime.memory_decay_score": {
+   "args": {
+    "memory_strength": 1.5,
+    "elapsed_steps": 1.5,
+    "decay_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "stateful_runtime.replay_buffer_priority": {
+   "args": {
+    "td_error": 0.1,
+    "priority_alpha": 0.05,
+    "max_priority": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "stateful_runtime.replayability_score": {
+   "args": {
+    "deterministic_ops_fraction": 0.5,
+    "external_state_captured": 1.5,
+    "rng_seed_fixed": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "stateful_runtime.session_continuity_score": {
+   "args": {
+    "overlap_tokens": 1.5,
+    "session_chunk_tokens": 1.5,
+    "context_coverage": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "stateful_runtime.session_memory_relevance": {
+   "args": {
+    "memory_embedding": 1.5,
+    "query_embedding": 1.5,
+    "recency_weight": 1.0,
+    "access_count": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "stateful_runtime.state_compression_ratio": {
+   "args": {
+    "raw_state_bytes": 1.5,
+    "compressed_state_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "stateful_runtime.state_transition_validity": {
+   "args": {
+    "from_state": 1.5,
+    "to_state": 1.5,
+    "n_states": 5.0,
+    "transition_mask_bit": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "stateful_runtime.working_memory_capacity_used": {
+   "args": {
+    "active_tokens": 1.5,
+    "context_window": 1.5,
+    "reserved_output_tokens": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "time_zone.convert_time": {
+   "args": {
+    "hour": 12,
+    "minute": 30,
+    "from_zone": "UTC",
+    "to_zone": "UTC"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "time_zone.effective_offset": {
+   "args": {
+    "zone_name": "alpha",
+    "month": 9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "time_zone.format_offset": {
+   "args": {
+    "offset_hours": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "time_zone.is_dst": {
+   "args": {
+    "month": 9,
+    "zone_name": "alpha"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "time_zone.is_valid_zone": {
+   "args": {
+    "name": "alpha"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "time_zone.local_to_utc": {
+   "args": {
+    "hour": 12,
+    "minute": 30,
+    "zone": "UTC"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "time_zone.overlap_hours": {
+   "args": {
+    "zone1": "UTC",
+    "zone2": "UTC",
+    "work_start": 0,
+    "work_end": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "time_zone.time_difference": {
+   "args": {
+    "zone1": "UTC",
+    "zone2": "UTC"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "time_zone.utc_offset": {
+   "args": {
+    "zone_name": "alpha"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "time_zone.utc_to_local": {
+   "args": {
+    "hour": 12,
+    "minute": 30,
+    "zone": "UTC"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  }
+ }
+}

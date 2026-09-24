@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import copy
+import importlib
 import re
+import sys
 import tomllib
 from pathlib import Path
 
@@ -54,39 +56,79 @@ def _with(path: tuple[str, ...], value: object) -> dict:
 
 
 def test_real_manifest_loads_and_matches_the_plan(apps_spaces_dir: Path) -> None:
+    """The fleet is the flagship alone since 2026-09-23: the two deep-dive Spaces and the three
+    redirect stubs were deleted from the Hub that day and left the manifest with them."""
     mf = m.load_manifest()
     assert mf.path == (apps_spaces_dir / "spaces.toml").resolve()
     assert mf.fleet.org == "thyn-ai"
     assert mf.fleet.budget_usd == 650
     assert mf.shared_package_dir == apps_spaces_dir / "_shared" / "algenta_spaces"
-    assert [s.name for s in mf.live] == ["algenta", "speed-arena", "governed-agent"]
-    assert [s.name for s in mf.redirects] == [
-        "for-llm-agents",
-        "governed-tool-calls",
-        "llm-modules",
-    ]
-    hardware = {s.name: s.hardware for s in mf.live}
-    assert hardware == {
-        "algenta": "cpu-upgrade",
-        "speed-arena": "cpu-upgrade",
-        "governed-agent": "l4x1",
-    }
-    assert all(s.sleep_time == -1 for s in mf.live)
-    assert mf.space("governed-agent").is_gpu and not mf.space("algenta").is_gpu
-    assert mf.space("governed-agent").poll_timeout_s == 60 * 60
-    assert mf.space("speed-arena").poll_timeout_s == 40 * 60
-    assert mf.space("speed-arena").python == "3.12"
-    assert mf.space("speed-arena").sdk == "gradio", "no Dockerfile until M2"
-    assert not mf.space("speed-arena").is_docker and mf.space("speed-arena").is_live
-    assert {s.sdk for s in mf.live} == {"docker", "gradio"}
+    assert list(mf.spaces) == ["algenta"]
+    assert [s.name for s in mf.live] == ["algenta"]
+    assert mf.redirects == []
+    flagship = mf.space("algenta")
+    assert flagship.repo_id == "thyn-ai/algenta"
+    assert flagship.sdk == "docker" and flagship.is_docker and flagship.is_live
+    assert {s.sdk for s in mf.live} == {"docker"}
+    assert flagship.python == "3.14"
+    assert flagship.hardware == "cpu-upgrade" and not flagship.is_gpu
+    assert not any(s.is_gpu for s in mf.live), "no GPU stage in the fleet"
+    assert flagship.poll_timeout_s == 40 * 60
+    assert flagship.sleep_time == -1
+    assert mf.source_dir("algenta").is_dir()
+    assert flagship.secrets == ("ALGENTA_API_KEY", "HF_TOKEN")
+    assert flagship.variables == {"ALGENTA_BASE_URL": "https://api.algenta.ai"}
+    assert flagship.verify == "verify_remote:check_algenta"
+    # the flagship renders the shared footer since M2-B
+    assert flagship.shared_shell is True
+
+
+def test_flagship_api_names_are_the_tabs_api_names(apps_spaces_dir: Path) -> None:
+    """The flagship row is derived: `tabs/<id>_tab.py` `API_NAMES` in strip order, nothing else.
+    `verify_remote.expected_endpoints` reads the row, `verify_checks.expected_api_names` reads
+    the tabs; the two must agree or a deploy passes one check and fails the other."""
+    algenta_dir = str(apps_spaces_dir / "algenta")
+    if algenta_dir not in sys.path:
+        sys.path.insert(0, algenta_dir)
+    vc = importlib.import_module("verify_checks")
+    found = vc.tab_api_names()
+    assert set(found) == set(vc.TAB_SLUGS), f"tab modules that imported: {sorted(found)}"
+    derived = tuple(name for slug in vc.TAB_SLUGS for name in found[slug])
+    row = m.load_manifest().space("algenta").api_names
+    assert row == derived, (
+        "apps/spaces/spaces.toml [spaces.algenta].api_names drifted from the tabs' API_NAMES:"
+        f"\n  manifest {row}\n  tabs     {derived}"
+    )
+    assert set(row) == vc.all_expected()
+    assert len(set(row)) == len(row) == 17
+
+
+GPU_STATUS_SLOT_RE = re.compile(
+    r"^# (?P<env>[A-Z][A-Z0-9_]*GPU_STATUS_URL) = \"https://[^\"]+/api/status\"$", re.M
+)
+
+
+def test_gpu_status_url_is_unset_while_the_fleet_has_no_gpu_stage(apps_spaces_dir: Path) -> None:
+    """The GPU tiles poll a GPU stage's `/api/status` through the variable the app reads
+    (`gpu_status.STATUS_URL_ENV`). The fleet has had no GPU stage since 2026-09-23, so that
+    variable is unset on the flagship and `gpu_status.configured` is false: the tabs draw no GPU
+    tile and poll nothing. The loader refuses an empty value, so unset means absent, never `""`;
+    a slot documented as a comment (M3.1) must name that same variable or setting it wires
+    nothing."""
+    algenta_dir = str(apps_spaces_dir / "algenta")
+    if algenta_dir not in sys.path:
+        sys.path.insert(0, algenta_dir)
+    gpu_status = importlib.import_module("gpu_status")
+    env_name = gpu_status.STATUS_URL_ENV
+    assert env_name.endswith("GPU_STATUS_URL"), env_name
+    mf = m.load_manifest()
+    assert not any(s.is_gpu for s in mf.live), "a GPU stage joined the fleet: wire its slot"
     for s in mf.live:
-        assert mf.source_dir(s.name).is_dir(), s.name
-        assert "HF_TOKEN" in s.secrets
-        assert s.shared_shell is False, f"{s.name} does not render the shared footer yet"
-    for s in mf.redirects:
-        assert mf.source_dir(s.name).is_dir(), s.name
-        assert s.redirect_to.startswith("https://huggingface.co/spaces/thyn-ai/algenta")
-        assert s.hardware is None and s.sleep_time is None and s.secrets == ()
+        assert env_name not in s.variables, f"{s.name}: set without a GPU stage to point at"
+        assert gpu_status.configured(s.variables) is False, s.name
+    text = (apps_spaces_dir / "spaces.toml").read_text(encoding="utf-8")
+    for slot in GPU_STATUS_SLOT_RE.finditer(text):
+        assert slot.group("env") == env_name, "a documented slot is not the env the app reads"
 
 
 def test_manifest_file_has_no_secret_values(apps_spaces_dir: Path) -> None:
@@ -245,13 +287,12 @@ def test_live_space_sources_match_the_manifest(apps_spaces_dir: Path) -> None:
         assert not (mf.source_dir(space.name) / "Dockerfile").exists()
 
 
-def test_static_spaces_are_served_from_the_static_host():
-    """Static stubs live on <subdomain>.static.hf.space; app Spaces on <subdomain>.hf.space."""
-    from manifest import load_manifest
-
-    m = load_manifest()
-    static = [s for s in m.spaces.values() if s.sdk == "static"]
-    apps = [s for s in m.spaces.values() if s.sdk != "static"]
+def test_static_spaces_are_served_from_the_static_host() -> None:
+    """Static stubs live on <subdomain>.static.hf.space; app Spaces on <subdomain>.hf.space.
+    Checked on the inline fleet: the real manifest carries no static Space since 2026-09-23."""
+    mf = _parse(MINIMAL)
+    static = [s for s in mf.spaces.values() if s.sdk == "static"]
+    apps = [s for s in mf.spaces.values() if s.sdk != "static"]
     assert static and apps
     for s in static:
         assert s.space_url == f"https://{s.subdomain}.static.hf.space"

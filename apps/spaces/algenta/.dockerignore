@@ -1,0 +1,14 @@
+# Never in the image: developer files, caches, anything the no-binary lint forbids.
+.git
+.gitignore
+.dockerignore
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+tests/
+scripts/
+*.whl
+*.so
+*.dylib
+facts.json

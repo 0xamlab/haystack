@@ -2,9 +2,8 @@
 # unknown keys fail the load, so every key here is one the tooling understands.
 #
 # Live Spaces run the SDK their README frontmatter declares today (docker for algenta and
-# governed-agent, gradio for speed-arena until its Dockerfile lands in M2) and stay always-on
-# (sleep_time = -1). Retired Spaces are static redirects: free, never sleep, no hardware,
-# no secrets.
+# the flagship) and stays always-on
+# (sleep_time = -1).
 #
 # `shared_shell` says whether the app renders the shared `algenta_spaces` footer with its
 # build stamp. It is false for every live Space today; verify_remote skips the footer stamp
@@ -25,68 +24,30 @@ source = "algenta"
 python = "3.14"
 hardware = "cpu-upgrade"
 sleep_time = -1
-shared_shell = false
+shared_shell = true
 secrets = ["ALGENTA_API_KEY", "HF_TOKEN"]
 verify = "verify_remote:check_algenta"
+# The tabs' API_NAMES in strip order (tabs/<id>_tab.py); tests/spaces/test_manifest.py fails
+# when this list and the tab modules disagree, so the list is derived, never typed twice.
 api_names = [
-  "run_duel",
-  "tokenize",
-  "retrieve",
-  "attention",
-  "gov_log_decision",
-  "gov_execute_decision",
-  "mcp_filter",
+  "try_run",
+  "try_snippet_install",
+  "try_snippet_mcp",
+  "try_gpu_status",
+  "play_modules",
+  "play_functions",
+  "play_form",
+  "play_run",
+  "race_sizes",
+  "race_run",
+  "llm_run",
+  "llm_rope",
+  "llm_sampling",
+  "gov_run",
+  "gov_execute_again",
+  "eco_refresh",
+  "eco_snippet",
 ]
 
 [spaces.algenta.variables]
 ALGENTA_BASE_URL = "https://api.algenta.ai"
-
-[spaces.speed-arena]
-repo_id = "thyn-ai/algenta-speed-arena"
-sdk = "gradio"
-source = "speed-arena"
-python = "3.12"
-hardware = "cpu-upgrade"
-sleep_time = -1
-shared_shell = false
-secrets = ["HF_TOKEN"]
-verify = "verify_remote:check_speed_arena"
-api_names = ["run_duel_ui"]
-
-[spaces.governed-agent]
-repo_id = "thyn-ai/algenta-governed-agent"
-sdk = "docker"
-source = "governed-agent"
-python = "3.14"
-hardware = "l4x1"
-sleep_time = -1
-shared_shell = false
-secrets = ["ALGENTA_API_KEY", "HF_TOKEN"]
-verify = "verify_remote:check_governed_agent"
-api_names = ["agent_turn"]
-
-[spaces.governed-agent.variables]
-ALGENTA_BASE_URL = "https://api.algenta.ai"
-ALGENTA_PROVIDER = "nscale"
-ALGENTA_PROVIDER_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
-
-[spaces.for-llm-agents]
-repo_id = "thyn-ai/algenta-for-llm-agents"
-sdk = "static"
-source = "_redirects/for-llm-agents"
-redirect_to = "https://huggingface.co/spaces/thyn-ai/algenta"
-verify = "verify_remote:check_redirect"
-
-[spaces.governed-tool-calls]
-repo_id = "thyn-ai/algenta-governed-tool-calls"
-sdk = "static"
-source = "_redirects/governed-tool-calls"
-redirect_to = "https://huggingface.co/spaces/thyn-ai/algenta?tab=gov"
-verify = "verify_remote:check_redirect"
-
-[spaces.llm-modules]
-repo_id = "thyn-ai/algenta-llm-modules"
-sdk = "static"
-source = "_redirects/llm-modules"
-redirect_to = "https://huggingface.co/spaces/thyn-ai/algenta?tab=llm"
-verify = "verify_remote:check_redirect"

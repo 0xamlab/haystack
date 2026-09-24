@@ -71,8 +71,8 @@ jobs:
       - name: Ruff (repo rules)
         run: |
           set -euo pipefail
-          ruff check apps/spaces/_shared apps/spaces/tools apps/spaces/_redirects tests/spaces
-          ruff format --check apps/spaces/_shared apps/spaces/tools apps/spaces/_redirects tests/spaces
+          ruff check apps/spaces/_shared apps/spaces/tools tests/spaces
+          ruff format --check apps/spaces/_shared apps/spaces/tools tests/spaces
       - name: Tests (no network)
         # --confcutdir keeps the repository's root tests/conftest.py (API server fixtures: httpx,
         # alembic, sqlalchemy) out of a job that installs only the fleet tooling's dependencies.
@@ -83,9 +83,6 @@ jobs:
         run: |
           set -euo pipefail
           python apps/spaces/tools/copy_lint.py apps/spaces/_shared
-          python apps/spaces/tools/copy_lint.py apps/spaces/_redirects/for-llm-agents
-          python apps/spaces/tools/copy_lint.py apps/spaces/_redirects/governed-tool-calls
-          python apps/spaces/tools/copy_lint.py apps/spaces/_redirects/llm-modules
       - name: Pin drift (report only until M2)
         # The three app directories still carry the pins they shipped with on the Hub (range
         # pins, one pre-release, versions that disagree across Spaces). The findings are printed

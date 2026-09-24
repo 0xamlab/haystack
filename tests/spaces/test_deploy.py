@@ -10,9 +10,23 @@ from types import SimpleNamespace
 
 import deploy
 import pytest
-from manifest import load_manifest
+import stage
+from manifest import Manifest, load_manifest
 
-from .test_verify_remote import GRADIO_PAGE, FakeHttp, _info, _stub_routes
+from .test_verify_remote import (
+    GRADIO_PAGE,
+    OFF_SHELL,
+    OFF_SHELL_NAME,
+    STATIC_NAME,
+    STATIC_README,
+    STATIC_STUB,
+    STUB_CSS,
+    STUB_INDEX,
+    FakeHttp,
+    _info,
+    _stub_routes,
+    register_static_checks,
+)
 
 SHA = "f" * 40
 OID = "0123456789abcdef0123456789abcdef01234567"
@@ -115,17 +129,95 @@ def mf():
     return load_manifest()
 
 
+def _staged_shared_sha(mf: Manifest) -> str:
+    """The `.shared_sha` stage.py writes next to the vendored package for a live Space."""
+    shared = mf.shared_package_dir
+    return stage.tree_sha256(shared, stage.iter_files(shared))
+
+
+GPU_STAGE_NAME = "gpu-stage"
+# An inline fleet: `lab` (docker, off the shell), the gradio OFF_SHELL Space, a GPU stage with
+# the variables a provider-backed stage carries, and one static redirect stub. The real manifest
+# is the flagship alone since 2026-09-23, so the multi-Space, gradio, GPU and static decision
+# paths are exercised on this fleet.
+STATIC_TOML = f"""\
+[fleet]
+org = "thyn-ai"
+shared_package = "_shared/algenta_spaces"
+budget_usd = 10
+
+[spaces.lab]
+repo_id = "thyn-ai/algenta-lab"
+sdk = "docker"
+source = "lab"
+python = "3.14"
+hardware = "cpu-upgrade"
+sleep_time = -1
+shared_shell = false
+secrets = ["HF_TOKEN"]
+verify = "verify_remote:check_algenta"
+api_names = ["run"]
+
+[spaces.{OFF_SHELL_NAME}]
+repo_id = "{OFF_SHELL.repo_id}"
+sdk = "{OFF_SHELL.sdk}"
+source = "{OFF_SHELL.source}"
+python = "{OFF_SHELL.python}"
+hardware = "{OFF_SHELL.hardware}"
+sleep_time = {OFF_SHELL.sleep_time}
+shared_shell = false
+secrets = ["HF_TOKEN"]
+verify = "{OFF_SHELL.verify}"
+api_names = ["run_duel_ui"]
+
+[spaces.{GPU_STAGE_NAME}]
+repo_id = "thyn-ai/algenta-{GPU_STAGE_NAME}"
+sdk = "docker"
+source = "{GPU_STAGE_NAME}"
+python = "3.14"
+hardware = "l4x1"
+sleep_time = -1
+shared_shell = false
+secrets = ["ALGENTA_API_KEY", "HF_TOKEN"]
+verify = "verify_remote:check_algenta"
+api_names = ["agent_turn"]
+
+[spaces.{GPU_STAGE_NAME}.variables]
+ALGENTA_BASE_URL = "https://api.algenta.ai"
+ALGENTA_PROVIDER = "nscale"
+ALGENTA_PROVIDER_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
+
+[spaces.{STATIC_NAME}]
+repo_id = "{STATIC_STUB.repo_id}"
+sdk = "static"
+source = "{STATIC_STUB.source}"
+redirect_to = "{STATIC_STUB.redirect_to}"
+verify = "verify_remote:check_redirect"
+"""
+
+
 @pytest.fixture
-def mf_shell(mf):
-    """The fleet as it will be once every live app renders the shared footer stamp (M2)."""
-    return replace(
-        mf,
-        spaces={n: replace(s, shared_shell=True) if s.is_live else s for n, s in mf.spaces.items()},
-    )
+def mf_static(tmp_path_factory: pytest.TempPathFactory):
+    """The inline fleet of STATIC_TOML laid out on disk like apps/spaces: the static stub stages
+    real files; the live rows are read, diffed and polled against fakes, never staged (staging
+    a live Space vendors the shared package from the manifest's own tree)."""
+    spaces = tmp_path_factory.mktemp("fleet") / "apps" / "spaces"
+    stub = spaces / STATIC_STUB.source
+    stub.mkdir(parents=True)
+    (stub / "README.md").write_text(STATIC_README, encoding="utf-8")
+    (stub / "index.html").write_text(STUB_INDEX, encoding="utf-8")
+    (stub / "style.css").write_text(STUB_CSS, encoding="utf-8")
+    (spaces / "spaces.toml").write_text(STATIC_TOML, encoding="utf-8")
+    mf = load_manifest(spaces / "spaces.toml")
+    assert mf.space(STATIC_NAME) == STATIC_STUB, "the inline TOML and STATIC_STUB drifted apart"
+    assert mf.space(OFF_SHELL_NAME) == OFF_SHELL, "the inline TOML and OFF_SHELL drifted apart"
+    assert mf.space(GPU_STAGE_NAME).is_gpu and not mf.space(OFF_SHELL_NAME).is_docker
+    assert {s.sdk for s in mf.spaces.values()} == {"docker", "gradio", "static"}
+    return mf
 
 
-def test_compute_diff_hardware_sleep_and_variables(mf) -> None:
-    space = mf.space("governed-agent")
+def test_compute_diff_hardware_sleep_and_variables(mf_static) -> None:
+    space = mf_static.space(GPU_STAGE_NAME)
     state = deploy.RuntimeState(
         stage="RUNNING", hardware="cpu-basic", requested_hardware=None, sleep_time=3600
     )
@@ -145,7 +237,7 @@ def test_compute_diff_hardware_sleep_and_variables(mf) -> None:
     ]
 
 
-def test_compute_diff_is_empty_when_hub_matches_or_switch_is_pending(mf) -> None:
+def test_compute_diff_is_empty_when_hub_matches_or_switch_is_pending(mf, mf_static) -> None:
     space = mf.space("algenta")
     matching = deploy.RuntimeState("RUNNING", "cpu-upgrade", None, -1)
     assert deploy.compute_diff(space, matching, dict(space.variables)).empty
@@ -155,12 +247,12 @@ def test_compute_diff_is_empty_when_hub_matches_or_switch_is_pending(mf) -> None
     diff = deploy.compute_diff(space, None, {})
     assert diff.hardware is None and diff.sleep_time is None
     assert set(diff.variables) == {"ALGENTA_BASE_URL"}
-    assert deploy.compute_diff(mf.space("llm-modules"), None, None).empty
+    assert deploy.compute_diff(mf_static.space(STATIC_NAME), None, None).empty
     assert deploy.Diff().lines() == ["runtime matches the manifest"]
 
 
-def test_compute_diff_sdk_from_the_hub_frontmatter(mf) -> None:
-    static = mf.space("for-llm-agents")
+def test_compute_diff_sdk_from_the_hub_frontmatter(mf_static) -> None:
+    static = mf_static.space(STATIC_NAME)
     # the Hub still runs the old app: the only change is the SDK, carried by the README
     diff = deploy.compute_diff(static, None, None, live_sdk="gradio")
     assert diff.sdk == ("gradio", "static")
@@ -170,15 +262,13 @@ def test_compute_diff_sdk_from_the_hub_frontmatter(mf) -> None:
         "sdk: gradio -> static (set by the README frontmatter in the upload; "
         "create_repo(exist_ok=True) cannot change an existing Space)"
     ]
-    assert deploy.compute_diff(mf.space("llm-modules"), None, None, live_sdk="docker").sdk == (
-        "docker",
-        "static",
-    )
+    # the same stub over a Space the Hub still runs as a docker app
+    assert deploy.compute_diff(static, None, None, live_sdk="docker").sdk == ("docker", "static")
     # already flipped: nothing to do; unreadable: nothing claimed
     assert deploy.compute_diff(static, None, None, live_sdk="static").empty
     assert deploy.compute_diff(static, None, None, live_sdk=None).empty
-    # a live Space gets the same entry ahead of its runtime lines (speed-arena -> docker in M2)
-    live = replace(mf.space("speed-arena"), sdk="docker")
+    # a live Space gets the same entry ahead of its runtime lines (a gradio Space moving to docker)
+    live = replace(mf_static.space(OFF_SHELL_NAME), sdk="docker")
     state = deploy.RuntimeState("RUNNING", "cpu-upgrade", None, -1)
     diff = deploy.compute_diff(live, state, dict(live.variables), live_sdk="gradio")
     assert diff.sdk == ("gradio", "docker") and diff.lines()[0].startswith("sdk: gradio -> docker")
@@ -211,17 +301,18 @@ def test_space_info_from_huggingface_hub_carries_sdk() -> None:
     )
 
 
-def test_read_live_reads_sdk_for_every_space_and_runtime_for_live_ones(mf) -> None:
+def test_read_live_reads_sdk_for_every_space_and_runtime_for_live_ones(mf_static) -> None:
+    static = mf_static.space(STATIC_NAME)
     hub = FakeHub([Runtime("RUNNING", "cpu-upgrade", None, -1)], {"A": "1"}, sdk="gradio")
-    live = deploy.read_live(hub, mf.space("for-llm-agents"))
+    live = deploy.read_live(hub, static)
     assert live == deploy.LiveRead("gradio", None, None, ())
     assert [c[0] for c in hub.calls] == ["space_info"], "no runtime calls for a static Space"
     hub = FakeHub([Runtime("RUNNING", "cpu-upgrade", None, -1)], {"A": "1"}, sdk="gradio")
-    live = deploy.read_live(hub, mf.space("speed-arena"))
+    live = deploy.read_live(hub, mf_static.space(OFF_SHELL_NAME))
     assert live.sdk == "gradio" and live.variables == {"A": "1"} and live.notes == ()
     assert live.state == deploy.RuntimeState("RUNNING", "cpu-upgrade", None, -1)
     assert [c[0] for c in hub.calls] == ["space_info", "get_space_runtime"]
-    live = deploy.read_live(FakeHub(sdk=None), mf.space("llm-modules"))
+    live = deploy.read_live(FakeHub(sdk=None), static)
     assert live.sdk is None and live.notes == ("sdk not readable: DeployError",)
 
 
@@ -414,30 +505,37 @@ def test_make_api_binds_the_env_token_and_refuses_without_it(
 
 
 def test_dry_run_stages_lists_files_and_writes_nothing(mf, tmp_path: Path) -> None:
-    space = mf.space("speed-arena")
-    hub = FakeHub([Runtime("RUNNING", "cpu-basic", None, None)], variables={}, sdk="gradio")
+    space = mf.space("algenta")
+    hub = FakeHub([Runtime("RUNNING", "cpu-basic", None, None)], variables={}, sdk="docker")
     outcome = deploy.deploy_space(space, mf, hub, dry_run=True, git_sha=SHA, workdir=tmp_path)
     assert outcome.ok
     text = "\n".join(outcome.lines)
+    assert text.startswith("== algenta (thyn-ai/algenta, sdk=docker)\n")
     assert "  app.py" in text and "  algenta_spaces/shell.py" in text and "  .shared_sha" in text
+    assert f"shared_sha {_staged_shared_sha(mf)}" in text
     assert "sdk:" not in text, "the Hub already runs the manifest sdk"
     assert "hardware: cpu-basic -> cpu-upgrade" in text
     assert "sleep_time: None -> -1" in text
-    assert "secrets required on the Space (set by the owner): HF_TOKEN" in text
+    assert "variable ALGENTA_BASE_URL: None -> 'https://api.algenta.ai'" in text
+    assert "secrets required on the Space (set by the owner): ALGENTA_API_KEY, HF_TOKEN" in text
     assert deploy.STATIC_NOTE not in text
     assert text.endswith("dry run: nothing written")
     assert [c[0] for c in hub.calls] == ["space_info", "get_space_runtime"]
     assert list(tmp_path.iterdir()) == [], "staging directory cleaned up"
 
 
-def test_dry_run_of_a_static_stub_shows_the_sdk_flip_and_no_python(mf, tmp_path: Path) -> None:
+def test_dry_run_of_a_static_stub_shows_the_sdk_flip_and_no_python(
+    mf_static, tmp_path: Path
+) -> None:
     """The pre-publish dry run: the Hub says gradio, the staged README says static."""
-    space = mf.space("for-llm-agents")
+    space = mf_static.space(STATIC_NAME)
     hub = FakeHub(sdk="gradio")
-    outcome = deploy.deploy_space(space, mf, hub, dry_run=True, git_sha=SHA, workdir=tmp_path)
+    outcome = deploy.deploy_space(
+        space, mf_static, hub, dry_run=True, git_sha=SHA, workdir=tmp_path
+    )
     assert outcome.ok, outcome.lines
     assert list(outcome.lines[:6]) == [
-        "== for-llm-agents (thyn-ai/algenta-for-llm-agents, sdk=static)",
+        f"== {STATIC_NAME} ({space.repo_id}, sdk=static)",
         f"staged 4 files at git {SHA[:12]}",
         "  .git_sha",
         "  README.md",
@@ -450,21 +548,16 @@ def test_dry_run_of_a_static_stub_shows_the_sdk_flip_and_no_python(mf, tmp_path:
         deploy.STATIC_NOTE,
         "dry run: nothing written",
     ]
-    assert hub.calls == [("space_info", "thyn-ai/algenta-for-llm-agents")]
+    assert hub.calls == [("space_info", space.repo_id)]
     assert list(tmp_path.iterdir()) == []
-    # llm-modules is a docker Space on the Hub today
+    # the same stub over a Space the Hub still runs as a docker app
     outcome = deploy.deploy_space(
-        mf.space("llm-modules"),
-        mf,
-        FakeHub(sdk="docker"),
-        dry_run=True,
-        git_sha=SHA,
-        workdir=tmp_path,
+        space, mf_static, FakeHub(sdk="docker"), dry_run=True, git_sha=SHA, workdir=tmp_path
     )
     assert any(line.startswith("sdk: docker -> static") for line in outcome.lines)
     # once published the dry run reports a match
     outcome = deploy.deploy_space(
-        space, mf, FakeHub(sdk="static"), dry_run=True, git_sha=SHA, workdir=tmp_path
+        space, mf_static, FakeHub(sdk="static"), dry_run=True, git_sha=SHA, workdir=tmp_path
     )
     assert "runtime matches the manifest" in outcome.lines and deploy.STATIC_NOTE in outcome.lines
 
@@ -546,14 +639,16 @@ def test_full_deploy_uploads_applies_diff_polls_and_verifies(mf, tmp_path: Path)
     )
     assert hub.calls[4] == ("request_space_hardware", "thyn-ai/algenta", "cpu-upgrade", -1)
     assert "runtime: RUNNING on cpu-upgrade (rebuild observed)" in outcome.lines
-    # algenta is not on the shared shell yet: the stamp check is skipped, loudly
-    assert "  [SKIP] footer_stamp skipped: app not yet on the shared shell" in outcome.lines
-    assert outcome.lines[-1] == "algenta: all checks passed; skipped: footer_stamp"
+    # algenta is on the shared shell since M2-B: the stamp is verified against the staged sha
+    assert any(line.startswith("  [OK] footer_stamp shared ") for line in outcome.lines)
+    assert outcome.lines[-1] == "algenta: all checks passed"
 
 
 def test_deploy_confirms_a_quiet_hub_by_sha_and_fails_on_a_stale_one(mf, tmp_path: Path) -> None:
-    space = mf.space("speed-arena")
-    http = FakeHttp({"/gradio_api/info": (200, _info(*space.api_names)), "/": (200, "<html/>")})
+    space = mf.space("algenta")
+    # the flagship is on the shared shell: the page must carry the staged .shared_sha to pass
+    footer = f'<span class="alg-shell-stamp">build {_staged_shared_sha(mf)}</span>'
+    http = FakeHttp({"/gradio_api/info": (200, _info(*space.api_names)), "/": (200, footer)})
     hub = FakeHub([Runtime("RUNNING", "cpu-upgrade", None, -1)], {}, sha=OID)
     clock = Clock()
     outcome = deploy.deploy_space(
@@ -572,8 +667,9 @@ def test_deploy_confirms_a_quiet_hub_by_sha_and_fails_on_a_stale_one(mf, tmp_pat
         outcome.lines
     )
     assert clock.t >= deploy.SETTLE_S
+    assert outcome.lines[-1] == "algenta: all checks passed"
     hub = FakeHub([Runtime("RUNNING", "cpu-upgrade", None, -1)], {}, sha=OLD_OID)
-    http = FakeHttp({"/gradio_api/info": (200, _info(*space.api_names)), "/": (200, "<html/>")})
+    http = FakeHttp({"/gradio_api/info": (200, _info(*space.api_names)), "/": (200, footer)})
     clock = Clock()
     outcome = deploy.deploy_space(
         space,
@@ -588,15 +684,14 @@ def test_deploy_confirms_a_quiet_hub_by_sha_and_fails_on_a_stale_one(mf, tmp_pat
     )
     assert not outcome.ok
     assert outcome.lines[-1] == (
-        f"runtime: thyn-ai/algenta-speed-arena stayed RUNNING for 90s on {OLD_OID[:12]}, "
+        f"runtime: thyn-ai/algenta stayed RUNNING for 90s on {OLD_OID[:12]}, "
         f"not the uploaded {OID[:12]}"
     )
     assert http.calls == [], "no verification against a revision that never went live"
 
 
-def test_deploy_fails_on_verify_and_on_runtime_error(mf_shell, tmp_path: Path) -> None:
-    mf = mf_shell
-    space = mf.space("speed-arena")
+def test_deploy_fails_on_verify_and_on_runtime_error(mf, tmp_path: Path) -> None:
+    space = mf.space("algenta")  # on the shared shell: the stamp check runs and fails too
     hub = FakeHub(
         [Runtime("RUNNING", "cpu-upgrade", None, -1), Runtime("RUNNING", "cpu-upgrade", None, -1)],
         {},
@@ -615,7 +710,7 @@ def test_deploy_fails_on_verify_and_on_runtime_error(mf_shell, tmp_path: Path) -
         workdir=tmp_path,
     )
     assert not outcome.ok
-    assert "speed-arena: FAILED: expected_endpoints, footer_stamp" in outcome.lines
+    assert "algenta: FAILED: expected_endpoints, footer_stamp" in outcome.lines
     hub = FakeHub([Runtime("RUNNING", "cpu-upgrade", None, -1), Runtime("RUNTIME_ERROR")], {})
     outcome = deploy.deploy_space(
         space,
@@ -628,15 +723,16 @@ def test_deploy_fails_on_verify_and_on_runtime_error(mf_shell, tmp_path: Path) -
         sleep=lambda s: None,
         workdir=tmp_path,
     )
-    assert (
-        not outcome.ok
-        and outcome.lines[-1] == "runtime: thyn-ai/algenta-speed-arena entered RUNTIME_ERROR"
-    )
+    assert not outcome.ok
+    assert outcome.lines[-1] == "runtime: thyn-ai/algenta entered RUNTIME_ERROR"
 
 
-def test_static_redirect_deploy_flips_the_sdk_by_upload_alone(mf, tmp_path: Path) -> None:
+def test_static_redirect_deploy_flips_the_sdk_by_upload_alone(
+    mf_static, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Publishing a stub over the old docker app: create_repo, one wiping upload, poll, verify."""
-    space = mf.space("llm-modules")
+    register_static_checks(monkeypatch)
+    space = mf_static.space(STATIC_NAME)
     captured: dict[str, list[str]] = {}
 
     class Hub(FakeHub):
@@ -652,7 +748,7 @@ def test_static_redirect_deploy_flips_the_sdk_by_upload_alone(mf, tmp_path: Path
     clock = Clock()
     outcome = deploy.deploy_space(
         space,
-        mf,
+        mf_static,
         hub,
         dry_run=False,
         git_sha=SHA,
@@ -673,11 +769,11 @@ def test_static_redirect_deploy_flips_the_sdk_by_upload_alone(mf, tmp_path: Path
     ], "no hardware, sleep or variable call for a static Space"
     assert hub.calls[1] == (
         "create_repo",
-        "thyn-ai/algenta-llm-modules",
+        space.repo_id,
         {"repo_type": "space", "space_sdk": "static", "exist_ok": True},
     )
     up = hub.calls[2][1]
-    assert up["repo_id"] == "thyn-ai/algenta-llm-modules" and up["repo_type"] == "space"
+    assert up["repo_id"] == space.repo_id and up["repo_type"] == "space"
     assert up["delete_patterns"] == ["**"], "every old app file goes"
     assert up["commit_message"] == f"deploy {SHA}"
     assert captured["files"] == [".git_sha", "README.md", "index.html", "style.css"]
@@ -690,14 +786,15 @@ def test_static_redirect_deploy_flips_the_sdk_by_upload_alone(mf, tmp_path: Path
         f"{space.space_url}/style.css",
         f"https://huggingface.co/spaces/{space.repo_id}/raw/main/README.md",
     ]
-    assert outcome.lines[-1] == "llm-modules: all checks passed"
+    assert outcome.lines[-1] == f"{STATIC_NAME}: all checks passed"
     assert "footer_stamp" not in "\n".join(outcome.lines)
 
 
 def test_static_redirect_deploy_fails_when_the_hub_keeps_serving_the_old_app(
-    mf, tmp_path: Path
+    mf_static, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    space = mf.space("for-llm-agents")
+    register_static_checks(monkeypatch)
+    space = mf_static.space(STATIC_NAME)
     hub = FakeHub([Runtime("RUNNING"), Runtime("BUILDING"), Runtime("RUNNING")], {}, sdk="gradio")
     still_gradio = _stub_routes(
         space, html=GRADIO_PAGE, css=GRADIO_PAGE, readme="---\nsdk: gradio\n---\n"
@@ -705,7 +802,7 @@ def test_static_redirect_deploy_fails_when_the_hub_keeps_serving_the_old_app(
     clock = Clock()
     outcome = deploy.deploy_space(
         space,
-        mf,
+        mf_static,
         hub,
         dry_run=False,
         git_sha=SHA,
@@ -715,7 +812,7 @@ def test_static_redirect_deploy_fails_when_the_hub_keeps_serving_the_old_app(
         workdir=tmp_path,
     )
     assert not outcome.ok
-    assert outcome.lines[-1] == "for-llm-agents: FAILED: redirect_page, stylesheet, hub_sdk"
+    assert outcome.lines[-1] == f"{STATIC_NAME}: FAILED: redirect_page, stylesheet, hub_sdk"
     assert any("a Gradio app is still served" in line for line in outcome.lines)
     assert any("Hub README declares sdk: gradio" in line for line in outcome.lines)
 
@@ -814,16 +911,10 @@ def test_main_dry_run_all_exits_zero_without_token(
     rc = deploy.main(["--all", "--dry-run"], api_factory=factory)
     out = capsys.readouterr().out
     assert rc == 0 and made == [(None, True)], "a dry run asks for an anonymous client"
-    for name in (
-        "algenta",
-        "speed-arena",
-        "governed-agent",
-        "for-llm-agents",
-        "governed-tool-calls",
-        "llm-modules",
-    ):
-        assert f"== {name} (" in out
-    assert out.count("dry run: nothing written") == 6
+    # the fleet is the flagship alone since 2026-09-23: one header, one dry-run verdict
+    headers = [line for line in out.splitlines() if line.startswith("== ")]
+    assert headers == ["== algenta (thyn-ai/algenta, sdk=docker)"]
+    assert out.count("dry run: nothing written") == 1
 
 
 def test_main_refuses_to_deploy_without_token(
@@ -850,7 +941,7 @@ def test_main_deploys_one_space_and_propagates_failures(
         return hub
 
     rc = deploy.main(
-        ["--space", "speed-arena"],
+        ["--space", "algenta"],
         api_factory=factory,
         token="hf_test",
         fetch=http,
@@ -858,7 +949,7 @@ def test_main_deploys_one_space_and_propagates_failures(
         sleep=clock.sleep,
     )
     out = capsys.readouterr().out
-    assert rc == 1 and "FAILED: speed-arena" in out
+    assert rc == 1 and "FAILED: algenta" in out
     assert made == [("hf_test", False)]
     assert any(c[0] == "upload_folder" for c in hub.calls)
 

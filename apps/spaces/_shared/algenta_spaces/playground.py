@@ -6,13 +6,19 @@ trust_remote_code=TRUST)`) exposes `CONTRACT`: every module, function, parameter
 list. This module turns that contract into the three things the tab needs and nothing else:
 
 * `form_spec(kernel, module, function)` — a `Form` of `FieldSpec`s the tab renders as typed
-  controls: `Int`/`UInt*` -> `int` (a number with precision 0), `Float*` -> `float`, `Bool` ->
-  `bool`, `String` -> `str`, lists and structs -> `json` (a code box). Excluded functions are
-  refused here, before any control exists.
+  controls: `Int`/`UInt*` -> `int` (a number box; a whole number is enforced on Run, never
+  rounded in the browser), `Float*` -> `float`, `Bool` -> `bool`, `String` -> `str`, lists and
+  structs -> `json` (a code box). Excluded functions are refused here, before any control exists.
 * `parse_inputs(form, raw)` — validation with the SAME acceptance rules as the kernel's own
   `_transport.normalize_arguments` (bools are not ints, 64-bit int ranges, `UInt*` ranges, finite
   floats, UTF-8 strings, list element types, struct keys, defaults filled only from the right,
-  count relations such as `len(x) == n_rows * n_cols`) plus a list-size budget. Every failure is a
+  count relations such as `len(x) == n_rows * n_cols`) plus a list-size budget, and two rules of
+  the form itself: a whole number at or above `BROWSER_EXACT_MAX` (2^53) is refused, because a
+  number box hands the server a JavaScript number and what arrives may already be rounded
+  (9007199254740993 typed, 9007199254740992 received — digits typed as text stay exact); and
+  `FIELD_RULES`, the relations a contract cannot express (a count is never negative, successes
+  never exceed trials, a significance level lies strictly between 0 and 1), applied where a
+  function has a count relation from its contract or an entry in the table. Every failure is a
   `ValidationError(field, reason)` in plain language; bad input never reaches the C ABI.
 * `snippet(family, module, function, args, mode=...)` — the exact reproducible call with the
   visitor's actual arguments in three dialects: `kernels` (pip + `get_kernel` + the module wrapper
@@ -133,6 +139,16 @@ HERO_COUNT = 15
 MAX_LIST_ELEMENTS = 200_000
 #: A rendered call longer than this is broken one argument per line.
 CALL_WIDTH = 88
+#: The largest magnitude a browser number box carries exactly: a JavaScript number is an IEEE
+#: double, so a whole number at or above 2^53 may arrive rounded by one and cannot be trusted.
+BROWSER_EXACT_MAX = 1 << 53
+REASON_ABOVE_BROWSER_RANGE = (
+    "is above the range the browser can enter exactly; use the snippet under Reproduce"
+)
+REASON_WHOLE_NUMBER = "must be a whole number"
+REASON_NEGATIVE = "cannot be negative"
+REASON_OPEN_UNIT = "must be above 0 and below 1"
+REASON_CLOSED_UNIT = "must be between 0 and 1"
 
 _INT_MIN, _INT_MAX = -(1 << 63), (1 << 63) - 1
 _UINT_BITS: dict[str, int] = {"UInt8": 8, "UInt16": 16, "UInt32": 32, "UInt64": 64}
@@ -455,11 +471,19 @@ def coerce(spec: FieldSpec, value: Any) -> Any:
     if spec.kind == KIND_INT:
         if isinstance(value, bool):
             raise ValidationError(name, "must be an int, not a bool")
+        if isinstance(value, int | float) and not (
+            isinstance(value, float) and not math.isfinite(value)
+        ):
+            # A JSON number came through a number box or a client as a JavaScript double: at or
+            # above 2^53 the digits may already have been rounded, so nothing exact can be
+            # promised and the value is refused before the 64-bit range is even considered.
+            if abs(value) >= BROWSER_EXACT_MAX:
+                raise ValidationError(name, REASON_ABOVE_BROWSER_RANGE)
         if isinstance(value, int):
             return value
         if isinstance(value, float):
             if not math.isfinite(value) or value != int(value):
-                raise ValidationError(name, "must be a whole number")
+                raise ValidationError(name, REASON_WHOLE_NUMBER)
             return int(value)
         if isinstance(value, str):
             text = value.strip().replace("_", "")
@@ -523,71 +547,75 @@ def normalize_value(
     """Check one value against one runtime type with the kernel wrapper's exact acceptance rules.
 
     Returns the value as the kernel will see it (structs as dicts in field order). Raises
-    `ValidationError(field_name, ...)`; `context` is the path inside the top-level field.
+    `ValidationError(field_name, reason)`; the reason never repeats the field's own name (the
+    tab puts the field's label in front of it: "Trials A is outside the 64-bit range."), and
+    names the path inside the field for a nested value ("x[3] must be a number").
     """
-    where = field_name if context is None else context
+    where = "" if context is None else f"{context} "
     if type_name == "None":
         if value is not None:
-            raise ValidationError(field_name, f"{where} must be None")
+            raise ValidationError(field_name, f"{where}must be None")
         return None
     if type_name == "Bool":
         if not isinstance(value, bool):
-            raise ValidationError(field_name, f"{where} must be a bool")
+            raise ValidationError(field_name, f"{where}must be a bool")
         return value
     if type_name == "String":
         if not isinstance(value, str):
-            raise ValidationError(field_name, f"{where} must be a string")
+            raise ValidationError(field_name, f"{where}must be a string")
         try:
             value.encode("utf-8")
         except UnicodeEncodeError as exc:
             raise ValidationError(
-                field_name, f"{where} contains unpaired surrogate characters"
+                field_name, f"{where}contains unpaired surrogate characters"
             ) from exc
         return value
     if type_name == "Int":
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ValidationError(field_name, f"{where} must be an int")
+            raise ValidationError(field_name, f"{where}must be an int")
         if not _INT_MIN <= value <= _INT_MAX:
-            raise ValidationError(field_name, f"{where} is outside the 64-bit int range")
+            raise ValidationError(field_name, f"{where}is outside the 64-bit range")
         return value
     if type_name in _UINT_BITS:
         bits = _UINT_BITS[type_name]
         if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value >= 1 << bits:
-            raise ValidationError(field_name, f"{where} must be {type_words(type_name)}")
+            raise ValidationError(field_name, f"{where}must be {type_words(type_name)}")
         return value
     if type_name in _FLOAT_TYPES:
         if isinstance(value, bool) or not isinstance(value, int | float):
-            raise ValidationError(field_name, f"{where} must be a number")
+            raise ValidationError(field_name, f"{where}must be a number")
         try:
             number = float(value)
         except OverflowError as exc:
-            raise ValidationError(field_name, f"{where} is too large for a 64-bit float") from exc
+            raise ValidationError(field_name, f"{where}is too large for a 64-bit float") from exc
         if not math.isfinite(number):
-            raise ValidationError(field_name, f"{where} must be a finite number")
+            raise ValidationError(field_name, f"{where}must be a finite number")
         return number
     inner = list_inner(type_name)
     if inner is not None:
         if not isinstance(value, list):
-            raise ValidationError(field_name, f"{where} must be {type_words(type_name, structs)}")
+            raise ValidationError(field_name, f"{where}must be {type_words(type_name, structs)}")
+        path = field_name if context is None else context
         return [
-            normalize_value(item, inner, structs, field_name, f"{where}[{i}]")
+            normalize_value(item, inner, structs, field_name, f"{path}[{i}]")
             for i, item in enumerate(value)
         ]
     struct = structs.get(type_name)
     if not isinstance(struct, Mapping):
-        raise ValidationError(field_name, f"{where} has the unsupported runtime type {type_name}")
+        raise ValidationError(field_name, f"{where}has the unsupported runtime type {type_name}")
     fields = struct.get("fields", ())
     keys = ", ".join(f["name"] for f in fields)
     if not isinstance(value, Mapping):
-        raise ValidationError(field_name, f"{where} must be an object with keys {keys}")
+        raise ValidationError(field_name, f"{where}must be an object with keys {keys}")
     expected = [f["name"] for f in fields]
     missing = sorted(set(expected) - set(value))
     extra = sorted(set(value) - set(expected))
     if missing or extra:
-        raise ValidationError(field_name, f"{where} must have exactly the keys {keys}")
+        raise ValidationError(field_name, f"{where}must have exactly the keys {keys}")
+    path = field_name if context is None else context
     return {
         f["name"]: normalize_value(
-            value[f["name"]], f["type"], structs, field_name, f"{where}.{f['name']}"
+            value[f["name"]], f["type"], structs, field_name, f"{path}.{f['name']}"
         )
         for f in fields
     }
@@ -649,6 +677,125 @@ def enforce_count_relations(form: Form, supplied: Mapping[str, Any]) -> None:
                 )
 
 
+@dataclass(frozen=True)
+class FieldRule:
+    """One relation the contract cannot express, for one field of one function.
+
+    `kind` is `min` (`bound` is the smallest acceptable value), `at_most` (`bound` names the
+    field this one may not exceed), `open_unit` (strictly between 0 and 1) or `closed_unit`
+    (0 to 1 inclusive). The reason is plain language and never repeats the field's own name;
+    `at_most` names the other field, which the tab may replace with its label.
+    """
+
+    field: str
+    kind: str
+    bound: Any = None
+
+    def __post_init__(self) -> None:
+        if self.kind not in RULE_KINDS:
+            raise ValueError(f"kind must be one of {RULE_KINDS}, got {self.kind!r}")
+        if not _IDENT_RE.match(self.field):
+            raise ValueError(f"field {self.field!r} is not an identifier")
+        if self.kind == "at_most" and not (isinstance(self.bound, str) and self.bound):
+            raise ValueError("an at_most rule names the field it is bounded by")
+        if self.kind == "min" and (isinstance(self.bound, bool) or not isinstance(self.bound, int)):
+            raise ValueError("a min rule takes a whole-number bound")
+
+    def problem(self, named: Mapping[str, Any]) -> str | None:
+        """The reason this rule refuses `named`, or None when it holds or does not apply."""
+        value = named.get(self.field)
+        if not _is_number(value):
+            return None
+        if self.kind == "min":
+            if value < self.bound:
+                return REASON_NEGATIVE if self.bound == 0 else f"must be at least {self.bound}"
+            return None
+        if self.kind == "at_most":
+            other = named.get(self.bound)
+            if _is_number(other) and value > other:
+                return f"cannot exceed {self.bound}"
+            return None
+        if self.kind == "open_unit":
+            return None if 0 < value < 1 else REASON_OPEN_UNIT
+        return None if 0 <= value <= 1 else REASON_CLOSED_UNIT
+
+
+RULE_KINDS: tuple[str, ...] = ("min", "at_most", "open_unit", "closed_unit")
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _proportion_rules(successes: str, trials: str) -> tuple[FieldRule, ...]:
+    """Trials of at least one, successes between zero and the trials — checked in that order,
+    so an empty group is named before its successes are."""
+    return (
+        FieldRule(trials, "min", 1),
+        FieldRule(successes, "min", 0),
+        FieldRule(successes, "at_most", trials),
+    )
+
+
+def _open_unit(*fields: str) -> tuple[FieldRule, ...]:
+    return tuple(FieldRule(name, "open_unit") for name in fields)
+
+
+#: The relations the published contracts cannot express, per `module.function`, in field order.
+#: The `ab_testing` module is covered whole: its counts, proportions and significance levels
+#: have one meaning each. A function absent here relies on its contract (types, ranges, count
+#: relations) and the kernel's own checks; the table grows one function at a time, never by
+#: guessing a bound a kernel does not document.
+FIELD_RULES: Mapping[str, tuple[FieldRule, ...]] = {
+    "ab_testing.z_test_proportions": (
+        *_proportion_rules("successes_a", "n_a"),
+        *_proportion_rules("successes_b", "n_b"),
+    ),
+    "ab_testing.sequential_test": (
+        *_proportion_rules("successes_a", "n_a"),
+        *_proportion_rules("successes_b", "n_b"),
+        *_open_unit("alpha"),
+    ),
+    "ab_testing.confidence_interval_proportion": (
+        *_proportion_rules("successes", "n"),
+        *_open_unit("confidence"),
+    ),
+    "ab_testing.is_significant": (FieldRule("p_value", "closed_unit"), *_open_unit("alpha")),
+    "ab_testing.mde": (FieldRule("n", "min", 1), *_open_unit("baseline_rate", "alpha", "power")),
+    "ab_testing.power_analysis": (FieldRule("n", "min", 1), *_open_unit("alpha")),
+    "ab_testing.sample_size_proportion": _open_unit("p1", "p2", "alpha", "power"),
+    "ab_testing.epsilon_greedy_select": (FieldRule("epsilon", "closed_unit"),),
+}
+
+
+def field_rules(module: str, function: str) -> tuple[FieldRule, ...]:
+    """The table's rules for `module.function`; empty for a function it does not name."""
+    return FIELD_RULES.get(f"{module}.{function}", ())
+
+
+def field_rule_error(
+    module: str, function: str, named: Mapping[str, Any]
+) -> tuple[str, str] | None:
+    """``(field, reason)`` for the first rule of `module.function` that `named` breaks, else None.
+
+    `named` maps field names to values as the kernel would take them (`named_args`); a field
+    that is absent or not a number is never judged, so an optional argument left to the kernel
+    passes through.
+    """
+    for rule in field_rules(module, function):
+        reason = rule.problem(named)
+        if reason is not None:
+            return rule.field, reason
+    return None
+
+
+def enforce_field_rules(form: Form, named: Mapping[str, Any]) -> None:
+    """Raise `ValidationError` for the first `FIELD_RULES` entry of the form's function broken."""
+    problem = field_rule_error(form.module, form.function, named)
+    if problem is not None:
+        raise ValidationError(*problem)
+
+
 def parse_inputs(
     spec: Sequence[FieldSpec],
     raw: Mapping[str, Any],
@@ -660,8 +807,8 @@ def parse_inputs(
     Missing optional fields at the end are left to the kernel's defaults; an optional field may
     not be skipped when a later one is given (the kernel fills defaults only from the right).
     Unknown names, missing required fields, type mismatches, out-of-range numbers, non-finite
-    floats, bad JSON, wrong struct keys, oversized lists and broken count relations all raise
-    `ValidationError`.
+    floats, bad JSON, wrong struct keys, oversized lists, broken count relations and broken
+    `FIELD_RULES` all raise `ValidationError`.
     """
     fields = list(spec)
     names = [f.name for f in fields]
@@ -699,7 +846,9 @@ def parse_inputs(
                 )
         values.append(normalized)
     if isinstance(spec, Form):
-        enforce_count_relations(spec, dict(zip([f.name for f, _ in provided], values, strict=True)))
+        named = dict(zip([f.name for f, _ in provided], values, strict=True))
+        enforce_count_relations(spec, named)
+        enforce_field_rules(spec, named)
     return values
 
 

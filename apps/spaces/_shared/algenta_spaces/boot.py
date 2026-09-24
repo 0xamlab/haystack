@@ -4,6 +4,22 @@ Lifted from the `_BOOT` / `_set_stage` / `boot_status` pattern in
 `apps/spaces/governed-agent/space_core.py` and made a class: fixed stages
 declared up front, thread-safe transitions with timestamps from an injectable
 clock, a JSON snapshot for `/health`, and an HTML card for the UI.
+
+Two clocks in the snapshot, never confused: `elapsed_s` is the boot — from the
+registry's creation to the moment the last stage finished (`boot_finished_utc`),
+and, while a stage is still open, to now — and `uptime_s` is now minus the
+start. `/health` therefore says `ready, 6 stages in 4.1 s` an hour after boot,
+not `in 3,612 s`. A stage reopened after boot (set back to pending or running)
+clears the finish until every stage has finished again.
+
+A stage's `started_at` is the moment it first entered `running`: progress events
+(`set(stage, RUNNING, "algenta-text: warm · …")`, one per family while the kernels
+warm) update the detail and keep the start, so the row's elapsed time is the stage's
+real duration and the stages' durations add up to the boot. Only a stage that had
+finished (or was set back to pending) starts a new clock when it runs again.
+
+Every UTC stamp the card prints is a `<time datetime="…">` element
+(`cards.time_stamp`), so the finish is machine-readable as well as read.
 """
 
 from __future__ import annotations
@@ -14,9 +30,12 @@ import threading
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from typing import Any
 
+from .cards import time_stamp
 from .css import rule, stylesheet
+from .runtime import utc_stamp
 from .shell import SUBLINE_WORDS, check_copy
 
 PENDING = "pending"
@@ -68,6 +87,8 @@ class BootRegistry:
         if not self._stages:
             raise ValueError("a registry needs at least one stage")
         self._boot_started = clock()
+        #: When the last stage finished (done or failed); None while any stage is open.
+        self._boot_finished: float | None = None
 
     def set(self, stage_id: str, state: str, detail: str = "") -> None:
         if state not in STATES:
@@ -78,7 +99,10 @@ class BootRegistry:
             stage.state = state
             stage.detail = detail
             if state == RUNNING:
-                stage.started_at = now
+                # the first `running` starts the clock; a progress event while running keeps
+                # it; a stage that had finished (or was reset) and runs again starts anew
+                if stage.started_at is None or stage.finished_at is not None:
+                    stage.started_at = now
                 stage.finished_at = None
             elif state in (DONE, ERROR):
                 if stage.started_at is None:
@@ -87,6 +111,11 @@ class BootRegistry:
             else:
                 stage.started_at = None
                 stage.finished_at = None
+            finished = all(s.state in (DONE, ERROR) for s in self._stages.values())
+            if not finished:
+                self._boot_finished = None
+            elif self._boot_finished is None:
+                self._boot_finished = now
 
     def start(self, stage_id: str) -> None:
         self.set(stage_id, RUNNING)
@@ -110,8 +139,19 @@ class BootRegistry:
                     return stage.detail or stage.label
             return None
 
+    @property
+    def boot_finished_at(self) -> float | None:
+        """The clock reading when the last stage finished, or None while one is open."""
+        with self._lock:
+            return self._boot_finished
+
     def snapshot(self) -> dict[str, Any]:
-        """A plain-data copy the UI polls and `/health` returns."""
+        """A plain-data copy the UI polls and `/health` returns.
+
+        `elapsed_s` is the boot duration (start to the last stage's finish, or to now while
+        a stage is open); `uptime_s` is start to now; `boot_started_utc` and
+        `boot_finished_utc` are the fleet's `YYYY-MM-DD HH:MM UTC` stamps (the finish is
+        None until every stage has finished)."""
         now = self._clock()
         with self._lock:
             stages = []
@@ -123,10 +163,18 @@ class BootRegistry:
             error = next(
                 (s.detail or s.label for s in self._stages.values() if s.state == ERROR), None
             )
+            finished = self._boot_finished
+        end = now if finished is None else finished
         return {
             "ready": all(state == DONE for state in states),
             "error": error,
-            "elapsed_s": round(max(0.0, now - self._boot_started), 3),
+            "elapsed_s": round(max(0.0, end - self._boot_started), 3),
+            #: The stages' own durations added up; sequential stages make it the boot minus
+            #: the gaps between them, so a reader can check `elapsed_s` against its parts.
+            "stages_s": round(sum(stage["elapsed_s"] for stage in stages), 3),
+            "uptime_s": round(max(0.0, now - self._boot_started), 3),
+            "boot_started_utc": _stamp(self._boot_started),
+            "boot_finished_utc": None if finished is None else _stamp(finished),
             "stages": stages,
         }
 
@@ -137,12 +185,18 @@ class BootRegistry:
         return render_boot_html(self.snapshot())
 
 
+def _stamp(epoch_s: float) -> str:
+    """A clock reading (epoch seconds) as the fleet's UTC stamp."""
+    return utc_stamp(datetime.fromtimestamp(epoch_s, tz=UTC))
+
+
 def to_json(snapshot: dict[str, Any]) -> str:
     return json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
 
 
 def render_boot_html(snapshot: dict[str, Any]) -> str:
-    """The boot card: one row per stage, state word, detail and elapsed seconds."""
+    """The boot card: one row per stage, state word, detail and elapsed seconds, and — once
+    every stage has finished — the boot's duration with the UTC stamp it finished at."""
     rows = []
     for stage in snapshot["stages"]:
         state = stage["state"]
@@ -165,11 +219,19 @@ def render_boot_html(snapshot: dict[str, Any]) -> str:
     title = READY_TITLE if snapshot.get("ready") else BOOT_TITLE
     error = snapshot.get("error")
     error_html = f'<p class="alg-boot-fail">{html.escape(str(error))}</p>' if error else ""
+    finished = snapshot.get("boot_finished_utc")
+    foot_html = ""
+    if finished:
+        foot_html = (
+            f'<p class="alg-boot-foot">booted in {float(snapshot.get("elapsed_s", 0.0)):.1f} s'
+            f" · finished {time_stamp(str(finished))}</p>"
+        )
     return (
         '<section class="alg-boot" aria-live="polite">'
         f'<h2 class="alg-boot-title">{title}</h2>'
         f'<ol class="alg-boot-list">{"".join(rows)}</ol>'
         f"{error_html}"
+        f"{foot_html}"
         "</section>"
     )
 
@@ -213,4 +275,9 @@ BOOT_CSS = stylesheet(
         " color: var(--alg-text-2);",
     ),
     rule("alg-boot-fail", f"color: var(--alg-err); {_BODY} margin: 12px 0 0;"),
+    rule(
+        "alg-boot-foot",
+        f"font-family: var(--alg-font-mono); {_CAPTION} font-variant-numeric: tabular-nums;"
+        " color: var(--alg-text-2); margin: 12px 0 0;",
+    ),
 )

@@ -1,0 +1,476 @@
+{
+ "family": "finance",
+ "generated_utc": "2026-09-24T02:26:23Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 35,
+  "verified": 35,
+  "plain": 0,
+  "timeouts": 0,
+  "unverified": 0
+ },
+ "functions": {
+  "accounting.break_even_units": {
+   "args": {
+    "fixed_costs": 1.5,
+    "price": 100.0,
+    "variable_cost": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 11.196
+  },
+  "accounting.compound_annual_growth": {
+   "args": {
+    "beginning": 1.5,
+    "ending": 1.5,
+    "years": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.125
+  },
+  "accounting.current_ratio": {
+   "args": {
+    "current_assets": 1.5,
+    "current_liabilities": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "accounting.debt_to_equity": {
+   "args": {
+    "total_debt": 10.0,
+    "total_equity": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "accounting.declining_balance": {
+   "args": {
+    "cost": 100.0,
+    "rate": 0.05,
+    "year": 2026
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "accounting.future_value": {
+   "args": {
+    "pv": 1000.0,
+    "rate": 0.05,
+    "periods": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "accounting.gross_profit_margin": {
+   "args": {
+    "revenue": 150.0,
+    "cogs": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "accounting.net_profit_margin": {
+   "args": {
+    "net_income": 1.5,
+    "revenue": 150.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "accounting.present_value_single": {
+   "args": {
+    "fv": 1100.0,
+    "rate": 0.05,
+    "periods": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "accounting.return_on_equity": {
+   "args": {
+    "net_income": 1.5,
+    "equity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "accounting.straight_line_depreciation": {
+   "args": {
+    "cost": 100.0,
+    "salvage": 1.5,
+    "useful_life": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "accounting.sum_of_years_digits": {
+   "args": {
+    "cost": 100.0,
+    "salvage": 1.5,
+    "useful_life": 5,
+    "year": 2026
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "finance.annuity_payment": {
+   "args": {
+    "principal": 1000.0,
+    "rate": 0.05,
+    "periods": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "finance.cagr": {
+   "args": {
+    "start_value": 2.5,
+    "end_value": 2.5,
+    "years": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "finance.compound_interest": {
+   "args": {
+    "principal": 1000.0,
+    "rate": 0.05,
+    "periods": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.117
+  },
+  "finance.future_value": {
+   "args": {
+    "present_val": 1.5,
+    "rate": 0.05,
+    "periods": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.085
+  },
+  "finance.irr": {
+   "args": {
+    "cashflows": [
+     -1000.0,
+     300.0,
+     400.0,
+     500.0
+    ],
+    "guess": 1.5,
+    "tol": 1e-06,
+    "max_iter": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.136
+  },
+  "finance.max_drawdown": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "finance.npv": {
+   "args": {
+    "rate": 0.05,
+    "cashflows": [
+     -1000.0,
+     300.0,
+     400.0,
+     500.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.107
+  },
+  "finance.payback_period": {
+   "args": {
+    "cashflows": [
+     -1000.0,
+     300.0,
+     400.0,
+     500.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "finance.present_value": {
+   "args": {
+    "future_value": 2.5,
+    "rate": 0.05,
+    "periods": 3
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.118
+  },
+  "finance.roi": {
+   "args": {
+    "gain": 1.5,
+    "cost": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.116
+  },
+  "finance.sharpe_ratio": {
+   "args": {
+    "returns": [
+     0.01,
+     -0.02,
+     0.015,
+     0.03,
+     -0.01
+    ],
+    "risk_free_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.118
+  },
+  "finance.wacc": {
+   "args": {
+    "equity": 1.5,
+    "debt": 1.5,
+    "cost_equity": 100.0,
+    "cost_debt": 100.0,
+    "tax_rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "option_greeks_batch.chain_greeks": {
+   "args": {
+    "spots": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "strikes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "times": [
+     0.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "rates": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "sigmas": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "is_calls": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.191
+  },
+  "option_pricing.binomial_tree_call": {
+   "args": {
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "sigma": 0.2,
+    "n_steps": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.099
+  },
+  "option_pricing.black_scholes_call": {
+   "args": {
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "sigma": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "option_pricing.black_scholes_put": {
+   "args": {
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "sigma": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.101
+  },
+  "option_pricing.delta_call": {
+   "args": {
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "sigma": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "option_pricing.gamma": {
+   "args": {
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "sigma": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "option_pricing.implied_volatility": {
+   "args": {
+    "market_price": 100.0,
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "is_call": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.093
+  },
+  "option_pricing.norm_cdf": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "option_pricing.put_call_parity": {
+   "args": {
+    "call_price": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "S": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "option_pricing.theta_call": {
+   "args": {
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "sigma": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "option_pricing.vega": {
+   "args": {
+    "S": 100.0,
+    "K": 105.0,
+    "T": 1.0,
+    "r": 0.05,
+    "sigma": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  }
+ }
+}

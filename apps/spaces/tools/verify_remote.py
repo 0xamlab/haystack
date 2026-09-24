@@ -7,7 +7,9 @@ so the same code runs against the live URL from ``deploy.py`` and against fakes 
 M0 registers the checks that exist for today's apps:
 
 * ``info_reachable``      GET /gradio_api/info answers 200 with JSON inside the turn budget
-* ``expected_endpoints``  every ``api_names`` entry from the manifest is a named endpoint
+* ``expected_endpoints``  every ``api_names`` entry from the manifest is a named endpoint; on
+                          a Space on the shared shell the live set must equal the manifest's
+                          (its tabs declare every endpoint), elsewhere extras are only named
 * ``footer_stamp``        the footer's build stamp equals the staged .shared_sha; runs only
                           when the manifest says ``shared_shell = true`` for the Space and is
                           otherwise SKIPPED with an explicit ``[SKIP]`` line, never passed
@@ -31,7 +33,12 @@ follow in the milestones that ship those endpoints.
 
 Footer contract (``algenta_spaces.shell.render_footer``): ``<span class="alg-shell-stamp">build
 <sha></span>`` where ``<sha>`` is the ``.shared_sha`` written by ``stage.py`` next to the vendored
-package. Gradio serialises the HTML into ``window.gradio_config``, so quotes may be JSON-escaped.
+package, or its first twelve characters (``shell.SHORT_STAMP_CHARS``; the full sha rides in the
+span's ``title``) — the check compares the stamp as a prefix of the staged sha, so both pass.
+Gradio serialises the HTML into ``window.gradio_config``: the attribute quote arrives
+JSON-escaped (``\\"``) and, on the index page of Gradio 6.28, the angle brackets arrive as
+``\\u003e`` / ``\\u003c`` (``/config`` keeps them literal). ``SHA_STAMP_RE`` reads all three
+spellings of the same stamp.
 """
 
 from __future__ import annotations
@@ -54,7 +61,13 @@ log = logging.getLogger(__name__)
 Fetcher = Callable[[str, float], tuple[int, str]]
 TURN_BUDGET_S = 30.0
 INFO_PATH = "/gradio_api/info"
-SHA_STAMP_RE = re.compile(r'alg-shell-stamp\\?">build ([0-9a-f]{7,64})<')
+#: `<span class="alg-shell-stamp">build <sha></span>` in the literal, the `\"`-escaped and the
+#: `\u003e`-escaped spellings; attributes may follow the class (`title="build <full sha>"` on
+#: the shared shell's 12-hex stamp) and the sha may be 7 to 64 hex characters — the check
+#: compares it as a prefix of the staged `.shared_sha`.
+SHA_STAMP_RE = re.compile(
+    r'alg-shell-stamp\\?"[^<>]{0,240}?(?:>|\\u003e)\s*build ([0-9a-f]{7,64})\s*(?:<|\\u003c)'
+)
 META_REFRESH_RE = re.compile(r'<meta\s+http-equiv=["\']refresh["\']', re.IGNORECASE)
 PRIMARY_LINK_RE = re.compile(
     r'<a\s+class=["\']alg-button["\']\s+href=["\']([^"\']+)["\']', re.IGNORECASE
@@ -176,12 +189,20 @@ def info_reachable(ctx: VerifyContext) -> str:
 
 @register("algenta", "speed-arena", "governed-agent")
 def expected_endpoints(ctx: VerifyContext) -> str:
+    """Every manifest ``api_names`` entry is live. On a Space on the shared shell the two sets
+    are equal — its tabs declare every endpoint, so a name the manifest does not list is a
+    leak (a ``/lambda`` from a callable value, a forgotten ``api_name=False``); off the shell
+    the live set may hold more and the extras are only named."""
     named = set(ctx.info()["named_endpoints"])
     expected = {f"/{n}" for n in ctx.space.api_names}
     missing = sorted(expected - named)
+    extra = sorted(named - expected)
     if missing:
         raise VerifyError(f"missing {', '.join(missing)}; live: {', '.join(sorted(named))}")
-    return f"{len(expected)} expected endpoints present"
+    if extra and ctx.space.shared_shell:
+        raise VerifyError(f"unexpected {', '.join(extra)}; the manifest lists {len(expected)}")
+    tail = f"; live also has {', '.join(extra)}" if extra else ""
+    return f"{len(expected)} expected endpoints present{tail}"
 
 
 def footer_stamp_of(html: str) -> str | None:

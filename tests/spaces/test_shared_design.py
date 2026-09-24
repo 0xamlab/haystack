@@ -143,10 +143,45 @@ def test_primary_button_gradient_holds_aa_contrast_with_white_text(mode):
     key = "button_primary_background_fill" + ("_dark" if mode else "")
     assert settings[key] == fill
     assert settings["button_primary_text_color" + ("_dark" if mode else "")] == design.BUTTON_TEXT
-    # the header gradient keeps the brand accent; it is decorative and carries no text
+    # the brand gradient keeps the accent for the lane bar; it never carries text
     assert design.COLOR_TOKENS["accent-from"][mode] == "#7C5CFA"
     assert design.COLOR_TOKENS["accent-to"][mode] == "#3B82F6"
-    assert "--alg-accent-from" in design._GRADIENT_TEXT and "button" not in design._GRADIENT_TEXT
+    assert "background-clip: text" not in fleet_css()
+
+
+@pytest.mark.parametrize("mode", [0, 1], ids=["light", "dark"])
+def test_hero_accent_text_is_the_aa_accent_not_the_gradient(mode):
+    """`.alg-hero-num.alg-accent-text` measured 4.12:1 light / 4.23:1 dark painted in
+    #7C5CFA; it paints `accent-text` now — the selected tab's colour — at 4.5:1 or better on
+    every surface a card sits on."""
+    tokens = {name: values[mode] for name, values in design.COLOR_TOKENS.items()}
+    accent = design.EXTENSION_TOKENS["accent-text"][mode]
+    for surface in ("bg", "surface", "surface-2"):
+        assert _contrast(accent, tokens[surface]) >= 4.5, (
+            surface,
+            _contrast(accent, tokens[surface]),
+        )
+    # the selected tab measured 6.5 light / 7.26 dark on `bg`; a card sits on `surface`
+    assert _contrast(accent, tokens["bg"]) >= (6.4 if mode == 0 else 7.2)
+    assert _contrast(accent, tokens["surface"]) >= (6.0 if mode == 0 else 6.8)
+    assert design.ACCENT_TEXT == "color: var(--alg-accent-text, var(--alg-button-from));"
+    assert f"{'.alg-accent-text' * 4} {{ {design.ACCENT_TEXT} }}" in design.BASE_CSS
+    assert "#7C5CFA" not in design.ACCENT_TEXT and "accent-from" not in design.ACCENT_TEXT
+    # the fallback outside the page root is the same light accent
+    assert design.COLOR_TOKENS["button-from"][0] == design.EXTENSION_TOKENS["accent-text"][0]
+    # one accent for the hero, the tabs and the code keywords
+    settings = design.theme_settings()
+    assert settings["color_accent"] == design.EXTENSION_TOKENS["accent-text"][0]
+    assert (
+        design.theme_dark_extras()["color_accent_dark"] == design.EXTENSION_TOKENS["accent-text"][1]
+    )
+
+
+def test_block_padding_sits_on_the_8pt_grid():
+    settings = design.theme_settings()
+    assert settings["block_padding"] == design.BLOCK_PADDING == "12px 16px"
+    for value in design.BLOCK_PADDING.split():
+        assert int(value[:-2]) in design.SPACING
 
 
 def test_theme_settings_pin_both_modes_to_the_tokens():
@@ -228,3 +263,143 @@ def test_heaviness_parser_rejects_gradios_own_defaults():
     with pytest.raises(AssertionError):
         _assert_no_heavier_than_the_token("shadow_drop", "")
     _assert_no_heavier_than_the_token("shadow_drop", design.SHADOW)
+
+
+# ------------------------------------------------ M2-B design system: states, steps, fonts
+
+
+@pytest.mark.parametrize("mode", [0, 1], ids=["light", "dark"])
+def test_extension_tokens_hold_aa_on_every_surface_and_stay_page_scoped(mode):
+    tokens = {name: values[mode] for name, values in design.COLOR_TOKENS.items()}
+    accent = design.EXTENSION_TOKENS["accent-text"][mode]
+    for surface in ("bg", "surface", "surface-2"):
+        assert _contrast(accent, tokens[surface]) >= 4.5, (
+            surface,
+            _contrast(accent, tokens[surface]),
+        )
+    hover = design.EXTENSION_TOKENS["surface-hover"][mode]
+    assert _contrast(tokens["text"], hover) >= 4.5
+    # the disabled look: muted text on the muted surface, no opacity
+    assert _contrast(tokens["text-2"], tokens["surface-2"]) >= 4.5
+    css_text = design.TOKENS_CSS
+    assert f"\n.{design.PAGE_CLASS} {{\n" in css_text
+    assert f"\n.dark .{design.PAGE_CLASS} {{\n" in css_text
+    assert "--alg-accent-text: #5B3FE0;" in css_text and "--alg-accent-text: #A78BFA;" in css_text
+    # the two :root blocks stay the frozen set the redirect stubs mirror
+    root = _block(":root")
+    assert "--alg-accent-text" not in root and "Fallback" not in root
+    assert len(re.findall(r"^:root \{\n", css_text, re.M)) == 2
+    assert design.token("accent-text") == "var(--alg-accent-text)"
+
+
+@pytest.mark.parametrize("mode", [0, 1], ids=["light", "dark"])
+def test_button_hover_stops_hold_aa_with_white_text(mode):
+    start, end = design.BUTTON_HOVER_STOPS[mode]
+    for stop in (start, end, _midpoint(start, end)):
+        assert _contrast(stop, design.BUTTON_TEXT) >= 4.5, (
+            stop,
+            _contrast(stop, design.BUTTON_TEXT),
+        )
+    assert design.button_hover_gradient(mode) == f"linear-gradient(135deg, {start} 0%, {end} 100%)"
+    rest = design.COLOR_TOKENS["button-from"][mode]
+    assert start != rest, "hover is a different fill from rest"
+
+
+def test_theme_pins_every_button_tab_input_checkbox_and_label_state():
+    s = design.theme_settings()
+    # buttons: hover pinned to the design's own stops, secondary hover to surface-hover
+    assert s["button_primary_background_fill_hover"] == design.button_hover_gradient(0)
+    assert s["button_primary_background_fill_hover_dark"] == design.button_hover_gradient(1)
+    assert (
+        s["button_primary_text_color_hover"]
+        == s["button_primary_text_color_hover_dark"]
+        == "#FFFFFF"
+    )
+    assert s["button_secondary_background_fill_hover"] == "#E4E4EE"
+    assert s["button_secondary_background_fill_hover_dark"] == "#1F1F2E"
+    assert s["button_secondary_text_color_hover"] == "#0B0B12"
+    assert s["button_secondary_text_color_hover_dark"] == "#E6E6EB"
+    assert s["button_transform_hover"] == s["button_transform_active"] == "none"
+    assert 150 <= design.MOTION_MS <= 200
+    assert s["button_transition"].count(f"{design.MOTION_MS}ms") == 3
+    # tabs: selected text is the accent shade that reads 4.5:1, hover fill is surface-2
+    assert s["color_accent"] == "#5B3FE0"
+    assert design.theme_dark_extras() == {"color_accent_dark": "#A78BFA"}
+    assert s["background_fill_secondary"] == "#EEEEF5"
+    assert s["background_fill_secondary_dark"] == "#181824"
+    # focus: 2 px accent ring and accent border on inputs, both modes
+    assert s["input_border_color_focus"] == s["input_border_color_focus_dark"] == "#3B82F6"
+    assert s["input_shadow_focus"] == "0 0 0 2px #3B82F6"
+    # checkbox and radio: unchecked = surface + visible border, checked = accent with AA check
+    assert s["checkbox_background_color"] == "#F7F7FB"
+    assert s["checkbox_background_color_dark"] == "#181824"
+    assert s["checkbox_border_color_dark"] == "#9CA3AF"
+    assert s["checkbox_border_width"] == "1px"
+    assert s["checkbox_border_radius"] == "calc(8px / 2)"
+    selected = s["checkbox_background_color_selected"]
+    assert selected == s["checkbox_background_color_selected_dark"] == "#1D4ED8"
+    assert _contrast("#FFFFFF", selected) >= 4.5
+    # the block label (Code / Textbox) sits on surface-2 in text-2 in both modes
+    assert (
+        s["block_label_background_fill"] == "#EEEEF5" and s["block_label_text_color"] == "#5B6270"
+    )
+    assert s["block_label_background_fill_dark"] == "#181824"
+    assert s["block_label_text_color_dark"] == "#9CA3AF"
+    # 44 px through padding: inputs, option labels and buttons
+    assert s["input_padding"] == "12px 16px"
+    assert s["checkbox_label_padding"] == "12px 16px"
+    assert s["button_large_padding"] == "12px 24px"
+    # no Gradio palette reference survives anywhere in the theme
+    for key, value in s.items():
+        assert "*" not in value, key
+
+
+def test_theme_factory_carries_the_dark_accent_and_the_fallback_faces():
+    gr = pytest.importorskip("gradio")
+    theme = design.theme()
+    assert isinstance(theme, gr.themes.Base)
+    assert theme.color_accent == "#5B3FE0" and theme.color_accent_dark == "#A78BFA"
+    theme_css = theme._get_theme_css()
+    light, dark = theme_css.split(":root.dark", 1)
+    assert "--color-accent: #5B3FE0;" in light and "--color-accent: #A78BFA;" in dark
+    assert "'Inter Fallback'" in theme.font and "'JetBrains Mono Fallback'" in theme.font_mono
+    assert theme.font.index("'Inter'") < theme.font.index("'Inter Fallback'")
+
+
+def test_phone_type_steps_and_fallback_font_faces_are_declared():
+    css_text = design.TOKENS_CSS
+    assert design.PHONE_MAX_WIDTH == 767
+    assert f"@media (width <= {design.PHONE_MAX_WIDTH}px) {{\n  .{design.PAGE_CLASS} {{" in css_text
+    assert design.TYPE_SCALE_PHONE == {"display": (28, 34), "title": (22, 28)}
+    for decl in (
+        "--alg-display-size: 28px;",
+        "--alg-display-line: 34px;",
+        "--alg-title-size: 22px;",
+        "--alg-title-line: 28px;",
+    ):
+        assert decl in css_text
+    assert css_text.count("--alg-display-size:") == 2  # the root value and the phone step
+    faces = re.findall(r"@font-face \{\n(.*?)\n\}", css_text, re.S)
+    assert len(faces) == len(design.FONT_FALLBACKS) == 2
+    for face, fallback in zip(faces, design.FONT_FALLBACKS, strict=True):
+        assert f'font-family: "{fallback.family}";' in face
+        for name in fallback.local:
+            assert f'local("{name}")' in face
+        for prop in ("size-adjust", "ascent-override", "descent-override", "line-gap-override"):
+            assert f"  {prop}: " in face
+        assert "url(" not in face  # local faces only: nothing is downloaded
+    # the page stacks name the fallback right after the web font; the frozen :root stacks stay
+    assert design.FONT_SANS_PAGE.startswith('Inter, "Inter Fallback", ')
+    assert design.FONT_MONO_PAGE.startswith('"JetBrains Mono", "JetBrains Mono Fallback", ')
+    assert css_text.count(f"--alg-font: {design.FONT_SANS};") == 1
+    assert css_text.count(f"--alg-font: {design.FONT_SANS_PAGE};") == 1
+    assert css_text.count(f"--alg-font-mono: {design.FONT_MONO_PAGE};") == 1
+    assert "Fallback" not in design.FONT_SANS and "Fallback" not in design.FONT_MONO
+
+
+def test_base_css_ships_the_chrome_and_code_sheets():
+    assert css.CHROME_CSS.strip() in design.BASE_CSS
+    assert css.CODE_CSS.strip() in design.BASE_CSS
+    bundle = fleet_css()
+    assert '[data-testid="status-tracker"] { display: none; }' in bundle
+    assert bundle.index(design.TOKENS_CSS) < bundle.index(css.CHROME_CSS.strip())

@@ -1,0 +1,5398 @@
+{
+ "family": "ml",
+ "generated_utc": "2026-09-24T02:21:27Z",
+ "harness": "apps/spaces/tools/build_examples.py",
+ "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
+ "counts": {
+  "functions": 294,
+  "verified": 274,
+  "plain": 8,
+  "timeouts": 0,
+  "unverified": 20
+ },
+ "functions": {
+  "activations.elu": {
+   "args": {
+    "x": 1.5,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 13.734
+  },
+  "activations.gelu": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.163
+  },
+  "activations.gelu_fast": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.12
+  },
+  "activations.gelu_new": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.097
+  },
+  "activations.hard_swish": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.121
+  },
+  "activations.mish": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.171
+  },
+  "activations.relu6": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.134
+  },
+  "activations.selu": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.13
+  },
+  "activations.swiglu": {
+   "args": {
+    "x": 1.5,
+    "gate": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.147
+  },
+  "activations.swish": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.117
+  },
+  "bayesian_inference.bayes_update_log": {
+   "args": {
+    "log_prior": 1.5,
+    "log_likelihood": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.142
+  },
+  "bayesian_inference.credible_interval_half_width": {
+   "args": {
+    "std": 1.0,
+    "z_score": 1.96
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.127
+  },
+  "bayesian_inference.expected_information_gain": {
+   "args": {
+    "posterior_entropy": 1.5,
+    "prior_entropy": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.129
+  },
+  "bayesian_inference.jeffreys_prior_gaussian": {
+   "args": {
+    "sigma": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "bayesian_inference.kl_gaussians": {
+   "args": {
+    "mu1": 0.0,
+    "sigma1": 1.0,
+    "mu2": 0.0,
+    "sigma2": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.149
+  },
+  "bayesian_inference.laplace_approx_log_posterior": {
+   "args": {
+    "log_post_mode": 0.0,
+    "hessian_at_mode": 0.0,
+    "theta": 0.5,
+    "theta_mode": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.155
+  },
+  "bayesian_inference.mean_field_update_mean": {
+   "args": {
+    "natural_grad_sum": 15.0,
+    "precision": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "bayesian_inference.mean_field_update_var": {
+   "args": {
+    "expected_hessian": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.106
+  },
+  "bayesian_inference.prior_predictive": {
+   "args": {
+    "likelihood": 1.5,
+    "prior": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "bayesian_inference.variational_elbo_term": {
+   "args": {
+    "log_likelihood": 1.5,
+    "kl_divergence": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "calibration.calibration_curve": {
+   "args": {
+    "probs": [
+     0.1,
+     0.2,
+     0.3,
+     0.25,
+     0.15
+    ],
+    "labels": [
+     1.0,
+     0.0,
+     1.0,
+     1.0,
+     0.0
+    ],
+    "n_bins": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.388
+  },
+  "calibration.isotonic_fit": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.175
+  },
+  "calibration.isotonic_transform": {
+   "args": {
+    "thresholds": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "x_new": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.164
+  },
+  "calibration.platt_fit": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "labels": [
+     1.0,
+     0.0,
+     1.0,
+     1.0,
+     0.0
+    ],
+    "max_iter": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.188
+  },
+  "calibration.platt_transform": {
+   "args": {
+    "a": 1.0,
+    "b": 2.0,
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.123
+  },
+  "causal_inference.base.ci_all_finite": {
+   "args": {
+    "v": [
+     0.0,
+     1.0,
+     0.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.16
+  },
+  "causal_inference.base.ci_argsort_asc": {
+   "args": {
+    "keys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.153
+  },
+  "causal_inference.base.ci_argsort_desc": {
+   "args": {
+    "keys": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.141
+  },
+  "causal_inference.base.ci_count_treated": {
+   "args": {
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.126
+  },
+  "causal_inference.base.ci_finite": {
+   "args": {
+    "v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.123
+  },
+  "causal_inference.base.ci_is_permutation": {
+   "args": {
+    "order": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.132
+  },
+  "causal_inference.base.ci_matrix_fits": {
+   "args": {
+    "n_rows": 3,
+    "n_cols": 3,
+    "length": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.196
+  },
+  "causal_inference.base.ci_panel_fits": {
+   "args": {
+    "n_units": 100,
+    "n_periods": 3,
+    "length": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.084
+  },
+  "causal_inference.base.ci_product3_fits": {
+   "args": {
+    "a": 6,
+    "b": 4,
+    "c": 2,
+    "budget": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "causal_inference.base.ci_product_fits": {
+   "args": {
+    "a": 6,
+    "b": 4,
+    "budget": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.124
+  },
+  "causal_inference.base.ci_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "causal_inference.base.ci_tolerance": {
+   "args": {
+    "magnitude": 1.5,
+    "abs_tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "causal_inference.base.ci_treatment_defect": {
+   "args": {
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "causal_inference.dag.backdoor_check": {
+   "args": {
+    "edge_from": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "edge_to": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_nodes": 5,
+    "treatment": 5,
+    "outcome": 5,
+    "adjustment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.176
+  },
+  "causal_inference.dag.backdoor_minimal_set": {
+   "args": {
+    "edge_from": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "edge_to": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_nodes": 5,
+    "treatment": 5,
+    "outcome": 5,
+    "candidates": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.134
+  },
+  "causal_inference.dag.d_separated": {
+   "args": {
+    "edge_from": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "edge_to": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_nodes": 5,
+    "x_nodes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "y_nodes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "z_nodes": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.16
+  },
+  "causal_inference.dag.dag_ancestors": {
+   "args": {
+    "edge_from": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "edge_to": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_nodes": 5,
+    "root": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "causal_inference.dag.dag_descendants": {
+   "args": {
+    "edge_from": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "edge_to": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_nodes": 5,
+    "root": 0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.116
+  },
+  "causal_inference.dag.dag_validate": {
+   "args": {
+    "edge_from": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "edge_to": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_nodes": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "causal_inference.estimators.aipw_ate": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "mu0": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "mu1": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "trim_eps": 1e-06,
+    "extreme_weight_threshold": 0.5,
+    "z": 3.5
+   },
+   "verified": false,
+   "outcome": "treatment_not_binary",
+   "source": "rules",
+   "ms": 0.181
+  },
+  "causal_inference.estimators.aipw_bootstrap_ci": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "mu0": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "mu1": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_replicates": 100,
+    "seed": 42,
+    "alpha": 0.05
+   },
+   "verified": false,
+   "outcome": "treatment_not_binary",
+   "source": "rules",
+   "ms": 0.155
+  },
+  "causal_inference.estimators.naive_ate": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": false,
+   "outcome": "treatment_not_binary",
+   "source": "rules",
+   "ms": 0.149
+  },
+  "causal_inference.estimators.outcome_regression_ate": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_units": 100,
+    "n_features": 100,
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "l1": 0.1,
+    "l2": 0.1,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": false,
+   "outcome": "invalid_shape",
+   "source": "rules",
+   "ms": 0.149
+  },
+  "causal_inference.estimators.strata_ate": {
+   "args": {
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "strata": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "n_strata": 100
+   },
+   "verified": false,
+   "outcome": "invalid_shape",
+   "source": "rules",
+   "ms": 0.16
+  },
+  "causal_inference.panel.did_panel": {
+   "args": {
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_units": 100,
+    "n_periods": 3,
+    "treated_unit": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "first_treated_period": 3
+   },
+   "verified": false,
+   "outcome": "invalid_shape",
+   "source": "rules",
+   "ms": 0.155
+  },
+  "causal_inference.panel.synthetic_control": {
+   "args": {
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_units": 100,
+    "n_periods": 3,
+    "treated_index": 0,
+    "first_treated_period": 3,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": false,
+   "outcome": "invalid_shape",
+   "source": "rules",
+   "ms": 0.185
+  },
+  "causal_inference.sensitivity.e_value_bound": {
+   "args": {
+    "risk_ratio": 0.5,
+    "ci_limit": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.123
+  },
+  "causal_inference.sensitivity.e_value_ratio": {
+   "args": {
+    "risk_ratio": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.14
+  },
+  "causal_inference.sensitivity.omitted_variable_bias": {
+   "args": {
+    "estimate": 0.5,
+    "se": 0.5,
+    "dof": 2,
+    "r2_dz": 0.5,
+    "r2_yz": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.132
+  },
+  "causal_inference.sensitivity.robustness_value": {
+   "args": {
+    "t_stat": 2.1,
+    "dof": 5,
+    "q": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.111
+  },
+  "causal_inference.sensitivity.rosenbaum_gamma_needed": {
+   "args": {
+    "n_pairs": 100,
+    "n_positive": 100,
+    "target_p": 0.5,
+    "gamma_max": 1.0,
+    "tol": 1e-06
+   },
+   "verified": false,
+   "outcome": "invalid_parameter",
+   "source": "rules",
+   "ms": 0.134
+  },
+  "causal_inference.sensitivity.rosenbaum_sign_bound": {
+   "args": {
+    "n_pairs": 100,
+    "n_positive": 100,
+    "gamma": 0.9
+   },
+   "verified": false,
+   "outcome": "invalid_parameter",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "causal_inference.sensitivity.sensitivity_curve": {
+   "args": {
+    "estimate": 0.5,
+    "se": 0.5,
+    "dof": 2,
+    "r2_grid": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.205
+  },
+  "causal_inference.uplift.qini_curve": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_points": 100
+   },
+   "verified": false,
+   "outcome": "invalid_shape",
+   "source": "rules",
+   "ms": 0.165
+  },
+  "causal_inference.uplift.uplift_by_bin": {
+   "args": {
+    "scores": [
+     0.9,
+     0.2,
+     0.8,
+     0.6,
+     0.3
+    ],
+    "treatment": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "outcomes": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_bins": 100
+   },
+   "verified": false,
+   "outcome": "invalid_shape",
+   "source": "rules",
+   "ms": 0.159
+  },
+  "config.toml_parser.toml_get_bool": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv",
+    "default": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.296
+  },
+  "config.toml_parser.toml_get_float": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv",
+    "default": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.283
+  },
+  "config.toml_parser.toml_get_int": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv",
+    "default": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.239
+  },
+  "config.toml_parser.toml_get_string": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.253
+  },
+  "config.toml_parser.toml_parse": {
+   "args": {
+    "content": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "config.yaml_parser.yaml_get_bool": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv",
+    "default": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.313
+  },
+  "config.yaml_parser.yaml_get_float": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv",
+    "default": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.278
+  },
+  "config.yaml_parser.yaml_get_int": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv",
+    "default": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.297
+  },
+  "config.yaml_parser.yaml_get_string": {
+   "args": {
+    "doc": {
+     "pool": {
+      "nodes": [
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       },
+       {
+        "kind": 5,
+        "scalar": "hello world",
+        "map_keys": [
+         "alpha",
+         "beta",
+         "gamma",
+         "delta",
+         "epsilon"
+        ],
+        "map_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ],
+        "list_vals": [
+         3,
+         1,
+         4,
+         1,
+         5
+        ]
+       }
+      ]
+     },
+     "root": 0
+    },
+    "path": "reports/q3.csv"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.282
+  },
+  "config.yaml_parser.yaml_parse": {
+   "args": {
+    "content": "The quick brown fox jumps over the lazy dog"
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.137
+  },
+  "constraint.all_different": {
+   "args": {
+    "values": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.143
+  },
+  "constraint.count_solutions_nqueens": {
+   "args": {
+    "n": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 10.074
+  },
+  "constraint.graph_coloring": {
+   "args": {
+    "adj": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "n_colors": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.149
+  },
+  "constraint.n_queens_check": {
+   "args": {
+    "queens": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "constraint.solve_backtrack": {
+   "args": {
+    "domains": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ],
+    "constraints": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.101
+  },
+  "constraint.solve_n_queens": {
+   "args": {
+    "n": 2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 11.765
+  },
+  "constraint.sudoku_valid": {
+   "args": {
+    "board": [
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ],
+     [
+      3,
+      1,
+      4
+     ]
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.204
+  },
+  "decision_ml_fusion.adaptive_exploration_rate": {
+   "args": {
+    "q_value": 2.5,
+    "visit_count": 5.0,
+    "total_visits": 10.0,
+    "ucb_c": 3.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.109
+  },
+  "decision_ml_fusion.counterfactual_utility": {
+   "args": {
+    "chosen_outcome": 1.5,
+    "best_alternative": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "decision_ml_fusion.expected_value_under_model": {
+   "args": {
+    "outcome": 1.5,
+    "model_weight": 1.0,
+    "prior_weight": 1.0,
+    "model_confidence": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "decision_ml_fusion.ml_to_simulation_weight": {
+   "args": {
+    "ml_probability": 0.5,
+    "temperature": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "decision_ml_fusion.model_confidence_gate": {
+   "args": {
+    "model_output": 1.5,
+    "confidence": 0.95,
+    "threshold": 0.5,
+    "fallback": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "decision_ml_fusion.multi_objective_scalarize": {
+   "args": {
+    "objectives": 1.5,
+    "ideal": 1.5,
+    "weight": 1.0,
+    "nadir": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.121
+  },
+  "decision_ml_fusion.policy_gradient_advantage": {
+   "args": {
+    "reward": 1.0,
+    "baseline": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.066
+  },
+  "decision_ml_fusion.regret_from_prediction": {
+   "args": {
+    "true_outcome": 1.5,
+    "predicted_outcome": 1.1,
+    "decision_cost": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.08
+  },
+  "decision_ml_fusion.reward_shaping_potential": {
+   "args": {
+    "gamma": 0.9,
+    "next_potential": 1.5,
+    "current_potential": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "decision_ml_fusion.simulation_to_objective": {
+   "args": {
+    "sim_mean": 0.0,
+    "sim_std": 1.0,
+    "risk_aversion": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "gradient_descent.adagrad_update": {
+   "args": {
+    "param": 1.5,
+    "gradient": 1.5,
+    "accumulated_sq": 1.5,
+    "lr": 0.01,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "gradient_descent.adam_update": {
+   "args": {
+    "param": 1.5,
+    "m_hat": 1.5,
+    "v_hat": 0.7,
+    "lr": 0.01,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.119
+  },
+  "gradient_descent.adamw_update": {
+   "args": {
+    "param": 1.5,
+    "m_hat": 1.5,
+    "v_hat": 0.7,
+    "lr": 0.01,
+    "weight_decay": 0.9,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.11
+  },
+  "gradient_descent.gradient_clipping": {
+   "args": {
+    "gradient": 1.5,
+    "grad_norm": 1.5,
+    "max_norm": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "gradient_descent.lars_update": {
+   "args": {
+    "param": 1.5,
+    "gradient": 1.5,
+    "param_norm": 1.5,
+    "grad_norm": 1.5,
+    "lr": 0.01,
+    "trust_coeff": 1.5,
+    "weight_decay": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "gradient_descent.lion_update": {
+   "args": {
+    "param": 1.5,
+    "m": 1.5,
+    "gradient": 1.5,
+    "lr": 0.01,
+    "beta1": 0.2,
+    "beta2": 0.2,
+    "weight_decay": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "gradient_descent.lr_cosine_schedule": {
+   "args": {
+    "step": 1.5,
+    "total_steps": 10.0,
+    "lr_max": 1.0,
+    "lr_min": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.115
+  },
+  "gradient_descent.rmsprop_update": {
+   "args": {
+    "param": 1.5,
+    "gradient": 1.5,
+    "running_avg_sq": 1.5,
+    "lr": 0.01,
+    "decay": 0.9,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.125
+  },
+  "gradient_descent.sgd_momentum_update": {
+   "args": {
+    "param": 1.5,
+    "velocity": 60.0,
+    "gradient": 1.5,
+    "lr": 0.01,
+    "momentum": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "gradient_descent.sgd_update": {
+   "args": {
+    "param": 1.5,
+    "gradient": 1.5,
+    "lr": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "inference.assume.expected_counts_flat": {
+   "args": {
+    "observed": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "expected": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "min_expected": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.151
+  },
+  "inference.assume.proportion_test_checked_flat": {
+   "args": {
+    "successes_a": 50,
+    "n_a": 1000,
+    "successes_b": 65,
+    "n_b": 1000,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "inference.assume.residual_normality_flat": {
+   "args": {
+    "residuals": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 100,
+    "alpha": 0.05
+   },
+   "verified": false,
+   "outcome": "declared_shape_does_not_match_payload",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "inference.assume.t_test_checked_flat": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n1": 100,
+    "n2": 100,
+    "alpha": 0.05
+   },
+   "verified": false,
+   "outcome": "declared_shape_does_not_match_payload",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "inference.assume.variance_homogeneity_flat": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "group_lengths": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "alpha": 0.05
+   },
+   "verified": false,
+   "outcome": "group_lengths_do_not_describe_the_payload",
+   "source": "rules",
+   "ms": 0.129
+  },
+  "inference.core.inference_absent": {
+   "args": {},
+   "verified": false,
+   "outcome": "non_finite_result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "inference.core.inference_beta_inc": {
+   "args": {
+    "x": 1.5,
+    "a": 1.0,
+    "b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "inference.core.inference_ceilings": {
+   "args": {},
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "inference.core.inference_dims_fit": {
+   "args": {
+    "n_rows": 3,
+    "n_cols": 3,
+    "length": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.081
+  },
+  "inference.core.inference_f_sf": {
+   "args": {
+    "f": 1.5,
+    "df1": 10.0,
+    "df2": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "inference.core.inference_finite": {
+   "args": {
+    "v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "inference.core.inference_norm_sf_two_sided": {
+   "args": {
+    "z": 3.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "inference.core.inference_product3_fits": {
+   "args": {
+    "a": 6,
+    "b": 4,
+    "c": 2,
+    "limit": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "inference.core.inference_product_fits": {
+   "args": {
+    "a": 6,
+    "b": 4,
+    "limit": 10
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.101
+  },
+  "inference.core.inference_scaled_tol": {
+   "args": {
+    "quantity_magnitude": 1.5,
+    "abs_tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "inference.core.inference_scaled_tol_ulps": {
+   "args": {
+    "quantity_magnitude": 1.5,
+    "abs_tol": 1e-06,
+    "extra_ulps": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "inference.core.inference_status_name": {
+   "args": {
+    "code": 200
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "inference.core.inference_t_cdf": {
+   "args": {
+    "t": 1.0,
+    "df": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "inference.core.inference_t_quantile": {
+   "args": {
+    "p": 0.5,
+    "df": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "inference.core.inference_t_sf_two_sided": {
+   "args": {
+    "t": 1.0,
+    "df": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "inference.core.inference_t_tail_region": {
+   "args": {
+    "t": 1.0,
+    "df": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "inference.core.t_cdf_agreement": {
+   "args": {
+    "t": 1.0,
+    "df": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "inference.core.wls_solve_flat": {
+   "args": {
+    "a": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "b": [
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     6.0
+    ],
+    "p": 97
+   },
+   "verified": false,
+   "outcome": "declared_shape_does_not_match_payload",
+   "source": "rules",
+   "ms": 0.096
+  },
+  "inference.glm.glm_input_defect": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "p": 97,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "inference.glm.glm_logistic_fit_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "p": 97,
+    "l2": 0.1,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": false,
+   "outcome": "declared_shape_does_not_match_payload",
+   "source": "rules",
+   "ms": 0.098
+  },
+  "inference.glm.glm_poisson_fit_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "p": 97,
+    "l2": 0.1,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": false,
+   "outcome": "declared_shape_does_not_match_payload",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "inference.multiplicity.benjamini_hochberg_flat": {
+   "args": {
+    "p_values": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "alpha": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.056
+  },
+  "inference.multiplicity.bonferroni_flat": {
+   "args": {
+    "p_values": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "alpha": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.06
+  },
+  "inference.multiplicity.correction_agreement_flat": {
+   "args": {
+    "p_values": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "alpha": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.092
+  },
+  "inference.multiplicity.holm_flat": {
+   "args": {
+    "p_values": [
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "n": 2,
+    "alpha": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "plain",
+   "ms": 0.058
+  },
+  "inference.multiplicity.multiplicity_input_defect": {
+   "args": {
+    "p_values": [
+     0.1,
+     0.2,
+     0.3,
+     0.25,
+     0.15
+    ],
+    "n": 100,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "inference.power.power_design_defect": {
+   "args": {
+    "effect_size": 0.2,
+    "n_per_group": 100,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "inference.power.power_two_means_flat": {
+   "args": {
+    "effect_size": 0.2,
+    "n_per_group": 100,
+    "alpha": 0.05,
+    "one_sided": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "inference.power.power_two_means_t_flat": {
+   "args": {
+    "effect_size": 0.2,
+    "n_per_group": 100,
+    "alpha": 0.05,
+    "one_sided": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.257
+  },
+  "inference.power.sample_size_two_means_flat": {
+   "args": {
+    "effect_size": 0.2,
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "one_sided": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "inference.power.sample_size_two_means_t_flat": {
+   "args": {
+    "effect_size": 0.2,
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "one_sided": true
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.813
+  },
+  "inference.resample.bootstrap_ci_flat": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 100,
+    "statistic": 5,
+    "n_resamples": 100,
+    "confidence": 0.95,
+    "seed": 42,
+    "stream": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.121
+  },
+  "inference.resample.permutation_test_flat": {
+   "args": {
+    "values": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n1": 100,
+    "n2": 100,
+    "n_permutations": 100,
+    "seed": 42,
+    "stream": 5
+   },
+   "verified": false,
+   "outcome": "declared_shape_does_not_match_payload",
+   "source": "rules",
+   "ms": 0.126
+  },
+  "inference.resample.resample_statistic_name": {
+   "args": {
+    "statistic": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "inference.robust.huber_fit_flat": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n": 100,
+    "p": 97,
+    "tuning": 1.5,
+    "max_iter": 100,
+    "tol": 1e-06
+   },
+   "verified": false,
+   "outcome": "declared_shape_does_not_match_payload",
+   "source": "rules",
+   "ms": 0.108
+  },
+  "inference.robust.huber_weight": {
+   "args": {
+    "residual": 0.1,
+    "scale": 1.0,
+    "tuning": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "inference.robust.robust_scale_mad": {
+   "args": {
+    "residuals": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "inference_cost_latency.attention_flops": {
+   "args": {
+    "batch_size": 4,
+    "sequence_length": 5,
+    "num_layers": 2,
+    "num_heads": 2,
+    "head_dim": 16
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "inference_cost_latency.batch_efficiency_estimate": {
+   "args": {
+    "batch_size": 4,
+    "saturation_batch_size": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "inference_cost_latency.completion_token_estimate": {
+   "args": {
+    "char_count": 5,
+    "chars_per_token": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "inference_cost_latency.cost_latency_frontier_score": {
+   "args": {
+    "cost_usd": 100.0,
+    "latency_ms": 1.5,
+    "cost_weight": 1.0,
+    "latency_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.073
+  },
+  "inference_cost_latency.decode_latency_estimate": {
+   "args": {
+    "completion_tokens": 4,
+    "tokens_per_second": 1.5,
+    "fixed_overhead_ms": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "inference_cost_latency.kv_cache_bytes": {
+   "args": {
+    "batch_size": 4,
+    "sequence_length": 5,
+    "num_layers": 2,
+    "hidden_size": 5,
+    "bytes_per_element": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "inference_cost_latency.prefill_latency_estimate": {
+   "args": {
+    "prompt_tokens": 4,
+    "tokens_per_second": 1.5,
+    "fixed_overhead_ms": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "inference_cost_latency.prompt_token_estimate": {
+   "args": {
+    "char_count": 5,
+    "chars_per_token": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "inference_cost_latency.queue_delay_estimate": {
+   "args": {
+    "queue_depth": 3,
+    "service_rate_rps": 0.05,
+    "concurrency": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "inference_cost_latency.request_cost_estimate": {
+   "args": {
+    "prompt_tokens": 4,
+    "completion_tokens": 4,
+    "prompt_price_per_1k": 100.0,
+    "completion_price_per_1k": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.059
+  },
+  "inference_cost_latency.speculative_decode_gain_estimate": {
+   "args": {
+    "acceptance_rate": 0.05,
+    "draft_tokens_per_step": 1,
+    "base_decode_tps": 10.0,
+    "draft_decode_tps": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "inference_engine.batch_padding_mask": {
+   "args": {
+    "token_pos": 1.5,
+    "sequence_length": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "inference_engine.continuous_batching_capacity": {
+   "args": {
+    "gpu_memory_bytes": 1.5,
+    "kv_cache_per_token_bytes": 1.5,
+    "model_weights_bytes": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "inference_engine.decode_time_per_token": {
+   "args": {
+    "n_layers": 5.0,
+    "d_model": 4.0,
+    "flops_per_second": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "inference_engine.dynamic_batching_priority": {
+   "args": {
+    "wait_time": 1.0,
+    "sequence_length": 5.0,
+    "sla_deadline": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "inference_engine.kv_cache_hit_ratio": {
+   "args": {
+    "cache_hits": 1.5,
+    "total_requests": 10.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "inference_engine.latency_percentile_estimate": {
+   "args": {
+    "mean_latency": 0.0,
+    "std_latency": 1.0,
+    "percentile": 50.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "inference_engine.prefill_time_estimate": {
+   "args": {
+    "n_tokens": 5.0,
+    "n_layers": 5.0,
+    "d_model": 4.0,
+    "flops_per_second": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "inference_engine.quantized_inference_speedup": {
+   "args": {
+    "fp32_flops": 1.5,
+    "int8_throughput_ratio": 0.5,
+    "memory_bandwidth_ratio": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.036
+  },
+  "inference_engine.speculative_decode_accept_rate": {
+   "args": {
+    "draft_accepted": 1.5,
+    "draft_tokens": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "inference_engine.throughput_tokens_per_sec": {
+   "args": {
+    "batch_size": 5.0,
+    "tokens_per_request": 1.5,
+    "latency_ms": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "inference_security.adversarial_input_score": {
+   "args": {
+    "input_perplexity": 1.5,
+    "baseline_perplexity": 0.5,
+    "perturbation_budget": 100.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.095
+  },
+  "inference_security.data_leakage_risk_score": {
+   "args": {
+    "token_memorization_score": 0.8,
+    "training_data_similarity": 0.8,
+    "privacy_sensitivity": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.076
+  },
+  "inference_security.jailbreak_pattern_score": {
+   "args": {
+    "roleplay_frame_depth": 2.0,
+    "hypothetical_nesting": 1.5,
+    "constraint_negation_count": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "inference_security.output_toxicity_estimate": {
+   "args": {
+    "toxicity_classifier_logit": 1.5,
+    "generation_temperature": 0.7,
+    "safety_steering_strength": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "inference_security.pii_token_risk": {
+   "args": {
+    "token_pii_classifier_prob": 0.5,
+    "context_pii_density": 1.5,
+    "user_consent_level": 0.95
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "inference_security.prompt_injection_score": {
+   "args": {
+    "instruction_override_tokens": 1.5,
+    "system_prompt_distance": 10.0,
+    "role_switch_probability": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.037
+  },
+  "inference_security.rate_limit_violation_score": {
+   "args": {
+    "requests_in_window": 1.5,
+    "rate_limit": 0.05,
+    "window_fraction_elapsed": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "inference_security.sandboxed_exec_trust_score": {
+   "args": {
+    "tool_signature_valid": 1.5,
+    "execution_timeout_ok": 1.5,
+    "resource_limit_ok": 1.5,
+    "output_schema_valid": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "inference_security.token_level_safety_score": {
+   "args": {
+    "token_harm_logit": 1.5,
+    "context_harm_factor": 2.0,
+    "refusal_trained_weight": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "inference_security.tool_call_validation_score": {
+   "args": {
+    "arg_type_match": 1.5,
+    "arg_range_valid": 1.5,
+    "permission_granted": 1.5,
+    "rate_limit_ok": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.03
+  },
+  "latency_optimizer.adaptive_depth_score": {
+   "args": {
+    "token_difficulty": 1.5,
+    "available_compute_budget": 100.0,
+    "full_model_compute": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "latency_optimizer.async_speculation_gain": {
+   "args": {
+    "accepted_tokens": 1.5,
+    "total_speculated": 10.0,
+    "speculation_overhead": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "latency_optimizer.attention_skip_score": {
+   "args": {
+    "layer_attention_entropy": 1.5,
+    "skip_entropy_threshold": 0.5,
+    "positional_importance": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "latency_optimizer.early_exit_confidence": {
+   "args": {
+    "intermediate_logit_entropy": 1.5,
+    "exit_threshold": 0.5,
+    "layer_depth_fraction": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.032
+  },
+  "latency_optimizer.kv_prefetch_overlap": {
+   "args": {
+    "decode_step_latency_ms": 1.5,
+    "kv_load_latency_ms": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.031
+  },
+  "latency_optimizer.layer_skip_quality_cost": {
+   "args": {
+    "layer_importance_score": 0.8,
+    "n_skipped_layers": 5.0,
+    "model_depth": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.055
+  },
+  "latency_optimizer.output_caching_hit_benefit": {
+   "args": {
+    "cache_hit_rate": 0.05,
+    "full_generation_latency_ms": 1.5,
+    "cache_lookup_latency_ms": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "latency_optimizer.partial_forward_savings": {
+   "args": {
+    "full_forward_flops": 1.5,
+    "partial_forward_flops": 1.5,
+    "quality_degradation": 1.5,
+    "quality_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "latency_optimizer.prefill_decode_split_latency": {
+   "args": {
+    "prefill_tokens": 1.5,
+    "decode_tokens": 1.5,
+    "prefill_throughput_tps": 1.5,
+    "decode_throughput_tps": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "latency_optimizer.token_streaming_headroom": {
+   "args": {
+    "buffer_tokens": 1.5,
+    "generation_rate_tps": 0.05,
+    "consumption_rate_tps": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "loss_functions.binary_cross_entropy": {
+   "args": {
+    "y_true": 2.5,
+    "y_pred": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "loss_functions.categorical_cross_entropy": {
+   "args": {
+    "y_true": 2.5,
+    "y_pred": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "loss_functions.contrastive_loss": {
+   "args": {
+    "distance": 10.0,
+    "label": 1.5,
+    "margin": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "loss_functions.focal_loss": {
+   "args": {
+    "y_true": 2.5,
+    "y_pred": 2.5,
+    "gamma": 0.9,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "loss_functions.huber_loss": {
+   "args": {
+    "y_true": 2.5,
+    "y_pred": 2.5,
+    "delta": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.035
+  },
+  "loss_functions.kl_divergence": {
+   "args": {
+    "p": 0.5,
+    "q": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "loss_functions.label_smoothing_loss": {
+   "args": {
+    "y_true": 2.5,
+    "y_pred": 2.5,
+    "epsilon": 1e-06,
+    "n_classes": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.039
+  },
+  "loss_functions.mae_loss": {
+   "args": {
+    "y_true": 2.5,
+    "y_pred": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.033
+  },
+  "loss_functions.mse_loss": {
+   "args": {
+    "y_true": 2.5,
+    "y_pred": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.04
+  },
+  "loss_functions.pow_approx": {
+   "args": {
+    "base": 10.0,
+    "exponent": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "loss_functions.triplet_loss": {
+   "args": {
+    "dist_pos": 1.5,
+    "dist_neg": 1.5,
+    "margin": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "ml_metrics_extended.auc_trapezoid": {
+   "args": {
+    "fpr1": 1.5,
+    "fpr2": 1.5,
+    "tpr1": 1.5,
+    "tpr2": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "ml_metrics_extended.average_precision_term": {
+   "args": {
+    "precision": 1.5,
+    "recall_delta": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.068
+  },
+  "ml_metrics_extended.brier_score_term": {
+   "args": {
+    "prob": 0.5,
+    "outcome": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "ml_metrics_extended.calibration_ece_term": {
+   "args": {
+    "bin_confidence": 0.95,
+    "bin_accuracy": 1.5,
+    "bin_count": 5.0,
+    "total_count": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "ml_metrics_extended.cohen_kappa": {
+   "args": {
+    "observed_agreement": 1.2,
+    "expected_agreement": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "ml_metrics_extended.f_beta_score": {
+   "args": {
+    "precision": 1.5,
+    "recall": 1.5,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "ml_metrics_extended.map_term": {
+   "args": {
+    "precision_at_k": 105.0,
+    "is_relevant": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "ml_metrics_extended.matthews_corr_coeff": {
+   "args": {
+    "tp": 1.5,
+    "tn": 1.5,
+    "fp": 1.5,
+    "fn_val": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.053
+  },
+  "ml_metrics_extended.ndcg_discount": {
+   "args": {
+    "rank": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.045
+  },
+  "ml_metrics_extended.ndcg_gain": {
+   "args": {
+    "relevance": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "nn_layers.batch_norm": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "gamma": 0.9,
+    "beta": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.083
+  },
+  "nn_layers.cross_entropy_loss": {
+   "args": {
+    "predicted": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "actual": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.092
+  },
+  "nn_layers.dense_forward": {
+   "args": {
+    "input": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "weights": [
+     [
+      0.2,
+      0.2,
+      0.2
+     ],
+     [
+      0.2,
+      0.2,
+      0.2
+     ],
+     [
+      0.2,
+      0.2,
+      0.2
+     ]
+    ],
+    "bias": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.107
+  },
+  "nn_layers.dropout": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "rate": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "nn_layers.init_weights_xavier": {
+   "args": {
+    "n_in": 100,
+    "n_out": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 7.5
+  },
+  "nn_layers.leaky_relu": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.112
+  },
+  "nn_layers.mse_loss": {
+   "args": {
+    "predicted": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "actual": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.094
+  },
+  "nn_layers.relu": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "nn_layers.sigmoid_activation": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "nn_layers.softmax_layer": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "nn_layers.tanh_activation": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.049
+  },
+  "normalization_layers.adaptive_layer_norm": {
+   "args": {
+    "x": 1.5,
+    "mean": 0.0,
+    "variance": 1.0,
+    "gamma_cond": 0.9,
+    "beta_cond": 0.2,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "normalization_layers.batch_norm_inference": {
+   "args": {
+    "x": 1.5,
+    "running_mean": 0.0,
+    "running_var": 1.0,
+    "gamma": 0.9,
+    "beta": 0.2,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "normalization_layers.deep_norm_alpha": {
+   "args": {
+    "n_layers": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.09
+  },
+  "normalization_layers.group_norm_scale": {
+   "args": {
+    "x": 1.5,
+    "group_mean": 0.0,
+    "group_var": 1.0,
+    "gamma": 0.9,
+    "beta": 0.2,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.1
+  },
+  "normalization_layers.instance_norm": {
+   "args": {
+    "x": 1.5,
+    "instance_mean": 0.0,
+    "instance_var": 1.0,
+    "gamma": 0.9,
+    "beta": 0.2,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "normalization_layers.layer_norm": {
+   "args": {
+    "x": 1.5,
+    "mean": 0.0,
+    "variance": 1.0,
+    "gamma": 0.9,
+    "beta": 0.2,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "normalization_layers.pre_norm_residual": {
+   "args": {
+    "x": 1.5,
+    "sublayer_out": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "normalization_layers.rms_norm": {
+   "args": {
+    "x": 1.5,
+    "rms": 1.5,
+    "gamma": 0.9,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.069
+  },
+  "normalization_layers.spectral_norm_estimate": {
+   "args": {
+    "sigma_prev": 1.0,
+    "u_dot_w_v": 0.7
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "normalization_layers.weight_norm_magnitude": {
+   "args": {
+    "weight_vector_norm": 1.0,
+    "g_param": 9.81
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "optimization_constrained.augmented_lagrangian_step": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "lambdas": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "func_id": 1,
+    "constraints": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "mu": 0.0,
+    "lr": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.129
+  },
+  "optimization_constrained.barrier_method": {
+   "args": {
+    "x0": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "func_id": 1,
+    "constraints": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "mu": 0.0,
+    "max_iter": 100,
+    "lr": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.734
+  },
+  "optimization_constrained.eval_constraint": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "constraint_id": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.067
+  },
+  "optimization_constrained.eval_objective_c": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "func_id": 1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.087
+  },
+  "optimization_constrained.gradient_estimate": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "func_id": 1,
+    "constraints": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "mu": 0.0,
+    "h": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.114
+  },
+  "optimization_constrained.is_feasible_c": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "constraints": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "tol": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.105
+  },
+  "optimization_constrained.penalty_method": {
+   "args": {
+    "x0": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "func_id": 1,
+    "constraints": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ],
+    "mu": 0.0,
+    "max_iter": 100,
+    "lr": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.312
+  },
+  "optimization_constrained.penalty_value": {
+   "args": {
+    "x": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "constraints": [
+     3,
+     1,
+     4,
+     1,
+     5
+    ]
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "optimizer_full.adadelta_update": {
+   "args": {
+    "param": 1.5,
+    "gradient": 1.5,
+    "eg2": 1.5,
+    "edx2": 1.5,
+    "rho": 0.8,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "optimizer_full.adan_update": {
+   "args": {
+    "param": 1.5,
+    "m": 1.5,
+    "v": 0.7,
+    "n": 5.0,
+    "gradient": 1.5,
+    "prev_gradient": 1.5,
+    "beta1": 0.2,
+    "beta2": 0.2,
+    "beta3": 0.2,
+    "lr": 0.01,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.061
+  },
+  "optimizer_full.gradient_centralization": {
+   "args": {
+    "gradient": 1.5,
+    "gradient_mean": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "optimizer_full.lbfgs_two_loop_scale": {
+   "args": {
+    "s_dot_y": 2.5,
+    "y_dot_y": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "optimizer_full.muon_orthogonal_update": {
+   "args": {
+    "param": 1.5,
+    "gradient": 1.5,
+    "momentum": 0.9,
+    "projection": 1.5,
+    "lr": 0.01,
+    "mu": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.041
+  },
+  "optimizer_full.nadam_update": {
+   "args": {
+    "param": 1.5,
+    "m_hat": 1.5,
+    "v_hat": 0.7,
+    "gradient": 1.5,
+    "beta1": 0.2,
+    "lr": 0.01,
+    "eps": 1e-06
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "optimizer_full.prodigy_d_estimate": {
+   "args": {
+    "s": 100.0,
+    "g_sq_sum": 15.0,
+    "d_prev": 4.0,
+    "beta3": 0.2
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.089
+  },
+  "optimizer_full.schedule_free_update": {
+   "args": {
+    "x": 1.5,
+    "z": 3.5,
+    "gradient": 1.5,
+    "lr": 0.01,
+    "beta": 0.2,
+    "weight_decay": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.082
+  },
+  "optimizer_full.sophia_hessian_clip": {
+   "args": {
+    "h_diag": 0.01,
+    "rho": 0.8
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "optimizer_full.sophia_update": {
+   "args": {
+    "param": 1.5,
+    "gradient": 1.5,
+    "h_diag": 0.01,
+    "lr": 0.01,
+    "rho": 0.8,
+    "weight_decay": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "quantization.clamp_to_int8": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.057
+  },
+  "quantization.dequantize_asymmetric": {
+   "args": {
+    "q": 0.5,
+    "scale": 1.0,
+    "zero_point": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "quantization.dequantize_symmetric": {
+   "args": {
+    "q": 0.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "quantization.fp16_to_fp32_scale": {
+   "args": {
+    "fp16_max": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "quantization.int4_pack_error": {
+   "args": {
+    "x": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "quantization.quantization_error": {
+   "args": {
+    "x": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "quantization.quantize_asymmetric": {
+   "args": {
+    "x": 1.5,
+    "scale": 1.0,
+    "zero_point": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "quantization.quantize_symmetric": {
+   "args": {
+    "x": 1.5,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.064
+  },
+  "quantization.scale_from_range": {
+   "args": {
+    "x_max": 1.0,
+    "n_bits": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "quantization.zero_point_from_range": {
+   "args": {
+    "x_min": 0.0,
+    "x_max": 1.0,
+    "scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.054
+  },
+  "quantization_stack.absmax_calibration_scale": {
+   "args": {
+    "abs_max": 1.0,
+    "n_bits": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "quantization_stack.awq_activation_scale": {
+   "args": {
+    "activation_abs_mean": 0.0,
+    "weight_abs_mean": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.034
+  },
+  "quantization_stack.bf16_to_fp32_round": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "quantization_stack.bnb_double_quant_scale": {
+   "args": {
+    "block_scale": 1.0,
+    "super_block_scale": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.078
+  },
+  "quantization_stack.fp16_overflow_check": {
+   "args": {
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.079
+  },
+  "quantization_stack.gptq_hessian_update": {
+   "args": {
+    "h_diag": 0.01,
+    "activation": 1.5,
+    "n_samples": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.071
+  },
+  "quantization_stack.kv_cache_int8_scale": {
+   "args": {
+    "kv_tensor_max": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.048
+  },
+  "quantization_stack.percentile_calibration_scale": {
+   "args": {
+    "percentile_value": 2.5,
+    "n_bits": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.038
+  },
+  "quantization_stack.quant_aware_straight_through": {
+   "args": {
+    "upstream_grad": 1.5,
+    "x": 1.5,
+    "x_min": 0.0,
+    "x_max": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.075
+  },
+  "quantization_stack.smooth_quant_scale": {
+   "args": {
+    "activation_max": 1.0,
+    "weight_max": 1.0,
+    "alpha": 0.05
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "seq2_trainer.seq2_export": {
+   "args": {
+    "params": {
+     "input_dim": 16,
+     "hidden": 16,
+     "dense_h": 5,
+     "l1_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "l2_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d1_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d2_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ]
+    }
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.172
+  },
+  "seq2_trainer.seq2_forward": {
+   "args": {
+    "params": {
+     "input_dim": 16,
+     "hidden": 16,
+     "dense_h": 5,
+     "l1_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "l2_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d1_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d2_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ]
+    },
+    "x_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "n_seq": 4,
+    "seq_len": 4,
+    "input_dim": 16
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.189
+  },
+  "seq2_trainer.seq2_from_flat": {
+   "args": {
+    "flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "input_dim": 16,
+    "hidden": 16,
+    "dense_h": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.077
+  },
+  "seq2_trainer.seq2_grad": {
+   "args": {
+    "params": {
+     "input_dim": 16,
+     "hidden": 16,
+     "dense_h": 5,
+     "l1_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "l2_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d1_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d2_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ]
+    },
+    "x_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_seq": 4,
+    "seq_len": 4,
+    "input_dim": 16
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.187
+  },
+  "seq2_trainer.seq2_init": {
+   "args": {
+    "input_dim": 16,
+    "hidden": 16,
+    "dense_h": 5,
+    "seed": 42
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 3.211
+  },
+  "seq2_trainer.seq2_loss": {
+   "args": {
+    "params": {
+     "input_dim": 16,
+     "hidden": 16,
+     "dense_h": 5,
+     "l1_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "l2_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d1_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d2_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ]
+    },
+    "x_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_seq": 4,
+    "seq_len": 4,
+    "input_dim": 16
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.18
+  },
+  "seq2_trainer.seq2_train": {
+   "args": {
+    "params": {
+     "input_dim": 16,
+     "hidden": 16,
+     "dense_h": 5,
+     "l1_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "l2_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d1_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d2_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ]
+    },
+    "x_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_seq": 4,
+    "seq_len": 4,
+    "input_dim": 16,
+    "x_val_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y_val": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_val": 100,
+    "epochs": 10,
+    "batch_size": 4,
+    "lr": 0.01,
+    "dropout": 0.1,
+    "patience": 5,
+    "seed": 42
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.239
+  },
+  "seq2_trainer.seq2_train_scalar": {
+   "args": {
+    "params": {
+     "input_dim": 16,
+     "hidden": 16,
+     "dense_h": 5,
+     "l1_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "l2_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d1_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d2_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ]
+    },
+    "x_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_seq": 4,
+    "seq_len": 4,
+    "input_dim": 16,
+    "x_val_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y_val": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_val": 100,
+    "epochs": 10,
+    "batch_size": 4,
+    "lr": 0.01,
+    "dropout": 0.1,
+    "patience": 5,
+    "seed": 42
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.201
+  },
+  "seq2_trainer.seq2_train_workers": {
+   "args": {
+    "params": {
+     "input_dim": 16,
+     "hidden": 16,
+     "dense_h": 5,
+     "l1_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "l2_wx": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_wh": [
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      5.0
+     ],
+     "l2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d1_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d1_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ],
+     "d2_w": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+     ],
+     "d2_b": [
+      2.0,
+      3.0,
+      4.0,
+      5.0,
+      6.0
+     ]
+    },
+    "x_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_seq": 4,
+    "seq_len": 4,
+    "input_dim": 16,
+    "x_val_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y_val": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "n_val": 100,
+    "epochs": 10,
+    "batch_size": 4,
+    "lr": 0.01,
+    "dropout": 0.1,
+    "patience": 5,
+    "seed": 42,
+    "n_workers": 100
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.207
+  },
+  "seq2_trainer.seq2_weight_count": {
+   "args": {
+    "input_dim": 16,
+    "hidden": 16,
+    "dense_h": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.052
+  },
+  "seq_training.bptt_train_lstm": {
+   "args": {
+    "x_flat": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "y": [
+     2.0,
+     4.1,
+     6.2,
+     7.9,
+     10.1
+    ],
+    "input_dim": 16,
+    "hidden": 16,
+    "epochs": 10,
+    "lr": 0.01,
+    "seed": 42,
+    "clip_norm": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.086
+  },
+  "seq_training.lstm_predict": {
+   "args": {
+    "weights": [
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
+    ],
+    "window": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "input_dim": 16,
+    "hidden": 16
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "seq_training.lstm_weight_count": {
+   "args": {
+    "input_dim": 16,
+    "hidden": 16
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "seq_training.make_windows": {
+   "args": {
+    "series": [
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
+    ],
+    "lookback": 5,
+    "forward": 5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.07
+  },
+  "state_space_models.hippo_legt_update": {
+   "args": {
+    "h_n": 5.0,
+    "h_prev_n": 5.0,
+    "x": 1.5,
+    "n": 5.0,
+    "t": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "state_space_models.mamba_delta_softplus": {
+   "args": {
+    "delta_raw": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.051
+  },
+  "state_space_models.mamba_selective_scan_step": {
+   "args": {
+    "h_prev": 0.01,
+    "a": 1.0,
+    "b": 2.0,
+    "x": 1.5,
+    "delta": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.047
+  },
+  "state_space_models.retnet_decay": {
+   "args": {
+    "dim": 1.5,
+    "n_dims": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.042
+  },
+  "state_space_models.s4_kernel_element": {
+   "args": {
+    "c": 3.0,
+    "a_power": 0.8,
+    "b": 2.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.063
+  },
+  "state_space_models.ssm_discretize_b": {
+   "args": {
+    "a": 1.0,
+    "b": 2.0,
+    "delta": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.06
+  },
+  "state_space_models.ssm_discretize_zoh": {
+   "args": {
+    "a": 1.0,
+    "delta": 0.1
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.091
+  },
+  "state_space_models.ssm_output_step": {
+   "args": {
+    "c": 3.0,
+    "h": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.072
+  },
+  "state_space_models.ssm_recurrence_step": {
+   "args": {
+    "h_prev": 0.01,
+    "a_bar": 1.0,
+    "b_bar": 2.0,
+    "x": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "state_space_models.ssm_shift_register_step": {
+   "args": {
+    "state": 1.5,
+    "decay": 0.9,
+    "input_val": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  },
+  "training_stability.cosine_warmup_schedule": {
+   "args": {
+    "step": 1.5,
+    "warmup_steps": 1.5,
+    "total_steps": 10.0,
+    "lr_max": 1.0,
+    "lr_min": 0.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.044
+  },
+  "training_stability.ema_weight_update": {
+   "args": {
+    "ema_param": 1.5,
+    "model_param": 1.5,
+    "decay": 0.9
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.065
+  },
+  "training_stability.grad_norm_finite": {
+   "args": {
+    "grad_norm": 1.5,
+    "max_allowed": 1.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.088
+  },
+  "training_stability.gradient_accumulation_step": {
+   "args": {
+    "accumulated_grad": 1.5,
+    "new_grad": 1.5,
+    "accumulation_steps": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.074
+  },
+  "training_stability.is_finite_check": {
+   "args": {
+    "value": 2.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "training_stability.loss_scale_adjust": {
+   "args": {
+    "current_scale": 1.0,
+    "overflow_occurred": 1.5,
+    "scale_up_factor": 2.0,
+    "scale_down_factor": 2.0,
+    "growth_interval": 0.03,
+    "steps_since_overflow": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.056
+  },
+  "training_stability.loss_spike_detector": {
+   "args": {
+    "current_loss": 1.5,
+    "running_mean": 0.0,
+    "spike_threshold": 0.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.062
+  },
+  "training_stability.overflow_skip_step": {
+   "args": {
+    "has_overflow": 1.5,
+    "optimizer_step_count": 5.0
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.058
+  },
+  "training_stability.training_step_budget": {
+   "args": {
+    "compute_budget_flops": 100.0,
+    "flops_per_step": 1.5
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.046
+  },
+  "training_stability.warmup_lr_schedule": {
+   "args": {
+    "step": 1.5,
+    "warmup_steps": 1.5,
+    "target_lr": 0.01
+   },
+   "verified": true,
+   "outcome": "result",
+   "source": "rules",
+   "ms": 0.05
+  }
+ }
+}

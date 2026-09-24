@@ -17,8 +17,15 @@ What this module gives a Space, all stdlib at import (`kernels`, `torch` and
 
 * `load(family)` → `LoadedKernel`: the kernel module, its build variant read from
   `kernel.__file__` (`torch29-cxx11-cpu-x86_64-linux`, `torch25-cpu-aarch64-darwin`,
-  `torch-universal` for the umbrella), the capped sha the footer prints, the
-  snapshot sha the cache actually holds, and the load time.
+  `torch-universal` for the umbrella), the capped sha the release manifest
+  records, the snapshot sha the cache actually loaded, and the load time.
+  **Provenance names the code that ran**: `label()`, `short_sha` and `wheel_sha`
+  derive from `snapshot_sha` (the `snapshots/<sha>/` directory `kernels` imported
+  the module from), never from the manifest; `capped_v1_sha` and `snapshot_sha`
+  are exposed side by side, `pinned` says whether they agree, and when they do not
+  `revision_note()` is the fact a card or `facts.json` prints — `v1 moved past the
+  recorded capped revision` — instead of a warning buried in a log.
+  `provenance()` is the four fields plus the note as one dict for `/health`.
 * `warm_up(loaded)`: one contract-valid call per family — the family's card
   example from `scripts/hf_kernels/module_descriptions.json["card_examples"]`,
   parsed with `ast.literal_eval` (never `eval`) — timed, so the boot card can show
@@ -50,11 +57,14 @@ from __future__ import annotations
 import ast
 import copy
 import ctypes
+import hashlib
+import importlib
 import json
 import logging
 import os
 import platform
 import re
+import sys
 import threading
 import time
 from collections.abc import Callable, Iterable, Mapping
@@ -63,6 +73,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from . import bench
 from .runtime import is_sha, pinned_versions
 from .shell import check_copy
 
@@ -79,8 +90,13 @@ CAPABILITIES_REL = Path("docs/hf-kernels/release/capabilities.json")
 DESCRIPTIONS_REL = Path("scripts/hf_kernels/module_descriptions.json")
 FROZEN_SOURCE = "frozen"
 
-TRANSPORT_NOTE = "includes JSON marshalling across the C ABI"
 ONE_WORKER_NOTE = "one native call at a time"
+#: What every kernel timing includes — the rulebook's constant, re-exported for the tabs.
+TRANSPORT_NOTE = bench.TRANSPORT_NOTE
+#: The fact printed when the Hub's `v1` tag resolves to a newer revision than the manifest
+#: recorded: the loaded code is named by its own sha, and this line says why the two differ.
+REVISION_MOVED_NOTE = "v1 moved past the recorded capped revision"
+SHORT_SHA_CHARS = 7
 GLIBC_FLOOR = (2, 35)
 X86_64_V3_FLAG = "avx2"
 PINNED_DISTS = ("kernels", "torch", "huggingface_hub")
@@ -92,26 +108,26 @@ _VERSION_RE = re.compile(r"(\d+)\.(\d+)")
 # --- frozen fallbacks: identical to the JSON sources at the time of writing (tested) ---------
 
 FROZEN_CAPPED_V1_SHAS: dict[str, str] = {
-    "thyn-ai/algenta": "5063de83c1c6637c0f749edf6a57a684981df7f0",
-    "thyn-ai/algenta-bits-time": "199dff6cf340d61d1d10da026e27288fc0b88dff",
-    "thyn-ai/algenta-crypto": "944dadd434e2d92f357454e560000f541be7d86c",
-    "thyn-ai/algenta-finance": "a646c590c67ff78a29f51b768dd58d32f475a139",
-    "thyn-ai/algenta-general-a": "34fa002a1a2374c8cce73a70423b5d36fe4793ce",
-    "thyn-ai/algenta-general-b": "a2ffcc4eb1c7b6db5f087f74e75c77e9d09dfc2b",
-    "thyn-ai/algenta-general-c": "8c2dd0491f8b3faae59e7e8215144665a59d0fc0",
-    "thyn-ai/algenta-general-d": "d2eb31c5032da4b3779fdac9439d78fcc376d42e",
-    "thyn-ai/algenta-general-e": "022f029f19f7e213b0293da11751a2c471f3277d",
-    "thyn-ai/algenta-geometry": "54b91d902d9a38a244c8a5f093aa7bfd2824d6dd",
-    "thyn-ai/algenta-graph": "7247b466a11e49d2d2eeef2beb488732938e20e6",
-    "thyn-ai/algenta-llm": "92ef06d7b01116a70d8a8a6179c492aac5462146",
-    "thyn-ai/algenta-ml": "c67aed624ae1e22398e79780d5bfc8bb66237c0c",
-    "thyn-ai/algenta-networking": "11ada7623e74dbbeb3a4f004648d58fe40cd1d9b",
-    "thyn-ai/algenta-serialization": "12109d34d242a4fb702d8b78419a9aff195dc91d",
-    "thyn-ai/algenta-signal": "a770d6fe3be1bbf6f08accc70902490a85cbf00f",
-    "thyn-ai/algenta-stats": "ac35ffe20385f0eb7d2a1d2f1f935dc3a287c886",
-    "thyn-ai/algenta-tensors": "e1a96bbad9bedcd71afce08a4c648ffec55576e6",
-    "thyn-ai/algenta-text": "fb2cab4558c5ace333d832d0a0c4b807ba0357f1",
-    "thyn-ai/algenta-vision": "ebad076f3be6255d77fee9f279c2af5728ea973e",
+    "thyn-ai/algenta": "452241e9bcb06a820521532b3338565cf7882e64",
+    "thyn-ai/algenta-bits-time": "974b9ba8807732e8073a5b9b15893da26053acdb",
+    "thyn-ai/algenta-crypto": "cc201045a6ecf8e2374ad87ea02e5927ddf5f0c8",
+    "thyn-ai/algenta-finance": "b394ebf406e8eb22f9df174f47f4100842997d46",
+    "thyn-ai/algenta-general-a": "15a5ceafdb2c8f25376f7e2dba2a958876079939",
+    "thyn-ai/algenta-general-b": "e8651f53028c1a490157a26b832df2915cb50197",
+    "thyn-ai/algenta-general-c": "7887fbb8811641857d4075a65e259a3a74a60dff",
+    "thyn-ai/algenta-general-d": "f2992ee184ff462e7355710893d032c97900d0dd",
+    "thyn-ai/algenta-general-e": "428d073ff5f482e0a3bd0420c4f79b94576af3b0",
+    "thyn-ai/algenta-geometry": "561f825f900678a528060bae69830cd475ec37ea",
+    "thyn-ai/algenta-graph": "02382050f9e5bd16f7b62e05894aa9022280398b",
+    "thyn-ai/algenta-llm": "f20940168a20cc9c67637dcc7960492f4cc329da",
+    "thyn-ai/algenta-ml": "21bb3a2d31c6861a8a537dc893029179b1240e43",
+    "thyn-ai/algenta-networking": "6dae3e18749d9cf5601c1d0f2ecc8024d38697d6",
+    "thyn-ai/algenta-serialization": "abfe437a6f7b6c0152248d04764ccc99126417e8",
+    "thyn-ai/algenta-signal": "d0072720ccee067f3adfa9c0a161f04b6f09c0b8",
+    "thyn-ai/algenta-stats": "218e79f223dec7a684311690393b8f5102dd5b46",
+    "thyn-ai/algenta-tensors": "3d86dbcd975fc7cafdbdb5976beae02308d63d6b",
+    "thyn-ai/algenta-text": "c7f66f4f62fc05e6c08e3f83b62162c59166d8dc",
+    "thyn-ai/algenta-vision": "52fc46db1b5b604907d42ed8178ca0cbf01e1516",
 }
 
 _SQUARE = (
@@ -469,7 +485,14 @@ def repo_id_of(family: str, *, trust: Iterable[str] | None = None) -> str:
 
 @dataclass
 class LoadedKernel:
-    """One family (or the umbrella) as loaded here, with everything a footer or card prints."""
+    """One family (or the umbrella) as loaded here, with everything a footer or card prints.
+
+    Two revisions, kept apart: `capped_v1_sha` is what the release manifest recorded for
+    `v1`; `snapshot_sha` is the revision `kernels` actually imported (the cache path
+    `snapshots/<sha>/`). Everything a page prints about the code that ran — `label()`,
+    `short_sha`, `wheel_sha` — comes from `snapshot_sha`; the manifest's sha is never
+    painted on a result it did not produce.
+    """
 
     family: str
     repo_id: str
@@ -485,25 +508,69 @@ class LoadedKernel:
     warmup_result: Any = None
 
     @property
+    def loaded_sha(self) -> str:
+        """The full sha of the code that ran: the snapshot, or the capped sha when the module
+        was not imported from a Hub snapshot (a local build: nothing else names it)."""
+        return self.snapshot_sha or self.capped_v1_sha
+
+    @property
+    def wheel_sha(self) -> str:
+        """The revision a results row records for this lane — the loaded code, never the
+        manifest (`races.row_from_run(wheel_sha=kernel.wheel_sha)`)."""
+        return self.loaded_sha
+
+    @property
     def short_sha(self) -> str:
-        return self.capped_v1_sha[:7]
+        """The first seven characters of the loaded revision, for chips and labels."""
+        return self.loaded_sha[:SHORT_SHA_CHARS]
 
     @property
     def is_umbrella(self) -> bool:
         return self.family == UMBRELLA_FAMILY
 
     @property
+    def revision_known(self) -> bool:
+        """True when `kernel.__file__` sits in a Hub snapshot, so the loaded sha is a fact."""
+        return bool(self.snapshot_sha)
+
+    @property
     def pinned(self) -> bool:
-        """True when the cache holds exactly the capped revision (or the path shows no sha)."""
-        return not self.snapshot_sha or self.snapshot_sha == self.capped_v1_sha
+        """True when the loaded snapshot is exactly the capped revision.
+
+        A module outside a Hub snapshot (no sha in its path) has nothing to compare against
+        and is reported as pinned — `revision_known` tells the two cases apart."""
+        return not self.revision_known or self.snapshot_sha == self.capped_v1_sha
 
     @property
     def warm(self) -> bool:
         return self.warmup_ms is not None
 
     def label(self) -> str:
-        """`algenta-stats@ac35ffe` — the family and its pinned revision, for chips and footers."""
+        """`algenta-stats@ac35ffe` — the family and the revision that loaded, for chips and
+        footers; when the cache holds a newer `v1` than the manifest, this is the newer one."""
         return f"{self.family}@{self.short_sha}"
+
+    def revision_note(self) -> str:
+        """The fact for a page when `v1` resolved past the recorded revision, else empty:
+        `algenta-llm: v1 moved past the recorded capped revision — loaded 92ef06d,
+        capped a01e2b2`."""
+        if self.pinned:
+            return ""
+        return (
+            f"{self.family}: {REVISION_MOVED_NOTE} — loaded {self.short_sha},"
+            f" capped {self.capped_v1_sha[:SHORT_SHA_CHARS]}"
+        )
+
+    def provenance(self) -> dict[str, Any]:
+        """The revision record for `facts.json` and `/health`: both shas, what a row records,
+        whether they agree, and the note when they do not."""
+        return {
+            "capped_v1_sha": self.capped_v1_sha,
+            "snapshot_sha": self.snapshot_sha,
+            "wheel_sha": self.wheel_sha,
+            "pinned": self.pinned,
+            "revision_note": self.revision_note(),
+        }
 
 
 def variant_of(kernel: ModuleType) -> str:
@@ -611,19 +678,90 @@ def load(
         load_s=load_s,
     )
     if not loaded.pinned:
-        log.warning(
-            "%s: cache holds revision %s, the capped v1 revision is %s",
-            repo_id,
-            loaded.snapshot_sha,
-            loaded.capped_v1_sha,
-        )
-    log.info("%s: loaded %s in %.2f s", repo_id, loaded.variant, load_s)
+        # Not a failure: `version=1` follows the Hub's v1 tag. The page prints the loaded sha
+        # and `revision_note()` carries this as a fact; the log line is a trace, not the record.
+        log.info("%s: %s", repo_id, loaded.revision_note())
+    log.info("%s: loaded %s (%s) in %.2f s", repo_id, loaded.variant, loaded.short_sha, load_s)
     return loaded
 
 
 # ---------------------------------------------------------------------------
 # Contract navigation and calls
 # ---------------------------------------------------------------------------
+
+
+NATIVE_SHA_CHARS = 12
+
+
+def native_proof(kernel: ModuleType) -> dict[str, Any] | None:
+    """What actually executes a call of this package: the compiled Mojo shared library.
+
+    Read from the package itself, never assumed — the `_native/manifest.json` beside the
+    module (library name, ABI version, Mojo toolchain, source commit), the sha256 of the library
+    file on disk, and the live ctypes handle (`_native.runtime()`): `loaded` is True only when
+    the dynamic loader has the library in this process and `algenta_runtime_version()` answers.
+    The published glue has no other execution path (`_transport.call` → `_native.execute`); a
+    library that cannot load raises `NativeUnavailable` and the family is not loaded at all.
+    `None` for a module without a native package (the umbrella's dispatcher).
+    """
+    execute_fn = getattr(kernel, "execute", None)
+    if not callable(execute_fn):
+        return None
+    defining = sys.modules.get(getattr(execute_fn, "__module__", ""))
+    if defining is None:
+        return None
+    native = sys.modules.get(f"{defining.__name__}._native")
+    if native is None:
+        try:
+            native = importlib.import_module(f"{defining.__name__}._native")
+        except Exception:  # noqa: BLE001 - a package without a native half proves nothing
+            return None
+    # the snapshot path, not `.resolve()`: the Hub cache stores every file as a symlink into
+    # `blobs/`, so a resolved `__init__.py` would point at a directory without `_native`
+    native_dir = Path(getattr(defining, "__file__", "")).parent / "_native"
+    try:
+        manifest = json.loads((native_dir / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    library = str(manifest.get("library") or "")
+    proof: dict[str, Any] = {
+        "library": library,
+        "abi_version": manifest.get("abi_version"),
+        "mojo_version": str(manifest.get("mojo_version") or ""),
+        "source_commit": str(manifest.get("source_commit") or "")[:SHORT_SHA_CHARS],
+        "platform": str(manifest.get("platform") or ""),
+        "sha256": "",
+        "loaded": False,
+        "loader": "ctypes",
+    }
+    try:
+        proof["sha256"] = hashlib.sha256((native_dir / library).read_bytes()).hexdigest()[
+            :NATIVE_SHA_CHARS
+        ]
+    except OSError:
+        pass
+    runtime_fn = getattr(native, "runtime", None)
+    if callable(runtime_fn):
+        try:
+            rt = runtime_fn()
+            lib = getattr(rt, "_lib", None)
+            version = getattr(lib, "algenta_runtime_version", None)
+            answered = int(version()) if callable(version) else None
+            proof["loaded"] = (
+                getattr(rt, "library", None) == library
+                and answered is not None
+                and answered == proof["abi_version"]
+            )
+            proof["abi_answered"] = answered
+        except Exception as exc:  # noqa: BLE001 - the proof reports, never raises
+            proof["loaded"] = False
+            proof["error"] = f"{type(exc).__name__}: {str(exc)[:120]}"
+    return proof
+
+
+def native_proofs(loaded: LoadedKernel) -> dict[str, dict[str, Any] | None]:
+    """`family -> native_proof` for every member module a loaded kernel dispatches to."""
+    return {name: native_proof(kernel) for name, kernel in family_modules(loaded).items()}
 
 
 def family_modules(loaded: LoadedKernel) -> dict[str, ModuleType]:
@@ -677,8 +815,9 @@ def is_excluded(module: str, function: str, keys: Iterable[str]) -> bool:
     return f"{module}.{function}" in keys or f"{module}.*" in keys
 
 
-def function_spec(loaded: LoadedKernel, module: str, function: str) -> dict[str, Any]:
-    """The contract entry for one function as a plain dict; excluded functions are refused."""
+def _function_spec_ref(loaded: LoadedKernel, module: str, function: str) -> dict[str, Any]:
+    """The contract's own record of `module.function` — not a copy. Callers must not edit
+    it; `function_spec` hands out a deep copy for those who do."""
     _, kernel = owner_of(loaded, module)
     functions = _contract_modules(kernel)[module].get("functions")
     if not isinstance(functions, dict) or function not in functions:
@@ -691,7 +830,12 @@ def function_spec(loaded: LoadedKernel, module: str, function: str) -> dict[str,
             f"{module}.{function} is not callable in-process: "
             f"{CAPABILITIES.excluded_functions.get(f'{module}.{function}', 'excluded')}",
         )
-    return copy.deepcopy(functions[function])
+    return functions[function]
+
+
+def function_spec(loaded: LoadedKernel, module: str, function: str) -> dict[str, Any]:
+    """The contract entry for one function as a plain dict; excluded functions are refused."""
+    return copy.deepcopy(_function_spec_ref(loaded, module, function))
 
 
 @dataclass(frozen=True)
@@ -722,7 +866,9 @@ def execute(
     Under ABI §9 the call waits for the device's one worker slot if another
     native call is running, so route it through `lane.Lane`.
     """
-    function_spec(loaded, module, function)
+    # the spec is looked up, not copied: `function_spec` deep-copies for callers that edit it,
+    # and a copy per call was a measurable share of a 20 µs scalar call (round 7 autopsy)
+    _function_spec_ref(loaded, module, function)
     _, kernel = owner_of(loaded, module)
     run = getattr(kernel, "execute", None)
     if not callable(run):
@@ -744,7 +890,10 @@ def execute(
             "call_failed", f"{module}.{function}: {type(exc).__name__}: {_first_line(exc)}"
         ) from exc
     elapsed_ms = (clock() - t0) * 1e3
-    return Call(module, function, copy.deepcopy(args), result, elapsed_ms)
+    # a shallow copy keeps the call's own argument list; a deep copy of a 20,000-token list
+    # or an 8,000-edge graph cost 5–20 ms inside the timed race lane (round 7 autopsy)
+    kept: list[Any] | dict[str, Any] = dict(args) if isinstance(args, Mapping) else list(args)
+    return Call(module, function, kept, result, elapsed_ms)
 
 
 def card_example(family: str, examples: Mapping[str, CardExample] | None = None) -> CardExample:
@@ -819,7 +968,7 @@ def describe(loaded: LoadedKernel) -> dict[str, Any]:
         "family": loaded.family,
         "repo_id": loaded.repo_id,
         "variant": loaded.variant,
-        "capped_v1_sha": loaded.capped_v1_sha,
+        **loaded.provenance(),
         "backend": loaded.backend,
         "version": loaded.version,
         "modules": modules,
@@ -851,16 +1000,37 @@ class Preload:
     def ok(self) -> bool:
         return self.done.is_set() and not self.errors
 
+    @property
+    def unpinned(self) -> list[str]:
+        """The families whose loaded snapshot is not the capped revision, sorted."""
+        return sorted(name for name, item in self.loaded.items() if not item.pinned)
+
+    def revision_notes(self) -> list[str]:
+        """One `revision_note()` per unpinned family — the facts a boot card or `facts.json`
+        prints beside the shas; empty when every family loaded its capped revision."""
+        return [self.loaded[name].revision_note() for name in self.unpinned]
+
+    def provenance(self) -> dict[str, dict[str, Any]]:
+        """`{family: LoadedKernel.provenance()}` for every loaded family — the per-family
+        revision record `/health` and `facts.json` carry."""
+        return {name: item.provenance() for name, item in sorted(self.loaded.items())}
+
     def summary(self) -> str:
-        """`3 families warm in 4.2 s`, or the failures by code."""
+        """`3 families warm in 4.2 s`, the failures by code, and — when the Hub's v1 tag moved
+        past the manifest — `v1 moved past the recorded capped revision for algenta-llm`."""
         total = len(self.loaded) + len(self.errors)
         warm = sum(1 for item in self.loaded.values() if item.warm)
         noun = "family" if total == 1 else "families"
+        elapsed = f"in {self.elapsed_s:.1f} s"
         if not self.errors:
             state = "warm" if warm == len(self.loaded) else "loaded"
-            return f"{total} {noun} {state} in {self.elapsed_s:.1f} s"
-        failed = ", ".join(f"{name}: {err.code}" for name, err in sorted(self.errors.items()))
-        return f"{len(self.loaded)} of {total} {noun} loaded in {self.elapsed_s:.1f} s; {failed}"
+            text = f"{total} {noun} {state} {elapsed}"
+        else:
+            failed = ", ".join(f"{name}: {err.code}" for name, err in sorted(self.errors.items()))
+            text = f"{len(self.loaded)} of {total} {noun} loaded {elapsed}; {failed}"
+        if self.unpinned:
+            text += f"; {REVISION_MOVED_NOTE} for {', '.join(self.unpinned)}"
+        return text
 
 
 def preload(
@@ -1018,10 +1188,11 @@ def platform_note(
     *,
     dists: Iterable[str] = PINNED_DISTS,
 ) -> str:
-    """The footer line: variant, pinned families, package pins, OS and the one-worker note.
+    """The footer line: variant, loaded families, package pins, OS and the one-worker note.
 
     `Hub kernels · torch25-cpu-aarch64-darwin · algenta-stats@ac35ffe · kernels 0.17.1 ·
-    torch 2.5.1 · Darwin arm64 · one native call at a time`
+    torch 2.5.1 · Darwin arm64 · one native call at a time` — every `@sha` is the revision
+    that loaded (`LoadedKernel.label()`), so the line names the code that ran.
     """
     items = [] if loaded is None else [loaded] if isinstance(loaded, LoadedKernel) else list(loaded)
     parts = ["Hub kernels"]
