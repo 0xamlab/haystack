@@ -2780,7 +2780,7 @@ def test_race_empty_and_loading_cards(tmp_path: Path):
         assert len(text.split()) <= 6
 
 
-def test_round_3_launch_review_regressions():
+def test_round_3_launch_review_regressions(monkeypatch: pytest.MonkeyPatch):
     """The confirmed P0/P1s of the third launch review, pinned: kernel repositories live under
     the Hub's `kernels/` namespace (every table link was a 404); the board keeps the digits the
     card prints (4.38 µs never becomes 4.40 µs); the Ecosystem's MCP count falls back to the
@@ -2790,7 +2790,9 @@ def test_round_3_launch_review_regressions():
     assert races.sig(0.0043849) == 0.0043849 and races.sig(26.3) == 26.3
     for value in (0.00438, 0.0678, 2.65, 171.0):
         assert cards.fmt_ms(races.sig(value)) == cards.fmt_ms(value), value
-    # the SDK card: no registry here, the live count is the Try tile's
+    # the SDK card: no registry here, the live count is the Try tile's — and no earlier live
+    # read in this process, or an unreachable endpoint truthfully answers "stale" (round 11)
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [])
     facts = {"versions": {}, "generated_utc": "2026-09-23 14:02 UTC", "python": "3.14.7"}
     data = eco_tab.sdk_facts(facts)
     assert data["mcp_source"] in ("live", "") and (
