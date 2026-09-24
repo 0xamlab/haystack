@@ -1480,6 +1480,23 @@
       "owner": "eng",
       "accessed": "2026-09-23",
       "contradicts": []
+    },
+    {
+      "id": "REPUBLISH-006",
+      "question": "Were all 19 families and the umbrella republished from the capped final-source builds, with the uncapped history removed?",
+      "claim": "REPUBLISH-006: transport glue fast paths for flat primitive lists (PR #1156, main cb9e5999a) — every family regenerated from the live v1 natives (mac natives fetched from the Hub, Linux linux-cap8), 19/19 dry-run gates (crash gate, API gate 0 removed / 0 changed, elf check, §9 red-team on stats), published + squashed, umbrella re-pinned; repos public before and after Yes. Each family: generated from the final macOS/Linux/CUDA natives, passed family_smoke and the API-versioning gate against its previously published v1 (0 removed, 0 changed), uploaded to v1 and main with stale build/** deleted, then super_squash_history on both branches — one commit each. Umbrella regenerated with kernel-depends pinned to the post-squash v1 shas and squashed. Release record regenerated from the published tree.",
+      "kind": "measurement",
+      "source": "scripts/hf_kernels/republish_capped.py (republish_report.json); huggingface_hub live state",
+      "result": "thyn-ai/algenta-bits-time: 974b9ba8 -> a2153e54 (v1 1 commit, main 1, private=False); thyn-ai/algenta-crypto: cc201045 -> f6c4de5c (v1 1 commit, main 1, private=False); thyn-ai/algenta-finance: b394ebf4 -> ac86359f (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-a: 15a5ceaf -> 9b540e5b (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-b: e8651f53 -> 133e85dc (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-c: 7887fbb8 -> d001bb02 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-d: f2992ee1 -> f224bb44 (v1 1 commit, main 1, private=False); thyn-ai/algenta-general-e: 428d073f -> c1878ed2 (v1 1 commit, main 1, private=False); thyn-ai/algenta-geometry: 561f825f -> d58487e2 (v1 1 commit, main 1, private=False); thyn-ai/algenta-graph: 02382050 -> 0987a4b1 (v1 1 commit, main 1, private=False); thyn-ai/algenta-llm: f2094016 -> 8ae3da4a (v1 1 commit, main 1, private=False); thyn-ai/algenta-ml: 21bb3a2d -> f84ca18f (v1 1 commit, main 1, private=False); thyn-ai/algenta-networking: 6dae3e18 -> de297bfa (v1 1 commit, main 1, private=False); thyn-ai/algenta-serialization: abfe437a -> 78155585 (v1 1 commit, main 1, private=False); thyn-ai/algenta-signal: d0072720 -> 333f1a27 (v1 1 commit, main 1, private=False); thyn-ai/algenta-stats: 218e79f2 -> c87751f9 (v1 1 commit, main 1, private=False); thyn-ai/algenta-tensors: 3d86dbcd -> 4547ea6e (v1 1 commit, main 1, private=False); thyn-ai/algenta-text: c7f66f4f -> 2078de41 (v1 1 commit, main 1, private=False); thyn-ai/algenta-vision: 52fc46db -> d562c093 (v1 1 commit, main 1, private=False); thyn-ai/algenta: 452241e9 -> a785932f (v1 1 commit, main 1, private=False)",
+      "confidence": "high",
+      "impact": "P0",
+      "outcome_class": "accepted-constraint",
+      "capability_scope": "all 20 repositories",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "eng",
+      "accessed": "2026-09-24",
+      "contradicts": []
     }
   ]
 }
