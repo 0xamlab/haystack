@@ -95,17 +95,24 @@ api.add_space_variable(REPO_ID, "ALGENTA_CUDA_ENGINE", "/home/user/engine/qwen3_
 
 The libraries (1 to 24 MB each) go through LFS on their own. `ALGENTA_CUDA_ENGINE` is the
 resolver's first override (`algenta.serve.engine.CUDA_ENGINE_ENV_VARS`), exactly as `algenta
-serve` honours it; with it set, lane A speaks the driver's protocol (`<checkpoint> --runs 3`:
+serve` honours it. The Hub exposes a Space variable to the image build only through a build
+argument, so the Dockerfile declares `ARG ALGENTA_CUDA_ENGINE` right before the bake (after the
+`/home/user/engine` symlink exists, as the runtime user): the bake then inspects this binary
+and its manifest and records the selection, instead of the wheel's engine (run 16 recorded
+`sm_90a` with the variable set); a variable naming a file that is not in the upload fails the
+build with `engine_selected_missing`. With it set, lane A speaks the driver's protocol (`<checkpoint> --runs 3`:
 the gate battery, then gen=64 and gen=256 in one process) and the whole run converts and
 races the campaign prompt fixture the driver's oracle is bound to (`PROBE_PROMPT_FIXTURE`
 overrides the choice; a mismatch fails the lane closed with `engine_prompt_fixture_mismatch`).
 The page then names the engine as "packed-int8 captured-graph, sm_89, built <date> from
 <source commit>" from the manifest beside the binary. To go back to the wheel's engine, delete
 the variable (`api.delete_space_variable(REPO_ID, "ALGENTA_CUDA_ENGINE")`) and upload without
-`engine/`. Setting the variable on a running Space restarts it. The Hub starts the image build at once, on its own
-builders (the build itself is not GPU time): the llama.cpp CUDA compile for sm_89 (10 to 25
-minutes), torch cu128 plus the 1.2 GB Qwen3-0.6B-Base snapshot and the GGUF conversion (10 to
-20 minutes).
+`engine/`. Setting the variable on a running Space restarts it. The Hub starts the image build at
+once, on its own builders (the build itself is not GPU time): `llama-server` is copied from
+ggml-org's prebuilt `server-cuda-b10223` image and the converter is a shallow checkout of the
+same commit (a minute or two; nothing is compiled — the source build of run 15 was cut off by
+the builder after 62 minutes at step 310 of 442), then torch cu128 plus the 1.2 GB
+Qwen3-0.6B-Base snapshot and the GGUF conversion (10 to 20 minutes).
 
 ## 2. Request the GPU and wait for the new revision
 
@@ -173,8 +180,9 @@ Billing stops while paused; the hardware setting is kept. To run the probe again
 assets are reused, the 4.8 GB conversion is redone because the Space's disk is ephemeral).
 To run on another GPU, `request_space_hardware(REPO_ID, "<hardware>", sleep_time=900)` then
 `restart_space`: `h100` is where the wheel's `sm_90a` engine loads (see
-`docs/spaces/GPU-PROBE.md`); `t4-small` runs the secondary rows only, since the llama.cpp build
-targets sm_89.
+`docs/spaces/GPU-PROBE.md`); on `t4-small` lane B runs too (the prebuilt image carries PTX for
+sm_75), lane A only when the selected engine's target loads there, and the published L4 cell
+is not what a T4 measures.
 
 ## Cost
 

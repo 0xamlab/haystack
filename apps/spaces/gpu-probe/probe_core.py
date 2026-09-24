@@ -54,7 +54,24 @@ _VARIANT_RE = re.compile(r"/build/([A-Za-z0-9_.-]+)(?:/|$)")
 _DRIVER_RE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
 _CUDA_TARGET_RE = re.compile(r"^sm_(\d+?)(\d)(a?)$")
 _KV_RE = re.compile(r"([A-Za-z_]\w*)=\s*([-+0-9.eE]+)")
+#: `llama-server --version`, two shapes: `version: 10223 (11924d4c1)` (the builds up to the
+#: b10xxx tags) and `version: 0.5.0-dev (build 11151, commit bd4f514db)` (later builds).
 _LLAMA_VERSION_RE = re.compile(r"version:\s*(\d+)\s*\(([0-9a-fA-F]+)\)")
+_LLAMA_VERSION_BUILD_RE = re.compile(
+    r"version:\s*\S+\s*\(build\s+(\d+),\s*commit\s+([0-9a-fA-F]+)\)"
+)
+#: ggml's backend registry (ggml/src/ggml-backend-reg.cpp at the pinned commit) speaking: a
+#: backend it loaded, and the refusals it prints when not silent — `load_backend: failed to load
+#: <path>: <dlerror>` (run 16: a directory in GGML_BACKEND_PATH), `failed to initialize backend
+#: from <path>: ...`, `failed to find ggml_backend_init in <path>`, `backend <path> is not
+#: supported on this system`, and `ggml_backend_load_best: failed to load` for a variant.
+_LLAMA_LOADER_ERROR_RE = re.compile(
+    r"(?:load_backend|ggml_backend_load_best):\s+(?:failed to \w+|backend \S+ is not supported)"
+)
+_LLAMA_LOADER_LOADED_RE = re.compile(r"load_backend:\s+loaded (\S+) backend from (\S+)")
+#: `llama-server --list-devices` (`common_print_available_devices`): `Available devices:` then
+#: one `  NAME: description (total MiB, free MiB free)` per non-CPU device, or `  (none)`.
+_LLAMA_DEVICE_RE = re.compile(r"^\s+([A-Za-z][\w-]*):\s+(.*)$")
 
 
 class ProbeError(RuntimeError):
@@ -843,15 +860,128 @@ def p3_cells(parsed: Mapping[str, Any], *, vram_peak_bytes: int | None) -> dict[
     return cells
 
 
+def llama_loader_lines(text: str) -> dict[str, Any]:
+    """What ggml's backend registry said while a llama-server process started: the backends it
+    reports loaded (`load_backend: loaded CUDA backend from <path>`, name to path) and every
+    refusal line, verbatim (the launch never sets GGML_BACKEND_PATH, so a refusal here is a
+    backend beside the executable that would not load, or a variable that crept in)."""
+    source = str(text or "")
+    loaded: dict[str, str] = {}
+    errors: list[str] = []
+    for row in source.splitlines():
+        match = _LLAMA_LOADER_LOADED_RE.search(row)
+        if match:
+            loaded[match.group(1)] = match.group(2)
+        elif _LLAMA_LOADER_ERROR_RE.search(row):
+            errors.append(row.strip())
+    return {"backends_loaded": loaded, "loader_errors": errors}
+
+
 def parse_llama_version(text: str) -> dict[str, Any]:
-    """`llama-server --version` prints `version: 10210 (000547513f)`; both parts, when found."""
-    match = _LLAMA_VERSION_RE.search(str(text or ""))
-    line = next((row.strip() for row in str(text or "").splitlines() if "version:" in row), None)
+    """`llama-server --version`: the build number and the commit, in either of its two shapes
+    (`version: 10223 (11924d4c1)`, `version: 0.5.0-dev (build 11151, commit bd4f514db)`), and
+    what the backend registry said on the way (`llama_loader_lines`)."""
+    source = str(text or "")
+    match = _LLAMA_VERSION_BUILD_RE.search(source) or _LLAMA_VERSION_RE.search(source)
+    line = next((row.strip() for row in source.splitlines() if "version:" in row), None)
     return {
         "line": line,
         "build_number": int(match.group(1)) if match else None,
         "commit": match.group(2).lower() if match else None,
+        **llama_loader_lines(source),
     }
+
+
+def verify_llama_loader(facts: Mapping[str, Any]) -> None:
+    """Fail closed on any refusal line from ggml's backend registry (`llama_backend_load_failed`):
+    the process would still run, on whatever backends did load."""
+    errors = [str(row) for row in (facts.get("loader_errors") or [])]
+    if errors:
+        raise ProbeError(
+            "llama_backend_load_failed",
+            f"ggml's backend registry refused a backend: {errors[0][:300]}",
+            {"loader_errors": errors},
+        )
+
+
+def verify_llama_version(
+    facts: Mapping[str, Any],
+    *,
+    build: int = cfg.LLAMA_CPP_BUILD,
+    commit: str = cfg.LLAMA_CPP_COMMIT,
+) -> None:
+    """Fail closed unless the binary reports exactly the pinned build and a prefix of the pinned
+    commit: an unreadable version line is a mismatch too (`llama_version_mismatch`); then no
+    backend may have been refused on the way (`verify_llama_loader`)."""
+    reported_build = facts.get("build_number")
+    reported_commit = str(facts.get("commit") or "").lower()
+    if not isinstance(reported_build, int) or not reported_commit:
+        raise ProbeError(
+            "llama_version_mismatch",
+            f"llama-server --version was not readable ({facts.get('line') or 'no version line'}); "
+            f"the pin is build {build} ({commit[:10]})",
+        )
+    if reported_build != build:
+        raise ProbeError(
+            "llama_version_mismatch",
+            f"llama-server reports build {reported_build} ({reported_commit}), "
+            f"the pin is build {build} ({commit[:10]})",
+        )
+    if len(reported_commit) < 7 or not commit.lower().startswith(reported_commit):
+        raise ProbeError(
+            "llama_version_mismatch",
+            f"llama-server reports commit {reported_commit} for build {reported_build}, "
+            f"the pin is {commit[:10]}",
+        )
+    verify_llama_loader(facts)
+
+
+def parse_llama_devices(text: str) -> dict[str, Any]:
+    """`llama-server --list-devices`: the non-CPU devices ggml's registry enumerated (name and
+    description as printed), plus the registry's own lines (`llama_loader_lines`). No
+    `Available devices:` header means the listing did not run (`listed` is False)."""
+    source = str(text or "")
+    rows = source.splitlines()
+    devices: list[dict[str, str]] = []
+    listed = False
+    for row in rows:
+        if row.strip() == "Available devices:":
+            listed = True
+            continue
+        if not listed or row.strip() == "(none)":
+            continue
+        match = _LLAMA_DEVICE_RE.match(row)
+        if match:
+            devices.append({"name": match.group(1), "description": match.group(2).strip()})
+    return {"listed": listed, "devices": devices, **llama_loader_lines(source)}
+
+
+def cuda_devices_of(facts: Mapping[str, Any]) -> list[dict[str, str]]:
+    return [
+        dict(dev)
+        for dev in (facts.get("devices") or [])
+        if str(dev.get("name", "")).upper().startswith(cfg.LLAMA_CUDA_BACKEND_NAME)
+    ]
+
+
+def require_cuda_device(facts: Mapping[str, Any]) -> list[dict[str, str]]:
+    """Lane B runs on the GPU or not at all: `--list-devices` must have enumerated a CUDA device
+    (`llama_cuda_backend_missing` otherwise — a CUDA backend that failed to load silently would
+    leave `-ngl 99` running on the CPU and the race would lie), after `verify_llama_loader`."""
+    verify_llama_loader(facts)
+    if not facts.get("listed"):
+        raise ProbeError(
+            "llama_cuda_backend_missing", "llama-server --list-devices printed no device listing"
+        )
+    cuda = cuda_devices_of(facts)
+    if not cuda:
+        names = ", ".join(str(dev.get("name")) for dev in facts.get("devices") or []) or "none"
+        raise ProbeError(
+            "llama_cuda_backend_missing",
+            f"ggml enumerated no CUDA device (devices: {names}); lane B would run on the CPU",
+            {"devices": list(facts.get("devices") or [])},
+        )
+    return cuda
 
 
 def llama_run_from_completion(
@@ -1354,15 +1484,16 @@ def llama_lane(body: Mapping[str, Any]) -> dict[str, Any]:
         return _phase_state(lane, (body.get("phases") or {}).get("llama"))
     version = block.get("version") or {}
     gguf = block.get("gguf") or {}
+    image = block.get("image") or {}
     long_cell = _cell_summary(block, cfg.GEN_TOKENS_LONG)
     lane.update(
         status=OK_LANE,
         stack=" · ".join(
             part
             for part in (
-                f"llama.cpp {str(version.get('commit') or cfg.LLAMA_CPP_COMMIT)[:10]}",
-                f"build {version.get('build_number')}" if version.get("build_number") else "",
-                f"GGML_CUDA sm_{block.get('cuda_architectures') or cfg.LLAMA_CUDA_ARCHITECTURES}",
+                f"llama.cpp b{version.get('build_number') or cfg.LLAMA_CPP_BUILD}"
+                + (f" ({image['kind']})" if image.get("kind") else ""),
+                f"commit {str(version.get('commit') or cfg.LLAMA_CPP_COMMIT)[:10]}",
                 f"{gguf.get('outtype') or cfg.LLAMA_GGUF_OUTTYPE} GGUF",
             )
             if part
@@ -1392,6 +1523,8 @@ def llama_lane(body: Mapping[str, Any]) -> dict[str, Any]:
             "commit": version.get("commit") or cfg.LLAMA_CPP_COMMIT,
             "build_number": version.get("build_number"),
             "version_line": version.get("line"),
+            "image": image.get("ref"),
+            "image_tag": image.get("tag"),
             "cuda_architectures": block.get("cuda_architectures"),
             "gguf_bytes": gguf.get("bytes"),
             "server_argv": list(block.get("argv") or []),
@@ -1899,7 +2032,13 @@ def health_body(
             "prompt_fixture": prompt_fixture_pin(),
             "llama_cpp_commit": cfg.LLAMA_CPP_COMMIT,
             "llama_cpp_build": cfg.LLAMA_CPP_BUILD,
+            "llama_cpp_tag": cfg.LLAMA_CPP_TAG,
+            "llama_image": cfg.LLAMA_IMAGE_REF,
+            "llama_image_tag": cfg.LLAMA_IMAGE_TAG,
             "llama_cuda_architectures": cfg.LLAMA_CUDA_ARCHITECTURES,
+            "published_llama_cpp_commit": cfg.PUBLISHED_LLAMA_CPP_COMMIT,
+            "published_llama_cpp_build": cfg.PUBLISHED_LLAMA_CPP_BUILD,
+            "published_llama_cuda_architectures": cfg.PUBLISHED_LLAMA_CUDA_ARCHITECTURES,
             "driver_floor": cfg.DRIVER_FLOOR_MAJOR,
             "hardware": cfg.HARDWARE,
         },

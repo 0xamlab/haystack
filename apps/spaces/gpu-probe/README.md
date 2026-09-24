@@ -20,9 +20,10 @@ tags:
 # Algenta GPU probe
 
 The published single-stream race, run live on one NVIDIA L4: the CUDA engine that ships in
-Algenta's runtime wheel against llama.cpp built with GGML_CUDA at the benchmark pages' pinned
-commit, on Qwen3-0.6B-Base, the same 256-token prompt, 64 greedy tokens, one warm-up excluded
-and the median of three timed runs, exactly the shape of the published L4 cell. The published
+Algenta's runtime wheel against llama.cpp's official prebuilt CUDA server (ggml-org's image at
+the versioned tag closest to the benchmark pages' pinned build, by digest), on Qwen3-0.6B-Base,
+the same 256-token prompt, 64 greedy tokens, one warm-up excluded and the median of three timed
+runs, exactly the shape of the published L4 cell. The published
 figures of that cell are printed beneath the measured ones, marked as published, with a link to
 the page they come from. Two secondary rows run beside the race on the same GPU with the same
 prompt: the compiled CUDA kernels published at
@@ -45,9 +46,13 @@ This Space is private and stays paused between runs. A run is one boot: it costs
   protocol: its gate battery first (a 16-token oracle, 3 x 128 steps of graph-vs-per-dispatch
   token identity, an engagement check), then gen=64 and gen=256 in one process; the page names
   the engine's build and the campaign prompt fixture the whole run then uses.
-- Lane B, the published opponent: `llama-server -ngl 99` on the F16 GGUF converted from the same
-  snapshot at image build, the same 256 ids sent as tokens, greedy; llama.cpp's own timings
-  (`predicted_per_second`, `prompt_per_second`) are the figures.
+- Lane B, the published opponent: `llama-server -ngl 99` from `ghcr.io/ggml-org/llama.cpp`
+  `server-cuda-b10223` (by digest; its `--version` is checked against the pinned build and
+  commit before it runs) on the F16 GGUF converted from the same snapshot at image build with
+  the converter of that same commit, the same 256 ids sent as tokens, greedy; llama.cpp's own
+  timings (`predicted_per_second`, `prompt_per_second`) are the figures. The published cell's
+  opponent was build 10210 compiled from source for sm_89 alone; this one is 13 builds later
+  and carries the common architectures — the page says which build ran.
 - Lane C, the Hub kernels: `kernels.get_kernel("thyn-ai/algenta-llm", backend="cuda")` at the
   published revision, the `DecodeSession` over the same f64 blob, one warm-up session excluded,
   three timed sessions.
@@ -69,8 +74,9 @@ code and time, and each fact once it has been measured. The page at `/` renders 
 number appears only after it was measured in this container, and a lane that cannot run says so
 with a code. `/run.json` is the finished record with the evidence rows' fields.
 
-The image builds llama.cpp in a builder stage, bakes the kernel snapshot, the model snapshot and
-the F16 GGUF at build time and boots with `HF_HUB_OFFLINE=1`, so nothing downloads at boot. The
+The image takes `llama-server` from ggml-org's official CUDA image (nothing is compiled, the
+build takes minutes), bakes the kernel snapshot, the model snapshot and the F16 GGUF at build
+time and boots with `HF_HUB_OFFLINE=1`, so nothing downloads at boot. The
 f64 conversion (about 4.8 GB) happens on the Space's disk during the `convert` phase and serves
 lanes A and C.
 

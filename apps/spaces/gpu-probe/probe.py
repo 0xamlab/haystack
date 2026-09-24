@@ -24,8 +24,9 @@ and each lane has the whole GPU to itself.
                that driver's protocol instead: `<ckpt> --runs 3`, one process for its gates
                and its gen=64 / gen=256 cells, the figures read from its prints, and the
                whole run on the campaign prompt fixture its oracle is bound to.
-    llama      lane B, the published opponent: llama-server (llama.cpp at the pinned commit,
-               GGML_CUDA, sm_89) on the F16 GGUF of the same snapshot, `-ngl 99`, the same 256
+    llama      lane B, the published opponent: llama-server from ggml-org's official prebuilt
+               CUDA image (tag server-cuda-b10223, by digest; `--version` checked against the
+               pins, fail-closed) on the F16 GGUF of the same snapshot, `-ngl 99`, the same 256
                ids as a token array, greedy, warm-up excluded, median of 3; llama.cpp's own
                timings are the figures.
     decode     lane C, the Hub kernels' f32 parity path: `DecodeSession` over the same blob,
@@ -767,7 +768,15 @@ def engine_facts() -> dict[str, Any]:
             f"no {cfg.ENGINE_NAME} was found; searched: " + "; ".join(resolution.searched)[:400],
             {"searched": list(resolution.searched)},
         )
-    path = Path(resolution.path)
+    return engine_facts_at(
+        Path(resolution.path), str(resolution.source), tuple(resolution.searched)
+    )
+
+
+def engine_facts_at(path: Path, resolved_from: str, searched: tuple[str, ...]) -> dict[str, Any]:
+    """The facts of one engine binary: its protocol from the name, the manifest beside it read
+    and checked (sha256, the bundled closure), `resolved_from` and `searched` recorded as the
+    resolver reported them (the bake passes the build argument's own chain)."""
     directory = path.parent
     protocol = core.engine_protocol_of(path.name)
     if protocol is None:
@@ -782,8 +791,8 @@ def engine_facts() -> dict[str, Any]:
         "protocol": protocol,
         "path": str(path),
         "dir": str(directory),
-        "resolved_from": resolution.source,
-        "searched": list(resolution.searched),
+        "resolved_from": resolved_from,
+        "searched": list(searched),
         "wheel_version": package_versions((cfg.ENGINE_WHEEL,))[cfg.ENGINE_WHEEL],
         "size_bytes": path.stat().st_size,
         "sha256": sha256_of(path),
@@ -1110,6 +1119,19 @@ def stage_engine() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def llama_image_facts() -> dict[str, Any]:
+    """The prebuilt image lane B runs, as the pins name it (the bake records the same block after
+    checking the image's pin files against these values)."""
+    return {
+        "ref": cfg.LLAMA_IMAGE_REF,
+        "tag": cfg.LLAMA_IMAGE_TAG,
+        "digest": cfg.LLAMA_IMAGE_DIGEST,
+        "amd64_digest": cfg.LLAMA_IMAGE_AMD64_DIGEST,
+        "kind": cfg.LLAMA_IMAGE_KIND,
+        "cuda_runtime": cfg.LLAMA_CUDA_RUNTIME,
+    }
+
+
 def gguf_path() -> Path:
     recorded = ((read_build_facts().get("llama") or {}).get("gguf") or {}).get("path")
     if recorded and Path(recorded).is_file():
@@ -1117,15 +1139,70 @@ def gguf_path() -> Path:
     return assets_dir() / cfg.GGUF_FILENAME
 
 
+def llama_env(backend: str | None = None) -> dict[str, str]:
+    """The environment every lane-B launch runs with: the prebuilt image's files carry RUNPATH
+    `/app/build/bin:` (the build tree, then the working directory), so the loader is pointed at
+    their directory for the libllama* / libggml* closure. ggml's backend registry needs nothing:
+    it searches the executable's directory and takes libggml-cuda.so and the CPU variants from
+    there. GGML_BACKEND_PATH names one extra backend library, loaded out loud (a directory there
+    was run 16's `load_backend: failed to load /opt/llama/bin`), so an inherited value is dropped
+    and `backend` sets it only for the bake's CUDA-backend probe."""
+    env = dict(os.environ)
+    inherited = env.get(cfg.LLAMA_LIBRARY_PATH_ENV, "")
+    env[cfg.LLAMA_LIBRARY_PATH_ENV] = f"{cfg.LLAMA_BIN_DIR}:{inherited}".rstrip(":")
+    env.pop(cfg.LLAMA_BACKEND_PATH_ENV, None)
+    if backend:
+        env[cfg.LLAMA_BACKEND_PATH_ENV] = str(backend)
+    return env
+
+
+def llama_launch_env() -> dict[str, str]:
+    """The variables `llama_env` sets for a launch, for the record (GGML_BACKEND_PATH is not one
+    of them: the backends are found beside the executable)."""
+    env = llama_env()
+    return {name: env[name] for name in (cfg.LLAMA_LIBRARY_PATH_ENV,)}
+
+
 def llama_version(server: Path) -> dict[str, Any]:
     try:
         proc = subprocess.run(  # noqa: S603 - fixed argv
-            [str(server), "--version"], capture_output=True, text=True, timeout=60, check=False
+            [str(server), "--version"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+            env=llama_env(),
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise core.ProbeError("llama_server_failed", f"--version did not run: {exc}") from exc
     facts = core.parse_llama_version(f"{proc.stdout}\n{proc.stderr}")
     facts["returncode"] = proc.returncode
+    return facts
+
+
+def llama_list_devices(server: Path, backend: str | None = None) -> dict[str, Any]:
+    """`llama-server --verbose --list-devices` with the launch environment (`backend` adds the
+    one library GGML_BACKEND_PATH may name): the devices ggml enumerated, the backends it
+    reported loaded and its refusal lines, parsed by `core.parse_llama_devices`; the output's
+    last lines kept. `--verbose` first: the registry's `loaded ... backend from` lines are INFO
+    and the device printer's own `ggml_backend_load_all()` runs after the flag is applied (the
+    refusals are errors and print regardless)."""
+    try:
+        proc = subprocess.run(  # noqa: S603 - fixed argv
+            [str(server), "--verbose", "--list-devices"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+            env=llama_env(backend),
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise core.ProbeError("llama_server_failed", f"--list-devices did not run: {exc}") from exc
+    text = f"{proc.stdout}\n{proc.stderr}"
+    facts = core.parse_llama_devices(text)
+    facts["returncode"] = proc.returncode
+    facts["backend_path"] = backend
+    facts["output_tail"] = core.log_tail(text, 12)
     return facts
 
 
@@ -1198,11 +1275,11 @@ def stage_llama() -> dict[str, Any]:
         raise core.ProbeError("llama_gguf_missing", f"{gguf} was not converted at build")
     build_llama = read_build_facts().get("llama") or {}
     version = llama_version(server)
-    if version.get("commit") and not cfg.LLAMA_CPP_COMMIT.startswith(version["commit"]):
-        raise core.ProbeError(
-            "llama_commit_mismatch",
-            f"llama-server reports {version['commit']}, the pin is {cfg.LLAMA_CPP_COMMIT[:10]}",
-        )
+    core.verify_llama_version(version)
+    # the GPU, or nothing: ggml must have loaded the CUDA backend and seen the device, else
+    # `-ngl 99` would run on the CPU and the race would lie (llama_cuda_backend_missing)
+    devices = llama_list_devices(server)
+    cuda_devices = core.require_cuda_device(devices)
     snapshot = model_snapshot()
     ids = core.race_prompt_ids()
     base_url = f"http://127.0.0.1:{cfg.LLAMA_PORT}"
@@ -1227,7 +1304,7 @@ def stage_llama() -> dict[str, Any]:
     with logs.open("w", encoding="utf-8") as handle:
         try:
             proc = subprocess.Popen(  # noqa: S603 - fixed argv
-                argv, stdout=handle, stderr=subprocess.STDOUT, text=True
+                argv, stdout=handle, stderr=subprocess.STDOUT, text=True, env=llama_env()
             )
         except OSError as exc:
             sampler.stop()
@@ -1255,9 +1332,13 @@ def stage_llama() -> dict[str, Any]:
     return {
         "server": str(server),
         "argv": argv,
+        "env": llama_launch_env(),
         "version": version,
+        "devices": devices,
+        "cuda_devices": cuda_devices,
         "commit_pinned": cfg.LLAMA_CPP_COMMIT,
         "build_tag": cfg.LLAMA_CPP_TAG,
+        "image": build_llama.get("image") or llama_image_facts(),
         "cuda_architectures": build_llama.get("cuda_architectures") or cfg.LLAMA_CUDA_ARCHITECTURES,
         "gguf": {
             "path": str(gguf),

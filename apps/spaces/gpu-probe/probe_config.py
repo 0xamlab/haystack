@@ -1,12 +1,12 @@
 """Every pin and every fixed input of the GPU probe, in one place.
 
 The probe runs the published single-stream race live: the CUDA engine that ships in the
-`algenta-runtime-native` wheel against llama.cpp built with GGML_CUDA, on the checkpoint, prompt
-shape and generation length the benchmark pages measured (`gitbook/benchmarks/
+`algenta-runtime-native` wheel against llama.cpp's official prebuilt CUDA server, on the
+checkpoint, prompt shape and generation length the benchmark pages measured (`gitbook/benchmarks/
 nvidia-llm-serving.md` "Single-stream decode", `gitbook/benchmarks/nvidia-llm-throughput.md`
 "L4"). The Hub kernels' f32 parity path and plain transformers on the same GPU run beside it as
 secondary rows. The build (`fetch_assets.py`) refuses an image whose kernel snapshot, native
-manifest, model snapshot, engine or llama.cpp build disagree with these values; the run
+manifest, model snapshot, engine or llama.cpp image disagree with these values; the run
 (`probe.py`) records what it measured next to them and never in their place.
 """
 
@@ -148,18 +148,91 @@ HARDWARE_COMPUTE_CAPABILITY: dict[str, tuple[int, int]] = {
 }
 
 # --- lane B: the published opponent ------------------------------------------------------------
-#: llama.cpp at the pin the throughput page names (`000547513f`), which is tag `b10210`, the
-#: "build 10210" the serving page names; built in the image with GGML_CUDA for sm_89.
+#: The published cells ran llama.cpp at the pin the throughput page names (`000547513f`), tag
+#: `b10210`, the "build 10210" of the serving page, built from source with GGML_CUDA for sm_89
+#: only. The Hub's builder cut that compile off at 62 minutes (run 15, step 310 of 442, its time
+#: limit), so lane B runs ggml-org's official prebuilt CUDA server image instead: the versioned
+#: tag closest to and not below the published build, `server-cuda-b10223` (13 builds later,
+#: 2026-08-01), referenced by the digest of its multi-arch index (the Hub builds linux/amd64).
+#: The page names that build and never claims the published one.
+PUBLISHED_LLAMA_CPP_COMMIT = "000547513f1530346ecd163db8b3e13962949961"
+PUBLISHED_LLAMA_CPP_TAG = "b10210"
+PUBLISHED_LLAMA_CPP_BUILD = 10210
+PUBLISHED_LLAMA_CUDA_ARCHITECTURES = "89"
 LLAMA_CPP_REPO = "https://github.com/ggml-org/llama.cpp.git"
-LLAMA_CPP_COMMIT = "000547513f1530346ecd163db8b3e13962949961"
-LLAMA_CPP_TAG = "b10210"
-LLAMA_CPP_BUILD = 10210
-LLAMA_CUDA_ARCHITECTURES = "89"
+LLAMA_IMAGE = "ghcr.io/ggml-org/llama.cpp"
+LLAMA_IMAGE_TAG = "server-cuda-b10223"
+LLAMA_IMAGE_DIGEST = "sha256:11b2641870148c90fa99353f91aab7572c6f0e6c66e96aca49af88dd9c26a00b"
+#: The linux/amd64 manifest inside that index, the one the Hub's builder resolves.
+LLAMA_IMAGE_AMD64_DIGEST = "sha256:46e98996dc99f01079018769dd7531707c206c261584525474e92a343143a001"
+LLAMA_IMAGE_REF = f"{LLAMA_IMAGE}@{LLAMA_IMAGE_DIGEST}"
+LLAMA_IMAGE_KIND = "official ggml-org CUDA image, by digest"
+LLAMA_CPP_BUILD = 10223
+LLAMA_CPP_TAG = f"b{LLAMA_CPP_BUILD}"
+LLAMA_CPP_COMMIT = "11924d4c17abc27383376a1ac6a24fa3e36c1c0c"
+#: What ggml-org compiled into that image (`.devops/cuda.Dockerfile` at the commit): on
+#: `nvidia/cuda:12.8.1-devel-ubuntu24.04`, `-DGGML_NATIVE=OFF -DGGML_CUDA=ON -DGGML_BACKEND_DL=ON
+#: -DGGML_CPU_ALL_VARIANTS=ON`, and ggml's default architecture list for CUDA 12.8
+#: (`ggml/src/ggml-cuda/CMakeLists.txt`): PTX for 50, 61, 70, 75, 80 and 90, cubins for 86, 89
+#: and 120a — read back from the fatbins of the image's `libggml-cuda.so` (2026-09-24). The L4
+#: (sm_89) runs a cubin, as the published source build did; the T4 (sm_75) runs from PTX. Not
+#: the published cell's build: that one carried sm_89 alone.
+LLAMA_CUDA_ARCHITECTURES = (
+    "50-virtual;61-virtual;70-virtual;75-virtual;80-virtual;86-real;89-real;90-virtual;120a-real"
+)
+#: The CUDA runtime the image was built on and links (cudart 12.8.90, cublas 12.8.4.1, nccl
+#: 2.25.1): the probe's own base image, so the host libraries are the same files.
+LLAMA_CUDA_RUNTIME = "12.8.1"
 LLAMA_DIR = "/opt/llama"
-LLAMA_SERVER = f"{LLAMA_DIR}/bin/llama-server"
+#: The official image's `/app` copied as one directory: the launcher, the libllama* / libggml*
+#: closure it links and the ggml backends it dlopens (libggml-cuda.so, the libggml-cpu-*
+#: variants). Their RUNPATH is `/app/build/bin:` — the build tree, then an empty element (the
+#: working directory) — so outside that image the closure loads only with LD_LIBRARY_PATH led
+#: by the directory; every launch of lane B, `--version` included, sets it. The backends need
+#: no variable: ggml's registry (GGML_BACKEND_DL) searches the executable's own directory and
+#: the working directory (`ggml_backend_load_best`, ggml/src/ggml-backend-reg.cpp at the
+#: pinned commit) and takes `libggml-cuda.so` from beside the launcher.
+LLAMA_BIN_DIR = f"{LLAMA_DIR}/bin"
+LLAMA_SERVER = f"{LLAMA_BIN_DIR}/llama-server"
+LLAMA_LIBRARY_PATH_ENV = "LD_LIBRARY_PATH"
+#: `GGML_BACKEND_PATH` names ONE out-of-tree backend library, loaded after the search and not
+#: silently (`ggml_backend_load_all_from_path` → `ggml_backend_load(path)`, the same file, lines
+#: 588-592): a directory there is `load_backend: failed to load /opt/llama/bin: ... Is a
+#: directory` (run 16). Launches leave it unset; the bake points it at the CUDA backend file
+#: below so that backend's loader says out loud why it will not load (on the Hub's GPU-less
+#: builder that is the driver library, tolerated; anything else fails the build).
+LLAMA_BACKEND_PATH_ENV = "GGML_BACKEND_PATH"
+LLAMA_CUDA_BACKEND = f"{LLAMA_BIN_DIR}/libggml-cuda.so"
+LLAMA_CUDA_BACKEND_NAME = "CUDA"
+#: The driver library `libggml-cuda.so` links (CUDA::cuda_driver, the virtual-memory path); the
+#: NVIDIA container runtime mounts it on the Space, no build host has it.
+LLAMA_DRIVER_LIBRARY = "libcuda.so.1"
 LLAMA_CONVERT = f"{LLAMA_DIR}/convert_hf_to_gguf.py"
 LLAMA_GGUF_PY = f"{LLAMA_DIR}/gguf-py"
+#: What the pinned converter imports on the Qwen3 path, by distribution name: torch and
+#: transformers (the GPT-2 vocab through AutoTokenizer), sentencepiece (tried first by
+#: `Qwen3Model.set_vocab`, a FileNotFoundError falls through, a missing module does not) and
+#: gguf-py's own dependencies; protobuf backs the sentencepiece model proto. The bake refuses
+#: the image before converting when one is not installed (`llama_convert_dependency_missing`).
+LLAMA_CONVERTER_PACKAGES: tuple[str, ...] = (
+    "torch",
+    "transformers",
+    "tokenizers",
+    "safetensors",
+    "sentencepiece",
+    "protobuf",
+    "numpy",
+    "tqdm",
+    "pyyaml",
+    "requests",
+)
+#: The line the converter prints last when it wrote the file (`convert_hf_to_gguf.py`, main).
+LLAMA_CONVERT_EXPORTED_MARK = "Model successfully exported to"
+#: Written by the Dockerfile's converter stage from its build arguments; the bake refuses an
+#: image whose files disagree with the pins above.
 LLAMA_COMMIT_FILE = f"{LLAMA_DIR}/COMMIT"
+LLAMA_BUILD_FILE = f"{LLAMA_DIR}/BUILD"
+LLAMA_IMAGE_DIGEST_FILE = f"{LLAMA_DIR}/IMAGE_DIGEST"
 #: The GGUF the opponent serves: the same snapshot converted with `convert_hf_to_gguf.py
 #: --outtype f16` at image build (the published cells' "F16 GGUF").
 LLAMA_GGUF_OUTTYPE = "f16"
@@ -215,8 +288,9 @@ LONG_GEN_BUDGET_S = 240.0
 
 SPACE_REPO_ID = "thyn-ai/algenta-gpu-probe"
 #: The published L4 cell needs an L4 (`l4x1`: NVIDIA L4, sm_89, 24 GB, 8 vCPU, 30 GB, $0.80/h on
-#: 2026-09-24). `t4-small` is the fallback hardware for the secondary rows only: the llama.cpp
-#: build targets sm_89 and the bundled engine's target is what its manifest declares.
+#: 2026-09-24). `t4-small` is the fallback hardware: the prebuilt llama.cpp carries PTX for the
+#: T4's sm_75 so lane B runs there too, the bundled engine's target is what its manifest
+#: declares, and the published L4 cell needs an L4.
 HARDWARE = "l4x1"
 HARDWARE_FALLBACK = "t4-small"
 HARDWARE_PRICE_USD_H = 0.80

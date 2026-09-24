@@ -55,6 +55,12 @@ RACE_PREDATES = (
     "This record predates the race stages: the Algenta engine and llama.cpp were not part of "
     "this run, so only the secondary rows are shown."
 )
+OPPONENT_BUILD_NOTE = (
+    "The published cell's opponent was llama.cpp build {published_build} compiled from source "
+    "for sm_{published_arch} alone; this run's is build {build} from ggml-org's official CUDA "
+    "image ({tag}, by digest), which carries the common architectures — a build "
+    "{later} tags later, not the identical one."
+)
 RACE_CAPTION = (
     "Same checkpoint, the same {n_prompt}-token prompt (the benchmark battery's eight-id cycle), "
     "{gen} greedy tokens requested, the same GPU in the same run; {warmup} warm-up run excluded, "
@@ -147,7 +153,8 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
 <a href="{health_path}">/health</a>. Space source: <code>apps/spaces/gpu-probe</code> in the
 Algenta repository. Model: <a href="{model_url}">{model_repo}</a> (Apache-2.0). Kernel:
 <a href="{kernel_url}">{kernel_repo}</a>, Algenta Community License 1.1. Opponent:
-<a href="{llama_url}">llama.cpp</a> (MIT) at the pinned commit.</p>
+<a href="{llama_url}">llama.cpp</a> (MIT), build {llama_build} from ggml-org's official CUDA
+image, by digest.</p>
 <p><a href="{docs_url}">Documentation</a> &middot; <a href="{pricing_url}">Commercial plans</a>
 &middot; <a href="{discord_url}">Discord</a></p>
 </footer>
@@ -370,6 +377,13 @@ def _fmt(value: Any, *, plain: bool = False) -> str:
     if isinstance(value, list | tuple):
         return ", ".join(_fmt(v, plain=plain) for v in value)
     return str(value)
+
+
+def _env_text(env: Any) -> str | None:
+    """A launch environment as `NAME=value` pairs, in the record's order."""
+    if not isinstance(env, Mapping) or not env:
+        return None
+    return " ".join(f"{name}={value}" for name, value in env.items())
 
 
 def _row(label: str, value: Any, *, code: bool = False, plain: bool = False) -> str:
@@ -736,6 +750,20 @@ def race_section(body: Mapping[str, Any]) -> str:
         notes.append("No ratio: the two lanes decoded different tokens.")
     if engine.get("protocol") == cfg.P3_ENGINE_NAME:
         notes.append(P3_LANE_NOTE.format(runs=engine.get("n_runs") or cfg.RUNS))
+    llama_build = llama.get("build") or {}
+    # a record whose lane B ran from the prebuilt image says so; one without an image block
+    # (none exists yet: the source build never ran) is not described as one
+    if llama.get("status") == core.OK_LANE and llama_build.get("image_tag"):
+        build = llama_build.get("build_number") or cfg.LLAMA_CPP_BUILD
+        notes.append(
+            OPPONENT_BUILD_NOTE.format(
+                published_build=cfg.PUBLISHED_LLAMA_CPP_BUILD,
+                published_arch=cfg.PUBLISHED_LLAMA_CUDA_ARCHITECTURES,
+                build=build,
+                tag=llama_build["image_tag"],
+                later=int(build) - cfg.PUBLISHED_LLAMA_CPP_BUILD,
+            )
+        )
     caption = RACE_CAPTION.format(
         n_prompt=view["n_prompt"],
         gen=view["gen_tokens"],
@@ -889,9 +917,28 @@ def render_page(body: Mapping[str, Any]) -> str:
         _table(
             "llama.cpp",
             [
+                _row("Image", pins.get("llama_image"), code=True),
+                _row("Image tag", pins.get("llama_image_tag"), code=True),
+                _row(
+                    "Pinned build",
+                    f"b{pins['llama_cpp_build']}" if pins.get("llama_cpp_build") else None,
+                    code=True,
+                ),
                 _row("Pinned commit", pins.get("llama_cpp_commit"), code=True),
                 _row("Reported version", llama_version.get("line")),
                 _row("CUDA architectures", llama.get("cuda_architectures"), code=True),
+                _row(
+                    "Published cell's build",
+                    (
+                        f"b{pins['published_llama_cpp_build']} "
+                        f"({str(pins.get('published_llama_cpp_commit') or '')[:10]}), built from "
+                        f"source for sm_{pins.get('published_llama_cuda_architectures')} only; "
+                        "not this build"
+                    )
+                    if pins.get("published_llama_cpp_build")
+                    else None,
+                ),
+                _row("Launch environment", _env_text(llama.get("env")), code=True),
                 _row("GGUF", gguf.get("path"), code=True),
                 _row("GGUF size", _bytes(gguf.get("bytes"))),
                 _row("Server ready", _s(llama.get("ready_s"))),
@@ -973,6 +1020,7 @@ def render_page(body: Mapping[str, Any]) -> str:
         kernel_url=cfg.KERNEL_HUB_URL,
         kernel_repo=html.escape(cfg.KERNEL_REPO),
         llama_url=cfg.LLAMA_CPP_URL,
+        llama_build=html.escape(cfg.LLAMA_CPP_TAG),
         docs_url=cfg.DOCS_URL,
         pricing_url=cfg.PRICING_URL,
         discord_url=cfg.DISCORD_URL,

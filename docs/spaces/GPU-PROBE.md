@@ -7,8 +7,9 @@ the runbook view.
 
 A private Docker Space on `l4x1` (NVIDIA L4, sm_89, 24 GB; 8 vCPU, 30 GB) that boots and runs
 the published single-stream race live: the CUDA engine bundled in the `algenta-runtime-native`
-wheel (lane A) against llama.cpp built with GGML_CUDA at the benchmark pages' pinned commit
-`000547513f` (tag `b10210`; lane B), on `Qwen/Qwen3-0.6B-Base`, the benchmark battery's
+wheel (lane A) against llama.cpp's official prebuilt CUDA server (ggml-org's image at tag
+`server-cuda-b10223`, by digest, commit `11924d4c17`; the pages' cell ran `000547513f`, tag
+`b10210`, built from source — see "Lane B's binary" below; lane B), on `Qwen/Qwen3-0.6B-Base`, the benchmark battery's
 256-token prompt, gen=64 greedy, one warm-up excluded, the median of three timed runs — the
 shape of the L4 cell on
 `gitbook/benchmarks/nvidia-llm-serving.md` ("Single-stream decode": Algenta 193.9 tok/s at
@@ -176,9 +177,9 @@ symlink at `/home/user/engine` inside the built image.
 | File | Purpose |
 |---|---|
 | `README.md` | Hub card (`sdk: docker`, `hardware: l4x1`, `app_port: 7860`) and what the probe measures. |
-| `Dockerfile` | Two stages. `nvidia/cuda:12.8.1-devel-ubuntu24.04` (by digest) builds `llama-server` at the pinned commit with `-DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=89 -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DLLAMA_OPENSSL=OFF`, keeps `convert_hf_to_gguf.py`, its `conversion/` package and `gguf-py`. `nvidia/cuda:12.8.1-runtime-ubuntu24.04` (by digest), `NVIDIA_DISABLE_REQUIRE=1`, uv by digest, CPython 3.14, exact pins, `/opt/llama` copied in, bake and offline verify as uid 1000, `HF_HUB_OFFLINE=1`. |
+| `Dockerfile` | Three stages, nothing compiled. `ghcr.io/ggml-org/llama.cpp@sha256:11b26418…` (tag `server-cuda-b10223`, the multi-arch index by digest) is stage `llama`: its `/app` — `llama-server`, the `libllama*` / `libggml*` closure, the `libggml-cuda.so` and `libggml-cpu-*` backends — is copied to `/opt/llama/bin`. Stage `converter` (the runtime base again) shallow-fetches commit `11924d4c17` for `convert_hf_to_gguf.py`, `conversion/` and `gguf-py` and writes `COMMIT`, `BUILD`, `IMAGE_DIGEST`; git lives there only. `nvidia/cuda:12.8.1-runtime-ubuntu24.04` (by digest), `NVIDIA_DISABLE_REQUIRE=1`, `libgomp1` + `libssl3t64`, uv by digest, CPython 3.14, exact pins (the converter's `sentencepiece` and `protobuf` among them), `llama-server --version` checked against the build argument before torch installs — with no `load_backend: failed` line, `GGML_BACKEND_PATH` unset — then `ARG ALGENTA_CUDA_ENGINE` (the Space variable reaches the build only as a build argument; kept as `ENV`) declared after the `/home/user/engine` symlink and `USER user`, so the bake inspects the engine lane A will resolve; bake and offline verify as uid 1000, `HF_HUB_OFFLINE=1`. |
 | `requirements.txt` | torch 2.9.1+cu128, kernels 0.17.1, huggingface_hub 1.26.1, transformers 5.17.0, safetensors 0.8.0, tokenizers 0.23.2, numpy 2.5.3, algenta 1.0.28, algenta-runtime-native 1.0.7 (pinned on its own), tqdm / pyyaml / requests (gguf-py), fastapi, uvicorn. |
-| `probe_config.py` | Every pin and fixed input: kernel repo/revision/variant/tier, model repo/revision, the prompt cycle and 256-token length, gen=64 / gen=256, runs and warm-ups, the engine wheel facts, the llama.cpp commit/tag/build and CUDA architecture, the published figures with their pages, stage budgets, the run budget, hardware and price. |
+| `probe_config.py` | Every pin and fixed input: kernel repo/revision/variant/tier, model repo/revision, the prompt cycle and 256-token length, gen=64 / gen=256, runs and warm-ups, the engine wheel facts, the llama.cpp image (tag, index digest, amd64 digest), build, commit and the architectures it carries next to the published cell's own build/commit/architecture, the published figures with their pages, stage budgets, the run budget, hardware and price. |
 | `probe_core.py` | Stdlib-only logic: phase machine (soft lanes, the `decode` → `kernel` dependency), driver/capability gates, revision/variant/tier/library gates, the engine compile-target gate, the `CONFORM_*` and `/completion` parsers, medians (`run_summary`), identity with the 16-token oracle, the lane views (`race_view`), the `/health` and `run.json` shapes. |
 | `probe.py` | The eight stages, one subprocess each: `driver`, `kernel`, `convert`, `engine`, `llama`, `decode`, `baseline`, `reference`; the nvidia-smi memory sampler; the run/cell loop. |
 | `app.py` | FastAPI on 7860: `/` (plain page), `/health`, `/run.json`; the orchestrator thread with the run budget. |
@@ -195,7 +196,7 @@ symlink at `/home/user/engine` inside the built image.
 | `kernel` | `get_kernel(revision=<pinned>, backend="cuda")`; snapshot sha, variant, native manifest tier 6144, `runtime()` and the library it chose vs the device's capability | `kernel_revision_mismatch`, `kernel_variant_mismatch`, `kernel_tier_mismatch`, `kernel_library_mismatch`, the glue's own `KernelError` codes | no (lane C becomes `upstream_failed`) |
 | `convert` | `prepare_model_checkpoint(snapshot, race_prompt_ids(256), weights_dtype="f64", backend="cuda")`, timed; reused when the blob on disk carries the run's prompt (its manifest's `input_ids`), a checkpoint carrying the other fixture removed and converted again | `model_snapshot_missing`, `disk_insufficient`, `conversion_incomplete`, `conversion_prompt_mismatch` (a stale checkpoint that could not be removed), `prompt_fixture_unknown`, algenta's `InferenceError` codes | yes |
 | `engine` | Lane A: `resolve_engine("cuda")` → the binary; manifest read, sha256 checked, `engine_target_gate(cuda_target, cc)`, host libraries loaded; then `<engine> <ckpt> --max-new 64 --prompt-len 256` with `LD_LIBRARY_PATH` led by the wheel's directory, 1 warm-up + 3 timed, then the same at `--max-new 256` when the gen=64 cell took under 240 s; nvidia-smi sampled at 4 Hz for the peak | `engine_resolver_missing`, `engine_binary_missing`, `engine_manifest_invalid`, `engine_sha_mismatch`, `engine_target_mismatch`, `engine_host_library_missing`, `engine_binary_not_cuda_build`, `engine_no_gpu`, `engine_refused_model`, `engine_run_failed`, `engine_run_timeout`, `engine_no_tokens`, `engine_no_timing`, `engine_prompt_mismatch`; with the packed-int8 graph driver selected (`ALGENTA_CUDA_ENGINE`): `<engine> <ckpt> --runs 3` once, and `engine_protocol_unknown`, `engine_closure_incomplete`, `engine_prompt_fixture_mismatch`, `engine_resident_refused`, `engine_oracle_mismatch`, `engine_gate_failed` | no |
-| `llama` | Lane B: `llama-server --version` (commit checked against the pin), then `llama-server -m <gguf> --host 127.0.0.1 --port 8093 -ngl 99 --parallel 1 -c 1024`, `/health` until ok, `/completion` with `{"prompt": <256 ids>, "n_predict": N, "temperature": 0, "top_k": 1, "samplers": ["top_k"], "cache_prompt": false, "return_tokens": true}`; `prompt_n` must be 256 and `tokens_cached` 0; 1 warm-up + 3 timed at 64, then 256 under the same budget rule; the server killed after | `llama_build_missing`, `llama_gguf_missing`, `llama_commit_mismatch`, `llama_server_failed`, `llama_request_failed`, `llama_timings_missing`, `llama_tokens_missing`, `llama_prompt_mismatch`, `llama_prompt_cached`, `llama_short_generation` | no |
+| `llama` | Lane B: `llama-server --version` (build and commit checked against the pins, fail-closed; every launch with `LD_LIBRARY_PATH` led by `/opt/llama/bin` and `GGML_BACKEND_PATH` unset — ggml's registry finds the backends beside the launcher, and a refusal line from it is `llama_backend_load_failed`), then `llama-server --verbose --list-devices` must enumerate a `CUDA` device (`llama_cuda_backend_missing` otherwise: lane B never races `-ngl 99` on the CPU), then `llama-server -m <gguf> --host 127.0.0.1 --port 8093 -ngl 99 --parallel 1 -c 1024`, `/health` until ok, `/completion` with `{"prompt": <256 ids>, "n_predict": N, "temperature": 0, "top_k": 1, "samplers": ["top_k"], "cache_prompt": false, "return_tokens": true}`; `prompt_n` must be 256 and `tokens_cached` 0; 1 warm-up + 3 timed at 64, then 256 under the same budget rule; the server killed after | `llama_build_missing`, `llama_gguf_missing`, `llama_version_mismatch`, `llama_backend_load_failed`, `llama_cuda_backend_missing`, `llama_server_failed`, `llama_request_failed`, `llama_timings_missing`, `llama_tokens_missing`, `llama_prompt_mismatch`, `llama_prompt_cached`, `llama_short_generation` | no |
 | `decode` | Lane C: `DecodeSession(checkpoint, ids, max_new_tokens=64)` opened, stepped and closed; 1 warm-up session + 3 timed | `checkpoint_missing`, `decode_session_missing`, `upstream_failed`, the `KernelError` codes | no |
 | `baseline` | Lane D: `from_pretrained(snapshot, dtype=…)` on the device, `generate(max_new_tokens=64, do_sample=False, num_beams=1)` through the `StepClock` streamer, one lane per dtype, 1 warm-up + 3 timed | per lane `baseline_oom`, `baseline_load_failed`, `baseline_generate_failed`, `baseline_step_count_mismatch`, `baseline_lane_missing` | no |
 | `reference` | transformers float32 greedy on the CPU, 8 threads, the same 256 ids, 64 tokens, per-step top-2 logit margins | transformers' exceptions as their class name | yes |
@@ -239,18 +240,74 @@ runs (each launch reads the blob and uploads it; on `l4x1` with wheel 1.0.7 the 
 under a second), llama ~1 min (server load ~10 s, 8 requests), decode ~1–2 min (4 session
 opens), baseline ~1 min, reference ~30 s: about 6–8 minutes from boot to `run.json`, inside the
 20-minute run budget; stage ceilings are in `STAGE_TIMEOUTS_S`. The Space is paused after the
-read. The image build is not GPU time: the llama.cpp compile for one architecture (10–25 min on
-the Hub's builders) and the 1.2 GB model snapshot plus torch cu128 (10–20 min) are the cost;
-if the builder cannot finish the CUDA compile inside the Hub's limits, the fallback is the
-prebuilt `llama-cpp-python` CUDA wheels (`--extra-index-url
-https://abetlen.github.io/llama-cpp-python/whl/cu12x`, the closest published index), served the
-same way and printed on the page as llama-cpp-python's bundled llama.cpp with its version — an
-honest opponent either way; note those wheels need a CPython 3.12 interpreter beside the 3.14
-one, since none is published for cp314.
+read. The image build is not GPU time and compiles nothing: `llama-server` is copied from the
+prebuilt image and the converter is a shallow checkout (minutes); the 1.2 GB model snapshot
+plus torch cu128 (10–20 min) are the cost. Run 15 built llama.cpp from source and the Hub's
+builder cut the compile off after 62 minutes at step 310 of 442 (`BUILD_ERROR`, no error
+line: its time limit), which is why lane B comes prebuilt.
 
-`t4-small` stays the fallback hardware for the secondary rows only: the llama.cpp build targets
-sm_89 (`LLAMA_CUDA_ARCHITECTURES=89`; set `75;89` to cover both), and the published L4 cell
-needs an L4.
+`t4-small` stays the fallback hardware: the prebuilt image carries PTX for the T4's sm_75 so
+lane B runs there, lane A only when the selected engine's target loads there (the wheel's
+`sm_90a` and the shipped `sm_89` build do not), and the published L4 cell needs an L4.
+
+## Lane B's binary
+
+`ghcr.io/ggml-org/llama.cpp` at tag `server-cuda-b10223`, the multi-arch index
+`sha256:11b2641870148c90fa99353f91aab7572c6f0e6c66e96aca49af88dd9c26a00b` (its linux/amd64
+manifest `sha256:46e98996dc99f01079018769dd7531707c206c261584525474e92a343143a001`), build
+10223, commit `11924d4c17abc27383376a1ac6a24fa3e36c1c0c` (2026-08-01; resolved through the tag
+ref `b10223` on GitHub). The rule that chose it: the versioned `server-cuda-b<build>` tag
+closest to and not below the published `b10210` — the registry's full tag list (11,952 tags,
+paginated) has no `b10210` server image, `b10223` is the next one, 13 builds later; the moving
+`server-cuda` tag was b11151 on 2026-09-24 and is not used. The image is built by
+`.devops/cuda.Dockerfile` at that commit on `nvidia/cuda:12.8.1-devel-ubuntu24.04` with
+`-DGGML_NATIVE=OFF -DGGML_CUDA=ON -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON` and ggml's
+default architecture list for CUDA 12.8, and runs on `nvidia/cuda:12.8.1-runtime-ubuntu24.04`,
+the probe's own base: `libggml-cuda.so` links `libcudart.so.12` (12.8.90), `libcublas.so.12` /
+`libcublasLt.so.12` (12.8.4.1), `libnccl.so.2` (2.25.1), `libgomp.so.1` and the driver's
+`libcuda.so.1`; `llama-server` links `libllama-server-impl.so`, `libllama-common.so.0`,
+`libmtmd.so.0`, `libllama.so.0`, `libggml.so.0`, `libggml-base.so.0`, `libssl.so.3` /
+`libcrypto.so.3` and `libgomp.so.1`. All of those but `libgomp1` are in the base image;
+`libgomp1` and `libssl3t64` are installed by name. Its fatbins carry PTX for sm_50, 61, 70,
+75, 80 and 90 and cubins for sm_86, 89 and 120a (read from the file, 2026-09-24): the L4 runs
+an sm_89 cubin as the published source build did, the T4 runs sm_75 from PTX.
+
+Not the published cell's build. The pages' opponent was `b10210` (`000547513f`) compiled from
+source for sm_89 alone; the page and the record name build 10223 and the image, and never
+claim the identical build. `probe_config.py` keeps both sets of values
+(`PUBLISHED_LLAMA_CPP_*` next to `LLAMA_CPP_*` / `LLAMA_IMAGE_*`).
+
+Two quirks the Dockerfile and the launch handle. The image's launcher and libraries carry
+RUNPATH `/app/build/bin:` — the build tree, then an empty element, i.e. the working directory —
+so they load only from `/app` of that image (`cd / && /app/llama-server --version` fails with
+`libllama-server-impl.so: cannot open shared object file`); the probe copies `/app` to
+`/opt/llama/bin` and launches every lane-B process, `--version` included, with
+`LD_LIBRARY_PATH=/opt/llama/bin:…` and nothing else: ggml's registry (`GGML_BACKEND_DL`)
+searches the launcher's own directory and the working directory for `libggml-cuda.so` and the
+CPU variants (`ggml_backend_load_best`, `ggml/src/ggml-backend-reg.cpp` at the commit).
+`GGML_BACKEND_PATH` is not a search path but ONE out-of-tree backend library, loaded out loud
+after the search (`ggml_backend_load_all_from_path`, lines 588-592 of that file): set to the
+directory it printed `load_backend: failed to load /opt/llama/bin: … Is a directory` on every
+start (run 16), so no launch sets it and an inherited value is dropped. The bake sets it once,
+to `/opt/llama/bin/libggml-cuda.so`, so that backend's loader says why it will not load on the
+Hub's GPU-less builder — `libcuda.so.1: cannot open shared object file` (`libggml-cuda.so` links
+the driver), tolerated and recorded; any other reason is `llama_cuda_backend_unloadable`. The
+registry's `loaded … backend from` lines are INFO and show only with `--verbose` before
+`--list-devices`. On the Space the check that matters runs before every launch: `--verbose
+--list-devices` must enumerate a `CUDA` device, else lane B fails closed with
+`llama_cuda_backend_missing` instead of racing `-ngl 99` on the CPU. And `--version` has two shapes across builds
+(`version: 10223 (11924d4c1)` here, `version: 0.5.0-dev (build 11151, commit bd4f514db)` from
+later builds); `parse_llama_version` reads both, `verify_llama_version` fails closed on
+anything but the pinned build and a prefix of the pinned commit.
+
+The converter (`convert_hf_to_gguf.py`, `conversion/`, `gguf-py`) is a shallow checkout of the
+same commit `11924d4c17` in a stage of its own (`git rev-parse HEAD` asserted), so the F16 GGUF
+matches the server; the bake checks the stage's `COMMIT`, `BUILD` and `IMAGE_DIGEST` files
+against the pins before converting. To move to another build: pick the tag, resolve the index
+digest (`HEAD /v2/ggml-org/llama.cpp/manifests/<tag>` on ghcr.io with a pull token) and the
+commit (`/repos/ggml-org/llama.cpp/git/ref/tags/b<build>`), set the three values in the
+Dockerfile's `ARG`s and `FROM`, `LLAMA_IMAGE_*` and `LLAMA_CPP_*` in `probe_config.py`, and
+re-read the fatbin architectures if the CUDA base changed.
 
 The Qwen3-1.7B Hub-kernel parity run of runs 12–14 is not kept as a second section: the same
 kernel and the same path run on the 0.6B as lane C, and the 1.7B would add 4 GB of image, 14 GB
@@ -282,8 +339,10 @@ The fleet budget line for the probe stays the one-off in `docs/spaces/README.md`
 ## Not verified on the build Mac
 
 Everything CUDA: the driver gate, the engine launch (and whether the `sm_90a` refusal is the
-only obstacle on an L4), llama.cpp's build against CUDA 12.8 at the pin and its run, the GGUF
-conversion inside the image, `get_kernel(backend="cuda")`, the native load, the Hub decode, the
+only obstacle on an L4), the prebuilt llama-server's run on the device (its load without a GPU,
+from any working directory with the launch variables, was verified in the runtime base on the
+Mac: `--version` reports build 10223, every library but the driver's `libcuda.so.1` resolves),
+the GGUF conversion inside the image, `get_kernel(backend="cuda")`, the native load, the Hub decode, the
 transformers lanes on the device, and the image build itself: the Mac is arm64 and the image
 targets x86_64 CUDA. What the Mac verified is everything the Space decides with (the gates
 including the engine target gate against the wheel's real manifest values, the parsers against

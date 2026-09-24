@@ -13,6 +13,17 @@
 # fails closed on a different wheel. transformers + safetensors + tokenizers are the float32
 # reference and lane D. tqdm, pyyaml and requests are gguf-py's dependencies: the pinned
 # llama.cpp's convert_hf_to_gguf.py runs at image build to make lane B's F16 GGUF.
+#
+# sentencepiece and protobuf are the converter's own requirements at that commit
+# (requirements/requirements-convert_legacy_llama.txt: sentencepiece>=0.1.98,<0.3.0,
+# protobuf>=4.21.0,<5.0.0). Qwen3Model.set_vocab tries `_set_vocab_sentencepiece` first and only a
+# FileNotFoundError (no tokenizer.model) falls through to the GPT-2 vocab path, so the module must
+# import even though the checkpoint never uses it (run 16 stopped at ModuleNotFoundError).
+# sentencepiece 0.2.2 ships cp314 manylinux_2_28 x86_64 wheels (2026-07-12). protobuf backs the
+# sentencepiece model proto the other vocab paths read; the converter's own cap (<5.0.0) cannot
+# be honoured on CPython 3.14 — protobuf 4.25.8's abi3 upb extension fails to import there
+# (`Metaclasses with custom tp_new are not supported`, checked in the image's interpreter on
+# 2026-09-24), while 7.36.2 (a cp310-abi3 upb wheel) imports the model proto cleanly.
 --extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.9.1+cu128
 kernels==0.17.1
@@ -26,5 +37,7 @@ algenta-runtime-native==1.0.7
 tqdm==4.70.1
 pyyaml==6.0.3
 requests==2.34.2
+sentencepiece==0.2.2
+protobuf==7.36.2
 fastapi==0.141.1
 uvicorn==0.53.0

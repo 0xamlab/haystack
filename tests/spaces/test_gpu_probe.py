@@ -185,13 +185,25 @@ def _fixture_llama(tokens: list[int]) -> dict:
     return {
         "server": cfg.LLAMA_SERVER,
         "argv": [cfg.LLAMA_SERVER, "-m", "x.gguf", "-ngl", "99"],
+        "env": {
+            cfg.LLAMA_LIBRARY_PATH_ENV: f"{cfg.LLAMA_BIN_DIR}:/usr/local/cuda/lib64",
+            cfg.LLAMA_BACKEND_PATH_ENV: cfg.LLAMA_BIN_DIR,
+        },
         "version": {
-            "line": "version: 10210 (000547513f)",
-            "build_number": 10210,
-            "commit": "000547513f",
+            "line": f"version: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})",
+            "build_number": cfg.LLAMA_CPP_BUILD,
+            "commit": cfg.LLAMA_CPP_COMMIT[:9],
         },
         "commit_pinned": cfg.LLAMA_CPP_COMMIT,
         "build_tag": cfg.LLAMA_CPP_TAG,
+        "image": {
+            "ref": cfg.LLAMA_IMAGE_REF,
+            "tag": cfg.LLAMA_IMAGE_TAG,
+            "digest": cfg.LLAMA_IMAGE_DIGEST,
+            "amd64_digest": cfg.LLAMA_IMAGE_AMD64_DIGEST,
+            "kind": cfg.LLAMA_IMAGE_KIND,
+            "cuda_runtime": cfg.LLAMA_CUDA_RUNTIME,
+        },
         "cuda_architectures": cfg.LLAMA_CUDA_ARCHITECTURES,
         "gguf": {
             "path": "/home/user/assets/x.gguf",
@@ -450,10 +462,10 @@ def test_published_figures_and_the_llama_pin_come_from_the_pages() -> None:
     t = cfg.PUBLISHED_THROUGHPUT_L4
     assert f"| {t['algenta_gen64']} | {t['algenta_gen256']} |" in throughput
     assert f"| llama.cpp F16 | {t['llama_gen64']} | {t['llama_gen256']} |" in throughput
-    assert cfg.LLAMA_CPP_COMMIT[:10] in throughput, "the throughput page names the pin"
-    assert f"build {cfg.LLAMA_CPP_BUILD}" in serving, "the serving page names the build"
-    assert cfg.LLAMA_CPP_TAG == f"b{cfg.LLAMA_CPP_BUILD}"
-    assert cfg.LLAMA_CUDA_ARCHITECTURES == "89" and cfg.HARDWARE == "l4x1"
+    assert cfg.PUBLISHED_LLAMA_CPP_COMMIT[:10] in throughput, "the throughput page names the pin"
+    assert f"build {cfg.PUBLISHED_LLAMA_CPP_BUILD}" in serving, "the serving page names the build"
+    assert cfg.PUBLISHED_LLAMA_CPP_TAG == f"b{cfg.PUBLISHED_LLAMA_CPP_BUILD}"
+    assert cfg.PUBLISHED_LLAMA_CUDA_ARCHITECTURES == "89" and cfg.HARDWARE == "l4x1"
     published = core.published_facts()
     assert published["serving"]["llama_gen64_implied"] == round(193.9 / 1.12, 1)
     assert published["throughput"]["ratio_gen64"] == round(191.1 / 171.3, 2)
@@ -712,14 +724,29 @@ def test_llama_completion_is_read_fail_closed() -> None:
     )
     assert eos["stopped_on_eos"] is True and eos["n_gen"] == 4
     version = core.parse_llama_version(
-        "load_backend: loaded CUDA backend\nversion: 10210 (000547513f)\nbuilt with gcc\n"
+        "load_backend: loaded CUDA backend from /opt/llama/bin/libggml-cuda.so\n"
+        "version: 10210 (000547513f)\nbuilt with gcc\n"
     )
     assert version == {
         "line": "version: 10210 (000547513f)",
         "build_number": 10210,
         "commit": "000547513f",
+        "backends_loaded": {"CUDA": "/opt/llama/bin/libggml-cuda.so"},
+        "loader_errors": [],
     }
     assert core.parse_llama_version("")["build_number"] is None
+    # the later builds' shape (the moving server-cuda tag printed it on 2026-09-24)
+    newer = core.parse_llama_version(
+        "0.00.004.531 I srv  llama_server: initializing ...\n"
+        "version: 0.5.0-dev (build 11151, commit bd4f514db)\nbuilt with GNU 14.2.0\n"
+    )
+    assert newer == {
+        "line": "version: 0.5.0-dev (build 11151, commit bd4f514db)",
+        "build_number": 11151,
+        "commit": "bd4f514db",
+        "backends_loaded": {},
+        "loader_errors": [],
+    }
 
 
 # --- medians, identity, timings --------------------------------------------------------------
@@ -1005,6 +1032,7 @@ def test_bake_engine_reads_the_signed_manifest_and_records_the_hardware_verdict(
     }
     (tmp_path / cfg.ENGINE_MANIFEST).write_text(json.dumps(manifest), encoding="utf-8")
     (tmp_path / "libcudart.so.12").write_bytes(b"")
+    monkeypatch.delenv(cfg.ENGINE_ENV, raising=False)
     monkeypatch.setattr(fetch_assets, "runtime_native_dir", lambda: tmp_path)
     monkeypatch.setattr(
         fetch_assets.probe,
@@ -1014,6 +1042,9 @@ def test_bake_engine_reads_the_signed_manifest_and_records_the_hardware_verdict(
     facts = fetch_assets.bake_engine()
     assert facts["sha256"] == sha and facts["cuda_target"] == "sm_90a"
     assert facts["bundled_libraries"] == {"libcudart.so.12": True}
+    assert facts["selected_by"] is None and facts["selected_path"] is None
+    assert facts["resolved_from"] == "bundled runtime" and "unset" in facts["inspected_because"]
+    assert facts["wheel_version"] == cfg.ENGINE_WHEEL_VERSION
     verdict = facts["expected_hardware_gate"]
     assert verdict["hardware"] == "l4x1" and verdict["ok"] is False
     assert verdict["code"] == "engine_target_mismatch" and "8.9" in verdict["message"]
@@ -1029,6 +1060,65 @@ def test_bake_engine_reads_the_signed_manifest_and_records_the_hardware_verdict(
     with pytest.raises(core.ProbeError) as exc:
         fetch_assets.bake_engine()
     assert exc.value.code == "engine_binary_missing"
+
+
+def test_bake_engine_inspects_the_engine_the_build_argument_selects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With `ALGENTA_CUDA_ENGINE` set (the Dockerfile's build argument, the Space variable at
+    build time) the bake inspects that binary through the manifest beside it and judges its
+    target — the sm_89 driver loads on l4x1 — and says which file it inspected and why; run 16
+    inspected the wheel's sm_90a engine because the variable never reached the build. A name
+    that is not an executable file in the image fails the build (`engine_selected_missing`),
+    the resolver would fall through to the wheel; a manifest without a target is invalid."""
+    engine_dir = tmp_path / "engine"
+    engine_dir.mkdir()
+    engine = engine_dir / cfg.P3_ENGINE_NAME
+    engine.write_bytes(b"fixture")
+    engine.chmod(engine.stat().st_mode | stat.S_IEXEC)
+    sha = probe.sha256_of(engine)
+    for name in P3_CLOSURE:
+        (engine_dir / name).write_bytes(b"")
+    (engine_dir / cfg.ENGINE_MANIFEST).write_text(json.dumps(_p3_manifest(sha)), encoding="utf-8")
+    monkeypatch.setenv(cfg.ENGINE_ENV, str(engine))
+    monkeypatch.setattr(
+        fetch_assets, "runtime_native_dir", lambda: (_ for _ in ()).throw(AssertionError("wheel"))
+    )
+    monkeypatch.setattr(
+        probe, "package_versions", lambda names: {cfg.ENGINE_WHEEL: cfg.ENGINE_WHEEL_VERSION}
+    )
+    facts = fetch_assets.bake_engine()
+    assert facts["path"] == str(engine) and facts["selected_path"] == str(engine)
+    assert facts["selected_by"] == f"${cfg.ENGINE_ENV}" == facts["resolved_from"]
+    assert facts["protocol"] == cfg.P3_ENGINE_NAME and facts["cuda_target"] == "sm_89"
+    assert facts["sha256"] == sha and facts["sha256_matches"] is True and facts["bundled_beside"]
+    assert facts["expected_hardware_gate"]["ok"] is True
+    assert facts["expected_hardware_gate"]["hardware"] == "l4x1"
+    assert (
+        str(engine) in facts["inspected_because"] and "build argument" in facts["inspected_because"]
+    )
+    assert facts["wheel_version"] == cfg.ENGINE_WHEEL_VERSION
+
+    monkeypatch.setenv(cfg.ENGINE_ENV, str(engine_dir / "missing"))
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.bake_engine()
+    assert exc.value.code == "engine_selected_missing" and "fall through" in exc.value.message
+    engine.chmod(0o644)
+    monkeypatch.setenv(cfg.ENGINE_ENV, str(engine))
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.bake_engine()
+    assert exc.value.code == "engine_selected_missing"
+    engine.chmod(engine.stat().st_mode | stat.S_IEXEC)
+    manifest = _p3_manifest(sha)
+    del manifest["engine"]["cuda_target"]
+    (engine_dir / cfg.ENGINE_MANIFEST).write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.bake_engine()
+    assert exc.value.code == "engine_manifest_invalid" and "cuda_target" in exc.value.message
+    (engine_dir / cfg.ENGINE_MANIFEST).unlink()
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.bake_engine()
+    assert exc.value.code == "engine_manifest_invalid"
 
 
 def test_engine_facts_locate_the_engine_as_serve_does(
@@ -1148,7 +1238,9 @@ def test_full_run_writes_the_record_with_the_race_and_the_parity_rows(
     )
     assert (
         race["engine"]["build"]["cuda_target"] == "sm_89"
-        and race["llama"]["build"]["build_number"] == 10210
+        and race["llama"]["build"]["build_number"] == cfg.LLAMA_CPP_BUILD
+        and race["llama"]["build"]["image_tag"] == cfg.LLAMA_IMAGE_TAG
+        and race["llama"]["build"]["image"] == cfg.LLAMA_IMAGE_REF
     )
     assert set(race["secondary"]) == {"hub", "float32", "float16"}
 
@@ -1336,8 +1428,21 @@ def test_page_headline_pair_published_rows_and_secondary_rows(
         "transformers 5.17.0 · torch 2.9.1+cu128 · CUDA 12.8",
         "Algenta engine Wheel algenta-runtime-native==1.0.7/conform_generate_cuda",
         "Compile target sm_89 Target gate compute capability 8.9: passed",
-        "llama.cpp Pinned commit 000547513f1530346ecd163db8b3e13962949961",
-        "Reported version version: 10210 (000547513f)",
+        f"llama.cpp Image {cfg.LLAMA_IMAGE_REF} Image tag {cfg.LLAMA_IMAGE_TAG} "
+        f"Pinned build b{cfg.LLAMA_CPP_BUILD} Pinned commit {cfg.LLAMA_CPP_COMMIT}",
+        f"Reported version version: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})",
+        f"CUDA architectures {cfg.LLAMA_CUDA_ARCHITECTURES}",
+        "Published cell's build b10210 (000547513f), built from source for sm_89 only; "
+        "not this build",
+        f"Launch environment {cfg.LLAMA_LIBRARY_PATH_ENV}={cfg.LLAMA_BIN_DIR}:/usr/local/cuda/lib64 "
+        f"{cfg.LLAMA_BACKEND_PATH_ENV}={cfg.LLAMA_BIN_DIR}",
+        f"llama.cpp b{cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_IMAGE_KIND}) · "
+        f"commit {cfg.LLAMA_CPP_COMMIT[:9]} · f16 GGUF",
+        "The published cell's opponent was llama.cpp build 10210 compiled from source for sm_89 "
+        f"alone; this run's is build {cfg.LLAMA_CPP_BUILD} from ggml-org's official CUDA image "
+        f"({cfg.LLAMA_IMAGE_TAG}, by digest), which carries the common architectures — a build "
+        f"{cfg.LLAMA_CPP_BUILD - 10210} tags later, not the identical one.",
+        f"build {cfg.LLAMA_CPP_TAG} from ggml-org's official CUDA image, by digest.",
         "Identity Algenta engine · f32 resident weights, per-token dispatch 8/8, oracle 8/8",
         "warm-up run excluded, then 3 timed runs, each figure the median",
     ):
@@ -1509,33 +1614,74 @@ def test_readme_card_and_copy_lint() -> None:
 
 
 def test_dockerfile_pins_and_conventions() -> None:
+    """Lane B comes prebuilt: ggml-org's official CUDA server image by digest, nothing compiled
+    (the Hub's builder cut the source build off at 62 minutes); the converter is a shallow
+    checkout of the same commit in a stage of its own, git never reaches the runtime image."""
     text = (PROBE_DIR / "Dockerfile").read_text(encoding="utf-8")
     lines = [line for line in text.splitlines() if not line.lstrip().startswith("#")]
+    runtime_base = (
+        "nvidia/cuda:12.8.1-runtime-ubuntu24.04@sha256:"
+        "ebef3c171eeef0298e4eb2e4be843105edf3b8b0ac45e0b43acee358e8046867"
+    )
     froms = [line for line in lines if line.startswith("FROM ")]
     assert froms == [
-        "FROM nvidia/cuda:12.8.1-devel-ubuntu24.04@sha256:"
-        "520292dbb4f755fd360766059e62956e9379485d9e073bbd2f6e3c20c270ed66 AS llama-build",
-        "FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04@sha256:"
-        "ebef3c171eeef0298e4eb2e4be843105edf3b8b0ac45e0b43acee358e8046867",
+        f"FROM {cfg.LLAMA_IMAGE}@{cfg.LLAMA_IMAGE_DIGEST} AS llama",
+        f"FROM {runtime_base} AS converter",
+        f"FROM {runtime_base}",
     ]
     copies = [line for line in lines if line.startswith("COPY --from=")]
-    assert len(copies) == 2
+    assert len(copies) == 3
     assert re.search(r"uv:\d+\.\d+\.\d+@sha256:[0-9a-f]{64} ", copies[0])
-    assert copies[1] == f"COPY --from=llama-build {cfg.LLAMA_DIR} {cfg.LLAMA_DIR}"
-    assert not re.search(r"(?<=[\w}./-]):-?latest\b", "\n".join(lines), re.IGNORECASE)
+    assert copies[1] == f"COPY --from=llama /app/ {cfg.LLAMA_BIN_DIR}/"
+    assert copies[2] == f"COPY --from=converter {cfg.LLAMA_DIR} {cfg.LLAMA_DIR}"
+    joined = "\n".join(lines)
+    assert not re.search(r"(?<=[\w}./-]):-?latest\b", joined, re.IGNORECASE)
+    # the three pins as build arguments; the digest repeated literally in FROM, nowhere else
     assert f"ARG LLAMA_CPP_COMMIT={cfg.LLAMA_CPP_COMMIT}" in text
-    assert f"ARG LLAMA_CUDA_ARCHITECTURES={cfg.LLAMA_CUDA_ARCHITECTURES}" in text
-    for flag in (
-        "-DGGML_CUDA=ON",
-        '-DCMAKE_CUDA_ARCHITECTURES="${LLAMA_CUDA_ARCHITECTURES}"',
-        "-DGGML_NATIVE=OFF",
-        "-DBUILD_SHARED_LIBS=OFF",
-        "-DLLAMA_BUILD_SERVER=ON",
-        "--target llama-server",
+    assert f"ARG LLAMA_CPP_BUILD={cfg.LLAMA_CPP_BUILD}" in text
+    assert f"ARG LLAMA_IMAGE_DIGEST={cfg.LLAMA_IMAGE_DIGEST}" in text
+    assert joined.count(cfg.LLAMA_IMAGE_DIGEST) == 2
+    assert f"{cfg.LLAMA_IMAGE}:{cfg.LLAMA_IMAGE_TAG}" in text, "the tag is named for the reader"
+    # no compiler, no build system, no source build, no devel image anywhere
+    for token in (
+        "cmake",
+        "ninja",
+        "build-essential",
+        "-DGGML_CUDA",
+        "devel-ubuntu",
+        "LLAMA_CUDA_ARCHITECTURES",
+        "llama-build",
     ):
-        assert flag in text, flag
-    assert 'git fetch -q --depth 1 origin "${LLAMA_CPP_COMMIT}"' in text
-    assert "convert_hf_to_gguf.py" in text and "gguf-py" in text and "/opt/llama/conversion" in text
+        assert token not in joined, token
+    # git in the converter stage only, fetching exactly the pinned commit, writing the pin files
+    stages = re.split(r"^FROM .*$", joined, flags=re.M)
+    assert len(stages) == 4
+    converter, runtime = stages[2], stages[3]
+    assert 'git fetch -q --depth 1 origin "${LLAMA_CPP_COMMIT}"' in converter
+    assert 'test "$(git rev-parse HEAD)" = "${LLAMA_CPP_COMMIT}"' in converter
+    assert "git" not in runtime
+    for needle in (
+        "convert_hf_to_gguf.py",
+        "gguf-py",
+        f"{cfg.LLAMA_DIR}/conversion",
+        f'echo "${{LLAMA_CPP_COMMIT}}" > {cfg.LLAMA_COMMIT_FILE}',
+        f'echo "${{LLAMA_CPP_BUILD}}" > {cfg.LLAMA_BUILD_FILE}',
+        f'echo "${{LLAMA_IMAGE_DIGEST}}" > {cfg.LLAMA_IMAGE_DIGEST_FILE}',
+    ):
+        assert needle in converter, needle
+    # the runtime stage: the loader variable (and only that one: GGML_BACKEND_PATH names a single
+    # out-of-tree backend library, run 16 set it to the directory), the fail-fast version check
+    # before torch with no registry refusal allowed, the host libraries by name
+    version_check = f'LD_LIBRARY_PATH="{cfg.LLAMA_BIN_DIR}:${{LD_LIBRARY_PATH}}" \\'
+    assert version_check in runtime and f"{cfg.LLAMA_SERVER} --version" in runtime
+    assert "GGML_BACKEND_PATH" not in joined, "no launch names a backend library"
+    assert 'grep -qE "^version: ${LLAMA_CPP_BUILD} \\("' in runtime
+    assert (
+        '! grep -qE "load_backend: failed|ggml_backend_load_best: failed" /opt/llama/VERSION'
+        in runtime
+    )
+    assert runtime.index(version_check) < runtime.index("uv pip install")
+    assert "libgomp1 libssl3t64" in runtime
     assert "NVIDIA_DISABLE_REQUIRE=1" in text
     assert re.findall(r"^EXPOSE\s+(\d+)", text, re.M) == [str(cfg.APP_PORT)]
     assert "useradd --create-home --uid 1000" in text
@@ -1574,6 +1720,15 @@ def test_requirements_are_exact_and_agree_with_the_flagship() -> None:
     assert pins["algenta_runtime_native"] == cfg.ENGINE_WHEEL_VERSION == "1.0.7"
     for name in ("tqdm", "pyyaml", "requests"):
         assert name in pins, f"{name}: gguf-py's dependency for the GGUF conversion"
+    # the converter's own imports on the Qwen3 path (run 16: ModuleNotFoundError sentencepiece),
+    # every one an exact pin with a CPython 3.14 linux x86_64 wheel; protobuf above the
+    # converter's <5.0.0 cap because 4.25.8's abi3 extension does not import on 3.14
+    for name in cfg.LLAMA_CONVERTER_PACKAGES:
+        assert name.lower() in pins, f"{name}: the converter imports it"
+    assert pins["sentencepiece"] == "0.2.2" and pins["protobuf"] == "7.36.2"
+    assert "sentencepiece" in cfg.LLAMA_CONVERTER_PACKAGES
+    assert "protobuf" in cfg.LLAMA_CONVERTER_PACKAGES
+    assert "Metaclasses with custom tp_new" in text, "why protobuf is not the converter's range"
     flagship = _pins(FLAGSHIP_DIR / "requirements.txt")
     for name in ("kernels", "huggingface_hub", "algenta", "numpy", "fastapi", "uvicorn"):
         if name in flagship:
@@ -1599,6 +1754,10 @@ def test_probe_is_not_in_the_fleet_manifest_and_deploys_by_hand() -> None:
     ):
         assert needle in deploy_md, needle
     assert "licensing@" not in deploy_md
+    assert cfg.LLAMA_IMAGE_TAG in deploy_md and "62 minutes" in deploy_md
+    readme = (PROBE_DIR / "README.md").read_text(encoding="utf-8")
+    assert f"`{cfg.LLAMA_IMAGE_TAG}`" in readme and "by digest" in readme
+    assert "build 10210 compiled from source for sm_89 alone" in readme
     doc = (REPO / "docs/spaces/GPU-PROBE.md").read_text(encoding="utf-8")
     for needle in (
         "l4x1",
@@ -1609,6 +1768,14 @@ def test_probe_is_not_in_the_fleet_manifest_and_deploys_by_hand() -> None:
         "llama-server",
         "convert_hf_to_gguf.py",
         cfg.LLAMA_CPP_COMMIT[:10],
+        cfg.PUBLISHED_LLAMA_CPP_COMMIT[:10],
+        f"`{cfg.LLAMA_IMAGE_TAG}`",
+        cfg.LLAMA_IMAGE_DIGEST,
+        cfg.LLAMA_IMAGE_AMD64_DIGEST,
+        "Lane B's binary",
+        "llama_version_mismatch",
+        "GGML_BACKEND_PATH",
+        "62 minutes",
         "193.9",
         "`engine`",
         "`llama`",
@@ -2491,6 +2658,8 @@ def test_dockerfile_gitignore_and_deploy_notes_ship_the_sm89_engine() -> None:
     deploy_md = (PROBE_DIR / "DEPLOY.md").read_text(encoding="utf-8")
     for needle in (
         "ALGENTA_CUDA_ENGINE",
+        "ARG ALGENTA_CUDA_ENGINE",
+        "engine_selected_missing",
         "/home/user/engine/qwen3_p3_graph_cuda",
         "add_space_variable",
         "cuda-engine-sm89/out",
@@ -2517,6 +2686,38 @@ def test_dockerfile_gitignore_and_deploy_notes_ship_the_sm89_engine() -> None:
     assert copy_lint.lint_space(PROBE_DIR) == []
 
 
+def test_dockerfile_declares_the_engine_build_argument_before_the_bake() -> None:
+    """Hugging Face hands a Space variable to the image build only as a build argument: the
+    Dockerfile declares `ARG ALGENTA_CUDA_ENGINE` inside the runtime stage, after the
+    `/home/user/engine` symlink exists and after `USER user`, before the bake that inspects it,
+    and keeps it as ENV so a container without the variable injected resolves the same binary."""
+    text = (PROBE_DIR / "Dockerfile").read_text(encoding="utf-8")
+    lines = [line for line in text.splitlines() if not line.lstrip().startswith("#")]
+    joined = "\n".join(lines)
+    arg = f"ARG {cfg.ENGINE_ENV}\n"
+    env = f"ENV {cfg.ENGINE_ENV}=${{{cfg.ENGINE_ENV}}}\n"
+    assert joined.count(f"ARG {cfg.ENGINE_ENV}") == 1
+    assert arg + env in joined + "\n", "the ENV follows the ARG, empty when the argument is unset"
+    last_from = joined.rindex("\nFROM ")
+    symlink = joined.index("ln -sfn /app/engine /home/user/engine")
+    user = joined.index("USER user")
+    declared = joined.index(arg)
+    bake = joined.index("python fetch_assets.py --bake")
+    assert last_from < symlink < user < declared < bake
+    assert joined.index("HF_HUB_OFFLINE=1 python fetch_assets.py --verify") > declared
+    doc = (REPO / "docs/spaces/GPU-PROBE.md").read_text(encoding="utf-8")
+    for needle in (
+        f"ARG {cfg.ENGINE_ENV}",
+        "llama_backend_load_failed",
+        "llama_cuda_backend_missing",
+        "llama_cuda_backend_unloadable",
+        "libggml-cuda.so",
+        "ggml_backend_load_all_from_path",
+        "--verbose",
+    ):
+        assert needle in doc, needle
+
+
 def test_p3_stderr_refusals_are_read_only_when_the_driver_failed() -> None:
     """A clean exit never reads stderr: a wrapper's debug line quoting the no-accelerator
     sentence or the no-driver line must not turn a passed run into `engine_no_gpu`
@@ -2531,3 +2732,443 @@ def test_p3_stderr_refusals_are_read_only_when_the_driver_failed() -> None:
     with pytest.raises(core.ProbeError) as excinfo:
         core.parse_p3_engine_output(stdout, noisy_stderr, 1)
     assert excinfo.value.code == "engine_no_gpu"
+
+
+# --- lane B: the prebuilt opponent, its pins and its gate ---------------------------------------
+
+
+def test_lane_b_pins_name_the_official_image_by_digest() -> None:
+    """The published cell's build (b10210, from source, sm_89 only) stays recorded beside the
+    image lane B runs: the versioned server-cuda tag closest to and not below it, by digest."""
+    assert cfg.LLAMA_IMAGE == "ghcr.io/ggml-org/llama.cpp"
+    assert cfg.LLAMA_IMAGE_TAG == f"server-cuda-b{cfg.LLAMA_CPP_BUILD}"
+    assert cfg.LLAMA_CPP_TAG == f"b{cfg.LLAMA_CPP_BUILD}"
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", cfg.LLAMA_IMAGE_DIGEST)
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", cfg.LLAMA_IMAGE_AMD64_DIGEST)
+    assert cfg.LLAMA_IMAGE_AMD64_DIGEST != cfg.LLAMA_IMAGE_DIGEST
+    assert cfg.LLAMA_IMAGE_REF == f"{cfg.LLAMA_IMAGE}@{cfg.LLAMA_IMAGE_DIGEST}"
+    assert cfg.LLAMA_IMAGE_KIND == "official ggml-org CUDA image, by digest"
+    assert core.is_sha(cfg.LLAMA_CPP_COMMIT) and core.is_sha(cfg.PUBLISHED_LLAMA_CPP_COMMIT)
+    assert cfg.LLAMA_CPP_COMMIT != cfg.PUBLISHED_LLAMA_CPP_COMMIT
+    assert cfg.LLAMA_CPP_BUILD >= cfg.PUBLISHED_LLAMA_CPP_BUILD == 10210
+    assert cfg.PUBLISHED_LLAMA_CPP_TAG == "b10210"
+    assert cfg.LLAMA_CPP_URL.endswith(cfg.LLAMA_CPP_COMMIT)
+    archs = cfg.LLAMA_CUDA_ARCHITECTURES.split(";")
+    assert "89-real" in archs, "the L4 runs a cubin, as the published source build did"
+    assert "75-virtual" in archs, "the T4 fallback runs from PTX"
+    assert cfg.PUBLISHED_LLAMA_CUDA_ARCHITECTURES == "89" and "89" not in archs
+    assert cfg.LLAMA_CUDA_RUNTIME == "12.8.1"
+    assert cfg.LLAMA_SERVER == f"{cfg.LLAMA_BIN_DIR}/llama-server"
+    assert cfg.LLAMA_BIN_DIR.startswith(cfg.LLAMA_DIR + "/")
+    for path in (cfg.LLAMA_COMMIT_FILE, cfg.LLAMA_BUILD_FILE, cfg.LLAMA_IMAGE_DIGEST_FILE):
+        assert path.startswith(cfg.LLAMA_DIR + "/")
+    assert (cfg.LLAMA_LIBRARY_PATH_ENV, cfg.LLAMA_BACKEND_PATH_ENV) == (
+        "LD_LIBRARY_PATH",
+        "GGML_BACKEND_PATH",
+    )
+    assert cfg.LLAMA_CUDA_BACKEND == f"{cfg.LLAMA_BIN_DIR}/libggml-cuda.so"
+    assert cfg.LLAMA_CUDA_BACKEND_NAME == "CUDA" and cfg.LLAMA_DRIVER_LIBRARY == "libcuda.so.1"
+    assert cfg.LLAMA_CONVERT_EXPORTED_MARK == "Model successfully exported to"
+
+
+RUN16_LOADER_LINE = (
+    "0.00.028.775 E load_backend: failed to load /opt/llama/bin: /opt/llama/bin: "
+    "cannot read file data: Is a directory"
+)
+
+
+def test_llama_version_gate_accepts_the_pin_and_fails_closed() -> None:
+    ok = core.parse_llama_version(
+        f"version: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})\nbuilt with GNU 14.2.0\n"
+    )
+    core.verify_llama_version(ok)
+    assert ok["loader_errors"] == [] and ok["backends_loaded"] == {}
+    # run 16: the pinned version behind a registry refusal (GGML_BACKEND_PATH was a directory)
+    run16 = core.parse_llama_version(
+        f"{RUN16_LOADER_LINE}\nversion: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})\n"
+        "built with GNU 14.2.0 for Linux x86_64\n"
+    )
+    assert run16["build_number"] == cfg.LLAMA_CPP_BUILD
+    assert run16["loader_errors"] == [RUN16_LOADER_LINE]
+    with pytest.raises(core.ProbeError) as loader_exc:
+        core.verify_llama_version(run16)
+    assert loader_exc.value.code == "llama_backend_load_failed"
+    assert "Is a directory" in loader_exc.value.message
+    assert loader_exc.value.details["loader_errors"] == [RUN16_LOADER_LINE]
+    loaded = core.parse_llama_version(
+        "0.00.030.747 I load_backend: loaded CUDA backend from /opt/llama/bin/libggml-cuda.so\n"
+        f"version: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})\n"
+    )
+    assert loaded["backends_loaded"] == {"CUDA": "/opt/llama/bin/libggml-cuda.so"}
+    core.verify_llama_version(loaded)
+    for refusal in (
+        "load_backend: failed to initialize backend from /x/libggml-cuda.so: "
+        "ggml_backend_init returned NULL",
+        "load_backend: failed to find ggml_backend_init in /x/libggml-cuda.so",
+        "load_backend: backend /x/libggml-cuda.so is not supported on this system",
+        "ggml_backend_load_best: failed to load /x/libggml-cpu-zen4.so: some dlerror",
+    ):
+        assert core.llama_loader_lines(refusal)["loader_errors"] == [refusal], refusal
+    core.verify_llama_version(
+        core.parse_llama_version("version: 0.5.0-dev (build 11151, commit bd4f514db)"),
+        build=11151,
+        commit="bd4f514db14d87fded667787a7a963bfbaa98e89",
+    )
+    cases = {
+        "the published build": {
+            "build_number": cfg.PUBLISHED_LLAMA_CPP_BUILD,
+            "commit": cfg.LLAMA_CPP_COMMIT[:9],
+        },
+        "the published commit": {
+            "build_number": cfg.LLAMA_CPP_BUILD,
+            "commit": cfg.PUBLISHED_LLAMA_CPP_COMMIT[:9],
+        },
+        "a commit too short to pin": {
+            "build_number": cfg.LLAMA_CPP_BUILD,
+            "commit": cfg.LLAMA_CPP_COMMIT[:6],
+        },
+        "the moving tag": core.parse_llama_version(
+            "version: 0.5.0-dev (build 11151, commit bd4f514db)"
+        ),
+        "no version line": core.parse_llama_version("built with GNU 14.2.0 for Linux x86_64\n"),
+        "nothing": {},
+    }
+    for label, facts in cases.items():
+        with pytest.raises(core.ProbeError) as exc:
+            core.verify_llama_version(facts)
+        assert exc.value.code == "llama_version_mismatch", label
+        assert str(cfg.LLAMA_CPP_BUILD) in str(exc.value), label
+
+
+def test_llama_launch_env_points_the_loader_at_the_prebuilt_closure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The image's files carry RUNPATH `/app/build/bin:` (the build tree, then the working
+    directory): every lane-B launch leads LD_LIBRARY_PATH with their directory, keeping the
+    inherited value, and never sets GGML_BACKEND_PATH — ggml's registry finds the backends
+    beside the launcher and that variable names one extra library, loaded out loud (run 16
+    named the directory); an inherited value is dropped, the bake's probe sets the one file."""
+    monkeypatch.setenv(cfg.LLAMA_LIBRARY_PATH_ENV, "/usr/local/cuda/lib64")
+    monkeypatch.setenv(cfg.LLAMA_BACKEND_PATH_ENV, cfg.LLAMA_BIN_DIR)
+    env = probe.llama_env()
+    assert env[cfg.LLAMA_LIBRARY_PATH_ENV] == f"{cfg.LLAMA_BIN_DIR}:/usr/local/cuda/lib64"
+    assert cfg.LLAMA_BACKEND_PATH_ENV not in env
+    assert env["PATH"] == probe.os.environ["PATH"]
+    assert probe.llama_env(cfg.LLAMA_CUDA_BACKEND)[cfg.LLAMA_BACKEND_PATH_ENV] == (
+        cfg.LLAMA_CUDA_BACKEND
+    )
+    monkeypatch.delenv(cfg.LLAMA_LIBRARY_PATH_ENV)
+    monkeypatch.delenv(cfg.LLAMA_BACKEND_PATH_ENV)
+    assert probe.llama_env()[cfg.LLAMA_LIBRARY_PATH_ENV] == cfg.LLAMA_BIN_DIR
+    assert probe.llama_launch_env() == {cfg.LLAMA_LIBRARY_PATH_ENV: cfg.LLAMA_BIN_DIR}
+    facts = probe.llama_image_facts()
+    assert facts["ref"] == cfg.LLAMA_IMAGE_REF and facts["tag"] == cfg.LLAMA_IMAGE_TAG
+    assert facts["digest"] == cfg.LLAMA_IMAGE_DIGEST and facts["kind"] == cfg.LLAMA_IMAGE_KIND
+
+
+def test_bake_checks_the_prebuilt_server_against_the_pins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`fetch_assets.llama_server_version`, against a fake llama-server: the pinned version with
+    the pin files in place passes and the launch variables reach the binary; a pin file that
+    disagrees, another build (the moving tag's newer shape) or no version line fail closed with
+    llama_version_mismatch; an absent binary is llama_build_missing."""
+    server = tmp_path / "bin" / "llama-server"
+    server.parent.mkdir()
+
+    def write_server(line: str) -> None:
+        server.write_text(
+            "#!/bin/sh\n"
+            f'echo "{line}" >&2\n'
+            'echo "built with GNU 14.2.0 for Linux x86_64" >&2\n'
+            'echo "LD=$LD_LIBRARY_PATH GGML=$GGML_BACKEND_PATH" > "$(dirname "$0")/env.txt"\n',
+            encoding="utf-8",
+        )
+        server.chmod(server.stat().st_mode | stat.S_IEXEC)
+
+    write_server(f"version: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})")
+    pins = {
+        "COMMIT": cfg.LLAMA_CPP_COMMIT,
+        "BUILD": str(cfg.LLAMA_CPP_BUILD),
+        "IMAGE_DIGEST": cfg.LLAMA_IMAGE_DIGEST,
+    }
+    for name, value in pins.items():
+        (tmp_path / name).write_text(value + "\n", encoding="utf-8")
+    monkeypatch.setattr(cfg, "LLAMA_SERVER", str(server))
+    monkeypatch.setattr(cfg, "LLAMA_BIN_DIR", str(server.parent))
+    monkeypatch.setattr(cfg, "LLAMA_COMMIT_FILE", str(tmp_path / "COMMIT"))
+    monkeypatch.setattr(cfg, "LLAMA_BUILD_FILE", str(tmp_path / "BUILD"))
+    monkeypatch.setattr(cfg, "LLAMA_IMAGE_DIGEST_FILE", str(tmp_path / "IMAGE_DIGEST"))
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/usr/local/cuda/lib64")
+    monkeypatch.setenv("GGML_BACKEND_PATH", str(server.parent))
+    facts = fetch_assets.llama_server_version()
+    assert facts["build_number"] == cfg.LLAMA_CPP_BUILD
+    assert facts["commit"] == cfg.LLAMA_CPP_COMMIT[:9] and facts["returncode"] == 0
+    assert facts["commit_file"] == cfg.LLAMA_CPP_COMMIT
+    assert facts["build_file"] == str(cfg.LLAMA_CPP_BUILD)
+    assert facts["image_digest_file"] == cfg.LLAMA_IMAGE_DIGEST
+    assert facts["loader_errors"] == []
+    env_line = (server.parent / "env.txt").read_text(encoding="utf-8").strip()
+    assert env_line == f"LD={server.parent}:/usr/local/cuda/lib64 GGML=", "the variable is dropped"
+
+    def refused() -> core.ProbeError:
+        with pytest.raises(core.ProbeError) as exc:
+            fetch_assets.llama_server_version()
+        return exc.value
+
+    write_server(
+        f"{RUN16_LOADER_LINE}\nversion: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})"
+    )
+    error = refused()
+    assert error.code == "llama_backend_load_failed" and "Is a directory" in str(error)
+    write_server(f"version: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})")
+    (tmp_path / "IMAGE_DIGEST").write_text("sha256:" + "0" * 64, encoding="utf-8")
+    error = refused()
+    assert error.code == "llama_version_mismatch" and "image digest" in str(error)
+    (tmp_path / "IMAGE_DIGEST").write_text(cfg.LLAMA_IMAGE_DIGEST, encoding="utf-8")
+    (tmp_path / "COMMIT").write_text(cfg.PUBLISHED_LLAMA_CPP_COMMIT, encoding="utf-8")
+    error = refused()
+    assert error.code == "llama_version_mismatch" and "converter commit" in str(error)
+    (tmp_path / "COMMIT").write_text(cfg.LLAMA_CPP_COMMIT, encoding="utf-8")
+    write_server("version: 0.5.0-dev (build 11151, commit bd4f514db)")
+    error = refused()
+    assert error.code == "llama_version_mismatch" and "11151" in str(error)
+    write_server("llama_server: initializing ...")
+    error = refused()
+    assert error.code == "llama_version_mismatch" and "not readable" in str(error)
+    monkeypatch.setattr(cfg, "LLAMA_SERVER", str(tmp_path / "missing"))
+    assert refused().code == "llama_build_missing"
+
+
+#: `llama-server --verbose --list-devices` as the check image printed it on 2026-09-24 (amd64,
+#: no driver): the registry loaded the best CPU variant and enumerated nothing.
+LIST_DEVICES_NO_GPU = (
+    "0.00.037.593 I load_backend: loaded CPU backend from /opt/llama/bin/libggml-cpu-sse42.so\n"
+    "Available devices:\n"
+    "  (none)\n"
+)
+#: The same with GGML_BACKEND_PATH naming the CUDA backend file: its loader speaks, twice (arg
+#: parsing and the device printer each load all backends).
+LIST_DEVICES_CUDA_PROBE_NO_DRIVER = (
+    "0.00.020.740 E load_backend: failed to load /opt/llama/bin/libggml-cuda.so: libcuda.so.1: "
+    "cannot open shared object file: No such file or directory\n"
+    "0.00.030.747 I load_backend: loaded CPU backend from /opt/llama/bin/libggml-cpu-sse42.so\n"
+    "0.00.030.890 E load_backend: failed to load /opt/llama/bin/libggml-cuda.so: libcuda.so.1: "
+    "cannot open shared object file: No such file or directory\n"
+    "Available devices:\n"
+    "  (none)\n"
+)
+#: The shape on the Space (the L4 row from the same printer).
+LIST_DEVICES_L4 = (
+    "0.00.041.002 I load_backend: loaded CUDA backend from /opt/llama/bin/libggml-cuda.so\n"
+    "0.00.052.110 I load_backend: loaded CPU backend from /opt/llama/bin/libggml-cpu-icelake.so\n"
+    "Available devices:\n"
+    "  CUDA0: NVIDIA L4 (22491 MiB, 22001 MiB free)\n"
+)
+
+
+def test_parse_llama_devices_and_the_cuda_requirement() -> None:
+    """The device listing read as the printer writes it; lane B requires a CUDA device
+    (`llama_cuda_backend_missing`), a registry refusal is `llama_backend_load_failed`."""
+    none = core.parse_llama_devices(LIST_DEVICES_NO_GPU)
+    assert none["listed"] is True and none["devices"] == [] and none["loader_errors"] == []
+    assert none["backends_loaded"] == {"CPU": "/opt/llama/bin/libggml-cpu-sse42.so"}
+    assert core.cuda_devices_of(none) == []
+    with pytest.raises(core.ProbeError) as exc:
+        core.require_cuda_device(none)
+    assert exc.value.code == "llama_cuda_backend_missing" and "CPU" in exc.value.message
+    probe_out = core.parse_llama_devices(LIST_DEVICES_CUDA_PROBE_NO_DRIVER)
+    assert len(probe_out["loader_errors"]) == 2 and "libcuda.so.1" in probe_out["loader_errors"][0]
+    assert probe_out["backends_loaded"] == {"CPU": "/opt/llama/bin/libggml-cpu-sse42.so"}
+    with pytest.raises(core.ProbeError) as exc:
+        core.require_cuda_device(probe_out)
+    assert exc.value.code == "llama_backend_load_failed"
+    l4 = core.parse_llama_devices(LIST_DEVICES_L4)
+    assert l4["devices"] == [
+        {"name": "CUDA0", "description": "NVIDIA L4 (22491 MiB, 22001 MiB free)"}
+    ]
+    assert l4["backends_loaded"]["CUDA"] == "/opt/llama/bin/libggml-cuda.so"
+    assert core.require_cuda_device(l4) == l4["devices"]
+    unlisted = core.parse_llama_devices("version: 10223 (11924d4c1)\n")
+    assert unlisted["listed"] is False and unlisted["devices"] == []
+    with pytest.raises(core.ProbeError) as exc:
+        core.require_cuda_device(unlisted)
+    assert exc.value.code == "llama_cuda_backend_missing" and "no device listing" in str(exc.value)
+
+
+def _fake_list_devices_server(directory: Path) -> Path:
+    """A llama-server that answers `--version` and `--verbose --list-devices`: `plain.txt` when
+    GGML_BACKEND_PATH is unset, `loud.txt` when it names a file; every call and the variable's
+    state (unset, or its value) appended to `calls.txt`."""
+    server = directory / "llama-server"
+    server.write_text(
+        "#!/bin/sh\n"
+        'here="$(dirname "$0")"\n'
+        'echo "ARGS=$* GGML=${GGML_BACKEND_PATH-unset}" >> "$here/calls.txt"\n'
+        'case "$*" in\n'
+        f'  *--version*) echo "version: {cfg.LLAMA_CPP_BUILD} ({cfg.LLAMA_CPP_COMMIT[:9]})" >&2 ;;\n'
+        '  *--list-devices*) if [ -n "${GGML_BACKEND_PATH-}" ]; then cat "$here/loud.txt"; '
+        'else cat "$here/plain.txt"; fi ;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    server.chmod(server.stat().st_mode | stat.S_IEXEC)
+    return server
+
+
+def test_bake_lists_the_backends_and_makes_the_cuda_loader_speak(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`fetch_assets.llama_server_backends`: the launch listing runs with GGML_BACKEND_PATH unset
+    and may carry no refusal; the CUDA probe names the backend file and its loader's answer
+    decides — the missing driver is the build host (recorded, tolerated), a loaded backend is
+    recorded with its devices, any other refusal fails the build, a plain-run refusal fails it,
+    and a backend file that is not in the image fails it before anything runs."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    server = _fake_list_devices_server(bin_dir)
+    backend = bin_dir / "libggml-cuda.so"
+    backend.write_bytes(b"")
+    monkeypatch.setattr(cfg, "LLAMA_SERVER", str(server))
+    monkeypatch.setattr(cfg, "LLAMA_BIN_DIR", str(bin_dir))
+    monkeypatch.setattr(cfg, "LLAMA_CUDA_BACKEND", str(backend))
+    monkeypatch.setenv("GGML_BACKEND_PATH", str(bin_dir))
+    (bin_dir / "plain.txt").write_text(LIST_DEVICES_NO_GPU, encoding="utf-8")
+    (bin_dir / "loud.txt").write_text(
+        LIST_DEVICES_CUDA_PROBE_NO_DRIVER.replace("/opt/llama/bin/libggml-cuda.so", str(backend)),
+        encoding="utf-8",
+    )
+    facts = fetch_assets.llama_server_backends()
+    assert facts["search"].startswith("beside the executable")
+    assert facts["launch"]["backends_loaded"] == {"CPU": "/opt/llama/bin/libggml-cpu-sse42.so"}
+    assert facts["launch"]["devices"] == [] and facts["launch"]["loader_errors"] == []
+    verdict = facts["cuda_backend"]
+    assert verdict["file"] == str(backend) and verdict["loadable"] is None
+    assert "libcuda.so.1" in verdict["skipped"] and "libcuda.so.1" in verdict["reason"]
+    assert facts["cuda_probe"]["backend_path"] == str(backend)
+    calls = (bin_dir / "calls.txt").read_text(encoding="utf-8").splitlines()
+    assert calls == [
+        "ARGS=--verbose --list-devices GGML=unset",
+        f"ARGS=--verbose --list-devices GGML={backend}",
+    ]
+
+    (bin_dir / "loud.txt").write_text(
+        LIST_DEVICES_L4.replace("/opt/llama/bin/libggml-cuda.so", str(backend)), encoding="utf-8"
+    )
+    loaded = fetch_assets.llama_server_backends()["cuda_backend"]
+    assert loaded["loadable"] is True and loaded["loaded_from"] == str(backend)
+    assert loaded["devices"][0]["name"] == "CUDA0"
+
+    def refused() -> core.ProbeError:
+        with pytest.raises(core.ProbeError) as exc:
+            fetch_assets.llama_server_backends()
+        return exc.value
+
+    (bin_dir / "loud.txt").write_text(
+        f"0.00.020.740 E load_backend: failed to load {backend}: libcublasLt.so.12: cannot open "
+        "shared object file: No such file or directory\nAvailable devices:\n  (none)\n",
+        encoding="utf-8",
+    )
+    error = refused()
+    assert error.code == "llama_cuda_backend_unloadable" and "libcublasLt.so.12" in str(error)
+    (bin_dir / "loud.txt").write_text("Available devices:\n  (none)\n", encoding="utf-8")
+    error = refused()
+    assert error.code == "llama_cuda_backend_unloadable" and "no refusal line" in str(error)
+    (bin_dir / "plain.txt").write_text(
+        f"{RUN16_LOADER_LINE}\nAvailable devices:\n  (none)\n", encoding="utf-8"
+    )
+    assert refused().code == "llama_backend_load_failed"
+    (bin_dir / "plain.txt").write_text("srv    main: nothing listed\n", encoding="utf-8")
+    error = refused()
+    assert error.code == "llama_server_failed" and "no listing" in str(error)
+    backend.unlink()
+    assert refused().code == "llama_build_missing"
+
+
+def test_converter_dependencies_are_checked_before_the_conversion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every distribution the pinned converter imports on the Qwen3 path must be installed, or
+    the bake says which before converting (`llama_convert_dependency_missing`); gguf-py's
+    declared version is read from its pyproject for the record."""
+    present = dict.fromkeys(cfg.LLAMA_CONVERTER_PACKAGES, "1.0")
+    monkeypatch.setattr(probe, "package_versions", lambda names: dict(present))
+    assert fetch_assets.converter_dependencies() == present
+    absent = dict(present, sentencepiece=None, protobuf=None)
+    monkeypatch.setattr(probe, "package_versions", lambda names: dict(absent))
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.converter_dependencies()
+    assert exc.value.code == "llama_convert_dependency_missing"
+    assert "protobuf, sentencepiece" in exc.value.message and "requirements.txt" in str(exc.value)
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "gguf"\nversion = "0.19.0"\n', encoding="utf-8"
+    )
+    assert fetch_assets.gguf_py_version(tmp_path) == "0.19.0"
+    assert fetch_assets.gguf_py_version(tmp_path / "absent") is None
+
+
+def test_bake_gguf_requires_the_export_line_and_records_the_converter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`fetch_assets.bake_gguf` against a fake converter: a clean run must write the file and
+    print `Model successfully exported to`, and the facts carry the converter's commit, gguf-py's
+    version, the dependency versions and the export line; run 16's traceback line is the
+    message of `llama_convert_failed`, the log tail its details; a file without the line fails."""
+    llama = tmp_path / "llama"
+    (llama / "gguf-py").mkdir(parents=True)
+    (llama / "gguf-py" / "pyproject.toml").write_text('version = "0.19.0"\n', encoding="utf-8")
+    (llama / "COMMIT").write_text(cfg.LLAMA_CPP_COMMIT + "\n", encoding="utf-8")
+    convert = llama / "convert_hf_to_gguf.py"
+    convert.write_text(
+        "import pathlib, sys\n"
+        "args = sys.argv[1:]\n"
+        "out = pathlib.Path(args[args.index('--outfile') + 1])\n"
+        "mode = pathlib.Path(__file__).with_name('mode.txt').read_text().strip()\n"
+        "print('INFO:hf-to-gguf:Loading model: ' + pathlib.Path(args[-1]).name, file=sys.stderr)\n"
+        "print('INFO:hf-to-gguf:gguf: file type = 1', file=sys.stderr)\n"
+        "if mode == 'import':\n"
+        "    print(\"ModuleNotFoundError: No module named 'sentencepiece'\", file=sys.stderr)\n"
+        "    sys.exit(1)\n"
+        "out.write_bytes(b'GGUF' * 4)\n"
+        "if mode == 'ok':\n"
+        "    print(f'INFO:hf-to-gguf:Model successfully exported to {out}', file=sys.stderr)\n",
+        encoding="utf-8",
+    )
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    assets = tmp_path / "assets"
+    monkeypatch.setenv("PROBE_ASSETS_DIR", str(assets))
+    monkeypatch.setattr(cfg, "LLAMA_CONVERT", str(convert))
+    monkeypatch.setattr(cfg, "LLAMA_GGUF_PY", str(llama / "gguf-py"))
+    monkeypatch.setattr(cfg, "LLAMA_COMMIT_FILE", str(llama / "COMMIT"))
+    versions = dict.fromkeys(cfg.LLAMA_CONVERTER_PACKAGES, "x")
+    monkeypatch.setattr(probe, "package_versions", lambda names: dict(versions))
+
+    (llama / "mode.txt").write_text("ok\n", encoding="utf-8")
+    facts = fetch_assets.bake_gguf(snapshot)
+    assert facts["path"] == str(assets / cfg.GGUF_FILENAME) and facts["bytes"] == 16
+    assert facts["outtype"] == "f16" and facts["converter"] == str(convert)
+    assert facts["converter_commit"] == cfg.LLAMA_CPP_COMMIT
+    assert facts["gguf_py_version"] == "0.19.0" and facts["dependencies"] == versions
+    assert facts["exported_line"].startswith("INFO:hf-to-gguf:Model successfully exported to ")
+    assert facts["log_head"][0] == "INFO:hf-to-gguf:Loading model: snapshot"
+    assert facts["log_tail"][-1] == facts["exported_line"] and facts["convert_wall_s"] >= 0
+
+    (llama / "mode.txt").write_text("import\n", encoding="utf-8")
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.bake_gguf(snapshot)
+    assert exc.value.code == "llama_convert_failed"
+    assert exc.value.message.endswith(
+        "exited 1: ModuleNotFoundError: No module named 'sentencepiece'"
+    )
+    assert exc.value.details["log_tail"][-1].startswith("ModuleNotFoundError")
+
+    (llama / "mode.txt").write_text("silent\n", encoding="utf-8")
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.bake_gguf(snapshot)
+    assert exc.value.code == "llama_convert_failed" and "without printing" in exc.value.message
+
+    monkeypatch.setattr(probe, "package_versions", lambda names: dict(versions, protobuf=None))
+    with pytest.raises(core.ProbeError) as exc:
+        fetch_assets.bake_gguf(snapshot)
+    assert exc.value.code == "llama_convert_dependency_missing"
