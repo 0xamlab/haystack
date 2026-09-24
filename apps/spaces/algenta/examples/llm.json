@@ -1,14 +1,14 @@
 {
  "family": "llm",
- "generated_utc": "2026-09-24T02:21:03Z",
+ "generated_utc": "2026-09-24T03:19:38Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
   "functions": 357,
-  "verified": 308,
-  "plain": 17,
+  "verified": 310,
+  "plain": 10,
   "timeouts": 0,
-  "unverified": 49
+  "unverified": 47
  },
  "functions": {
   "accel.contract.accel_backend_name": {
@@ -18,7 +18,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 12.547
+   "ms": 10.602
   },
   "accel.contract.accel_policy_known": {
    "args": {
@@ -27,7 +27,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.123
   },
   "accel.contract.accel_policy_name": {
    "args": {
@@ -36,7 +36,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.074
   },
   "accel.contract.accel_resolve": {
    "args": {
@@ -47,7 +47,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.066
   },
   "accel.contract.accel_status_name": {
    "args": {
@@ -56,7 +56,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.051
   },
   "accel.contract.accel_worth_offloading": {
    "args": {
@@ -69,28 +69,28 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.094
   },
   "accel.device.accel_device_name_len": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 24.549
+   "ms": 25.924
   },
   "accel.device.accel_device_probe": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.27
+   "ms": 0.236
   },
   "accel.device.accel_has_device": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.046
   },
   "accel.gemm_metal.gemm_metal_agreement": {
    "args": {
@@ -123,7 +123,7 @@
    "verified": false,
    "outcome": "shader_toolchain_absent",
    "source": "rules",
-   "ms": 0.18
+   "ms": 0.164
   },
   "accel.gemm_metal.gemm_metal_available": {
    "args": {},
@@ -163,7 +163,7 @@
    "verified": false,
    "outcome": "shader_toolchain_absent",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.092
   },
   "attnk.backward.attn_bwd_gradcheck_flat": {
    "args": {
@@ -265,7 +265,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.279
+   "ms": 0.296
   },
   "attnk.backward.sdpa_bwd_flat": {
    "args": {
@@ -395,7 +395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.284
+   "ms": 0.32
   },
   "attnk.contract.attn_backend_name": {
    "args": {
@@ -404,7 +404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.045
   },
   "attnk.contract.attn_dims_check": {
    "args": {
@@ -418,7 +418,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.083
   },
   "attnk.contract.attn_scalars_ok": {
    "args": {
@@ -427,7 +427,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.075
   },
   "attnk.contract.attn_scale_ok": {
    "args": {
@@ -436,7 +436,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.06
   },
   "attnk.contract.attn_score_bytes_fit": {
    "args": {
@@ -448,7 +448,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.08
   },
   "attnk.contract.attn_status_name": {
    "args": {
@@ -457,7 +457,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.058
   },
   "attnk.contract.attn_work_cells_varlen": {
    "args": {
@@ -475,7 +475,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.132
+   "ms": 0.09
   },
   "attnk.contract.attn_work_fits": {
    "args": {
@@ -488,7 +488,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.065
   },
   "attnk.contract.attn_ws_bytes_direct": {
    "args": {
@@ -499,7 +499,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.053
   },
   "attnk.contract.attn_ws_bytes_tiled": {
    "args": {
@@ -510,7 +510,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.037
   },
   "attnk.flash.flash_agrees_with_sdpa": {
    "args": {
@@ -620,7 +620,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.268
+   "ms": 0.214
   },
   "attnk.flash.flash_block_plan": {
    "args": {
@@ -631,7 +631,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.044
   },
   "attnk.flash.flash_forward_flat": {
    "args": {
@@ -741,7 +741,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.2
+   "ms": 0.188
   },
   "attnk.mask.mask_block_diagonal_flat": {
    "args": {
@@ -759,7 +759,7 @@
    "verified": false,
    "outcome": "bad_cu_seqlens",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.056
   },
   "attnk.mask.mask_causal_flat": {
    "args": {
@@ -770,7 +770,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.145
+   "ms": 0.136
   },
   "attnk.mask.mask_combine_flat": {
    "args": {
@@ -793,7 +793,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.066
   },
   "attnk.mask.mask_convention_agreement": {
    "args": {
@@ -804,7 +804,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.037
   },
   "attnk.mask.mask_padding_flat": {
    "args": {
@@ -815,7 +815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.049
+   "ms": 0.074
   },
   "attnk.mask.mask_row_fully_masked": {
    "args": {
@@ -832,7 +832,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.086
   },
   "attnk.mask.mask_sliding_window_flat": {
    "args": {
@@ -844,7 +844,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.787
+   "ms": 0.193
   },
   "attnk.rope.rope_apply_flat": {
    "args": {
@@ -870,7 +870,7 @@
      4.0
     ],
     "n_tok": 5,
-    "n_heads": 2,
+    "n_heads": 5,
     "head_dim": 16,
     "pos": [
      3,
@@ -884,7 +884,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.432
+   "ms": 0.114
   },
   "attnk.rope.rope_apply_inverse_flat": {
    "args": {
@@ -910,7 +910,7 @@
      4.0
     ],
     "n_tok": 5,
-    "n_heads": 2,
+    "n_heads": 5,
     "head_dim": 16,
     "pos": [
      3,
@@ -924,7 +924,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.085
   },
   "attnk.rope.rope_inv_freq": {
    "args": {
@@ -934,7 +934,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.043
   },
   "attnk.rope.rope_inv_freq_llama3": {
    "args": {
@@ -948,7 +948,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.038
   },
   "attnk.rope.rope_table": {
    "args": {
@@ -959,7 +959,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.1
+   "ms": 0.08
   },
   "attnk.rope.rope_table_freq_factors": {
    "args": {
@@ -977,7 +977,7 @@
    "verified": false,
    "outcome": "empty_dimension",
    "source": "rules",
-   "ms": 0.305
+   "ms": 0.075
   },
   "attnk.rope.rope_table_llama3": {
    "args": {
@@ -992,7 +992,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.082
+   "ms": 0.075
   },
   "attnk.rope.rope_theta_agreement": {
    "args": {
@@ -1003,7 +1003,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.052
   },
   "attnk.rope.rope_theta_for": {
    "args": {
@@ -1014,7 +1014,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.047
   },
   "attnk.sdpa.sdpa_forward_flat": {
    "args": {
@@ -1123,7 +1123,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.348
+   "ms": 0.207
   },
   "attnk.sdpa.sdpa_scores_flat": {
    "args": {
@@ -1195,7 +1195,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.173
+   "ms": 0.148
   },
   "attnk.sdpa.sdpa_softmax_rows_flat": {
    "args": {
@@ -1216,7 +1216,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.077
   },
   "attnk.tiled.attn_flop_count": {
    "args": {
@@ -1230,7 +1230,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.077
   },
   "attnk.tiled.attn_forward_direct": {
    "args": {
@@ -1266,7 +1266,7 @@
    "verified": false,
    "outcome": "gqa_heads_not_divisible",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.107
   },
   "attnk.tiled.attn_forward_tiled": {
    "args": {
@@ -1304,7 +1304,7 @@
    "verified": false,
    "outcome": "gqa_heads_not_divisible",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.091
   },
   "attnk.tiled.attn_forward_unstable": {
    "args": {
@@ -1340,7 +1340,7 @@
    "verified": false,
    "outcome": "gqa_heads_not_divisible",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.088
   },
   "attnk.tiled.attn_reference_delta": {
    "args": {
@@ -1375,7 +1375,7 @@
    "verified": false,
    "outcome": "gqa_heads_not_divisible",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.078
   },
   "bpe_tokenizer.bpe_merge_rank_score": {
    "args": {
@@ -1385,7 +1385,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.041
   },
   "bpe_tokenizer.bpe_merge_score": {
    "args": {
@@ -1396,7 +1396,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.048
   },
   "bpe_tokenizer.bpe_pair_frequency": {
    "args": {
@@ -1406,7 +1406,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.042
   },
   "bpe_tokenizer.byte_fallback_encode": {
    "args": {
@@ -1415,7 +1415,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.053
   },
   "bpe_tokenizer.oov_rate": {
    "args": {
@@ -1425,7 +1425,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.044
   },
   "bpe_tokenizer.sentencepiece_vocab_size_est": {
    "args": {
@@ -1436,7 +1436,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.04
   },
   "bpe_tokenizer.streaming_token_boundary": {
    "args": {
@@ -1446,7 +1446,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.045
   },
   "bpe_tokenizer.subword_log_probability": {
    "args": {
@@ -1456,7 +1456,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.047
   },
   "bpe_tokenizer.tokenization_compression_ratio": {
    "args": {
@@ -1466,7 +1466,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.046
   },
   "bpe_tokenizer.vocab_fertility": {
    "args": {
@@ -1476,7 +1476,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.038
   },
   "causal_inference.propensity.ipw_ate": {
    "args": {
@@ -1488,11 +1488,11 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "scores": [
      0.9,
@@ -1507,7 +1507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.086
   },
   "causal_inference.propensity.match_nearest": {
    "args": {
@@ -1519,11 +1519,11 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "scores": [
      0.9,
@@ -1538,7 +1538,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.077
   },
   "causal_inference.propensity.match_optimal": {
    "args": {
@@ -1550,11 +1550,11 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "scores": [
      0.9,
@@ -1568,7 +1568,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.067
   },
   "causal_inference.propensity.overlap_report": {
    "args": {
@@ -1580,18 +1580,18 @@
      0.3
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "eps": 1e-06
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.072
   },
   "causal_inference.propensity.propensity_fit": {
    "args": {
@@ -1602,14 +1602,14 @@
      4.0,
      5.0
     ],
-    "n_units": 100,
-    "n_features": 100,
+    "n_units": 5,
+    "n_features": 3,
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "l2": 0.1,
     "max_iter": 100,
@@ -1618,7 +1618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.068
   },
   "embeddings.centroid": {
    "args": {
@@ -1643,7 +1643,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.06
   },
   "embeddings.cosine_similarity": {
    "args": {
@@ -1665,7 +1665,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.047
   },
   "embeddings.cosine_similarity_matrix": {
    "args": {
@@ -1715,7 +1715,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.057
   },
   "embeddings.cosine_similarity_strict": {
    "args": {
@@ -1737,7 +1737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.052
   },
   "embeddings.dot_product": {
    "args": {
@@ -1759,7 +1759,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.066
   },
   "embeddings.dot_product_strict": {
    "args": {
@@ -1781,7 +1781,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.05
   },
   "embeddings.euclidean_distance": {
    "args": {
@@ -1803,7 +1803,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.042
   },
   "embeddings.euclidean_distance_strict": {
    "args": {
@@ -1825,7 +1825,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.079
   },
   "embeddings.k_nearest_neighbors": {
    "args": {
@@ -1858,7 +1858,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.101
   },
   "embeddings.k_nearest_neighbors_strict": {
    "args": {
@@ -1891,7 +1891,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.105
   },
   "embeddings.manhattan_distance": {
    "args": {
@@ -1913,7 +1913,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.058
   },
   "embeddings.manhattan_distance_strict": {
    "args": {
@@ -1935,7 +1935,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.062
   },
   "embeddings.nearest_neighbor": {
    "args": {
@@ -1967,7 +1967,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.097
   },
   "embeddings.nearest_neighbor_strict": {
    "args": {
@@ -1999,7 +1999,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.097
   },
   "embeddings.normalize_vector": {
    "args": {
@@ -2012,7 +2012,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.065
   },
   "embeddings.vector_add": {
    "args": {
@@ -2034,7 +2034,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.061
   },
   "embeddings.vector_add_strict": {
    "args": {
@@ -2056,7 +2056,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.081
   },
   "embeddings.vector_magnitude": {
    "args": {
@@ -2069,7 +2069,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.049
   },
   "embeddings.vector_scale": {
    "args": {
@@ -2083,7 +2083,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.063
   },
   "flash_attention.flash_block_max": {
    "args": {
@@ -2093,7 +2093,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.062
   },
   "flash_attention.flash_block_output": {
    "args": {
@@ -2106,7 +2106,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.045
   },
   "flash_attention.flash_block_sum_exp": {
    "args": {
@@ -2118,7 +2118,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.056
   },
   "flash_attention.flash_final_normalize": {
    "args": {
@@ -2128,7 +2128,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.052
   },
   "flash_attention.flash_rescale_output": {
    "args": {
@@ -2140,7 +2140,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.039
   },
   "flash_attention.grouped_query_attention_scale": {
    "args": {
@@ -2150,7 +2150,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.044
   },
   "flash_attention.paged_attention_block_score": {
    "args": {
@@ -2162,7 +2162,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.047
   },
   "flash_attention.ring_attention_chunk_size": {
    "args": {
@@ -2172,7 +2172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.036
   },
   "flash_attention.sliding_window_attention": {
    "args": {
@@ -2183,7 +2183,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.036
   },
   "flash_attention.sparse_attention_block_density": {
    "args": {
@@ -2193,7 +2193,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.039
   },
   "gemm.blocked.gemm_reference_delta_flat": {
    "args": {
@@ -2202,23 +2202,31 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "b": [
      2.0,
      3.0,
      4.0,
      5.0,
-     6.0
+     6.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "m": 3,
-    "n": 100,
+    "n": 3,
     "k": 3
    },
-   "verified": false,
-   "outcome": "a_length_mismatch",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.341
   },
   "gemm.blocked.gemm_tile_plan": {
    "args": {
@@ -2230,7 +2238,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.043
   },
   "gemm.blocked.gemv_flat": {
    "args": {
@@ -2239,23 +2247,31 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "x": [
      1.0,
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "m": 3,
-    "n": 100,
+    "n": 3,
     "trans": true
    },
-   "verified": false,
-   "outcome": "a_length_mismatch",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.075
   },
   "gemm.blocked.sgemm_flat": {
    "args": {
@@ -2264,27 +2280,35 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "b": [
      2.0,
      3.0,
      4.0,
      5.0,
-     6.0
+     6.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "m": 3,
-    "n": 100,
+    "n": 3,
     "k": 3,
     "alpha": 0.05,
     "beta": 0.2,
     "trans_a": true,
     "trans_b": true
    },
-   "verified": false,
-   "outcome": "a_length_mismatch",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.081
   },
   "gemm.contract.gemm_backend_name": {
    "args": {
@@ -2293,7 +2317,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.036
   },
   "gemm.contract.gemm_dims_check": {
    "args": {
@@ -2306,7 +2330,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.039
   },
   "gemm.contract.gemm_scalars_ok": {
    "args": {
@@ -2316,7 +2340,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.035
   },
   "gemm.contract.gemm_status_name": {
    "args": {
@@ -2325,7 +2349,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.029
   },
   "gemm.contract.gemm_work_fits": {
    "args": {
@@ -2337,173 +2361,185 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.03
   },
   "gemm.quantized.gemm_nf4_flat": {
    "args": {
     "w_codes": [
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2
+     3,
+     1,
+     4,
+     1,
+     5,
+     3,
+     1,
+     4,
+     1
     ],
     "w_scales": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
     ],
     "x": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
-    "m": 2,
-    "n": 2,
-    "k": 2,
-    "block": 2
+    "m": 3,
+    "n": 3,
+    "k": 3,
+    "block": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.083
+   "source": "rules",
+   "ms": 0.094
   },
   "gemm.quantized.gemv_int_flat": {
    "args": {
     "w_codes": [
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2
+     3,
+     1,
+     4,
+     1,
+     5,
+     3,
+     1,
+     4,
+     1
     ],
     "w_scales": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
     ],
     "x": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
-    "m": 2,
-    "n": 2,
-    "block": 2,
-    "bits": 2
+    "m": 3,
+    "n": 3,
+    "block": 5,
+    "bits": 8
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.074
+   "source": "rules",
+   "ms": 0.081
   },
   "gemm.quantized.gemv_nf4_flat": {
    "args": {
     "w_codes": [
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2
+     3,
+     1,
+     4,
+     1,
+     5,
+     3,
+     1,
+     4,
+     1
     ],
     "w_scales": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
     ],
     "x": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
-    "m": 2,
-    "n": 2,
-    "block": 2
+    "m": 3,
+    "n": 3,
+    "block": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.423
+   "source": "rules",
+   "ms": 0.311
   },
   "gemm.quantized.quantized_gemv_golden_delta": {
    "args": {
     "w_codes": [
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2
+     3,
+     1,
+     4,
+     1,
+     5,
+     3,
+     1,
+     4,
+     1
     ],
     "w_scales": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2,
+     0.2
     ],
     "x": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
-    "m": 2,
-    "n": 2,
-    "block": 2
+    "m": 3,
+    "n": 3,
+    "block": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.321
+   "source": "rules",
+   "ms": 0.266
   },
   "kv_cache.incremental_decode_kv_append": {
    "args": {
@@ -2512,7 +2548,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.05
   },
   "kv_cache.kv_cache_memory_per_layer": {
    "args": {
@@ -2525,7 +2561,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.042
   },
   "kv_cache.kv_cache_total_memory": {
    "args": {
@@ -2535,7 +2571,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.035
   },
   "kv_cache.kv_cache_utilization": {
    "args": {
@@ -2545,7 +2581,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.029
   },
   "kv_cache.kv_eviction_score_h2o": {
    "args": {
@@ -2555,7 +2591,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.033
   },
   "kv_cache.kv_eviction_score_lru": {
    "args": {
@@ -2565,7 +2601,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.033
   },
   "kv_cache.kv_quantization_error": {
    "args": {
@@ -2576,7 +2612,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.036
   },
   "kv_cache.paged_attention_block_count": {
    "args": {
@@ -2586,7 +2622,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.028
   },
   "kv_cache.prefix_cache_hit_bytes": {
    "args": {
@@ -2610,7 +2646,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.033
   },
   "llm_sampling.beam_score_update": {
    "args": {
@@ -2620,7 +2656,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.028
   },
   "llm_sampling.greedy_token_id": {
    "args": {
@@ -2631,7 +2667,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.028
   },
   "llm_sampling.length_penalty": {
    "args": {
@@ -2642,7 +2678,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.03
   },
   "llm_sampling.min_p_threshold": {
    "args": {
@@ -2652,7 +2688,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.047
   },
   "llm_sampling.pow_approx": {
    "args": {
@@ -2662,7 +2698,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.037
   },
   "llm_sampling.repetition_penalty_scale": {
    "args": {
@@ -2673,7 +2709,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.039
   },
   "llm_sampling.temperature_scale": {
    "args": {
@@ -2683,7 +2719,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.033
   },
   "llm_sampling.token_frequency_penalty": {
    "args": {
@@ -2695,7 +2731,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.031
   },
   "llm_sampling.top_k_threshold": {
    "args": {
@@ -2704,7 +2740,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.027
   },
   "llm_sampling.top_p_cumulative": {
    "args": {
@@ -2715,7 +2751,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.04
   },
   "llm_sampling.typical_p_score": {
    "args": {
@@ -2725,7 +2761,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.036
   },
   "llmk.contract.llmk_argmax_dims_check": {
    "args": {
@@ -2747,7 +2783,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.04
   },
   "llmk.contract.llmk_kv_append_dims_check": {
    "args": {
@@ -2759,7 +2795,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.036
   },
   "llmk.contract.llmk_residual_dims_check": {
    "args": {
@@ -2770,7 +2806,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.036
   },
   "llmk.contract.llmk_status_name": {
    "args": {
@@ -2779,7 +2815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.04
   },
   "llmk.gemv_fast.gemv_transposed_parallel_flat": {
    "args": {
@@ -2788,22 +2824,30 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "x": [
      1.0,
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "m": 3,
-    "n": 100
+    "n": 3
    },
    "verified": false,
-   "outcome": "llmk_gemv_a_length_mismatch",
+   "outcome": "llmk_gemv_x_length_mismatch",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.078
   },
   "llmk.generate.greedy_argmax_flat": {
    "args": {
@@ -2843,7 +2887,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.072
   },
   "llmk.residual.residual_add_flat": {
    "args": {
@@ -2866,7 +2910,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.319
+   "ms": 0.297
   },
   "lossk.contract.loss_chunk_check": {
    "args": {
@@ -2876,7 +2920,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.048
   },
   "lossk.contract.loss_dims_check": {
    "args": {
@@ -2887,7 +2931,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.044
   },
   "lossk.contract.loss_logit_cells": {
    "args": {
@@ -2897,7 +2941,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.044
   },
   "lossk.contract.loss_scalars_ok": {
    "args": {
@@ -2906,7 +2950,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.038
   },
   "lossk.contract.loss_status_name": {
    "args": {
@@ -2915,7 +2959,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.037
   },
   "lossk.contract.loss_targets_in_range": {
    "args": {
@@ -2932,7 +2976,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.048
   },
   "lossk.contract.loss_tol_for": {
    "args": {
@@ -2942,7 +2986,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.035
   },
   "lossk.contract.loss_work_fits": {
    "args": {
@@ -2954,7 +2998,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.036
   },
   "lossk.cross_entropy.ce_chunk_invariance_flat": {
    "args": {
@@ -3033,7 +3077,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.069
   },
   "lossk.cross_entropy.fused_linear_ce_bwd_flat": {
    "args": {
@@ -3123,7 +3167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.082
   },
   "metaldispatch.contract.metaldispatch_status_name": {
    "args": {
@@ -3132,7 +3176,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.035
   },
   "metaldispatch.qwen3_decode.qwen3_i8_allsimd7_decode_flat": {
    "args": {
@@ -3142,7 +3186,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.062
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_batched_prefill_decode_anyqwen3": {
    "args": {
@@ -3167,7 +3211,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.072
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat": {
    "args": {
@@ -3177,7 +3221,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.044
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af": {
    "args": {
@@ -3200,7 +3244,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.042
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror": {
    "args": {
@@ -3212,7 +3256,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.042
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_msl": {
    "args": {
@@ -3225,7 +3269,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.042
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_nomirror_vecload4": {
    "args": {
@@ -3238,7 +3282,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.042
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_i8_allsimd7_prefill_decode_flat_af_vecload4": {
    "args": {
@@ -3251,7 +3295,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.047
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3": {
    "args": {
@@ -3271,7 +3315,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.062
   },
   "metaldispatch.qwen3_prefill_decode.qwen3_prefill_decode_flat_af_nomirror_msl_anyqwen3_sampled": {
    "args": {
@@ -3296,7 +3340,7 @@
    "verified": false,
    "outcome": "metaldispatch_checkpoint_unreadable",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.102
   },
   "metaldispatch.session_prefill_policy.decode_path_name": {
    "args": {
@@ -3305,7 +3349,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.08
   },
   "metaldispatch.session_prefill_policy.kv_contract_name": {
    "args": {
@@ -3314,7 +3358,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.06
   },
   "metaldispatch.session_prefill_policy.pf_attn_path_name": {
    "args": {
@@ -3323,7 +3367,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.041
   },
   "metaldispatch.session_prefill_policy.pf_gemm_path_name": {
    "args": {
@@ -3332,7 +3376,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.031
   },
   "metaldispatch.session_prefill_policy.resolve_prefill_execution_plan": {
    "args": {
@@ -3353,7 +3397,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.08
   },
   "mlpk.activation.gated_ffn_bwd_flat": {
    "args": {
@@ -3430,7 +3474,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.081
   },
   "mlpk.activation.mlp_gelu_agreement": {
    "args": {
@@ -3441,7 +3485,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.046
   },
   "mlpk.activation.mlp_gelu_erf": {
    "args": {
@@ -3450,7 +3494,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.032
   },
   "mlpk.activation.mlp_gelu_erf_grad": {
    "args": {
@@ -3459,7 +3503,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.029
   },
   "mlpk.activation.mlp_gelu_tanh_grad": {
    "args": {
@@ -3468,7 +3512,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.027
   },
   "mlpk.activation.swiglu_gradcheck_flat": {
    "args": {
@@ -3502,7 +3546,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.081
   },
   "mlpk.contract.mlp_activation_known": {
    "args": {
@@ -3511,7 +3555,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.035
   },
   "mlpk.contract.mlp_backend_name": {
    "args": {
@@ -3520,12 +3564,12 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.055
   },
   "mlpk.contract.mlp_block_dims_ok": {
    "args": {
     "tokens": 4,
-    "d_model": 16,
+    "d_model": 3,
     "d_ff": 5,
     "x": [
      1.0,
@@ -3559,7 +3603,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.081
   },
   "mlpk.contract.mlp_dims_check": {
    "args": {
@@ -3570,11 +3614,11 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.036
   },
   "mlpk.contract.mlp_pair_ok": {
    "args": {
-    "n": 100,
+    "n": 5,
     "a": [
      1.0,
      2.0,
@@ -3593,7 +3637,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.052
   },
   "mlpk.contract.mlp_scalars_ok": {
    "args": {
@@ -3602,7 +3646,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.044
   },
   "mlpk.contract.mlp_status_name": {
    "args": {
@@ -3611,7 +3655,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.038
   },
   "mlpk.contract.mlp_tol_for": {
    "args": {
@@ -3621,7 +3665,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.034
   },
   "mlpk.contract.mlp_vocab_check": {
    "args": {
@@ -3632,7 +3676,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.036
   },
   "mlpk.contract.mlp_work_fits": {
    "args": {
@@ -3644,7 +3688,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.05
   },
   "mlpk.contract.mlp_workers_for": {
    "args": {
@@ -3655,7 +3699,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.042
   },
   "mlpk.embedding.embedding_bwd_flat": {
    "args": {
@@ -3713,7 +3757,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.126
   },
   "mlpk.embedding.embedding_ids_in_range": {
    "args": {
@@ -3730,7 +3774,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.075
   },
   "mlpk.gated_ffn.gate_bytes_moved": {
    "args": {
@@ -3739,97 +3783,79 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.048
   },
   "mlpk.gated_ffn.geglu_erf_gate": {
    "args": {
     "gate": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "up": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
-    "n": 2,
-    "requested_workers": 2
+    "n": 5,
+    "requested_workers": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.133
+   "source": "rules",
+   "ms": 0.12
   },
   "mlpk.gated_ffn.geglu_tanh_fast_gate": {
    "args": {
     "gate": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "up": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
-    "n": 2,
-    "requested_workers": 2
+    "n": 5,
+    "requested_workers": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.09
+   "source": "rules",
+   "ms": 0.111
   },
   "mlpk.gated_ffn.geglu_tanh_gate": {
    "args": {
     "gate": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "up": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
-    "n": 2,
-    "requested_workers": 2
+    "n": 5,
+    "requested_workers": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.111
+   "source": "rules",
+   "ms": 0.09
   },
   "mlpk.gated_ffn.swiglu_ffn_block": {
    "args": {
@@ -3862,43 +3888,37 @@
      5.0
     ],
     "tokens": 4,
-    "d_model": 16,
+    "d_model": 3,
     "d_ff": 5
    },
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.086
   },
   "mlpk.gated_ffn.swiglu_gate": {
    "args": {
     "gate": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "up": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
-    "n": 2,
-    "requested_workers": 2
+    "n": 5,
+    "requested_workers": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.078
+   "source": "rules",
+   "ms": 0.091
   },
   "normk.contract.norm_dims_check": {
    "args": {
@@ -3909,7 +3929,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.078
   },
   "normk.contract.norm_eps_ok": {
    "args": {
@@ -3918,7 +3938,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.056
   },
   "normk.contract.norm_status_name": {
    "args": {
@@ -3927,7 +3947,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.056
   },
   "normk.contract.norm_tol_for": {
    "args": {
@@ -3937,7 +3957,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.049
   },
   "normk.contract.norm_work_fits": {
    "args": {
@@ -3948,7 +3968,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.044
   },
   "normk.layernorm.layernorm_bwd_flat": {
    "args": {
@@ -4095,7 +4115,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.108
   },
   "normk.rmsnorm.rmsnorm_agrees_with_frozen_flat": {
    "args": {
@@ -4243,7 +4263,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.097
   },
   "paged_kv_cache.cache_compaction_gain": {
    "args": {
@@ -4257,7 +4277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.083
   },
   "paged_kv_cache.cache_eviction_beladys_score": {
    "args": {
@@ -4267,7 +4287,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.044
   },
   "paged_kv_cache.cache_eviction_lru_score": {
    "args": {
@@ -4277,7 +4297,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.035
   },
   "paged_kv_cache.cache_hit_latency_saving": {
    "args": {
@@ -4287,7 +4307,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.036
   },
   "paged_kv_cache.context_extension_factor": {
    "args": {
@@ -4297,7 +4317,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.033
   },
   "paged_kv_cache.dynamic_ntk_rope_scale": {
    "args": {
@@ -4308,7 +4328,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.034
   },
   "paged_kv_cache.page_table_lookup": {
    "args": {
@@ -4318,7 +4338,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.028
   },
   "paged_kv_cache.prefix_sharing_savings": {
    "args": {
@@ -4332,7 +4352,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.038
   },
   "paged_kv_cache.speculative_branch_memory": {
    "args": {
@@ -4346,7 +4366,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.038
   },
   "propensity.balance_check": {
    "args": {
@@ -4368,7 +4388,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.051
   },
   "propensity.caliper_match": {
    "args": {
@@ -4391,7 +4411,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.052
   },
   "propensity.match_quality": {
    "args": {
@@ -4406,7 +4426,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.048
   },
   "propensity.matched_ate": {
    "args": {
@@ -4418,11 +4438,11 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "matches": [
      3,
@@ -4435,7 +4455,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.069
   },
   "propensity.nearest_neighbor_match": {
    "args": {
@@ -4457,7 +4477,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.055
   },
   "propensity.propensity_overlap": {
    "args": {
@@ -4469,17 +4489,17 @@
      0.3
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ]
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.048
   },
   "propensity.propensity_scores": {
    "args": {
@@ -4501,17 +4521,17 @@
      ]
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ]
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.062
   },
   "propensity.stratified_estimate": {
    "args": {
@@ -4523,11 +4543,11 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "scores": [
      0.9,
@@ -4536,12 +4556,12 @@
      0.6,
      0.3
     ],
-    "n_strata": 100
+    "n_strata": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.057
   },
   "propensity.trimmed_sample": {
    "args": {
@@ -4553,11 +4573,11 @@
      0.3
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "lo": 0.0,
     "hi": 1.0
@@ -4565,7 +4585,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.065
   },
   "residentk.contract.residentk_cache_elements": {
    "args": {
@@ -4577,7 +4597,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.039
   },
   "residentk.contract.residentk_context_check": {
    "args": {
@@ -4588,7 +4608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.03
   },
   "residentk.contract.residentk_dims_check": {
    "args": {
@@ -4610,7 +4630,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.039
   },
   "residentk.contract.residentk_dispatch_budget_deep": {
    "args": {
@@ -4619,7 +4639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.029
   },
   "residentk.contract.residentk_prefill_gemm_use_narrow_tile": {
    "args": {
@@ -4628,7 +4648,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.028
   },
   "residentk.contract.residentk_scalars_ok": {
    "args": {
@@ -4638,7 +4658,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.032
   },
   "residentk.contract.residentk_splitk_max_n_splits": {
    "args": {
@@ -4648,7 +4668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.033
   },
   "residentk.contract.residentk_splitk_policy": {
    "args": {
@@ -4659,7 +4679,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.03
   },
   "residentk.contract.residentk_splitk_should_split": {
    "args": {
@@ -4668,7 +4688,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.026
   },
   "residentk.contract.residentk_status_name": {
    "args": {
@@ -4677,7 +4697,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.028
   },
   "residentk.contract.residentk_weight_elems": {
    "args": {
@@ -4693,21 +4713,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.061
   },
   "residentk.probe.resident_available": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.055
   },
   "residentk.probe.resident_gpu_kernels_compiled": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.023
+   "ms": 0.034
   },
   "residentk.probe.resident_session_probe": {
    "args": {
@@ -4722,7 +4742,7 @@
    "verified": false,
    "outcome": "resident_head_geometry_unsupported",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.047
   },
   "sparse_attention.bigbird_random_block_select": {
    "args": {
@@ -4734,7 +4754,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.037
   },
   "sparse_attention.block_sparse_density": {
    "args": {
@@ -4744,7 +4764,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.03
   },
   "sparse_attention.chunk_cross_attention_weight": {
    "args": {
@@ -4756,7 +4776,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.032
   },
   "sparse_attention.hyper_attention_estimate": {
    "args": {
@@ -4769,7 +4789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.034
   },
   "sparse_attention.landmark_token_score": {
    "args": {
@@ -4780,7 +4800,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.034
   },
   "sparse_attention.linear_attention_kernel": {
    "args": {
@@ -4789,7 +4809,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.027
   },
   "sparse_attention.local_window_mask": {
    "args": {
@@ -4801,7 +4821,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.04
   },
   "sparse_attention.longformer_global_score": {
    "args": {
@@ -4813,7 +4833,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.036
   },
   "sparse_attention.recurrent_memory_update": {
    "args": {
@@ -4825,7 +4845,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.035
   },
   "sparse_attention.streaming_llm_sink_score": {
    "args": {
@@ -4837,24 +4857,27 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.033
   },
   "tensorx.buffer.tx_buf_decode_flat": {
    "args": {
     "data": [
-     0,
-     64,
-     128,
-     192,
-     255
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
     ],
-    "n": 100,
-    "dtype": 5
+    "n": 2,
+    "dtype": 2
    },
    "verified": true,
    "outcome": "result",
-   "source": "rules",
-   "ms": 0.071
+   "source": "plain",
+   "ms": 0.051
   },
   "tensorx.buffer.tx_buf_element_width_bytes": {
    "args": {
@@ -4863,7 +4886,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.038
   },
   "tensorx.buffer.tx_buf_encode_flat": {
    "args": {
@@ -4880,7 +4903,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.064
   },
   "tensorx.buffer.tx_buf_make": {
    "args": {
@@ -4902,7 +4925,7 @@
    "verified": false,
    "outcome": "shape_mismatch",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.064
   },
   "tensorx.buffer.tx_buf_required_bytes": {
    "args": {
@@ -4919,7 +4942,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.045
   },
   "tensorx.buffer.tx_buf_required_bytes_flat": {
    "args": {
@@ -4929,7 +4952,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.032
   },
   "tensorx.buffer.tx_buf_to_values": {
    "args": {
@@ -4953,7 +4976,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.084
   },
   "tensorx.contract.tx_all_finite": {
    "args": {
@@ -4969,7 +4992,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.061
   },
   "tensorx.contract.tx_count_ok": {
    "args": {
@@ -4979,7 +5002,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.031
   },
   "tensorx.contract.tx_dims_fit": {
    "args": {
@@ -4990,7 +5013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.041
   },
   "tensorx.contract.tx_finite": {
    "args": {
@@ -4999,7 +5022,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.029
   },
   "tensorx.contract.tx_numel_checked": {
    "args": {
@@ -5016,7 +5039,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.058
   },
   "tensorx.contract.tx_shape_ok": {
    "args": {
@@ -5027,7 +5050,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.045
   },
   "tensorx.contract.tx_status_name": {
    "args": {
@@ -5036,7 +5059,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.043
   },
   "tensorx.dtype.dtx_accum_dtype": {
    "args": {
@@ -5045,7 +5068,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.047
   },
   "tensorx.dtype.dtx_bf16_frozen_delta": {
    "args": {
@@ -5054,7 +5077,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.05
   },
   "tensorx.dtype.dtx_bits": {
    "args": {
@@ -5063,7 +5086,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.04
   },
   "tensorx.dtype.dtx_bytes_per_1024": {
    "args": {
@@ -5072,7 +5095,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.041
   },
   "tensorx.dtype.dtx_dtype_from_name": {
    "args": {
@@ -5081,7 +5104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.063
   },
   "tensorx.dtype.dtx_dtype_name": {
    "args": {
@@ -5090,7 +5113,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.054
   },
   "tensorx.dtype.dtx_eps": {
    "args": {
@@ -5099,7 +5122,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.045
   },
   "tensorx.dtype.dtx_is_float": {
    "args": {
@@ -5108,7 +5131,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.061
   },
   "tensorx.dtype.dtx_is_sub_byte": {
    "args": {
@@ -5117,7 +5140,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.039
   },
   "tensorx.dtype.dtx_is_supported": {
    "args": {
@@ -5126,7 +5149,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.032
   },
   "tensorx.dtype.dtx_max_finite": {
    "args": {
@@ -5135,7 +5158,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.031
   },
   "tensorx.dtype.dtx_round_trip": {
    "args": {
@@ -5145,7 +5168,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.051
   },
   "tensorx.dtype.dtx_round_trip_list": {
    "args": {
@@ -5162,7 +5185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.089
   },
   "tensorx.dtype.dtx_tol_for": {
    "args": {
@@ -5173,7 +5196,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.057
   },
   "tensorx.elementwise.tx_ew_add": {
    "args": {
@@ -5213,7 +5236,7 @@
    "verified": false,
    "outcome": "dtype_mismatch",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.109
   },
   "tensorx.elementwise.tx_ew_cast": {
    "args": {
@@ -5224,14 +5247,14 @@
      192,
      255
     ],
-    "n": 100,
+    "n": 5,
     "from_dtype": 5,
     "to_dtype": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.056
   },
   "tensorx.elementwise.tx_ew_div": {
    "args": {
@@ -5271,7 +5294,7 @@
    "verified": false,
    "outcome": "dtype_mismatch",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.072
   },
   "tensorx.elementwise.tx_ew_mul": {
    "args": {
@@ -5311,7 +5334,7 @@
    "verified": false,
    "outcome": "dtype_mismatch",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.069
   },
   "tensorx.elementwise.tx_ew_sub": {
    "args": {
@@ -5351,7 +5374,7 @@
    "verified": false,
    "outcome": "dtype_mismatch",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.068
   },
   "tensorx.pack.calibrate_absmax": {
    "args": {
@@ -5367,7 +5390,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.051
   },
   "tensorx.pack.calibrate_percentile": {
    "args": {
@@ -5384,7 +5407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.048
   },
   "tensorx.pack.dequantize_blockwise": {
    "args": {
@@ -5404,12 +5427,12 @@
     ],
     "n": 5,
     "block": 5,
-    "n_bits": 8
+    "n_bits": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.058
   },
   "tensorx.pack.dequantize_nf4": {
    "args": {
@@ -5433,7 +5456,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.06
   },
   "tensorx.pack.double_quant_scales": {
    "args": {
@@ -5450,7 +5473,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.054
   },
   "tensorx.pack.int4_error_vs_frozen": {
    "args": {
@@ -5460,14 +5483,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.035
   },
   "tensorx.pack.nf4_levels": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.041
   },
   "tensorx.pack.pack_int4": {
    "args": {
@@ -5483,7 +5506,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.047
   },
   "tensorx.pack.quant_error_report": {
    "args": {
@@ -5506,7 +5529,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.061
   },
   "tensorx.pack.quantize_blockwise": {
    "args": {
@@ -5519,12 +5542,12 @@
     ],
     "n": 5,
     "block": 5,
-    "n_bits": 8
+    "n_bits": 5
    },
-   "verified": true,
-   "outcome": "result",
+   "verified": false,
+   "outcome": "bits_unsupported",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.05
   },
   "tensorx.pack.quantize_nf4": {
    "args": {
@@ -5541,7 +5564,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.048
   },
   "tensorx.pack.unpack_int4": {
    "args": {
@@ -5552,12 +5575,12 @@
      1,
      5
     ],
-    "n_values": 100
+    "n_values": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.041
   },
   "tensorx.reduce.tx_reduce_max": {
    "args": {
@@ -5577,7 +5600,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.087
+   "ms": 0.048
   },
   "tensorx.reduce.tx_reduce_mean": {
    "args": {
@@ -5597,7 +5620,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.054
+   "ms": 0.045
   },
   "tensorx.reduce.tx_reduce_min": {
    "args": {
@@ -5617,7 +5640,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.054
+   "ms": 0.042
   },
   "tensorx.reduce.tx_reduce_stddev": {
    "args": {
@@ -5637,7 +5660,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.052
+   "ms": 0.039
   },
   "tensorx.reduce.tx_reduce_sum": {
    "args": {
@@ -5657,7 +5680,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.054
+   "ms": 0.04
   },
   "tensorx.reduce.tx_reduce_sum_narrow_accum": {
    "args": {
@@ -5668,13 +5691,13 @@
      192,
      255
     ],
-    "n": 100,
+    "n": 5,
     "dtype": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.038
   },
   "tensorx.reduce.tx_reduce_variance": {
    "args": {
@@ -5718,7 +5741,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.059
   },
   "tensorx.shape.tx_shape_broadcast_status": {
    "args": {
@@ -5742,7 +5765,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.068
   },
   "tensorx.shape.tx_shape_broadcastable": {
    "args": {
@@ -5766,7 +5789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.051
   },
   "tensorx.shape.tx_shape_is_contiguous": {
    "args": {
@@ -5789,7 +5812,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.053
   },
   "tensorx.shape.tx_shape_make": {
    "args": {
@@ -5805,7 +5828,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.051
   },
   "tensorx.shape.tx_shape_numel": {
    "args": {
@@ -5818,7 +5841,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.04
   },
   "tensorx.shape.tx_shape_status": {
    "args": {
@@ -5834,7 +5857,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.039
   },
   "tensorx.shape.tx_shape_strides": {
    "args": {
@@ -5850,7 +5873,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.062
   },
   "tensorx.shape.tx_shape_validate": {
    "args": {
@@ -5867,7 +5890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.042
   },
   "text.tokenizer.char_ngrams": {
    "args": {
@@ -5877,7 +5900,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.046
   },
   "text.tokenizer.is_stopword": {
    "args": {
@@ -5886,7 +5909,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.043
   },
   "text.tokenizer.pad_sequence": {
    "args": {
@@ -5903,7 +5926,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.089
   },
   "text.tokenizer.remove_stopwords": {
    "args": {
@@ -5918,7 +5941,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.045
   },
   "text.tokenizer.sentence_tokenize": {
    "args": {
@@ -5927,7 +5950,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.033
   },
   "text.tokenizer.stem_simple": {
    "args": {
@@ -5936,7 +5959,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.029
   },
   "text.tokenizer.token_frequency": {
    "args": {
@@ -5951,7 +5974,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.047
   },
   "text.tokenizer.vocabulary_size": {
    "args": {
@@ -5966,7 +5989,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.038
   },
   "text.tokenizer.word_ngrams": {
    "args": {
@@ -5977,12 +6000,12 @@
      "fox",
      "jumps"
     ],
-    "n": 100
+    "n": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.041
   },
   "text.tokenizer.word_tokenize": {
    "args": {
@@ -5991,7 +6014,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.033
   },
   "token_bucket.lb_add": {
    "args": {
@@ -6007,7 +6030,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.062
   },
   "token_bucket.lb_create": {
    "args": {
@@ -6017,7 +6040,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.04
   },
   "token_bucket.lb_leak": {
    "args": {
@@ -6032,7 +6055,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.049
   },
   "token_bucket.lb_level": {
    "args": {
@@ -6046,7 +6069,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.039
   },
   "token_bucket.sw_allow": {
    "args": {
@@ -6066,7 +6089,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.06
   },
   "token_bucket.sw_count": {
    "args": {
@@ -6086,7 +6109,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.048
   },
   "token_bucket.sw_create": {
    "args": {
@@ -6096,7 +6119,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.037
   },
   "token_bucket.tb_available": {
    "args": {
@@ -6110,7 +6133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.041
   },
   "token_bucket.tb_consume": {
    "args": {
@@ -6126,7 +6149,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.055
   },
   "token_bucket.tb_create": {
    "args": {
@@ -6136,7 +6159,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.036
   },
   "token_bucket.tb_refill": {
    "args": {
@@ -6151,7 +6174,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.044
   },
   "transformer_attention.attention_entropy": {
    "args": {
@@ -6161,7 +6184,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.042
   },
   "transformer_attention.attention_softmax_stable": {
    "args": {
@@ -6172,7 +6195,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.032
   },
   "transformer_attention.causal_mask_value": {
    "args": {
@@ -6182,7 +6205,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.032
   },
   "transformer_attention.cross_attention_score": {
    "args": {
@@ -6193,7 +6216,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.044
   },
   "transformer_attention.flash_attention_block_score": {
    "args": {
@@ -6204,7 +6227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.03
   },
   "transformer_attention.kv_cache_memory_bytes": {
    "args": {
@@ -6217,7 +6240,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.036
   },
   "transformer_attention.multi_head_split": {
    "args": {
@@ -6227,7 +6250,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.031
   },
   "transformer_attention.pow_approx": {
    "args": {
@@ -6237,7 +6260,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.028
   },
   "transformer_attention.relative_position_bias": {
    "args": {
@@ -6261,7 +6284,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.049
   },
   "transformer_attention.scaled_dot_product_attention": {
    "args": {
@@ -6271,7 +6294,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.035
   },
   "transformer_blocks.attention_head_output": {
    "args": {
@@ -6281,7 +6304,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.05
   },
   "transformer_blocks.causal_mask_logit": {
    "args": {
@@ -6292,7 +6315,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.042
   },
   "transformer_blocks.dropout_scale": {
    "args": {
@@ -6302,7 +6325,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.031
   },
   "transformer_blocks.feedforward_layer1": {
    "args": {
@@ -6313,7 +6336,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.034
   },
   "transformer_blocks.feedforward_layer2": {
    "args": {
@@ -6324,7 +6347,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.032
   },
   "transformer_blocks.gated_feedforward": {
    "args": {
@@ -6334,7 +6357,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.03
   },
   "transformer_blocks.multi_head_split_head": {
    "args": {
@@ -6346,7 +6369,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.045
   },
   "transformer_blocks.post_norm": {
    "args": {
@@ -6358,7 +6381,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.043
   },
   "transformer_blocks.pre_norm": {
    "args": {
@@ -6369,7 +6392,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.034
   },
   "transformer_blocks.residual_connection": {
    "args": {
@@ -6379,7 +6402,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.03
   }
  }
 }

@@ -521,6 +521,12 @@ every header and footer link again, in a ragged block off the left column — is
 the local gate battery: the accordion button is now itself the 44 px hairlined target (a 44 px
 block around a 42 px button failed the focusable-target gate).
 
+**Launched (2026-09-24 ~03:00 UTC).** https://huggingface.co/spaces/thyn-ai/algenta serves the
+flagship (deploy dispatched from the branch at c0b709822, then from main at 6915239fa after
+PR #1150 merged); the production window recorded 4/4 hero presses (host load 1.8–2.2), verify_remote
+3/3, 40/40 gates and the Races browser repro; the Space is pinned always-on on cpu-upgrade and is
+the only Space in the organisation (`algenta-staging` deleted after the window).
+
 Qualification is read, never decided in the Space: `qualified.json` from the results Dataset
 (`ALGENTA_QUALIFIED_URL`, default
 `https://huggingface.co/datasets/thyn-ai/algenta-arena-results/resolve/main/qualified.json`;

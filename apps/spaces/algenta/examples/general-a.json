@@ -1,12 +1,12 @@
 {
  "family": "general-a",
- "generated_utc": "2026-09-24T02:19:25Z",
+ "generated_utc": "2026-09-24T03:17:57Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
   "functions": 998,
   "verified": 990,
-  "plain": 11,
+  "plain": 8,
   "timeouts": 1,
   "unverified": 8
  },
@@ -20,7 +20,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 16.78
+   "ms": 12.589
   },
   "actuarial.annuity_present_value": {
    "args": {
@@ -31,7 +31,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.424
+   "ms": 0.159
   },
   "actuarial.combined_ratio": {
    "args": {
@@ -41,7 +41,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.274
+   "ms": 0.127
   },
   "actuarial.force_of_mortality": {
    "args": {
@@ -50,7 +50,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.298
+   "ms": 0.085
   },
   "actuarial.future_value": {
    "args": {
@@ -61,7 +61,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.27
+   "ms": 0.126
   },
   "actuarial.life_expectancy_curtate": {
    "args": {
@@ -72,7 +72,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.325
+   "ms": 0.113
   },
   "actuarial.loss_ratio": {
    "args": {
@@ -82,7 +82,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.209
+   "ms": 0.102
   },
   "actuarial.mortality_rate": {
    "args": {
@@ -92,7 +92,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.284
+   "ms": 0.087
   },
   "actuarial.net_single_premium": {
    "args": {
@@ -103,7 +103,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.201
+   "ms": 0.112
   },
   "actuarial.present_value": {
    "args": {
@@ -114,7 +114,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.294
+   "ms": 0.096
   },
   "actuarial.reserve_prospective": {
    "args": {
@@ -124,7 +124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.145
+   "ms": 0.079
   },
   "actuarial.survival_probability": {
    "args": {
@@ -133,7 +133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.25
+   "ms": 0.089
   },
   "adhesives.bond_area_from_load": {
    "args": {
@@ -144,7 +144,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.255
+   "ms": 0.114
   },
   "adhesives.bond_line_thickness": {
    "args": {
@@ -153,7 +153,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.335
+   "ms": 0.181
   },
   "adhesives.coverage_rate": {
    "args": {
@@ -163,7 +163,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.53
+   "ms": 0.113
   },
   "adhesives.cure_time_temperature": {
    "args": {
@@ -175,7 +175,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.802
+   "ms": 0.128
   },
   "adhesives.joint_efficiency": {
    "args": {
@@ -185,7 +185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.381
+   "ms": 0.127
   },
   "adhesives.lap_shear_strength": {
    "args": {
@@ -195,7 +195,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.818
+   "ms": 0.082
   },
   "adhesives.open_time_estimate": {
    "args": {
@@ -205,7 +205,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.332
+   "ms": 0.075
   },
   "adhesives.peel_strength": {
    "args": {
@@ -215,7 +215,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.367
+   "ms": 0.079
   },
   "adhesives.pot_life_temperature_adjusted": {
    "args": {
@@ -227,7 +227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.283
+   "ms": 0.104
   },
   "adhesives.surface_energy_contact_angle": {
    "args": {
@@ -237,7 +237,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.309
+   "ms": 0.13
   },
   "adhesives.thermal_cycle_life": {
    "args": {
@@ -249,7 +249,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.328
+   "ms": 0.102
   },
   "adhesives.viscosity_temperature": {
    "args": {
@@ -262,7 +262,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.2
+   "ms": 0.109
   },
   "aerospace.drag_force": {
    "args": {
@@ -273,7 +273,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.453
+   "ms": 0.155
   },
   "aerospace.dynamic_pressure": {
    "args": {
@@ -283,7 +283,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.348
+   "ms": 0.098
   },
   "aerospace.escape_velocity": {
    "args": {
@@ -293,7 +293,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.421
+   "ms": 0.087
   },
   "aerospace.hohmann_delta_v": {
    "args": {
@@ -304,7 +304,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.241
+   "ms": 0.088
   },
   "aerospace.lift_force": {
    "args": {
@@ -315,7 +315,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.298
+   "ms": 0.088
   },
   "aerospace.lift_to_drag_ratio": {
    "args": {
@@ -325,7 +325,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.211
+   "ms": 0.074
   },
   "aerospace.mach_number": {
    "args": {
@@ -335,7 +335,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.169
+   "ms": 0.071
   },
   "aerospace.orbital_velocity": {
    "args": {
@@ -345,7 +345,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.275
+   "ms": 0.099
   },
   "aerospace.specific_impulse": {
    "args": {
@@ -355,7 +355,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.268
+   "ms": 0.093
   },
   "aerospace.speed_of_sound": {
    "args": {
@@ -366,7 +366,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.335
+   "ms": 0.081
   },
   "aerospace.thrust_required": {
    "args": {
@@ -376,7 +376,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.411
+   "ms": 0.077
   },
   "aerospace.tsiolkovsky_delta_v": {
    "args": {
@@ -387,7 +387,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.189
+   "ms": 0.093
   },
   "agriculture.crop_water_need": {
    "args": {
@@ -397,7 +397,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.382
+   "ms": 0.08
   },
   "agriculture.fertilizer_rate": {
    "args": {
@@ -409,7 +409,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.192
+   "ms": 0.113
   },
   "agriculture.growing_degree_days": {
    "args": {
@@ -420,7 +420,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.228
+   "ms": 0.1
   },
   "agriculture.harvest_index": {
    "args": {
@@ -430,7 +430,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.285
+   "ms": 0.093
   },
   "agriculture.irrigation_efficiency": {
    "args": {
@@ -440,7 +440,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.251
+   "ms": 0.088
   },
   "agriculture.leaf_area_index": {
    "args": {
@@ -450,7 +450,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.317
+   "ms": 0.09
   },
   "agriculture.nitrogen_use_efficiency": {
    "args": {
@@ -460,7 +460,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.393
+   "ms": 0.08
   },
   "agriculture.photosynthetically_active_radiation": {
    "args": {
@@ -469,7 +469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.727
+   "ms": 0.078
   },
   "agriculture.seed_rate": {
    "args": {
@@ -480,7 +480,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.416
+   "ms": 0.08
   },
   "agriculture.soil_ph_lime_requirement": {
    "args": {
@@ -491,7 +491,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.563
+   "ms": 0.093
   },
   "agriculture.water_use_efficiency": {
    "args": {
@@ -501,7 +501,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.712
+   "ms": 0.096
   },
   "agriculture.yield_per_hectare": {
    "args": {
@@ -511,7 +511,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.32
+   "ms": 0.092
   },
   "agronomy.crop_water_stress_index": {
    "args": {
@@ -522,7 +522,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.543
+   "ms": 0.092
   },
   "agronomy.crop_yield_potential": {
    "args": {
@@ -533,7 +533,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.076
   },
   "agronomy.evapotranspiration_penman": {
    "args": {
@@ -545,7 +545,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.451
+   "ms": 0.082
   },
   "agronomy.growing_degree_days": {
    "args": {
@@ -556,7 +556,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.272
+   "ms": 0.097
   },
   "agronomy.irrigation_requirement": {
    "args": {
@@ -567,7 +567,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.356
+   "ms": 0.077
   },
   "agronomy.leaf_area_index": {
    "args": {
@@ -577,7 +577,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.085
   },
   "agronomy.light_use_efficiency": {
    "args": {
@@ -587,7 +587,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.184
+   "ms": 0.074
   },
   "agronomy.nitrogen_uptake_efficiency": {
    "args": {
@@ -597,7 +597,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.477
+   "ms": 0.079
   },
   "agronomy.soil_cation_exchange": {
    "args": {
@@ -607,7 +607,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.216
+   "ms": 0.097
   },
   "agronomy.soil_organic_matter_decay": {
    "args": {
@@ -618,7 +618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.557
+   "ms": 0.075
   },
   "allocation.efficient_frontier_2asset": {
    "args": {
@@ -632,7 +632,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.155
+   "ms": 0.311
   },
   "allocation.equal_weight": {
    "args": {
@@ -641,7 +641,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.327
+   "ms": 0.151
   },
   "allocation.inverse_variance": {
    "args": {
@@ -656,7 +656,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.912
+   "ms": 0.126
   },
   "allocation.kelly_criterion": {
    "args": {
@@ -666,7 +666,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.508
+   "ms": 0.083
   },
   "allocation.max_sharpe_2asset": {
    "args": {
@@ -680,7 +680,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.497
+   "ms": 0.114
   },
   "allocation.min_variance_2asset": {
    "args": {
@@ -691,7 +691,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.288
+   "ms": 0.089
   },
   "allocation.portfolio_return": {
    "args": {
@@ -713,7 +713,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.428
+   "ms": 0.122
   },
   "allocation.portfolio_variance_2asset": {
    "args": {
@@ -725,7 +725,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.206
+   "ms": 0.07
   },
   "allocation.rebalance_threshold": {
    "args": {
@@ -748,7 +748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.241
+   "ms": 0.099
   },
   "allocation.risk_parity_simple": {
    "args": {
@@ -763,7 +763,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.198
+   "ms": 0.096
   },
   "anomaly.count_anomalies": {
    "args": {
@@ -778,7 +778,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.394
+   "ms": 0.109
   },
   "anomaly.exp_approx": {
    "args": {
@@ -787,7 +787,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.213
+   "ms": 0.078
   },
   "anomaly.grubbs_test_statistic": {
    "args": {
@@ -802,7 +802,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.057
+   "ms": 0.072
   },
   "anomaly.iqr_detect": {
    "args": {
@@ -818,7 +818,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.35
+   "ms": 0.102
   },
   "anomaly.isolation_score": {
    "args": {
@@ -830,13 +830,13 @@
      5.0
     ],
     "point": 1.5,
-    "n_trees": 100,
+    "n_trees": 5,
     "sample_size": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.362
+   "ms": 0.119
   },
   "anomaly.mad": {
    "args": {
@@ -851,7 +851,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.313
+   "ms": 0.087
   },
   "anomaly.median": {
    "args": {
@@ -866,7 +866,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.446
+   "ms": 0.08
   },
   "anomaly.modified_zscore_detect": {
    "args": {
@@ -882,7 +882,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.299
+   "ms": 0.096
   },
   "anomaly.percentile": {
    "args": {
@@ -898,7 +898,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.292
+   "ms": 0.105
   },
   "anomaly.zscore_detect": {
    "args": {
@@ -914,7 +914,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.353
+   "ms": 0.078
   },
   "antenna.antenna_efficiency": {
    "args": {
@@ -924,7 +924,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.655
+   "ms": 0.06
   },
   "antenna.beamwidth_from_aperture": {
    "args": {
@@ -934,7 +934,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.281
+   "ms": 0.068
   },
   "antenna.dipole_length": {
    "args": {
@@ -943,7 +943,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.258
+   "ms": 0.066
   },
   "antenna.directivity_from_beamwidths": {
    "args": {
@@ -953,7 +953,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.189
+   "ms": 0.084
   },
   "antenna.effective_aperture": {
    "args": {
@@ -963,7 +963,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.092
   },
   "antenna.eirp": {
    "args": {
@@ -973,7 +973,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.42
+   "ms": 0.077
   },
   "antenna.free_space_loss_db": {
    "args": {
@@ -983,7 +983,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.434
+   "ms": 0.074
   },
   "antenna.friis_path_loss": {
    "args": {
@@ -993,7 +993,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.267
+   "ms": 0.07
   },
   "antenna.link_budget_margin": {
    "args": {
@@ -1003,7 +1003,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.333
+   "ms": 0.082
   },
   "antenna.noise_figure_to_noise_temp": {
    "args": {
@@ -1013,7 +1013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.823
+   "ms": 0.07
   },
   "antenna.received_power": {
    "args": {
@@ -1024,7 +1024,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.833
+   "ms": 0.089
   },
   "antenna.wavelength_from_freq": {
    "args": {
@@ -1034,7 +1034,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.315
+   "ms": 0.073
   },
   "apiculture.brood_viability": {
    "args": {
@@ -1044,7 +1044,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.81
+   "ms": 0.085
   },
   "apiculture.colony_strength_estimate": {
    "args": {
@@ -1054,7 +1054,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.318
+   "ms": 0.085
   },
   "apiculture.foraging_range_area": {
    "args": {
@@ -1063,7 +1063,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.621
+   "ms": 0.07
   },
   "apiculture.hive_density_per_hectare": {
    "args": {
@@ -1073,7 +1073,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.94
+   "ms": 0.061
   },
   "apiculture.honey_yield_per_hive": {
    "args": {
@@ -1083,7 +1083,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.908
+   "ms": 0.066
   },
   "apiculture.nectar_to_honey_ratio": {
    "args": {
@@ -1092,7 +1092,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 3.216
+   "ms": 0.089
   },
   "apiculture.overwintering_survival_rate": {
    "args": {
@@ -1102,7 +1102,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.313
+   "ms": 0.071
   },
   "apiculture.pollination_value": {
    "args": {
@@ -1112,7 +1112,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.375
+   "ms": 0.064
   },
   "apiculture.queen_laying_rate": {
    "args": {
@@ -1121,7 +1121,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.55
+   "ms": 0.07
   },
   "apiculture.sugar_syrup_ratio": {
    "args": {
@@ -1131,7 +1131,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.254
+   "ms": 0.093
   },
   "apiculture.varroa_infestation_rate": {
    "args": {
@@ -1141,7 +1141,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.209
+   "ms": 0.076
   },
   "apiculture.winter_feed_requirement": {
    "args": {
@@ -1152,7 +1152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.406
+   "ms": 0.083
   },
   "aquaculture.ammonia_production": {
    "args": {
@@ -1162,7 +1162,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.333
+   "ms": 0.081
   },
   "aquaculture.biofilter_capacity": {
    "args": {
@@ -1172,7 +1172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.494
+   "ms": 0.066
   },
   "aquaculture.carrying_capacity": {
    "args": {
@@ -1182,7 +1182,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.202
+   "ms": 0.072
   },
   "aquaculture.cost_per_kg_produced": {
    "args": {
@@ -1192,7 +1192,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.678
+   "ms": 0.089
   },
   "aquaculture.dissolved_oxygen_consumption": {
    "args": {
@@ -1202,7 +1202,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.448
+   "ms": 0.073
   },
   "aquaculture.feed_conversion_ratio": {
    "args": {
@@ -1212,7 +1212,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.234
+   "ms": 0.085
   },
   "aquaculture.harvest_weight": {
    "args": {
@@ -1223,7 +1223,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.691
+   "ms": 0.071
   },
   "aquaculture.production_per_cycle": {
    "args": {
@@ -1234,7 +1234,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.922
+   "ms": 0.104
   },
   "aquaculture.specific_growth_rate": {
    "args": {
@@ -1245,7 +1245,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.243
+   "ms": 0.077
   },
   "aquaculture.stocking_density": {
    "args": {
@@ -1255,7 +1255,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.694
+   "ms": 0.081
   },
   "aquaculture.survival_rate": {
    "args": {
@@ -1265,7 +1265,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.787
+   "ms": 0.084
   },
   "aquaculture.water_exchange_rate": {
    "args": {
@@ -1275,7 +1275,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.356
+   "ms": 0.084
   },
   "archaeology.artifact_density": {
    "args": {
@@ -1285,7 +1285,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.185
+   "ms": 0.077
   },
   "archaeology.artifact_diversity_index": {
    "args": {
@@ -1295,7 +1295,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.403
+   "ms": 0.092
   },
   "archaeology.calibrated_date_linear": {
    "args": {
@@ -1305,7 +1305,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.283
+   "ms": 0.08
   },
   "archaeology.ceramic_seriation_similarity": {
    "args": {
@@ -1316,7 +1316,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.275
+   "ms": 0.07
   },
   "archaeology.dating_uncertainty_combined": {
    "args": {
@@ -1326,7 +1326,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.394
+   "ms": 0.084
   },
   "archaeology.discard_rate": {
    "args": {
@@ -1337,7 +1337,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.072
   },
   "archaeology.excavation_volume": {
    "args": {
@@ -1348,7 +1348,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.276
+   "ms": 0.064
   },
   "archaeology.occupation_span": {
    "args": {
@@ -1358,7 +1358,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.192
+   "ms": 0.064
   },
   "archaeology.radiocarbon_age_bp": {
    "args": {
@@ -1368,7 +1368,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.543
+   "ms": 0.079
   },
   "archaeology.site_area_from_scatter": {
    "args": {
@@ -1378,7 +1378,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.331
+   "ms": 0.068
   },
   "archaeology.stratigraphy_depth_to_age_linear": {
    "args": {
@@ -1388,7 +1388,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.259
+   "ms": 0.066
   },
   "archaeology.surveyed_area_coverage": {
    "args": {
@@ -1398,7 +1398,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.267
+   "ms": 0.077
   },
   "arima.ar_fit_yule_walker": {
    "args": {
@@ -1414,7 +1414,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.634
+   "ms": 0.151
   },
   "arima.ar_forecast": {
    "args": {
@@ -1437,7 +1437,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.332
+   "ms": 0.123
   },
   "arima.arma_loglik_css": {
    "args": {
@@ -1466,7 +1466,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.255
+   "ms": 0.112
   },
   "arima.difference": {
    "args": {
@@ -1482,7 +1482,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.804
+   "ms": 0.103
   },
   "arima.durbin_levinson": {
    "args": {
@@ -1498,7 +1498,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.889
+   "ms": 0.14
   },
   "arima.innovations_algorithm": {
    "args": {
@@ -1515,7 +1515,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.341
+   "ms": 0.298
   },
   "arima.ma_fit_innovations": {
    "args": {
@@ -1532,7 +1532,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.283
+   "ms": 0.257
   },
   "arima.undifference": {
    "args": {
@@ -1554,7 +1554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.59
+   "ms": 0.106
   },
   "astrobiology.habitable_zone_inner": {
    "args": {
@@ -1563,7 +1563,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.068
   },
   "astrobiology.habitable_zone_outer": {
    "args": {
@@ -1572,7 +1572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.213
+   "ms": 0.083
   },
   "astrobiology.metabolism_rate_q10": {
    "args": {
@@ -1584,7 +1584,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.305
+   "ms": 0.079
   },
   "astrobiology.panspermia_survival_fraction": {
    "args": {
@@ -1594,7 +1594,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.081
   },
   "astrobiology.planetary_equilibrium_temp": {
    "args": {
@@ -1604,7 +1604,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.294
+   "ms": 0.089
   },
   "astrobiology.pressure_tolerance_depth": {
    "args": {
@@ -1613,7 +1613,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.074
   },
   "astrobiology.radiation_dose_rate": {
    "args": {
@@ -1624,7 +1624,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.314
+   "ms": 0.081
   },
   "astrobiology.stellar_luminosity": {
    "args": {
@@ -1634,7 +1634,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.336
+   "ms": 0.082
   },
   "astrobiology.uv_penetration_depth": {
    "args": {
@@ -1644,7 +1644,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.305
+   "ms": 0.073
   },
   "astrobiology.water_activity": {
    "args": {
@@ -1654,7 +1654,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.307
+   "ms": 0.071
   },
   "astronomy.apparent_magnitude": {
    "args": {
@@ -1664,7 +1664,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.424
+   "ms": 0.085
   },
   "astronomy.day_length": {
    "args": {
@@ -1674,7 +1674,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.341
+   "ms": 0.074
   },
   "astronomy.distance_from_magnitude": {
    "args": {
@@ -1684,7 +1684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.359
+   "ms": 0.083
   },
   "astronomy.ecliptic_to_equatorial": {
    "args": {
@@ -1695,7 +1695,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.431
+   "ms": 0.108
   },
   "astronomy.julian_date": {
    "args": {
@@ -1706,7 +1706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.31
+   "ms": 0.084
   },
   "astronomy.kepler_equation": {
    "args": {
@@ -1717,7 +1717,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.328
+   "ms": 0.084
   },
   "astronomy.modified_julian_date": {
    "args": {
@@ -1726,7 +1726,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.338
+   "ms": 0.085
   },
   "astronomy.orbital_period": {
    "args": {
@@ -1735,7 +1735,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.179
+   "ms": 0.083
   },
   "astronomy.parallax_correction": {
    "args": {
@@ -1745,7 +1745,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.797
+   "ms": 0.069
   },
   "astronomy.sidereal_time": {
    "args": {
@@ -1755,7 +1755,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.37
+   "ms": 0.075
   },
   "astronomy.solar_declination": {
    "args": {
@@ -1764,7 +1764,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.431
+   "ms": 0.056
   },
   "astronomy.sunrise_hour_angle": {
    "args": {
@@ -1774,7 +1774,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.439
+   "ms": 0.072
   },
   "atmospheric_chemistry.acid_rain_ph": {
    "args": {
@@ -1784,7 +1784,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.305
+   "ms": 0.091
   },
   "atmospheric_chemistry.aerosol_optical_depth": {
    "args": {
@@ -1794,7 +1794,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.413
+   "ms": 0.078
   },
   "atmospheric_chemistry.greenhouse_forcing": {
    "args": {
@@ -1804,7 +1804,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.483
+   "ms": 0.066
   },
   "atmospheric_chemistry.hydroxyl_steady_state": {
    "args": {
@@ -1815,7 +1815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.465
+   "ms": 0.074
   },
   "atmospheric_chemistry.lifetime_from_oh": {
    "args": {
@@ -1825,7 +1825,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.421
+   "ms": 0.077
   },
   "atmospheric_chemistry.mixing_ratio_to_conc": {
    "args": {
@@ -1836,7 +1836,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.232
+   "ms": 0.071
   },
   "atmospheric_chemistry.ozone_column_dobson": {
    "args": {
@@ -1845,7 +1845,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.24
+   "ms": 0.062
   },
   "atmospheric_chemistry.photolysis_rate": {
    "args": {
@@ -1856,7 +1856,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.331
+   "ms": 0.079
   },
   "atmospheric_chemistry.residence_time": {
    "args": {
@@ -1866,7 +1866,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.215
+   "ms": 0.071
   },
   "atmospheric_chemistry.smog_formation_index": {
    "args": {
@@ -1876,7 +1876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.22
+   "ms": 0.061
   },
   "auction.all_pay_revenue": {
    "args": {
@@ -1892,7 +1892,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.403
+   "ms": 0.099
   },
   "auction.bid_shading_optimal": {
    "args": {
@@ -1902,7 +1902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.077
   },
   "auction.dutch_auction_revenue": {
    "args": {
@@ -1918,7 +1918,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.546
+   "ms": 0.102
   },
   "auction.english_auction_revenue": {
    "args": {
@@ -1934,7 +1934,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.275
+   "ms": 0.099
   },
   "auction.expected_revenue_uniform": {
    "args": {
@@ -1944,7 +1944,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.532
+   "ms": 0.069
   },
   "auction.first_price_sealed": {
    "args": {
@@ -1960,7 +1960,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.271
+   "ms": 0.089
   },
   "auction.reserve_price_filter": {
    "args": {
@@ -1977,7 +1977,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.308
+   "ms": 0.096
   },
   "auction.revenue_equivalence_check": {
    "args": {
@@ -1993,7 +1993,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.233
+   "ms": 0.089
   },
   "auction.second_price_sealed": {
    "args": {
@@ -2009,7 +2009,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.325
+   "ms": 0.094
   },
   "auction.vcg_payment": {
    "args": {
@@ -2026,7 +2026,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.256
+   "ms": 0.113
   },
   "auction.winners_curse_adjustment": {
    "args": {
@@ -2036,7 +2036,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.357
+   "ms": 0.079
   },
   "autograd_ops.chain_rule": {
    "args": {
@@ -2046,7 +2046,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.517
+   "ms": 0.102
   },
   "autograd_ops.grad_add": {
    "args": {
@@ -2055,7 +2055,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.64
+   "ms": 0.081
   },
   "autograd_ops.grad_exp": {
    "args": {
@@ -2065,7 +2065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.219
+   "ms": 0.081
   },
   "autograd_ops.grad_log": {
    "args": {
@@ -2075,7 +2075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.356
+   "ms": 0.071
   },
   "autograd_ops.grad_mul": {
    "args": {
@@ -2085,7 +2085,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.295
+   "ms": 0.071
   },
   "autograd_ops.grad_pow": {
    "args": {
@@ -2096,7 +2096,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.706
+   "ms": 0.07
   },
   "autograd_ops.grad_relu": {
    "args": {
@@ -2106,7 +2106,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.548
+   "ms": 0.087
   },
   "autograd_ops.grad_sigmoid": {
    "args": {
@@ -2116,7 +2116,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.023
+   "ms": 0.067
   },
   "autograd_ops.grad_softmax_diag": {
    "args": {
@@ -2126,7 +2126,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.226
+   "ms": 0.064
   },
   "autograd_ops.grad_tanh": {
    "args": {
@@ -2136,7 +2136,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.464
+   "ms": 0.068
   },
   "automl.hyperband_brackets": {
    "args": {
@@ -2146,7 +2146,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.61
+   "ms": 0.095
   },
   "automl.promote_top_k": {
    "args": {
@@ -2162,7 +2162,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.481
+   "ms": 0.1
   },
   "automl.random_search_configs": {
    "args": {
@@ -2173,7 +2173,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.508
+   "ms": 0.513
   },
   "automl.successive_halving_schedule": {
    "args": {
@@ -2184,7 +2184,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.331
+   "ms": 0.089
   },
   "autonomous_vehicles.braking_distance": {
    "args": {
@@ -2195,21 +2195,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.246
+   "ms": 0.083
   },
   "autonomous_vehicles.comfort_deceleration": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.186
+   "ms": 0.068
   },
   "autonomous_vehicles.emergency_deceleration": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.272
+   "ms": 0.062
   },
   "autonomous_vehicles.fuel_efficiency_at_speed": {
    "args": {
@@ -2220,7 +2220,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.511
+   "ms": 0.068
   },
   "autonomous_vehicles.headway_time": {
    "args": {
@@ -2230,7 +2230,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.31
+   "ms": 0.078
   },
   "autonomous_vehicles.lane_change_distance": {
    "args": {
@@ -2241,7 +2241,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.318
+   "ms": 0.089
   },
   "autonomous_vehicles.localization_error_gps": {
    "args": {
@@ -2251,7 +2251,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.943
+   "ms": 0.069
   },
   "autonomous_vehicles.perception_latency_distance": {
    "args": {
@@ -2261,7 +2261,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.384
+   "ms": 0.068
   },
   "autonomous_vehicles.safe_following_distance": {
    "args": {
@@ -2272,7 +2272,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.612
+   "ms": 0.072
   },
   "autonomous_vehicles.sensor_range_required": {
    "args": {
@@ -2283,7 +2283,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.286
+   "ms": 0.08
   },
   "autonomous_vehicles.time_to_collision": {
    "args": {
@@ -2293,7 +2293,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.228
+   "ms": 0.071
   },
   "autonomous_vehicles.v2x_communication_range": {
    "args": {
@@ -2304,7 +2304,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.856
+   "ms": 0.076
   },
   "aviation.drag_force": {
    "args": {
@@ -2316,7 +2316,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.409
+   "ms": 0.091
   },
   "aviation.endurance_breguet": {
    "args": {
@@ -2328,7 +2328,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.202
+   "ms": 0.1
   },
   "aviation.indicated_airspeed": {
    "args": {
@@ -2337,7 +2337,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.152
+   "ms": 0.104
   },
   "aviation.lift_force": {
    "args": {
@@ -2349,7 +2349,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.436
+   "ms": 0.084
   },
   "aviation.lift_to_drag_ratio": {
    "args": {
@@ -2359,7 +2359,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.605
+   "ms": 0.082
   },
   "aviation.mach_number": {
    "args": {
@@ -2369,7 +2369,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.325
+   "ms": 0.097
   },
   "aviation.range_breguet": {
    "args": {
@@ -2381,7 +2381,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.279
+   "ms": 0.096
   },
   "aviation.rate_of_climb": {
    "args": {
@@ -2392,7 +2392,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.218
+   "ms": 0.096
   },
   "aviation.thrust_required": {
    "args": {
@@ -2403,7 +2403,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.232
+   "ms": 0.074
   },
   "aviation.true_airspeed": {
    "args": {
@@ -2413,7 +2413,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.34
+   "ms": 0.088
   },
   "battery.battery_pack_capacity": {
    "args": {
@@ -2423,7 +2423,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.745
+   "ms": 0.076
   },
   "battery.battery_pack_voltage": {
    "args": {
@@ -2433,7 +2433,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.372
+   "ms": 0.073
   },
   "battery.c_rate": {
    "args": {
@@ -2443,7 +2443,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.234
+   "ms": 0.071
   },
   "battery.coulombic_efficiency": {
    "args": {
@@ -2453,7 +2453,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.474
+   "ms": 0.079
   },
   "battery.cycle_life_degradation": {
    "args": {
@@ -2464,7 +2464,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.489
+   "ms": 0.068
   },
   "battery.depth_of_discharge": {
    "args": {
@@ -2473,7 +2473,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.228
+   "ms": 0.071
   },
   "battery.discharge_time": {
    "args": {
@@ -2483,7 +2483,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.576
+   "ms": 0.068
   },
   "battery.energy_density": {
    "args": {
@@ -2493,7 +2493,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.533
+   "ms": 0.075
   },
   "battery.internal_resistance_from_voltage": {
    "args": {
@@ -2504,7 +2504,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.199
+   "ms": 0.069
   },
   "battery.peukert_capacity": {
    "args": {
@@ -2516,7 +2516,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.405
+   "ms": 0.074
   },
   "battery.power_density": {
    "args": {
@@ -2526,7 +2526,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.138
+   "ms": 0.076
   },
   "battery.state_of_charge": {
    "args": {
@@ -2536,7 +2536,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.643
+   "ms": 0.058
   },
   "behavioral_economics.anchoring_adjusted_estimate": {
    "args": {
@@ -2547,7 +2547,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.492
+   "ms": 0.078
   },
   "behavioral_economics.endowment_effect_wta_wtp_ratio": {
    "args": {
@@ -2557,7 +2557,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.069
   },
   "behavioral_economics.fairness_ultimatum_threshold": {
    "args": {
@@ -2567,7 +2567,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.483
+   "ms": 0.085
   },
   "behavioral_economics.hyperbolic_discount": {
    "args": {
@@ -2578,7 +2578,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.651
+   "ms": 0.075
   },
   "behavioral_economics.loss_aversion_coefficient": {
    "args": {
@@ -2588,7 +2588,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.259
+   "ms": 0.076
   },
   "behavioral_economics.mental_accounting_total": {
    "args": {
@@ -2598,7 +2598,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.241
+   "ms": 0.084
   },
   "behavioral_economics.nudge_effectiveness": {
    "args": {
@@ -2608,7 +2608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.061
   },
   "behavioral_economics.probability_weighting": {
    "args": {
@@ -2618,7 +2618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.193
+   "ms": 0.059
   },
   "behavioral_economics.prospect_theory_value": {
    "args": {
@@ -2629,7 +2629,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.214
+   "ms": 0.062
   },
   "behavioral_economics.quasi_hyperbolic_discount": {
    "args": {
@@ -2641,7 +2641,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.202
+   "ms": 0.084
   },
   "behavioral_economics.status_quo_bias": {
    "args": {
@@ -2651,7 +2651,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.068
   },
   "behavioral_economics.sunk_cost_ratio": {
    "args": {
@@ -2661,7 +2661,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.208
+   "ms": 0.094
   },
   "bioinformatics.amino_acid_count": {
    "args": {
@@ -2670,7 +2670,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.162
+   "ms": 0.066
   },
   "bioinformatics.codon_count": {
    "args": {
@@ -2679,7 +2679,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.165
+   "ms": 0.069
   },
   "bioinformatics.coverage_depth": {
    "args": {
@@ -2689,7 +2689,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.06
   },
   "bioinformatics.error_to_phred_quality": {
    "args": {
@@ -2698,7 +2698,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.26
+   "ms": 0.058
   },
   "bioinformatics.evalue_significance": {
    "args": {
@@ -2708,7 +2708,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.255
+   "ms": 0.066
   },
   "bioinformatics.gc_content": {
    "args": {
@@ -2718,7 +2718,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.062
   },
   "bioinformatics.molecular_weight_dna": {
    "args": {
@@ -2728,7 +2728,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.057
   },
   "bioinformatics.n50_from_values": {
    "args": {
@@ -2738,7 +2738,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.057
   },
   "bioinformatics.phred_quality_to_error": {
    "args": {
@@ -2747,7 +2747,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.065
   },
   "bioinformatics.sequence_identity": {
    "args": {
@@ -2757,7 +2757,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.377
+   "ms": 0.078
   },
   "bioinformatics.tm_basic": {
    "args": {
@@ -2769,7 +2769,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.172
+   "ms": 0.074
   },
   "bioinformatics.tm_salt_adjusted": {
    "args": {
@@ -2779,7 +2779,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.082
   },
   "biomechanics.angular_acceleration": {
    "args": {
@@ -2789,7 +2789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.267
+   "ms": 0.067
   },
   "biomechanics.angular_velocity": {
    "args": {
@@ -2799,7 +2799,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.287
+   "ms": 0.058
   },
   "biomechanics.cadence_from_velocity": {
    "args": {
@@ -2809,7 +2809,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.214
+   "ms": 0.057
   },
   "biomechanics.center_of_mass_two_segments": {
    "args": {
@@ -2821,7 +2821,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.07
   },
   "biomechanics.elastic_energy_tendon": {
    "args": {
@@ -2831,7 +2831,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.063
   },
   "biomechanics.ground_reaction_force_ratio": {
    "args": {
@@ -2841,7 +2841,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.242
+   "ms": 0.092
   },
   "biomechanics.joint_power": {
    "args": {
@@ -2851,7 +2851,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.072
   },
   "biomechanics.joint_torque": {
    "args": {
@@ -2861,7 +2861,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.075
   },
   "biomechanics.metabolic_cost_walking": {
    "args": {
@@ -2871,7 +2871,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.187
+   "ms": 0.082
   },
   "biomechanics.moment_of_inertia_limb": {
    "args": {
@@ -2881,7 +2881,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.209
+   "ms": 0.096
   },
   "biomechanics.muscle_force_hill": {
    "args": {
@@ -2893,7 +2893,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.077
   },
   "biomechanics.stride_length": {
    "args": {
@@ -2903,7 +2903,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.199
+   "ms": 0.077
   },
   "biomedical.alveolar_gas_equation": {
    "args": {
@@ -2916,7 +2916,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.097
   },
   "biomedical.anion_gap": {
    "args": {
@@ -2927,7 +2927,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.077
   },
   "biomedical.bmi": {
    "args": {
@@ -2937,7 +2937,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.195
+   "ms": 0.073
   },
   "biomedical.body_surface_area_dubois": {
    "args": {
@@ -2947,7 +2947,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.246
+   "ms": 0.077
   },
   "biomedical.cardiac_output": {
    "args": {
@@ -2957,7 +2957,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.169
+   "ms": 0.079
   },
   "biomedical.corrected_qt_bazett": {
    "args": {
@@ -2967,7 +2967,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.147
+   "ms": 0.059
   },
   "biomedical.drug_clearance": {
    "args": {
@@ -2977,7 +2977,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.192
+   "ms": 0.072
   },
   "biomedical.fick_cardiac_output": {
    "args": {
@@ -2988,7 +2988,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.35
+   "ms": 0.068
   },
   "biomedical.glomerular_filtration_rate": {
    "args": {
@@ -3000,7 +3000,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.07
   },
   "biomedical.mean_arterial_pressure": {
    "args": {
@@ -3010,7 +3010,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.072
   },
   "biomedical.oxygen_delivery": {
    "args": {
@@ -3021,7 +3021,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.075
   },
   "biomedical.pulse_pressure": {
    "args": {
@@ -3031,7 +3031,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.066
   },
   "blockchain.block_reward_halving": {
    "args": {
@@ -3041,7 +3041,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.069
   },
   "blockchain.block_size_utilization": {
    "args": {
@@ -3051,7 +3051,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.087
   },
   "blockchain.confirmations_security": {
    "args": {
@@ -3061,7 +3061,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.073
   },
   "blockchain.finality_time_pbft": {
    "args": {
@@ -3071,7 +3071,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.074
   },
   "blockchain.gas_cost": {
    "args": {
@@ -3081,7 +3081,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.157
+   "ms": 0.076
   },
   "blockchain.hash_rate_to_difficulty": {
    "args": {
@@ -3091,7 +3091,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.081
   },
   "blockchain.merkle_tree_depth": {
    "args": {
@@ -3100,7 +3100,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.397
+   "ms": 0.076
   },
   "blockchain.staking_apy": {
    "args": {
@@ -3110,7 +3110,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.086
   },
   "blockchain.token_inflation_rate": {
    "args": {
@@ -3120,7 +3120,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.079
   },
   "blockchain.tps_throughput": {
    "args": {
@@ -3130,7 +3130,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.074
   },
   "blockchain.transaction_fee_priority": {
    "args": {
@@ -3140,7 +3140,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.235
+   "ms": 0.082
   },
   "blockchain.validator_uptime": {
    "args": {
@@ -3150,7 +3150,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.08
   },
   "bloom_counting.cb_add": {
    "args": {
@@ -3175,7 +3175,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 14.031
+   "ms": 10.792
   },
   "bloom_counting.cb_contains": {
    "args": {
@@ -3200,7 +3200,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 14.418
+   "ms": 13.829
   },
   "bloom_counting.cb_count_estimate": {
    "args": {
@@ -3225,7 +3225,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.323
+   "ms": 12.528
   },
   "bloom_counting.cb_create": {
    "args": {
@@ -3235,7 +3235,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.232
   },
   "bloom_counting.cb_false_positive_rate": {
    "args": {
@@ -3246,7 +3246,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.13
   },
   "bloom_counting.cb_hash": {
    "args": {
@@ -3257,7 +3257,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.092
   },
   "bloom_counting.cb_optimal_hashes": {
    "args": {
@@ -3267,7 +3267,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.114
   },
   "bloom_counting.cb_remove": {
    "args": {
@@ -3292,7 +3292,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.523
+   "ms": 14.307
   },
   "bloom_counting.cb_reset": {
    "args": {
@@ -3318,7 +3318,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.202
   },
   "boolean_algebra.bool_and": {
    "args": {
@@ -3328,7 +3328,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.116
   },
   "boolean_algebra.bool_iff": {
    "args": {
@@ -3338,7 +3338,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.113
   },
   "boolean_algebra.bool_implies": {
    "args": {
@@ -3348,7 +3348,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.107
   },
   "boolean_algebra.bool_not": {
    "args": {
@@ -3357,7 +3357,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.094
   },
   "boolean_algebra.bool_or": {
    "args": {
@@ -3367,7 +3367,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.11
   },
   "boolean_algebra.bool_xor": {
    "args": {
@@ -3377,7 +3377,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.123
   },
   "boolean_algebra.count_satisfying_2var": {
    "args": {
@@ -3386,7 +3386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.107
   },
   "boolean_algebra.eval_cnf": {
    "args": {
@@ -3418,7 +3418,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.16
   },
   "boolean_algebra.eval_dnf": {
    "args": {
@@ -3450,7 +3450,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.124
   },
   "boolean_algebra.is_tautology_2var": {
    "args": {
@@ -3459,7 +3459,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.103
   },
   "boolean_algebra.majority_vote": {
    "args": {
@@ -3474,7 +3474,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.114
   },
   "boolean_algebra.parity": {
    "args": {
@@ -3489,7 +3489,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.12
   },
   "boolean_algebra.truth_table_2": {
    "args": {
@@ -3498,7 +3498,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.129
   },
   "brewing.abv_from_og_fg": {
    "args": {
@@ -3508,7 +3508,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.129
   },
   "brewing.apparent_attenuation": {
    "args": {
@@ -3518,7 +3518,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.175
   },
   "brewing.calories_per_12oz": {
    "args": {
@@ -3528,7 +3528,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.203
   },
   "brewing.color_srm_from_mcu": {
    "args": {
@@ -3537,7 +3537,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.118
   },
   "brewing.ibu_tinseth": {
    "args": {
@@ -3549,7 +3549,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.119
   },
   "brewing.mash_water_volume": {
    "args": {
@@ -3559,7 +3559,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.111
   },
   "brewing.original_gravity_to_plato": {
    "args": {
@@ -3568,7 +3568,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.112
   },
   "brewing.plato_to_gravity": {
    "args": {
@@ -3577,7 +3577,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.151
   },
   "brewing.priming_sugar_g": {
    "args": {
@@ -3588,7 +3588,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.107
   },
   "brewing.real_attenuation": {
    "args": {
@@ -3597,7 +3597,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.109
   },
   "brewing.strike_water_temp": {
    "args": {
@@ -3608,7 +3608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.118
   },
   "brewing.utilization_tinseth": {
    "args": {
@@ -3618,7 +3618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.115
   },
   "bryology.biomass_to_litter_ratio": {
    "args": {
@@ -3628,7 +3628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.112
   },
   "bryology.bryophyte_desiccation_recovery": {
    "args": {
@@ -3639,7 +3639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.106
   },
   "bryology.carbon_accumulation_peatland": {
    "args": {
@@ -3649,7 +3649,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.101
   },
   "bryology.moss_growth_rate": {
    "args": {
@@ -3660,7 +3660,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.102
   },
   "bryology.moss_photosynthesis_rate": {
    "args": {
@@ -3672,7 +3672,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.115
   },
   "bryology.nitrogen_deposition_effect": {
    "args": {
@@ -3682,7 +3682,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.101
   },
   "bryology.patch_colonisation_probability": {
    "args": {
@@ -3693,7 +3693,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.102
   },
   "bryology.peat_accumulation_rate": {
    "args": {
@@ -3703,7 +3703,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.096
   },
   "bryology.sphagnum_acidity": {
    "args": {
@@ -3713,7 +3713,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.099
   },
   "bryology.sphagnum_water_holding": {
    "args": {
@@ -3723,7 +3723,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.1
   },
   "cache.cache_clear": {
    "args": {
@@ -3754,7 +3754,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.249
   },
   "cache.cache_contains": {
    "args": {
@@ -3787,7 +3787,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.222
   },
   "cache.cache_evict_expired": {
    "args": {
@@ -3819,7 +3819,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.213
   },
   "cache.cache_get": {
    "args": {
@@ -3852,7 +3852,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.218
   },
   "cache.cache_hit_rate": {
    "args": {
@@ -3883,7 +3883,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.19
   },
   "cache.cache_put": {
    "args": {
@@ -3917,7 +3917,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.174
   },
   "cache.cache_size": {
    "args": {
@@ -3948,7 +3948,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.133
   },
   "cache.create_ttl_cache": {
    "args": {
@@ -3958,7 +3958,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.103
   },
   "cardiology.cardiac_output": {
    "args": {
@@ -3968,7 +3968,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.112
   },
   "cardiology.coronary_perfusion_pressure": {
    "args": {
@@ -3978,7 +3978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.096
   },
   "cardiology.ejection_fraction": {
    "args": {
@@ -3988,7 +3988,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.103
   },
   "cardiology.fick_cardiac_output": {
    "args": {
@@ -3999,7 +3999,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.109
   },
   "cardiology.left_ventricular_work": {
    "args": {
@@ -4009,7 +4009,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.11
   },
   "cardiology.mean_arterial_pressure": {
    "args": {
@@ -4019,7 +4019,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.095
   },
   "cardiology.pulse_pressure": {
    "args": {
@@ -4029,7 +4029,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.094
   },
   "cardiology.rate_pressure_product": {
    "args": {
@@ -4039,7 +4039,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.093
   },
   "cardiology.stroke_volume": {
    "args": {
@@ -4049,7 +4049,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.084
   },
   "cardiology.systemic_vascular_resistance": {
    "args": {
@@ -4060,7 +4060,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.111
   },
   "category_theory.compose": {
    "args": {
@@ -4077,7 +4077,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.142
   },
   "category_theory.drop_while": {
    "args": {
@@ -4094,7 +4094,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.105
   },
   "category_theory.filter_fn": {
    "args": {
@@ -4111,7 +4111,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.113
   },
   "category_theory.flat_map": {
    "args": {
@@ -4127,7 +4127,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.112
   },
   "category_theory.fold_left": {
    "args": {
@@ -4144,7 +4144,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.1
   },
   "category_theory.fold_right": {
    "args": {
@@ -4161,7 +4161,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.144
   },
   "category_theory.map_list_fn": {
    "args": {
@@ -4177,7 +4177,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.126
   },
   "category_theory.scan_left": {
    "args": {
@@ -4194,7 +4194,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.109
   },
   "category_theory.take_while": {
    "args": {
@@ -4211,7 +4211,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.09
   },
   "category_theory.zip_with": {
    "args": {
@@ -4234,7 +4234,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.104
   },
   "causal.ate": {
    "args": {
@@ -4256,7 +4256,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.106
   },
   "causal.att": {
    "args": {
@@ -4278,7 +4278,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.094
   },
   "causal.cohens_d": {
    "args": {
@@ -4300,7 +4300,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.148
   },
   "causal.diff_in_diff": {
    "args": {
@@ -4336,7 +4336,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.149
   },
   "causal.ipw_estimate": {
    "args": {
@@ -4348,11 +4348,11 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "propensity": [
      1.0,
@@ -4365,7 +4365,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.13
   },
   "causal.iv_estimate": {
    "args": {
@@ -4394,7 +4394,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.127
   },
   "causal.needed_sample_size_ate": {
    "args": {
@@ -4406,7 +4406,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.128
   },
   "causal.propensity_score": {
    "args": {
@@ -4418,17 +4418,17 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ]
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.141
   },
   "causal.regression_discontinuity": {
    "args": {
@@ -4451,7 +4451,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.119
   },
   "causal.stratified_ate": {
    "args": {
@@ -4463,11 +4463,11 @@
      5.0
     ],
     "treatment": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "strata": [
      3,
@@ -4476,12 +4476,12 @@
      1,
      5
     ],
-    "n_strata": 100
+    "n_strata": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.119
   },
   "cellular.count_alive": {
    "args": {
@@ -4506,7 +4506,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.118
   },
   "cellular.count_neighbors": {
    "args": {
@@ -4535,7 +4535,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.12
   },
   "cellular.elementary_ca_step": {
    "args": {
@@ -4551,7 +4551,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.097
   },
   "cellular.game_of_life_step": {
    "args": {
@@ -4598,7 +4598,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.192
   },
   "cellular.grid_create": {
    "args": {
@@ -4608,7 +4608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.115
   },
   "cellular.grid_randomize": {
    "args": {
@@ -4619,7 +4619,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.108
   },
   "cellular.grid_to_density": {
    "args": {
@@ -4644,7 +4644,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.165
   },
   "cellular.is_still_life": {
    "args": {
@@ -4691,7 +4691,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.173
   },
   "cellular.population_history": {
    "args": {
@@ -4719,7 +4719,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.13
   },
   "cellular.rule_lookup": {
    "args": {
@@ -4731,7 +4731,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.104
   },
   "cellular.run_elementary_ca": {
    "args": {
@@ -4748,7 +4748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.146
   },
   "ceramics.coefficient_of_thermal_expansion": {
    "args": {
@@ -4759,7 +4759,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.09
   },
   "ceramics.density_from_archimedes": {
    "args": {
@@ -4771,7 +4771,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.084
   },
   "ceramics.dielectric_constant_mixture": {
    "args": {
@@ -4783,7 +4783,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.102
   },
   "ceramics.fracture_toughness_indentation": {
    "args": {
@@ -4796,7 +4796,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.089
   },
   "ceramics.glass_transition_estimate": {
    "args": {
@@ -4805,7 +4805,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.091
   },
   "ceramics.porosity_from_density": {
    "args": {
@@ -4815,7 +4815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.106
   },
   "ceramics.relative_density": {
    "args": {
@@ -4825,7 +4825,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.206
   },
   "ceramics.sintering_shrinkage": {
    "args": {
@@ -4835,7 +4835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.027
+   "ms": 0.136
   },
   "ceramics.thermal_shock_resistance": {
    "args": {
@@ -4847,7 +4847,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.108
   },
   "ceramics.weibull_characteristic_strength": {
    "args": {
@@ -4857,7 +4857,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.105
   },
   "ceramics.weibull_failure_probability": {
    "args": {
@@ -4868,7 +4868,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.123
   },
   "ceramics.youngs_modulus_porosity": {
    "args": {
@@ -4879,7 +4879,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.081
   },
   "chaos.bifurcation_diagram": {
    "args": {
@@ -4892,7 +4892,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 18.255
+   "ms": 20.349
   },
   "chaos.feigenbaum_ratio": {
    "args": {
@@ -4903,7 +4903,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.177
   },
   "chaos.henon_map": {
    "args": {
@@ -4916,7 +4916,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.14
   },
   "chaos.is_chaotic": {
    "args": {
@@ -4925,7 +4925,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.11
   },
   "chaos.logistic_map": {
    "args": {
@@ -4936,7 +4936,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.129
   },
   "chaos.lorenz_simulate": {
    "args": {
@@ -4952,7 +4952,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.171
   },
   "chaos.lorenz_step": {
    "args": {
@@ -4967,7 +4967,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.129
   },
   "chaos.lyapunov_exponent_logistic": {
    "args": {
@@ -4978,7 +4978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.101
   },
   "chaos.sensitivity_to_initial": {
    "args": {
@@ -4990,7 +4990,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.121
   },
   "chaos.tent_map": {
    "args": {
@@ -5001,7 +5001,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.092
   },
   "checksum.adler32": {
    "args": {
@@ -5016,7 +5016,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.096
   },
   "checksum.fletcher16": {
    "args": {
@@ -5031,7 +5031,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.21
   },
   "checksum.internet_checksum": {
    "args": {
@@ -5046,7 +5046,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.26
   },
   "checksum.isbn10_check": {
    "args": {
@@ -5061,7 +5061,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.121
   },
   "checksum.isbn13_check": {
    "args": {
@@ -5076,7 +5076,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.139
   },
   "checksum.luhn_check": {
    "args": {
@@ -5091,7 +5091,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.103
   },
   "checksum.luhn_checksum": {
    "args": {
@@ -5106,7 +5106,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.105
   },
   "checksum.modular_sum": {
    "args": {
@@ -5122,7 +5122,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.116
   },
   "checksum.parity_bit": {
    "args": {
@@ -5137,7 +5137,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.103
   },
   "checksum.verhoeff_check": {
    "args": {
@@ -5152,7 +5152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.107
   },
   "checksum.xor_checksum": {
    "args": {
@@ -5167,7 +5167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.108
   },
   "climate.apparent_temperature": {
    "args": {
@@ -5178,7 +5178,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.107
   },
   "climate.celsius_to_fahrenheit": {
    "args": {
@@ -5187,7 +5187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.097
   },
   "climate.cloud_base_height": {
    "args": {
@@ -5197,7 +5197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.117
   },
   "climate.dew_point": {
    "args": {
@@ -5207,7 +5207,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.124
   },
   "climate.fahrenheit_to_celsius": {
    "args": {
@@ -5216,7 +5216,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.144
   },
   "climate.heat_index": {
    "args": {
@@ -5226,7 +5226,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.119
   },
   "climate.pressure_altitude": {
    "args": {
@@ -5235,7 +5235,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.096
   },
   "climate.relative_humidity": {
    "args": {
@@ -5245,7 +5245,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.121
   },
   "climate.saturation_vapor_pressure": {
    "args": {
@@ -5254,7 +5254,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.112
   },
   "climate.wet_bulb_approx": {
    "args": {
@@ -5264,7 +5264,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.111
   },
   "climate.wind_chill": {
    "args": {
@@ -5274,7 +5274,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.102
   },
   "clustering_metrics.adjusted_rand_index": {
    "args": {
@@ -5296,7 +5296,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.114
   },
   "clustering_metrics.calinski_harabasz": {
    "args": {
@@ -5329,7 +5329,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.124
   },
   "clustering_metrics.cluster_centroids": {
    "args": {
@@ -5362,7 +5362,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.122
   },
   "clustering_metrics.cluster_sizes": {
    "args": {
@@ -5378,7 +5378,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.104
   },
   "clustering_metrics.contingency_matrix": {
    "args": {
@@ -5396,13 +5396,13 @@
      1,
      5
     ],
-    "n_true": 100,
-    "n_pred": 100
+    "n_true": 5,
+    "n_pred": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 2.807
+   "ms": 0.14
   },
   "clustering_metrics.davies_bouldin": {
    "args": {
@@ -5435,7 +5435,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.125
   },
   "clustering_metrics.inertia": {
    "args": {
@@ -5484,7 +5484,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.161
   },
   "clustering_metrics.purity": {
    "args": {
@@ -5502,8 +5502,8 @@
      1,
      5
     ],
-    "n_true": 100,
-    "n_pred": 100
+    "n_true": 5,
+    "n_pred": 5
    },
    "verified": true,
    "outcome": "result",
@@ -5517,7 +5517,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.091
   },
   "color.color_distance": {
    "args": {
@@ -5535,7 +5535,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.161
   },
   "color.complement": {
    "args": {
@@ -5548,7 +5548,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.108
   },
   "color.grayscale": {
    "args": {
@@ -5561,7 +5561,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.102
   },
   "color.hex_to_rgb": {
    "args": {
@@ -5570,7 +5570,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.117
   },
   "color.hsl_to_rgb": {
    "args": {
@@ -5583,7 +5583,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.111
   },
   "color.hsv_to_rgb": {
    "args": {
@@ -5596,7 +5596,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.148
   },
   "color.rgb_lerp": {
    "args": {
@@ -5615,7 +5615,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.126
   },
   "color.rgb_to_hex": {
    "args": {
@@ -5628,7 +5628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.118
   },
   "color.rgb_to_hsl": {
    "args": {
@@ -5641,7 +5641,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.12
   },
   "color.rgb_to_hsv": {
    "args": {
@@ -5654,7 +5654,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.119
   },
   "color_check.dominant_background_contrast_ratio_hex": {
    "args": {
@@ -5673,7 +5673,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.147
   },
   "color_check.dominant_background_hex": {
    "args": {
@@ -5691,7 +5691,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.146
   },
   "color_check.dominant_background_rgb255": {
    "args": {
@@ -5709,7 +5709,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.158
   },
   "color_check.dominant_background_wcag_pass_hex": {
    "args": {
@@ -5730,7 +5730,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.129
   },
   "color_check.preferred_text_color_for_image": {
    "args": {
@@ -5748,7 +5748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.117
   },
   "color_check.preferred_text_color_hex": {
    "args": {
@@ -5757,7 +5757,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.11
   },
   "color_check.preferred_text_color_rgb255": {
    "args": {
@@ -5768,7 +5768,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.092
   },
   "color_check.preferred_text_contrast_for_image": {
    "args": {
@@ -5786,7 +5786,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.129
   },
   "color_check.preferred_text_pass_for_image": {
    "args": {
@@ -5806,7 +5806,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.157
   },
   "color_check.wcag_aa_required_contrast": {
    "args": {
@@ -5816,7 +5816,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.106
   },
   "color_check.wcag_contrast_ratio_hex": {
    "args": {
@@ -5826,7 +5826,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.096
   },
   "color_check.wcag_contrast_ratio_rgb255": {
    "args": {
@@ -5840,7 +5840,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.087
   },
   "color_check.wcag_relative_luminance_hex": {
    "args": {
@@ -5849,7 +5849,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.109
   },
   "color_check.wcag_relative_luminance_rgb255": {
    "args": {
@@ -5860,7 +5860,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.094
   },
   "color_check.wcag_text_pass_hex": {
    "args": {
@@ -5872,7 +5872,7 @@
    "verified": false,
    "outcome": "mojo_library_execution_failed",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.1
   },
   "color_check.wcag_text_pass_rgb255": {
    "args": {
@@ -5888,7 +5888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.112
   },
   "color_science.chromatic_adaptation_von_kries": {
    "args": {
@@ -5898,7 +5898,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.117
   },
   "color_science.color_temperature_approx": {
    "args": {
@@ -5908,7 +5908,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.089
   },
   "color_science.contrast_ratio": {
    "args": {
@@ -5918,7 +5918,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.118
   },
   "color_science.cri_from_delta_e": {
    "args": {
@@ -5927,7 +5927,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.086
   },
   "color_science.delta_e_76": {
    "args": {
@@ -5941,7 +5941,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.147
   },
   "color_science.lab_to_lch_c": {
    "args": {
@@ -5951,7 +5951,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.111
   },
   "color_science.lab_to_lch_h": {
    "args": {
@@ -5961,7 +5961,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.182
   },
   "color_science.lab_to_lch_l": {
    "args": {
@@ -5970,7 +5970,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.096
   },
   "color_science.metamerism_index": {
    "args": {
@@ -5980,7 +5980,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.095
   },
   "color_science.rgb_to_luminance": {
    "args": {
@@ -5991,7 +5991,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.104
   },
   "color_science.wcag_aa_pass": {
    "args": {
@@ -6001,7 +6001,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.092
   },
   "color_science.whiteness_index_cie": {
    "args": {
@@ -6014,7 +6014,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.117
   },
   "combinatorial.assignment_greedy": {
    "args": {
@@ -6039,7 +6039,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.114
   },
   "combinatorial.bin_packing_first_fit": {
    "args": {
@@ -6055,7 +6055,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.135
   },
   "combinatorial.bin_packing_first_fit_decreasing": {
    "args": {
@@ -6071,7 +6071,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.219
   },
   "combinatorial.coin_change": {
    "args": {
@@ -6087,7 +6087,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.104
   },
   "combinatorial.knapsack_01": {
    "args": {
@@ -6110,7 +6110,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.115
   },
   "combinatorial.knapsack_01_value": {
    "args": {
@@ -6133,7 +6133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.12
   },
   "combinatorial.longest_increasing_subsequence": {
    "args": {
@@ -6148,7 +6148,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.112
   },
   "combinatorial.max_subarray_sum": {
    "args": {
@@ -6163,7 +6163,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.12
   },
   "combinatorial.tsp_tour_length": {
    "args": {
@@ -6195,7 +6195,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.136
   },
   "combustion.adiabatic_flame_temp_estimate": {
    "args": {
@@ -6207,7 +6207,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.104
   },
   "combustion.brake_specific_fuel_consumption": {
    "args": {
@@ -6217,7 +6217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.084
   },
   "combustion.carnot_efficiency": {
    "args": {
@@ -6227,7 +6227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.089
   },
   "combustion.combustion_efficiency": {
    "args": {
@@ -6237,7 +6237,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.907
   },
   "combustion.equivalence_ratio": {
    "args": {
@@ -6247,7 +6247,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.093
   },
   "combustion.excess_air_percentage": {
    "args": {
@@ -6256,7 +6256,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.088
   },
   "combustion.flame_speed_laminar": {
    "args": {
@@ -6269,7 +6269,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.11
   },
   "combustion.heat_release_rate": {
    "args": {
@@ -6282,14 +6282,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.09
   },
   "combustion.lower_heating_value_methane": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.082
   },
   "combustion.nox_formation_rate": {
    "args": {
@@ -6299,7 +6299,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.078
   },
   "combustion.stoichiometric_air_fuel_ratio": {
    "args": {
@@ -6310,7 +6310,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.086
   },
   "combustion.thermal_efficiency": {
    "args": {
@@ -6320,7 +6320,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.078
   },
   "composites.composite_density": {
    "args": {
@@ -6331,7 +6331,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.094
   },
   "composites.critical_fiber_length": {
    "args": {
@@ -6342,7 +6342,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.094
   },
   "composites.fiber_volume_fraction": {
    "args": {
@@ -6354,7 +6354,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.104
   },
   "composites.halpin_tsai": {
    "args": {
@@ -6366,7 +6366,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.092
   },
   "composites.impact_energy_charpy": {
    "args": {
@@ -6376,7 +6376,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.108
   },
   "composites.inverse_rule_of_mixtures": {
    "args": {
@@ -6387,7 +6387,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.101
   },
   "composites.laminate_thickness": {
    "args": {
@@ -6397,7 +6397,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.092
   },
   "composites.rule_of_mixtures_modulus": {
    "args": {
@@ -6408,7 +6408,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.092
   },
   "composites.shear_lag_stress_transfer": {
    "args": {
@@ -6419,7 +6419,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.09
   },
   "composites.specific_stiffness": {
    "args": {
@@ -6429,7 +6429,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.08
   },
   "composites.specific_strength": {
    "args": {
@@ -6439,7 +6439,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.116
   },
   "composites.void_content": {
    "args": {
@@ -6449,7 +6449,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.099
   },
   "concrete.aggregate_volume": {
    "args": {
@@ -6461,7 +6461,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.119
   },
   "concrete.carbonation_depth": {
    "args": {
@@ -6471,7 +6471,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.101
   },
   "concrete.cement_content": {
    "args": {
@@ -6481,7 +6481,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.099
   },
   "concrete.compressive_strength_abrams": {
    "args": {
@@ -6492,7 +6492,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.11
   },
   "concrete.concrete_density_estimate": {
    "args": {
@@ -6504,7 +6504,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.13
   },
   "concrete.drying_shrinkage_estimate": {
    "args": {
@@ -6514,7 +6514,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.092
   },
   "concrete.maturity_nurse_saul": {
    "args": {
@@ -6525,7 +6525,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.094
   },
   "concrete.modulus_of_elasticity": {
    "args": {
@@ -6534,7 +6534,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.087
   },
   "concrete.rebar_development_length": {
    "args": {
@@ -6545,7 +6545,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.102
   },
   "concrete.slump_estimate": {
    "args": {
@@ -6554,7 +6554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.027
+   "ms": 0.096
   },
   "concrete.splitting_tensile_strength": {
    "args": {
@@ -6563,7 +6563,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.093
   },
   "concrete.water_cement_ratio": {
    "args": {
@@ -6573,7 +6573,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.115
   },
   "conformal.conformal_band": {
    "args": {
@@ -6589,7 +6589,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.128
   },
   "conformal.conformal_coverage": {
    "args": {
@@ -6618,7 +6618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.14
   },
   "conformal.conformal_interval": {
    "args": {
@@ -6628,7 +6628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.1
   },
   "conformal.conformal_interval_normalized": {
    "args": {
@@ -6639,7 +6639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.091
   },
   "conformal.conformal_quantile": {
    "args": {
@@ -6655,7 +6655,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.105
   },
   "conformal.conformal_quantile_normalized": {
    "args": {
@@ -6678,28 +6678,28 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.128
   },
   "contest_strategy.contest_strategy_version": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.125
   },
   "contest_strategy.contest_worker_count": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.145
   },
   "contest_strategy.default_contest_params": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.131
   },
   "contest_strategy.option_service_round": {
    "args": {
@@ -6708,7 +6708,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.135
   },
   "contest_strategy.outcome_distribution": {
    "args": {
@@ -6769,14 +6769,14 @@
      4.0,
      5.0
     ],
-    "n_reps": 100,
+    "n_reps": 5,
     "master_seed": 42,
     "scenario_id": 1
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.145
+   "ms": 0.222
   },
   "contest_strategy.wear_penalty": {
    "args": {
@@ -6788,7 +6788,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.125
   },
   "continuous_batching.admission_control_accept": {
    "args": {
@@ -6799,7 +6799,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.104
   },
   "continuous_batching.batching_efficiency": {
    "args": {
@@ -6809,7 +6809,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.107
   },
   "continuous_batching.beam_memory_per_request": {
    "args": {
@@ -6823,7 +6823,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.101
   },
   "continuous_batching.chunked_prefill_chunks": {
    "args": {
@@ -6833,7 +6833,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.093
   },
   "continuous_batching.decode_throughput_tokens": {
    "args": {
@@ -6843,7 +6843,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.111
   },
   "continuous_batching.head_of_line_blocking_score": {
    "args": {
@@ -6853,7 +6853,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.105
   },
   "continuous_batching.iteration_level_batch_size": {
    "args": {
@@ -6863,7 +6863,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.109
   },
   "continuous_batching.preemption_score": {
    "args": {
@@ -6874,7 +6874,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.091
   },
   "continuous_batching.sequence_completion_fraction": {
    "args": {
@@ -6884,7 +6884,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.101
   },
   "continuous_batching.streaming_first_token_latency": {
    "args": {
@@ -6894,7 +6894,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.095
   },
   "contrastive_learning.barlow_twins_cross_corr": {
    "args": {
@@ -6909,7 +6909,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.124
   },
   "contrastive_learning.byol_ema_update": {
    "args": {
@@ -6920,7 +6920,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.106
   },
   "contrastive_learning.infonce_loss": {
    "args": {
@@ -6930,7 +6930,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.124
   },
   "contrastive_learning.moco_momentum_update": {
    "args": {
@@ -6941,7 +6941,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.153
   },
   "contrastive_learning.nt_xent_denominator_term": {
    "args": {
@@ -6951,7 +6951,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.027
+   "ms": 0.096
   },
   "contrastive_learning.simclr_positive_score": {
    "args": {
@@ -6963,7 +6963,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.139
   },
   "contrastive_learning.simclr_temperature_scale": {
    "args": {
@@ -6973,7 +6973,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.14
   },
   "contrastive_learning.triplet_margin_loss": {
    "args": {
@@ -6984,7 +6984,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.081
   },
   "contrastive_learning.vicreg_covariance_term": {
    "args": {
@@ -6995,7 +6995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.081
   },
   "contrastive_learning.vicreg_variance_loss": {
    "args": {
@@ -7005,7 +7005,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.102
   },
   "control.bang_bang": {
    "args": {
@@ -7016,7 +7016,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.103
   },
   "control.create_pid": {
    "args": {
@@ -7029,7 +7029,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.112
   },
   "control.overshoot": {
    "args": {
@@ -7045,7 +7045,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.145
   },
   "control.pid_simulate": {
    "args": {
@@ -7061,7 +7061,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.106
   },
   "control.pid_update": {
    "args": {
@@ -7081,7 +7081,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.137
   },
   "control.ramp_response": {
    "args": {
@@ -7093,7 +7093,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.12
   },
   "control.settling_time": {
    "args": {
@@ -7110,7 +7110,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.11
   },
   "control.steady_state_error": {
    "args": {
@@ -7126,7 +7126,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.103
   },
   "control.step_response": {
    "args": {
@@ -7138,7 +7138,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.114
   },
   "convex.adam_optimizer": {
    "args": {
@@ -7156,7 +7156,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.196
   },
   "convex.compute_gradient": {
    "args": {
@@ -7172,7 +7172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.137
   },
   "convex.eval_function": {
    "args": {
@@ -7188,7 +7188,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.118
   },
   "convex.gradient_descent": {
    "args": {
@@ -7210,7 +7210,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.052
+   "ms": 0.125
   },
   "convex.l2_norm": {
    "args": {
@@ -7225,7 +7225,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.102
   },
   "convex.line_search_backtrack": {
    "args": {
@@ -7251,7 +7251,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.244
   },
   "convex.projected_gradient_descent": {
    "args": {
@@ -7271,7 +7271,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.259
   },
   "convex.proximal_l1": {
    "args": {
@@ -7287,7 +7287,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.102
   },
   "convex.vector_sub": {
    "args": {
@@ -7309,7 +7309,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.135
   },
   "copula.gaussian_copula_sample": {
    "args": {
@@ -7319,7 +7319,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.263
+   "ms": 0.337
   },
   "copula.kendall_tau": {
    "args": {
@@ -7341,7 +7341,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.218
   },
   "copula.norm_cdf_approx": {
    "args": {
@@ -7350,7 +7350,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.186
   },
   "copula.norm_ppf_approx": {
    "args": {
@@ -7359,7 +7359,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.089
   },
   "copula.rank_correlation": {
    "args": {
@@ -7381,7 +7381,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.134
   },
   "correlation.cholesky_lower": {
    "args": {
@@ -7435,7 +7435,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 14.163
+   "ms": 13.312
   },
   "correlation.probit": {
    "args": {
@@ -7444,7 +7444,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.147
   },
   "correlation.sample_correlated_normal": {
    "args": {
@@ -7480,7 +7480,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.196
+   "ms": 0.202
   },
   "corrosion.cathodic_protection_current": {
    "args": {
@@ -7490,7 +7490,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.157
+   "ms": 0.098
   },
   "corrosion.corrosion_rate_mmpy": {
    "args": {
@@ -7502,7 +7502,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.19
+   "ms": 0.097
   },
   "corrosion.corrosion_rate_mpy": {
    "args": {
@@ -7514,7 +7514,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.161
+   "ms": 0.087
   },
   "corrosion.galvanic_potential_difference": {
    "args": {
@@ -7524,7 +7524,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.082
   },
   "corrosion.metal_loss_from_rate": {
    "args": {
@@ -7534,7 +7534,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.101
   },
   "corrosion.nernst_potential": {
    "args": {
@@ -7546,7 +7546,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.095
   },
   "corrosion.passivation_current_density": {
    "args": {
@@ -7556,7 +7556,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.096
   },
   "corrosion.pitting_factor": {
    "args": {
@@ -7566,7 +7566,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.082
   },
   "corrosion.pitting_rate": {
    "args": {
@@ -7576,7 +7576,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.093
   },
   "corrosion.remaining_wall_thickness": {
    "args": {
@@ -7586,7 +7586,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.092
   },
   "corrosion.service_life_estimate": {
    "args": {
@@ -7596,7 +7596,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.102
   },
   "corrosion.tafel_overpotential": {
    "args": {
@@ -7607,7 +7607,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.095
   },
   "cosmology.angular_diameter_distance": {
    "args": {
@@ -7617,7 +7617,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.089
   },
   "cosmology.comoving_distance_approx": {
    "args": {
@@ -7628,7 +7628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.1
   },
   "cosmology.cosmic_scale_factor": {
    "args": {
@@ -7637,7 +7637,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.108
   },
   "cosmology.critical_density": {
    "args": {
@@ -7646,7 +7646,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.075
   },
   "cosmology.hubble_distance": {
    "args": {
@@ -7656,7 +7656,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.094
   },
   "cosmology.hubble_velocity": {
    "args": {
@@ -7666,7 +7666,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.085
   },
   "cosmology.lookback_time_approx": {
    "args": {
@@ -7676,7 +7676,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.081
   },
   "cosmology.luminosity_distance": {
    "args": {
@@ -7686,7 +7686,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.079
   },
   "cosmology.redshift_from_wavelength": {
    "args": {
@@ -7696,7 +7696,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.083
   },
   "cosmology.schwarzschild_radius": {
    "args": {
@@ -7705,7 +7705,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.103
   },
   "cosmology.stefan_boltzmann_luminosity": {
    "args": {
@@ -7715,7 +7715,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.096
   },
   "cosmology.wien_peak_wavelength": {
    "args": {
@@ -7724,7 +7724,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.129
   },
   "cost_router.batch_vs_single_decision": {
    "args": {
@@ -7736,7 +7736,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.121
   },
   "cost_router.budget_remaining_fraction": {
    "args": {
@@ -7746,7 +7746,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.103
   },
   "cost_router.cascade_model_routing": {
    "args": {
@@ -7758,7 +7758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.096
   },
   "cost_router.cost_per_output_token": {
    "args": {
@@ -7768,7 +7768,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.074
   },
   "cost_router.gpu_vs_cpu_routing_score": {
    "args": {
@@ -7781,7 +7781,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.073
   },
   "cost_router.latency_cost_tradeoff": {
    "args": {
@@ -7793,7 +7793,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.069
   },
   "cost_router.moe_vs_dense_routing": {
    "args": {
@@ -7805,7 +7805,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.083
   },
   "cost_router.quantized_vs_full_routing": {
    "args": {
@@ -7817,7 +7817,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.082
   },
   "cost_router.request_cost_estimate": {
    "args": {
@@ -7829,7 +7829,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.064
   },
   "cost_router.sla_headroom_score": {
    "args": {
@@ -7839,7 +7839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.066
   },
   "counter_rng.philox_block": {
    "args": {
@@ -7854,7 +7854,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.103
   },
   "counter_rng.philox_word": {
    "args": {
@@ -7869,7 +7869,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.08
   },
   "counter_rng.rng_bernoulli": {
    "args": {
@@ -7885,7 +7885,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.075
   },
   "counter_rng.rng_exponential": {
    "args": {
@@ -7901,14 +7901,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.13
   },
   "counter_rng.rng_global_sentinel": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.107
   },
   "counter_rng.rng_normal": {
    "args": {
@@ -7923,7 +7923,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.105
   },
   "counter_rng.rng_normal_scaled": {
    "args": {
@@ -7940,14 +7940,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.109
   },
   "counter_rng.rng_selftest": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.083
   },
   "counter_rng.rng_uniform": {
    "args": {
@@ -7962,7 +7962,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.098
   },
   "counter_rng.rng_uniform_left_open": {
    "args": {
@@ -7977,14 +7977,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.102
   },
   "counter_rng.rng_version": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.08
   },
   "cryogenics.boiloff_rate": {
    "args": {
@@ -7995,7 +7995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.114
   },
   "cryogenics.carnot_cop_cooling": {
    "args": {
@@ -8005,7 +8005,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.111
   },
   "cryogenics.cryocooler_input_power": {
    "args": {
@@ -8015,7 +8015,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.167
+   "ms": 0.096
   },
   "cryogenics.heat_leak_through_wall": {
    "args": {
@@ -8028,14 +8028,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.115
   },
   "cryogenics.helium_lambda_point": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.08
   },
   "cryogenics.ideal_gas_density": {
    "args": {
@@ -8047,7 +8047,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.088
   },
   "cryogenics.joule_thomson_cooling": {
    "args": {
@@ -8057,7 +8057,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.096
   },
   "cryogenics.liquefaction_yield": {
    "args": {
@@ -8069,7 +8069,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.09
   },
   "cryogenics.residual_resistivity_ratio": {
    "args": {
@@ -8079,7 +8079,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.079
+   "ms": 0.098
   },
   "cryogenics.superconductor_critical_temp_estimate": {
    "args": {
@@ -8090,7 +8090,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.083
   },
   "cryogenics.thermal_contraction": {
    "args": {
@@ -8101,7 +8101,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.091
   },
   "cryogenics.vacuum_insulation_heat_flux": {
    "args": {
@@ -8114,7 +8114,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.101
   },
   "cryology.active_layer_depth": {
    "args": {
@@ -8125,7 +8125,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.084
   },
   "cryology.freeze_thaw_cycles": {
    "args": {
@@ -8135,7 +8135,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.082
   },
   "cryology.ground_ice_content": {
    "args": {
@@ -8145,7 +8145,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.076
   },
   "cryology.ice_wedge_volume": {
    "args": {
@@ -8156,7 +8156,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.084
   },
   "cryology.permafrost_carbon_release": {
    "args": {
@@ -8167,7 +8167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.08
   },
   "cryology.permafrost_thickness": {
    "args": {
@@ -8177,7 +8177,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.091
   },
   "cryology.sea_ice_extent_anomaly": {
    "args": {
@@ -8187,7 +8187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.097
   },
   "cryology.snow_ice_albedo_feedback": {
    "args": {
@@ -8198,7 +8198,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.09
   },
   "cryology.thermal_conductivity_frozen": {
    "args": {
@@ -8209,7 +8209,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.091
   },
   "cryology.thermokarst_subsidence": {
    "args": {
@@ -8219,7 +8219,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.086
   },
   "cryptanalysis.avalanche_effect": {
    "args": {
@@ -8229,7 +8229,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.109
   },
   "cryptanalysis.brute_force_time_estimate": {
    "args": {
@@ -8239,7 +8239,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.093
   },
   "cryptanalysis.caesar_decrypt_score": {
    "args": {
@@ -8250,7 +8250,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.079
   },
   "cryptanalysis.entropy_bits_2": {
    "args": {
@@ -8260,7 +8260,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.088
   },
   "cryptanalysis.entropy_bits_4": {
    "args": {
@@ -8272,14 +8272,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.084
   },
   "cryptanalysis.expected_ic_english": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.086
   },
   "cryptanalysis.expected_ic_random": {
    "args": {
@@ -8288,7 +8288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.085
   },
   "cryptanalysis.frequency_score_2": {
    "args": {
@@ -8300,7 +8300,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.094
   },
   "cryptanalysis.friedman_key_length": {
    "args": {
@@ -8310,7 +8310,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.08
   },
   "cryptanalysis.hamming_distance_bytes": {
    "args": {
@@ -8320,7 +8320,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.073
   },
   "cryptanalysis.index_of_coincidence_2": {
    "args": {
@@ -8331,7 +8331,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.083
   },
   "cryptanalysis.kasiski_distance_gcd": {
    "args": {
@@ -8341,7 +8341,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.09
   },
   "currency.amortization_payment": {
    "args": {
@@ -8352,7 +8352,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.093
   },
   "currency.amortization_schedule": {
    "args": {
@@ -8363,7 +8363,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.116
   },
   "currency.compound_interest": {
    "args": {
@@ -8374,7 +8374,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.106
   },
   "currency.continuous_compound": {
    "args": {
@@ -8385,7 +8385,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.099
   },
   "currency.discount_factor": {
    "args": {
@@ -8395,7 +8395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.091
   },
   "currency.effective_annual_rate": {
    "args": {
@@ -8405,7 +8405,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.095
   },
   "currency.future_value_annuity": {
    "args": {
@@ -8416,7 +8416,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.099
   },
   "currency.loan_balance_after": {
    "args": {
@@ -8428,7 +8428,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.098
   },
   "currency.present_value": {
    "args": {
@@ -8439,7 +8439,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.075
   },
   "currency.present_value_annuity": {
    "args": {
@@ -8450,7 +8450,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.07
   },
   "currency.round_currency": {
    "args": {
@@ -8460,7 +8460,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.08
   },
   "currency.rule_of_72": {
    "args": {
@@ -8469,7 +8469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.07
   },
   "cytology.apoptosis_rate": {
    "args": {
@@ -8480,7 +8480,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.081
   },
   "cytology.cell_adhesion_strength": {
    "args": {
@@ -8490,7 +8490,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.083
   },
   "cytology.cell_doubling_time": {
    "args": {
@@ -8499,7 +8499,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.064
   },
   "cytology.cell_viability": {
    "args": {
@@ -8509,7 +8509,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.074
   },
   "cytology.cell_volume_sphere": {
    "args": {
@@ -8518,7 +8518,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.087
   },
   "cytology.membrane_permeability": {
    "args": {
@@ -8529,7 +8529,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.115
   },
   "cytology.mitotic_index": {
    "args": {
@@ -8539,7 +8539,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.077
   },
   "cytology.nuclear_cytoplasmic_ratio": {
    "args": {
@@ -8549,7 +8549,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.094
   },
   "cytology.osmotic_fragility": {
    "args": {
@@ -8559,7 +8559,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.103
   },
   "cytology.phagocytic_index": {
    "args": {
@@ -8569,7 +8569,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.076
   },
   "cytometry.absolute_count": {
    "args": {
@@ -8579,7 +8579,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.077
   },
   "cytometry.apoptosis_annexin_pi": {
    "args": {
@@ -8590,7 +8590,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.094
   },
   "cytometry.cell_cycle_g1_fraction": {
    "args": {
@@ -8601,7 +8601,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.108
   },
   "cytometry.coefficient_of_variation_peak": {
    "args": {
@@ -8611,7 +8611,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.09
   },
   "cytometry.compensation_spillover": {
    "args": {
@@ -8622,7 +8622,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.077
   },
   "cytometry.lymphocyte_subset_ratio": {
    "args": {
@@ -8632,7 +8632,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.069
   },
   "cytometry.median_fluorescence_intensity": {
    "args": {
@@ -8642,7 +8642,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.081
   },
   "cytometry.percent_positive_gate": {
    "args": {
@@ -8652,7 +8652,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.089
   },
   "cytometry.sensitivity_lod_cytometry": {
    "args": {
@@ -8663,7 +8663,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.095
   },
   "cytometry.staining_index": {
    "args": {
@@ -8674,7 +8674,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.092
   },
   "data.dataframe.df_from_columns": {
    "args": {
@@ -8706,7 +8706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.232
+   "ms": 0.168
   },
   "database.table_aggregate": {
    "args": {
@@ -8743,7 +8743,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.167
+   "ms": 0.159
   },
   "database.table_create": {
    "args": {
@@ -8754,12 +8754,12 @@
      "delta",
      "epsilon"
     ],
-    "n_rows": 3
+    "n_rows": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.112
   },
   "database.table_group_aggregate": {
    "args": {
@@ -8797,7 +8797,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.197
+   "ms": 0.137
   },
   "database.table_insert_row": {
    "args": {
@@ -8839,7 +8839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.189
+   "ms": 0.152
   },
   "database.table_join_inner": {
    "args": {
@@ -8903,7 +8903,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.201
+   "ms": 0.166
   },
   "database.table_row_count": {
    "args": {
@@ -8938,7 +8938,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.12
   },
   "database.table_select_column": {
    "args": {
@@ -8974,7 +8974,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.147
   },
   "database.table_sort_by": {
    "args": {
@@ -9011,7 +9011,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.153
   },
   "database.table_where": {
    "args": {
@@ -9049,7 +9049,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.133
   },
   "decision_analysis.decision_matrix_best": {
    "args": {
@@ -9081,7 +9081,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.121
   },
   "decision_analysis.expected_utility": {
    "args": {
@@ -9104,7 +9104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.092
   },
   "decision_analysis.expected_value": {
    "args": {
@@ -9126,7 +9126,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.095
   },
   "decision_analysis.hurwicz_criterion": {
    "args": {
@@ -9152,7 +9152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.092
   },
   "decision_analysis.laplace_criterion": {
    "args": {
@@ -9177,7 +9177,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.097
   },
   "decision_analysis.maximax": {
    "args": {
@@ -9202,7 +9202,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.11
   },
   "decision_analysis.maximin": {
    "args": {
@@ -9227,7 +9227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.094
   },
   "decision_analysis.minimax_regret": {
    "args": {
@@ -9252,7 +9252,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.11
   },
   "decision_analysis.sensitivity_range": {
    "args": {
@@ -9279,7 +9279,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.123
   },
   "decision_analysis.value_of_perfect_info": {
    "args": {
@@ -9311,21 +9311,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.117
   },
   "degradation_state.degradation_state_selftest": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.08
   },
   "degradation_state.degradation_state_version": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.075
   },
   "degradation_state.load_corrected_rate": {
    "args": {
@@ -9336,7 +9336,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.088
   },
   "degradation_state.pace_kalman_run": {
    "args": {
@@ -9355,11 +9355,11 @@
      5.0
     ],
     "flags": [
-     3,
      1,
-     4,
+     0,
      1,
-     5
+     1,
+     0
     ],
     "beta0_prior": 1.5,
     "beta1_prior": 1.5,
@@ -9371,7 +9371,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.138
+   "ms": 0.129
   },
   "degradation_state.pace_kalman_update": {
    "args": {
@@ -9393,7 +9393,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.108
   },
   "degradation_state.pace_offset_stderr": {
    "args": {
@@ -9410,7 +9410,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.101
   },
   "degradation_state.pace_predict": {
    "args": {
@@ -9428,7 +9428,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.117
   },
   "degradation_state.pace_reset_for_compound": {
    "args": {
@@ -9447,7 +9447,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.106
   },
   "degradation_state.pace_slope_stderr": {
    "args": {
@@ -9464,7 +9464,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.098
   },
   "degradation_state.pace_state_init": {
    "args": {
@@ -9476,7 +9476,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.1
   },
   "degradation_state.sample_is_usable": {
    "args": {
@@ -9485,7 +9485,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.079
   },
   "degradation_state.wear_clamp": {
    "args": {
@@ -9494,14 +9494,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.124
   },
   "degradation_state.wear_clamp_bounds": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.077
   },
   "dendrochronology.basal_area_increment": {
    "args": {
@@ -9511,7 +9511,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.085
   },
   "dendrochronology.crossdating_t_value": {
    "args": {
@@ -9521,7 +9521,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.082
   },
   "dendrochronology.expressed_population_signal": {
    "args": {
@@ -9531,7 +9531,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.081
   },
   "dendrochronology.first_order_autocorrelation": {
    "args": {
@@ -9543,7 +9543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.08
   },
   "dendrochronology.pointer_year_threshold": {
    "args": {
@@ -9554,7 +9554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.077
   },
   "dendrochronology.ring_width_index": {
    "args": {
@@ -9564,7 +9564,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.079
   },
   "dendrochronology.sensitivity_coefficient": {
    "args": {
@@ -9574,7 +9574,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.071
   },
   "dendrochronology.signal_free_mean": {
    "args": {
@@ -9584,7 +9584,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.077
   },
   "dendrochronology.standardise_negative_exp": {
    "args": {
@@ -9596,7 +9596,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.088
   },
   "dendrochronology.temperature_response": {
    "args": {
@@ -9609,7 +9609,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.086
   },
   "dendrology.cos_approx": {
    "args": {
@@ -9618,7 +9618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.086
   },
   "dendrology.crown_area": {
    "args": {
@@ -9628,7 +9628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.096
   },
   "dendrology.crown_competition_factor": {
    "args": {
@@ -9638,7 +9638,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.107
   },
   "dendrology.foliar_nitrogen_content": {
    "args": {
@@ -9648,7 +9648,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.077
   },
   "dendrology.heartwood_ratio": {
    "args": {
@@ -9658,7 +9658,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.096
   },
   "dendrology.leaf_biomass_allometric": {
    "args": {
@@ -9668,7 +9668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.093
   },
   "dendrology.root_biomass_allometric": {
    "args": {
@@ -9677,7 +9677,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.081
   },
   "dendrology.sapwood_area_from_dbh": {
    "args": {
@@ -9687,7 +9687,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.094
   },
   "dendrology.sin_approx": {
    "args": {
@@ -9696,7 +9696,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.082
   },
   "dendrology.stem_taper_percentage": {
    "args": {
@@ -9706,7 +9706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.082
   },
   "dendrology.tree_age_from_rings": {
    "args": {
@@ -9716,7 +9716,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.082
   },
   "dendrology.tree_height_from_hypsometer": {
    "args": {
@@ -9727,7 +9727,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.086
   },
   "dentistry.anesthesia_dose_mg": {
    "args": {
@@ -9738,7 +9738,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.084
   },
   "dentistry.attachment_loss": {
    "args": {
@@ -9748,7 +9748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.07
   },
   "dentistry.bone_loss_percentage": {
    "args": {
@@ -9758,7 +9758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.076
   },
   "dentistry.dmft_index": {
    "args": {
@@ -9769,7 +9769,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.073
   },
   "dentistry.dmft_prevalence": {
    "args": {
@@ -9779,7 +9779,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.076
   },
   "dentistry.fluoride_concentration_ppm": {
    "args": {
@@ -9789,7 +9789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.084
   },
   "dentistry.gingival_index": {
    "args": {
@@ -9799,7 +9799,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.068
   },
   "dentistry.max_anesthesia_dose": {
    "args": {
@@ -9809,7 +9809,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.061
   },
   "dentistry.plaque_index_score": {
    "args": {
@@ -9819,7 +9819,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.1
   },
   "dentistry.restoration_longevity_estimate": {
    "args": {
@@ -9829,7 +9829,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.098
   },
   "dentistry.tooth_surface_area_estimate": {
    "args": {
@@ -9839,7 +9839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.076
   },
   "dentistry.treatment_cost_estimate": {
    "args": {
@@ -9850,7 +9850,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.084
   },
   "dependency.find_conflicts": {
    "args": {
@@ -9875,7 +9875,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.098
   },
   "dependency.has_cycle": {
    "args": {
@@ -9901,7 +9901,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.106
   },
   "dependency.install_plan": {
    "args": {
@@ -9928,7 +9928,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.109
   },
   "dependency.is_compatible": {
    "args": {
@@ -9939,7 +9939,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.082
   },
   "dependency.resolve_order": {
    "args": {
@@ -9965,7 +9965,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.149
   },
   "dependency.reverse_deps": {
    "args": {
@@ -9991,7 +9991,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.128
   },
   "dependency.transitive_deps": {
    "args": {
@@ -10017,7 +10017,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.105
   },
   "differentiate.derivative_backward": {
    "args": {
@@ -10033,7 +10033,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.11
   },
   "differentiate.derivative_central": {
    "args": {
@@ -10049,7 +10049,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.107
   },
   "differentiate.derivative_forward": {
    "args": {
@@ -10065,7 +10065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.103
   },
   "differentiate.gradient": {
    "args": {
@@ -10087,7 +10087,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.112
   },
   "differentiate.poly_derivative_coeffs": {
    "args": {
@@ -10100,7 +10100,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.098
   },
   "differentiate.second_derivative": {
    "args": {
@@ -10116,7 +10116,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.111
   },
   "diffusion_models.alpha_from_beta": {
    "args": {
@@ -10126,7 +10126,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.09
   },
   "diffusion_models.cosine_beta_schedule": {
    "args": {
@@ -10137,7 +10137,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.083
   },
   "diffusion_models.ddim_step": {
    "args": {
@@ -10150,7 +10150,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.084
   },
   "diffusion_models.ddpm_posterior_variance": {
    "args": {
@@ -10161,7 +10161,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.089
   },
   "diffusion_models.ddpm_reverse_mean": {
    "args": {
@@ -10174,7 +10174,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.098
   },
   "diffusion_models.edm_preconditioning": {
    "args": {
@@ -10184,7 +10184,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.098
   },
   "diffusion_models.forward_diffusion_sample": {
    "args": {
@@ -10195,7 +10195,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.086
   },
   "diffusion_models.linear_beta_schedule": {
    "args": {
@@ -10207,7 +10207,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.084
   },
   "diffusion_models.noise_prediction_to_x0": {
    "args": {
@@ -10218,7 +10218,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.073
   },
   "diffusion_models.snr": {
    "args": {
@@ -10227,7 +10227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.066
   },
   "dimensionality.center_data": {
    "args": {
@@ -10252,7 +10252,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.14
   },
   "dimensionality.column_means": {
    "args": {
@@ -10277,7 +10277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.105
   },
   "dimensionality.covariance_matrix": {
    "args": {
@@ -10302,7 +10302,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.114
   },
   "dimensionality.deflate_matrix": {
    "args": {
@@ -10335,7 +10335,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.151
   },
   "dimensionality.eigenvalue_from_vector": {
    "args": {
@@ -10367,7 +10367,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.117
   },
   "dimensionality.pca": {
    "args": {
@@ -10393,7 +10393,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.15
   },
   "dimensionality.transform_pca": {
    "args": {
@@ -10497,7 +10497,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.702
+   "ms": 14.479
   },
   "dimensions.aggregation_valid": {
    "args": {
@@ -10507,7 +10507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.113
   },
   "dimensions.can_avg": {
    "args": {
@@ -10516,7 +10516,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.087
   },
   "dimensions.can_sum": {
    "args": {
@@ -10525,7 +10525,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.065
   },
   "dimensions.dimension_from_role": {
    "args": {
@@ -10534,7 +10534,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.083
   },
   "dimensions.dimension_name": {
    "args": {
@@ -10543,7 +10543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.075
   },
   "dimensions.infer_from_samples": {
    "args": {
@@ -10558,7 +10558,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.15
+   "ms": 0.098
   },
   "dimensions.propagate": {
    "args": {
@@ -10569,7 +10569,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.131
   },
   "dimensions.propagate_is_valid": {
    "args": {
@@ -10580,7 +10580,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.084
   },
   "dimensions.role_for_dimension": {
    "args": {
@@ -10589,7 +10589,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.091
   },
   "dimensions.validate_formula": {
    "args": {
@@ -10601,14 +10601,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.084
   },
   "discrete_event.contract.de_absent": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.126
   },
   "discrete_event.contract.de_agrees": {
    "args": {
@@ -10620,7 +10620,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.195
   },
   "discrete_event.contract.de_all_finite": {
    "args": {
@@ -10631,26 +10631,26 @@
      4.0,
      5.0
     ],
-    "n": 100
+    "n": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.165
   },
   "discrete_event.contract.de_ceilings": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.16
   },
   "discrete_event.contract.de_event_order": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.085
   },
   "discrete_event.contract.de_finite": {
    "args": {
@@ -10659,7 +10659,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.199
   },
   "discrete_event.contract.de_heap_levels": {
    "args": {
@@ -10668,7 +10668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.106
   },
   "discrete_event.contract.de_heap_work": {
    "args": {
@@ -10677,7 +10677,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.105
   },
   "discrete_event.contract.de_heap_work_fits": {
    "args": {
@@ -10686,7 +10686,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.079
   },
   "discrete_event.contract.de_nondecreasing": {
    "args": {
@@ -10697,12 +10697,12 @@
      4.0,
      5.0
     ],
-    "n": 100
+    "n": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.097
   },
   "discrete_event.contract.de_product3_fits": {
    "args": {
@@ -10714,7 +10714,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.084
   },
   "discrete_event.contract.de_product_fits": {
    "args": {
@@ -10725,14 +10725,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.073
   },
   "discrete_event.contract.de_rng_version": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.077
   },
   "discrete_event.contract.de_scaled_tol": {
    "args": {
@@ -10742,7 +10742,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.104
   },
   "discrete_event.contract.de_scaled_tol_additions": {
    "args": {
@@ -10753,7 +10753,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.085
   },
   "discrete_event.contract.de_status_name": {
    "args": {
@@ -10762,21 +10762,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.153
   },
   "discrete_event.contract.de_stream_arrival": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.142
   },
   "discrete_event.contract.de_stream_service": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.081
   },
   "discrete_event.queue_sim.qs_arrival_times": {
    "args": {
@@ -10788,7 +10788,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.171
+   "ms": 0.191
   },
   "discrete_event.queue_sim.qs_closed_form_flat": {
    "args": {
@@ -10799,7 +10799,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.134
   },
   "discrete_event.queue_sim.qs_interarrivals": {
    "args": {
@@ -10811,7 +10811,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.168
   },
   "discrete_event.queue_sim.qs_run_flat": {
    "args": {
@@ -10826,7 +10826,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.185
+   "ms": 0.221
   },
   "discrete_event.queue_sim.qs_service_times": {
    "args": {
@@ -10838,27 +10838,24 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.31
   },
   "discrete_event.replicate.replicate_ci_flat": {
    "args": {
     "estimates": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
-    "n_reps": 2,
-    "level": 0.5
+    "n_reps": 5,
+    "level": 0.95
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.263
+   "source": "rules",
+   "ms": 0.369
   },
   "discrete_event.replicate.replicate_mm1_flat": {
    "args": {
@@ -10874,48 +10871,39 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 6.043
+   "ms": 5.843
   },
   "discrete_event.resource.resource_serve_flat": {
    "args": {
     "arrival": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "service": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "priority": [
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2,
-     2
+     3,
+     1,
+     4,
+     1,
+     5
     ],
-    "n_jobs": 2,
-    "capacity": 2,
-    "warmup_jobs": 2
+    "n_jobs": 5,
+    "capacity": 16,
+    "warmup_jobs": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.107
+   "source": "rules",
+   "ms": 0.241
   },
   "discrete_event.resource.resource_work_charge": {
    "args": {
@@ -10924,27 +10912,24 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.129
   },
   "discrete_event.warmup.warmup_bias_audit": {
    "args": {
     "obs": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
-    "n_obs": 2,
-    "n_discard": 2
+    "n_obs": 5,
+    "n_discard": 5
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.082
+   "source": "rules",
+   "ms": 0.16
   },
   "discrete_event.warmup.warmup_mser_flat": {
    "args": {
@@ -10955,13 +10940,13 @@
      4.0,
      5.0
     ],
-    "n_obs": 100,
+    "n_obs": 5,
     "batch_size": 4
    },
    "verified": false,
-   "outcome": "count_exceeds_list_length",
+   "outcome": "too_few_observations",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.155
   },
   "distillation.actual_reflux": {
    "args": {
@@ -10971,7 +10956,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.146
   },
   "distillation.boiling_point_elevation": {
    "args": {
@@ -10981,7 +10966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.134
   },
   "distillation.daltons_law_total_pressure": {
    "args": {
@@ -10991,7 +10976,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.182
   },
   "distillation.fenske_min_stages": {
    "args": {
@@ -11002,7 +10987,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.12
   },
   "distillation.gilliland_stages": {
    "args": {
@@ -11013,7 +10998,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.121
   },
   "distillation.heat_duty_condenser": {
    "args": {
@@ -11023,7 +11008,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.106
   },
   "distillation.mccabe_thiele_operating_line_enriching": {
    "args": {
@@ -11034,7 +11019,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.102
   },
   "distillation.mccabe_thiele_operating_line_stripping": {
    "args": {
@@ -11047,7 +11032,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.104
   },
   "distillation.min_reflux_underwood": {
    "args": {
@@ -11069,7 +11054,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.089
   },
   "distillation.relative_volatility": {
    "args": {
@@ -11079,7 +11064,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.095
   },
   "distillation.stage_efficiency": {
    "args": {
@@ -11090,7 +11075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.088
   },
   "distributed_collectives.all_gather_offset": {
    "args": {
@@ -11100,7 +11085,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.085
   },
   "distributed_collectives.allreduce_tree_step_count": {
    "args": {
@@ -11109,7 +11094,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.075
   },
   "distributed_collectives.broadcast_scale": {
    "args": {
@@ -11118,7 +11103,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.065
   },
   "distributed_collectives.collective_latency_alpha_beta": {
    "args": {
@@ -11130,7 +11115,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.072
   },
   "distributed_collectives.expert_dispatch_volume": {
    "args": {
@@ -11141,7 +11126,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.071
   },
   "distributed_collectives.gradient_compression_ratio": {
    "args": {
@@ -11151,7 +11136,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.071
   },
   "distributed_collectives.overlap_compute_comm_ratio": {
    "args": {
@@ -11161,7 +11146,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.092
   },
   "distributed_collectives.peer_bandwidth_utilization": {
    "args": {
@@ -11172,7 +11157,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.11
   },
   "distributed_collectives.reduce_scatter_element": {
    "args": {
@@ -11182,7 +11167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.084
   },
   "distributed_collectives.ring_allreduce_step": {
    "args": {
@@ -11193,7 +11178,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.089
   },
   "document_layout.column_boxes_flat": {
    "args": {
@@ -11212,7 +11197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.132
   },
   "document_layout.column_count_flat": {
    "args": {
@@ -11231,7 +11216,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.12
   },
   "document_layout.line_count_flat": {
    "args": {
@@ -11250,7 +11235,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.121
   },
   "document_layout.multi_column_score_flat": {
    "args": {
@@ -11268,7 +11253,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.102
   },
   "document_layout.table_like_score_flat": {
    "args": {
@@ -11286,7 +11271,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.101
   },
   "document_layout.text_density_grid_flat": {
    "args": {
@@ -11306,7 +11291,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.107
   },
   "document_layout.text_line_boxes_flat": {
    "args": {
@@ -11325,7 +11310,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.131
   },
   "dosimetry.absorbed_dose": {
    "args": {
@@ -11335,7 +11320,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.105
   },
   "dosimetry.activity_decay": {
    "args": {
@@ -11346,7 +11331,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.077
   },
   "dosimetry.buildup_factor": {
    "args": {
@@ -11357,7 +11342,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.071
   },
   "dosimetry.dose_rate": {
    "args": {
@@ -11368,7 +11353,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.086
   },
   "dosimetry.effective_dose": {
    "args": {
@@ -11378,7 +11363,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.09
   },
   "dosimetry.equivalent_dose": {
    "args": {
@@ -11388,7 +11373,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.087
   },
   "dosimetry.kerma": {
    "args": {
@@ -11398,7 +11383,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.076
   },
   "dosimetry.radiation_weighting": {
    "args": {
@@ -11407,7 +11392,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.082
   },
   "dosimetry.specific_activity": {
    "args": {
@@ -11417,7 +11402,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.092
   },
   "dosimetry.tenth_value_layer": {
    "args": {
@@ -11426,7 +11411,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.108
   },
   "drones.advance_ratio": {
    "args": {
@@ -11437,7 +11422,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.104
   },
   "drones.battery_energy_density": {
    "args": {
@@ -11447,7 +11432,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.081
   },
   "drones.communication_range_los": {
    "args": {
@@ -11457,7 +11442,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.092
   },
   "drones.disk_loading": {
    "args": {
@@ -11467,7 +11452,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.076
   },
   "drones.endurance_factor": {
    "args": {
@@ -11479,7 +11464,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.081
   },
   "drones.flight_time_minutes": {
    "args": {
@@ -11489,7 +11474,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.089
   },
   "drones.gsd_from_altitude": {
    "args": {
@@ -11501,7 +11486,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.097
   },
   "drones.hover_power": {
    "args": {
@@ -11512,7 +11497,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.091
   },
   "drones.max_range": {
    "args": {
@@ -11522,7 +11507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.074
   },
   "drones.payload_capacity": {
    "args": {
@@ -11533,7 +11518,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.102
   },
   "drones.propeller_tip_speed": {
    "args": {
@@ -11543,7 +11528,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.092
   },
   "drones.thrust_to_weight_ratio": {
    "args": {
@@ -11553,7 +11538,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.091
   },
   "earth.bearing": {
    "args": {
@@ -11565,7 +11550,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.11
   },
   "earth.bounding_box": {
    "args": {
@@ -11576,7 +11561,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.091
   },
   "earth.cross_track_distance": {
    "args": {
@@ -11590,7 +11575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.16
   },
   "earth.deg_to_rad": {
    "args": {
@@ -11599,7 +11584,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.107
   },
   "earth.destination_point": {
    "args": {
@@ -11611,7 +11596,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.107
   },
   "earth.distance_on_unit_sphere": {
    "args": {
@@ -11623,7 +11608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.094
   },
   "earth.haversine": {
    "args": {
@@ -11635,7 +11620,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.085
   },
   "earth.is_valid_coordinate": {
    "args": {
@@ -11645,7 +11630,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.092
   },
   "earth.midpoint": {
    "args": {
@@ -11657,7 +11642,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.079
   },
   "earth.rad_to_deg": {
    "args": {
@@ -11666,7 +11651,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.066
   },
   "ecohydrology.catchment_runoff_ratio": {
    "args": {
@@ -11676,7 +11661,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.075
   },
   "ecohydrology.ecohydrological_stress": {
    "args": {
@@ -11687,7 +11672,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.083
   },
   "ecohydrology.flood_pulse_benefit": {
    "args": {
@@ -11698,7 +11683,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.086
   },
   "ecohydrology.interception_loss": {
    "args": {
@@ -11709,7 +11694,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.084
   },
   "ecohydrology.riparian_buffer_efficiency": {
    "args": {
@@ -11720,7 +11705,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.085
   },
   "ecohydrology.root_water_uptake": {
    "args": {
@@ -11732,7 +11717,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.095
   },
   "ecohydrology.streamflow_baseflow_index": {
    "args": {
@@ -11742,7 +11727,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.118
   },
   "ecohydrology.transpiration_priestley_taylor": {
    "args": {
@@ -11754,7 +11739,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.077
   },
   "ecohydrology.water_table_depth_et": {
    "args": {
@@ -11765,7 +11750,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.082
   },
   "ecohydrology.wetland_retention_time": {
    "args": {
@@ -11775,7 +11760,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.083
   },
   "ecology.carrying_capacity_estimate": {
    "args": {
@@ -11787,7 +11772,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.133
   },
   "ecology.exponential_growth": {
    "args": {
@@ -11798,7 +11783,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.134
   },
   "ecology.jaccard_similarity": {
    "args": {
@@ -11809,7 +11794,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.092
   },
   "ecology.logistic_growth": {
    "args": {
@@ -11820,7 +11805,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.078
   },
   "ecology.lotka_volterra_predator": {
    "args": {
@@ -11832,7 +11817,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.132
   },
   "ecology.lotka_volterra_prey": {
    "args": {
@@ -11844,7 +11829,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.096
   },
   "ecology.shannon_diversity": {
    "args": {
@@ -11853,7 +11838,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.065
   },
   "ecology.simpson_diversity": {
    "args": {
@@ -11862,7 +11847,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.074
   },
   "ecology.simpson_index": {
    "args": {
@@ -11871,7 +11856,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.092
   },
   "ecology.sorensen_similarity": {
    "args": {
@@ -11882,7 +11867,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.109
   },
   "ecology.species_area_relationship": {
    "args": {
@@ -11893,7 +11878,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.088
   },
   "ecology.species_richness_margalef": {
    "args": {
@@ -11903,7 +11888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.073
   },
   "economic_indicators.fisher_equation": {
    "args": {
@@ -11913,7 +11898,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.084
   },
   "economic_indicators.gdp_growth": {
    "args": {
@@ -11923,7 +11908,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.068
   },
   "economic_indicators.gdp_per_capita": {
    "args": {
@@ -11933,7 +11918,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.076
   },
   "economic_indicators.gini_coefficient": {
    "args": {
@@ -11948,7 +11933,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.124
   },
   "economic_indicators.inflation_rate": {
    "args": {
@@ -11958,7 +11943,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.134
   },
   "economic_indicators.okuns_law": {
    "args": {
@@ -11968,7 +11953,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.095
   },
   "economic_indicators.phillips_curve": {
    "args": {
@@ -11979,7 +11964,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.085
   },
   "economic_indicators.purchasing_power_parity": {
    "args": {
@@ -11989,7 +11974,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.092
   },
   "economic_indicators.real_gdp": {
    "args": {
@@ -11999,7 +11984,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.096
   },
   "economic_indicators.trade_balance": {
    "args": {
@@ -12009,7 +11994,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.1
   },
   "economic_indicators.unemployment_rate": {
    "args": {
@@ -12019,7 +12004,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.073
   },
   "economic_indicators.velocity_of_money": {
    "args": {
@@ -12029,7 +12014,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.101
   },
   "ecophysiology.aerobic_scope": {
    "args": {
@@ -12039,7 +12024,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.091
   },
   "ecophysiology.evaporative_water_loss": {
    "args": {
@@ -12050,7 +12035,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.089
   },
   "ecophysiology.field_metabolic_rate": {
    "args": {
@@ -12061,7 +12046,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.103
   },
   "ecophysiology.heart_rate_fick": {
    "args": {
@@ -12072,7 +12057,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.121
   },
   "ecophysiology.hypoxia_tolerance": {
    "args": {
@@ -12082,7 +12067,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.106
   },
   "ecophysiology.metabolic_rate_kleiber": {
    "args": {
@@ -12091,7 +12076,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.091
   },
   "ecophysiology.osmoregulation_cost": {
    "args": {
@@ -12102,7 +12087,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.1
   },
   "ecophysiology.oxygen_consumption_rate": {
    "args": {
@@ -12113,7 +12098,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.101
   },
   "ecophysiology.q10_temperature_coefficient": {
    "args": {
@@ -12125,7 +12110,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.125
   },
   "ecophysiology.thermal_conductance": {
    "args": {
@@ -12136,7 +12121,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.106
   },
   "election.approval_voting": {
    "args": {
@@ -12162,7 +12147,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.136
   },
   "election.borda_count": {
    "args": {
@@ -12188,7 +12173,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.156
+   "ms": 0.172
   },
   "election.borda_winner": {
    "args": {
@@ -12214,7 +12199,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.103
   },
   "election.condorcet_winner": {
    "args": {
@@ -12240,7 +12225,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.204
   },
   "election.copeland_scores": {
    "args": {
@@ -12266,7 +12251,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.518
+   "ms": 0.733
   },
   "election.instant_runoff": {
    "args": {
@@ -12292,7 +12277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.135
   },
   "election.pairwise_matrix": {
    "args": {
@@ -12318,7 +12303,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 2.802
+   "ms": 3.078
   },
   "election.plurality": {
    "args": {
@@ -12344,7 +12329,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.144
   },
   "electrical.capacitive_reactance": {
    "args": {
@@ -12354,7 +12339,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.121
   },
   "electrical.impedance_magnitude": {
    "args": {
@@ -12364,7 +12349,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.087
   },
   "electrical.inductive_reactance": {
    "args": {
@@ -12374,7 +12359,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.069
   },
   "electrical.ohms_law_i": {
    "args": {
@@ -12384,7 +12369,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.072
   },
   "electrical.ohms_law_r": {
    "args": {
@@ -12394,7 +12379,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.072
   },
   "electrical.ohms_law_v": {
    "args": {
@@ -12404,7 +12389,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.067
   },
   "electrical.parallel_resistance": {
    "args": {
@@ -12419,7 +12404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.079
   },
   "electrical.power_dc": {
    "args": {
@@ -12429,7 +12414,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.088
   },
   "electrical.power_factor": {
    "args": {
@@ -12439,7 +12424,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.084
   },
   "electrical.rc_time_constant": {
    "args": {
@@ -12449,7 +12434,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.066
   },
   "electrical.rc_voltage": {
    "args": {
@@ -12461,7 +12446,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.07
   },
   "electrical.rlc_resonance": {
    "args": {
@@ -12471,7 +12456,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.063
   },
   "electrical.series_resistance": {
    "args": {
@@ -12486,7 +12471,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.073
   },
   "electrical.voltage_divider": {
    "args": {
@@ -12497,7 +12482,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.073
   },
   "electrochemistry.battery_capacity": {
    "args": {
@@ -12507,7 +12492,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.074
   },
   "electrochemistry.charge_transfer_resistance": {
    "args": {
@@ -12518,7 +12503,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.065
   },
   "electrochemistry.corrosion_rate": {
    "args": {
@@ -12530,7 +12515,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.067
   },
   "electrochemistry.coulombic_efficiency": {
    "args": {
@@ -12540,7 +12525,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.057
   },
   "electrochemistry.diffusion_limiting_current": {
    "args": {
@@ -12552,7 +12537,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.058
   },
   "electrochemistry.energy_density": {
    "args": {
@@ -12563,7 +12548,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.062
   },
   "electrochemistry.exchange_current_density": {
    "args": {
@@ -12575,7 +12560,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.068
   },
   "electrochemistry.faraday_mass_deposited": {
    "args": {
@@ -12587,7 +12572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.067
   },
   "electrochemistry.nernst_cell_potential": {
    "args": {
@@ -12599,7 +12584,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.067
   },
   "electrochemistry.tafel_slope": {
    "args": {
@@ -12610,7 +12595,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.064
   },
   "electrostatics.breakdown_voltage": {
    "args": {
@@ -12620,7 +12605,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.072
   },
   "electrostatics.capacitance_parallel_plate": {
    "args": {
@@ -12631,7 +12616,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.076
   },
   "electrostatics.coulomb_force": {
    "args": {
@@ -12642,7 +12627,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.064
   },
   "electrostatics.dielectric_polarization": {
    "args": {
@@ -12652,7 +12637,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.064
   },
   "electrostatics.electric_field_point": {
    "args": {
@@ -12662,7 +12647,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.103
   },
   "electrostatics.electric_flux": {
    "args": {
@@ -12673,7 +12658,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.113
   },
   "electrostatics.electric_potential": {
    "args": {
@@ -12683,7 +12668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.092
   },
   "electrostatics.energy_stored_capacitor": {
    "args": {
@@ -12693,7 +12678,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.093
   },
   "electrostatics.image_charge_force": {
    "args": {
@@ -12703,7 +12688,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.091
   },
   "electrostatics.surface_charge_density": {
    "args": {
@@ -12725,7 +12710,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.09
   },
   "elevator.counterweight_mass": {
    "args": {
@@ -12736,7 +12721,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.083
   },
   "elevator.handling_capacity": {
    "args": {
@@ -12746,7 +12731,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.076
   },
   "elevator.interval_time": {
    "args": {
@@ -12756,7 +12741,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.082
   },
   "elevator.motor_power": {
    "args": {
@@ -12768,7 +12753,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.092
   },
   "elevator.pit_depth_requirement": {
    "args": {
@@ -12777,7 +12762,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.102
   },
   "elevator.probable_stops": {
    "args": {
@@ -12787,7 +12772,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.093
   },
   "elevator.rope_factor_of_safety": {
    "args": {
@@ -12797,7 +12782,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.112
   },
   "elevator.round_trip_time": {
    "args": {
@@ -12811,7 +12796,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.085
   },
   "elevator.shaft_area": {
    "args": {
@@ -12822,7 +12807,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.074
   },
   "elevator.traffic_intensity": {
    "args": {
@@ -12832,7 +12817,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.073
   },
   "elevator.waiting_time_average": {
    "args": {
@@ -12841,7 +12826,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.089
   },
   "encoding.binary_encode": {
    "args": {
@@ -12851,7 +12836,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.104
   },
   "encoding.build_vocabulary": {
    "args": {
@@ -12866,7 +12851,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.115
   },
   "encoding.frequency_encode": {
    "args": {
@@ -12881,7 +12866,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.082
   },
   "encoding.label_decode": {
    "args": {
@@ -12903,7 +12888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.099
   },
   "encoding.label_encode": {
    "args": {
@@ -12918,7 +12903,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.08
   },
   "encoding.one_hot_encode": {
    "args": {
@@ -12929,12 +12914,12 @@
      1,
      0
     ],
-    "n_classes": 100
+    "n_classes": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.225
+   "ms": 0.094
   },
   "encoding.ordinal_encode": {
    "args": {
@@ -12956,7 +12941,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.084
   },
   "encryption_modes.aead_overhead": {
    "args": {
@@ -12966,14 +12951,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.093
   },
   "encryption_modes.cbc_iv_required": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.027
+   "ms": 0.063
   },
   "encryption_modes.ciphertext_length_cbc": {
    "args": {
@@ -12983,7 +12968,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.068
   },
   "encryption_modes.ciphertext_length_gcm": {
    "args": {
@@ -12993,7 +12978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.063
   },
   "encryption_modes.ctr_nonce_size": {
    "args": {
@@ -13002,7 +12987,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.06
   },
   "encryption_modes.ecb_block_count": {
    "args": {
@@ -13012,14 +12997,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.065
   },
   "encryption_modes.gcm_tag_length_default": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.061
   },
   "encryption_modes.key_schedule_rounds_aes": {
    "args": {
@@ -13028,7 +13013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.063
   },
   "encryption_modes.padding_pkcs7_bytes": {
    "args": {
@@ -13038,7 +13023,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.063
   },
   "encryption_modes.parallel_blocks_ctr": {
    "args": {
@@ -13048,7 +13033,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.027
+   "ms": 0.063
   },
   "encryption_modes.security_margin_bits": {
    "args": {
@@ -13058,7 +13043,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.027
+   "ms": 0.062
   },
   "encryption_modes.throughput_estimate": {
    "args": {
@@ -13068,7 +13053,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.069
   }
  }
 }

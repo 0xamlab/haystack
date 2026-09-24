@@ -1,6 +1,6 @@
 {
  "family": "tensors",
- "generated_utc": "2026-09-24T02:25:03Z",
+ "generated_utc": "2026-09-24T03:23:47Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -20,14 +20,14 @@
      4.0,
      5.0
     ],
-    "n": 100,
+    "n": 5,
     "max_sweeps": 10,
     "tol": 1e-06
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 12.501
+   "ms": 19.764
   },
   "eigen_full.svd_via_eigh": {
    "args": {
@@ -36,7 +36,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "rows": 3,
     "cols": 3,
@@ -46,7 +50,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.319
   },
   "gpu_kernels.arithmetic_intensity": {
    "args": {
@@ -56,7 +60,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.213
   },
   "gpu_kernels.flash_attention_hbm_reads": {
    "args": {
@@ -68,7 +72,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.17
   },
   "gpu_kernels.kernel_launch_overhead_ratio": {
    "args": {
@@ -78,7 +82,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.221
   },
   "gpu_kernels.memory_coalescing_efficiency": {
    "args": {
@@ -88,7 +92,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.15
   },
   "gpu_kernels.register_pressure": {
    "args": {
@@ -98,7 +102,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.243
   },
   "gpu_kernels.roofline_performance": {
    "args": {
@@ -109,7 +113,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.173
   },
   "gpu_kernels.stream_multiprocessor_util": {
    "args": {
@@ -119,7 +123,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.226
   },
   "gpu_kernels.tensor_core_flops": {
    "args": {
@@ -132,7 +136,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.19
   },
   "gpu_kernels.tile_size_for_smem": {
    "args": {
@@ -143,7 +147,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.148
   },
   "gpu_kernels.warp_occupancy": {
    "args": {
@@ -153,7 +157,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.121
   },
   "linalg.mat_add": {
    "args": {
@@ -181,7 +185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.309
+   "ms": 12.3
   },
   "linalg.mat_det": {
    "args": {
@@ -199,7 +203,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.279
+   "ms": 25.744
   },
   "linalg.mat_eigenvalues_2x2": {
    "args": {
@@ -218,7 +222,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.173
+   "ms": 0.324
   },
   "linalg.mat_from_list": {
    "args": {
@@ -227,7 +231,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "rows": 3,
     "cols": 3
@@ -235,7 +243,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.314
   },
   "linalg.mat_identity": {
    "args": {
@@ -244,7 +252,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 3.358
+   "ms": 5.413
   },
   "linalg.mat_inv": {
    "args": {
@@ -262,7 +270,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.678
+   "ms": 15.649
   },
   "linalg.mat_lu": {
    "args": {
@@ -280,7 +288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 12.37
+   "ms": 31.471
   },
   "linalg.mat_mul": {
    "args": {
@@ -308,7 +316,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.616
+   "ms": 21.933
   },
   "linalg.mat_scale": {
    "args": {
@@ -327,7 +335,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.167
+   "ms": 11.028
   },
   "linalg.mat_solve": {
    "args": {
@@ -353,7 +361,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.164
   },
   "linalg.mat_sub": {
    "args": {
@@ -381,7 +389,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 12.969
+   "ms": 13.68
   },
   "linalg.mat_transpose": {
    "args": {
@@ -399,7 +407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 9.651
+   "ms": 11.535
   },
   "linalg.mat_zeros": {
    "args": {
@@ -409,7 +417,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.139
   },
   "linalg.vec_cross": {
    "args": {
@@ -431,7 +439,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.142
   },
   "linalg.vec_dot": {
    "args": {
@@ -453,7 +461,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.111
   },
   "linalg.vec_norm": {
    "args": {
@@ -468,7 +476,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.094
   },
   "linalg_ext.mat_condition_number": {
    "args": {
@@ -486,7 +494,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.331
+   "ms": 14.112
   },
   "linalg_ext.mat_is_positive_definite": {
    "args": {
@@ -505,7 +513,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.174
   },
   "linalg_ext.mat_is_symmetric": {
    "args": {
@@ -525,7 +533,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.159
   },
   "linalg_ext.mat_norm_frobenius": {
    "args": {
@@ -543,7 +551,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.03
+   "ms": 12.592
   },
   "linalg_ext.mat_norm_inf": {
    "args": {
@@ -561,7 +569,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.541
+   "ms": 13.012
   },
   "linalg_ext.mat_power_iteration": {
    "args": {
@@ -580,7 +588,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 13.529
+   "ms": 14.271
   },
   "linalg_ext.mat_qr": {
    "args": {
@@ -598,7 +606,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.656
+   "ms": 11.713
   },
   "linalg_ext.mat_trace": {
    "args": {
@@ -616,7 +624,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 13.717
+   "ms": 13.044
   },
   "matrix_decomp.back_substitution": {
    "args": {
@@ -648,7 +656,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.187
+   "ms": 0.199
   },
   "matrix_decomp.cholesky": {
    "args": {
@@ -673,7 +681,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.168
+   "ms": 0.152
   },
   "matrix_decomp.det_2x2": {
    "args": {
@@ -698,7 +706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.115
   },
   "matrix_decomp.det_3x3": {
    "args": {
@@ -723,7 +731,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.108
   },
   "matrix_decomp.eigen_2x2": {
    "args": {
@@ -748,7 +756,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.194
+   "ms": 0.129
   },
   "matrix_decomp.forward_substitution": {
    "args": {
@@ -780,7 +788,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.15
+   "ms": 0.136
   },
   "matrix_decomp.is_positive_definite": {
    "args": {
@@ -805,7 +813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.164
+   "ms": 0.108
   },
   "matrix_decomp.is_symmetric": {
    "args": {
@@ -831,7 +839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.174
+   "ms": 0.107
   },
   "matrix_decomp.solve_lu": {
    "args": {
@@ -863,7 +871,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.186
+   "ms": 0.111
   },
   "matrix_ops.commutator": {
    "args": {
@@ -905,7 +913,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.143
   },
   "matrix_ops.gram_schmidt": {
    "args": {
@@ -930,7 +938,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.106
   },
   "matrix_ops.hadamard_product": {
    "args": {
@@ -972,7 +980,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.169
+   "ms": 0.128
   },
   "matrix_ops.is_orthogonal": {
    "args": {
@@ -998,7 +1006,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.1
   },
   "matrix_ops.kronecker_product": {
    "args": {
@@ -1040,7 +1048,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.201
+   "ms": 0.166
   },
   "matrix_ops.matrix_exp_approx": {
    "args": {
@@ -1066,7 +1074,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.132
   },
   "matrix_ops.matrix_norm_1": {
    "args": {
@@ -1091,7 +1099,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.094
   },
   "matrix_ops.matrix_norm_inf": {
    "args": {
@@ -1116,7 +1124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.103
   },
   "matrix_ops.matrix_power": {
    "args": {
@@ -1142,7 +1150,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.119
   },
   "matrix_ops.outer_product": {
    "args": {
@@ -1164,7 +1172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.125
   },
   "matrix_ops.unvec": {
    "args": {
@@ -1185,7 +1193,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.119
   },
   "matrix_ops.vec": {
    "args": {
@@ -1210,7 +1218,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.112
   },
   "tensor.add": {
    "args": {
@@ -1238,7 +1246,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.235
+   "ms": 0.162
   },
   "tensor.allclose": {
    "args": {
@@ -1267,7 +1275,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.29
+   "ms": 0.176
   },
   "tensor.apply_fn": {
    "args": {
@@ -1286,7 +1294,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.138
+   "ms": 0.214
   },
   "tensor.arange": {
    "args": {
@@ -1297,7 +1305,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.177
   },
   "tensor.argmax": {
    "args": {
@@ -1315,7 +1323,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.139
   },
   "tensor.argmin": {
    "args": {
@@ -1333,7 +1341,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.15
   },
   "tensor.clip": {
    "args": {
@@ -1353,7 +1361,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.14
   },
   "tensor.concat": {
    "args": {
@@ -1381,7 +1389,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.127
   },
   "tensor.count_nonzero": {
    "args": {
@@ -1399,7 +1407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.1
   },
   "tensor.div_t": {
    "args": {
@@ -1427,7 +1435,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.128
   },
   "tensor.dot": {
    "args": {
@@ -1455,7 +1463,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.125
   },
   "tensor.equal": {
    "args": {
@@ -1483,7 +1491,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.118
   },
   "tensor.full": {
    "args": {
@@ -1493,7 +1501,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.175
+   "ms": 0.155
   },
   "tensor.linspace": {
    "args": {
@@ -1504,7 +1512,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.203
+   "ms": 0.196
   },
   "tensor.max_t": {
    "args": {
@@ -1522,7 +1530,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.132
   },
   "tensor.mean_t": {
    "args": {
@@ -1540,7 +1548,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.115
   },
   "tensor.min_t": {
    "args": {
@@ -1558,7 +1566,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.095
   },
   "tensor.mul": {
    "args": {
@@ -1586,7 +1594,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.12
   },
   "tensor.neg": {
    "args": {
@@ -1604,7 +1612,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.11
   },
   "tensor.norm": {
    "args": {
@@ -1622,7 +1630,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.097
   },
   "tensor.ones": {
    "args": {
@@ -1631,7 +1639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.138
   },
   "tensor.prod_t": {
    "args": {
@@ -1667,7 +1675,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.1
   },
   "tensor.scale": {
    "args": {
@@ -1686,7 +1694,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.092
   },
   "tensor.slice_t": {
    "args": {
@@ -1706,7 +1714,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.113
   },
   "tensor.sub": {
    "args": {
@@ -1734,7 +1742,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.113
   },
   "tensor.sum_t": {
    "args": {
@@ -1752,7 +1760,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.09
   },
   "tensor.where_gt": {
    "args": {
@@ -1771,7 +1779,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.108
   },
   "tensor.zeros": {
    "args": {
@@ -1780,7 +1788,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.101
   },
   "tensor2d.m2_add": {
    "args": {
@@ -1810,7 +1818,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.128
   },
   "tensor2d.m2_col": {
    "args": {
@@ -1829,7 +1837,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.285
+   "ms": 11.913
   },
   "tensor2d.m2_from_list": {
    "args": {
@@ -1838,7 +1846,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "rows": 3,
     "cols": 3
@@ -1846,7 +1858,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.157
   },
   "tensor2d.m2_get": {
    "args": {
@@ -1867,7 +1879,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.138
   },
   "tensor2d.m2_matmul": {
    "args": {
@@ -1895,7 +1907,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 20.264
+   "ms": 13.087
   },
   "tensor2d.m2_matvec": {
    "args": {
@@ -1921,7 +1933,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.163
+   "ms": 0.172
   },
   "tensor2d.m2_row": {
    "args": {
@@ -1941,7 +1953,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.153
   },
   "tensor2d.m2_scale": {
    "args": {
@@ -1961,7 +1973,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.156
   },
   "tensor2d.m2_set": {
    "args": {
@@ -1983,7 +1995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.159
   },
   "tensor2d.m2_transpose": {
    "args": {
@@ -2001,7 +2013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 11.951
+   "ms": 16.829
   },
   "tensor2d.m2_zeros": {
    "args": {
@@ -2011,7 +2023,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.334
   },
   "tensor_ops.broadcast_index": {
    "args": {
@@ -2021,7 +2033,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.183
   },
   "tensor_ops.flatten_index": {
    "args": {
@@ -2032,7 +2044,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.149
   },
   "tensor_ops.matmul_element": {
    "args": {
@@ -2042,7 +2054,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.158
   },
   "tensor_ops.outer_product_element": {
    "args": {
@@ -2052,7 +2064,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.135
   },
   "tensor_ops.softmax_stable_element": {
    "args": {
@@ -2063,7 +2075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.238
   },
   "tensor_ops.stride_from_shape": {
    "args": {
@@ -2073,7 +2085,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.122
   },
   "tensor_ops.tensor_dot_contribution": {
    "args": {
@@ -2084,7 +2096,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.176
   },
   "tensor_ops.tensor_norm_contribution": {
    "args": {
@@ -2093,7 +2105,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.249
   },
   "tensor_ops.transpose_index": {
    "args": {
@@ -2104,7 +2116,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.253
   },
   "tensor_ops.unflatten_index_dim": {
    "args": {
@@ -2115,7 +2127,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.431
   },
   "time_series_decompose.decompose_additive": {
    "args": {
@@ -2131,7 +2143,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.376
   },
   "time_series_decompose.detect_period": {
    "args": {
@@ -2147,7 +2159,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.198
   },
   "time_series_decompose.detrend": {
    "args": {
@@ -2169,7 +2181,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.156
   },
   "time_series_decompose.moving_average_trend": {
    "args": {
@@ -2185,7 +2197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.198
   },
   "time_series_decompose.residual": {
    "args": {
@@ -2214,7 +2226,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.196
   },
   "time_series_decompose.seasonal_component": {
    "args": {
@@ -2230,7 +2242,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.183
   },
   "time_series_decompose.seasonal_strength": {
    "args": {
@@ -2252,7 +2264,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.169
   },
   "time_series_decompose.stl_like": {
    "args": {
@@ -2264,12 +2276,12 @@
      5.0
     ],
     "period": 3,
-    "n_iter": 100
+    "n_iter": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.176
+   "ms": 0.207
   },
   "time_series_decompose.trend_strength": {
    "args": {
@@ -2291,7 +2303,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.253
   },
   "vector_kernels.batch_ranker.to_planner_resolution": {
    "args": {
@@ -2326,7 +2338,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.191
+   "ms": 0.313
   },
   "vector_kernels.dot.build_vec64_f32": {
    "args": {
@@ -2342,7 +2354,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.157
   },
   "vector_kernels.dot.cosine64_f32": {
    "args": {
@@ -2366,7 +2378,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.198
   },
   "vector_kernels.dot.dot64_f32": {
    "args": {
@@ -2388,7 +2400,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.212
   },
   "vector_kernels.dot.l2_norm_inv_f32": {
    "args": {
@@ -2401,7 +2413,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.257
   },
   "vector_kernels.ranker.run_column_rank_v2": {
    "args": {
@@ -2410,7 +2422,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.225
   },
   "vector_kernels.repo_ranker.run_repo_rank": {
    "args": {
@@ -2419,7 +2431,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.13
   },
   "vector_kernels.table.build_query": {
    "args": {
@@ -2431,7 +2443,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.267
   },
   "vector_kernels.table.build_table_json": {
    "args": {
@@ -2440,7 +2452,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.127
   },
   "vector_kernels.table.role_id_of": {
    "args": {
@@ -2449,7 +2461,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.153
   },
   "vector_kernels.table.source_id_of": {
    "args": {
@@ -2458,7 +2470,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.158
   }
  }
 }

@@ -1,14 +1,14 @@
 {
  "family": "serialization",
- "generated_utc": "2026-09-24T02:21:29Z",
+ "generated_utc": "2026-09-24T03:20:03Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
   "functions": 138,
-  "verified": 129,
+  "verified": 137,
   "plain": 0,
   "timeouts": 0,
-  "unverified": 9
+  "unverified": 1
  },
  "functions": {
   "compression.delta.compression_savings": {
@@ -19,7 +19,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 12.145
+   "ms": 11.507
   },
   "compression.delta.delta_decode": {
    "args": {
@@ -34,7 +34,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.228
   },
   "compression.delta.delta_decode_float": {
    "args": {
@@ -50,7 +50,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.175
   },
   "compression.delta.delta_encode": {
    "args": {
@@ -65,7 +65,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.158
   },
   "compression.delta.delta_encode_float": {
    "args": {
@@ -81,7 +81,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.182
   },
   "compression.delta.double_delta_decode": {
    "args": {
@@ -96,7 +96,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.107
   },
   "compression.delta.double_delta_encode": {
    "args": {
@@ -111,7 +111,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.086
   },
   "compression.delta.xor_delta_decode": {
    "args": {
@@ -126,7 +126,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.106
   },
   "compression.delta.xor_delta_encode": {
    "args": {
@@ -141,7 +141,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.117
   },
   "compression.delta.zigzag_delta_decode": {
    "args": {
@@ -171,7 +171,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.116
   },
   "compression.huffman.avg_code_length": {
    "args": {
@@ -213,7 +213,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.155
   },
   "compression.huffman.build_huffman_tree": {
    "args": {
@@ -238,7 +238,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.139
   },
   "compression.huffman.compression_ratio_huffman": {
    "args": {
@@ -248,7 +248,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.093
   },
   "compression.huffman.frequency_count": {
    "args": {
@@ -263,7 +263,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.105
   },
   "compression.huffman.huffman_decode": {
    "args": {
@@ -298,7 +298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.15
+   "ms": 0.147
   },
   "compression.huffman.huffman_encode": {
    "args": {
@@ -313,7 +313,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.118
   },
   "compression.lz77.bytes_to_ints": {
    "args": {
@@ -322,7 +322,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.115
   },
   "compression.lz77.compression_ratio": {
    "args": {
@@ -332,7 +332,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.089
   },
   "compression.lz77.find_longest_match": {
    "args": {
@@ -350,7 +350,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.122
   },
   "compression.lz77.ints_to_string": {
    "args": {
@@ -365,7 +365,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.11
   },
   "compression.lz77.lz77_decode": {
    "args": {
@@ -390,7 +390,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.121
   },
   "compression.lz77.lz77_encode": {
    "args": {
@@ -407,7 +407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.117
   },
   "compression.rle.compression_ratio": {
    "args": {
@@ -417,7 +417,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.094
   },
   "compression.rle.rle_decode": {
    "args": {
@@ -432,7 +432,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.106
   },
   "compression.rle.rle_decode_string": {
    "args": {
@@ -441,7 +441,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.068
   },
   "compression.rle.rle_encode": {
    "args": {
@@ -456,7 +456,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.115
   },
   "compression.rle.rle_encode_string": {
    "args": {
@@ -465,7 +465,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.102
   },
   "data.csv_parser.csv_get_field": {
    "args": {
@@ -484,7 +484,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.134
   },
   "data.csv_parser.csv_get_float": {
    "args": {
@@ -504,7 +504,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.146
   },
   "data.csv_parser.csv_get_int": {
    "args": {
@@ -524,7 +524,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.149
   },
   "data.csv_parser.csv_to_json_array": {
    "args": {
@@ -571,7 +571,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.184
+   "ms": 0.215
   },
   "data_feedback_loop.annotation_effort_estimate": {
    "args": {
@@ -582,7 +582,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.124
   },
   "data_feedback_loop.auto_label_confidence": {
    "args": {
@@ -593,7 +593,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.086
   },
   "data_feedback_loop.continuous_learning_rate": {
    "args": {
@@ -604,7 +604,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.093
   },
   "data_feedback_loop.data_drift_detection_score": {
    "args": {
@@ -615,7 +615,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.11
   },
   "data_feedback_loop.dataset_freshness_score": {
    "args": {
@@ -625,7 +625,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.11
   },
   "data_feedback_loop.deployment_readiness_score": {
    "args": {
@@ -638,7 +638,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.095
   },
   "data_feedback_loop.feedback_signal_quality": {
    "args": {
@@ -649,7 +649,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.078
   },
   "data_feedback_loop.online_evaluation_stat": {
    "args": {
@@ -661,7 +661,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.093
   },
   "data_feedback_loop.retraining_trigger_score": {
    "args": {
@@ -673,7 +673,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.108
   },
   "data_feedback_loop.sample_informativeness": {
    "args": {
@@ -684,7 +684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.118
   },
   "data_pipeline.curriculum_difficulty_score": {
    "args": {
@@ -695,7 +695,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.143
   },
   "data_pipeline.data_augmentation_weight": {
    "args": {
@@ -705,7 +705,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.098
   },
   "data_pipeline.dataset_mixing_weight": {
    "args": {
@@ -716,7 +716,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.104
   },
   "data_pipeline.deduplication_minhash_band": {
    "args": {
@@ -726,7 +726,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.109
   },
   "data_pipeline.epoch_sample_index": {
    "args": {
@@ -738,7 +738,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.123
   },
   "data_pipeline.quality_filter_score": {
    "args": {
@@ -750,7 +750,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.095
   },
   "data_pipeline.sequence_packing_efficiency": {
    "args": {
@@ -760,7 +760,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.095
   },
   "data_pipeline.shard_balance_score": {
    "args": {
@@ -770,7 +770,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.096
   },
   "data_pipeline.streaming_buffer_fullness": {
    "args": {
@@ -780,7 +780,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.087
   },
   "data_pipeline.token_accounting_cost": {
    "args": {
@@ -791,7 +791,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.089
   },
   "data_quality.contract.dq_column": {
    "args": {
@@ -800,7 +800,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -809,7 +813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.128
   },
   "data_quality.contract.dq_column_mask": {
    "args": {
@@ -818,7 +822,11 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -827,7 +835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.127
   },
   "data_quality.contract.dq_column_mask_prefix": {
    "args": {
@@ -836,7 +844,11 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -846,7 +858,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.117
   },
   "data_quality.contract.dq_column_prefix": {
    "args": {
@@ -855,7 +867,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -865,7 +881,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.139
   },
   "data_quality.contract.dq_decimal_scale": {
    "args": {
@@ -874,7 +890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.102
   },
   "data_quality.contract.dq_is_finite": {
    "args": {
@@ -883,7 +899,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.088
   },
   "data_quality.contract.dq_live_and_finite": {
    "args": {
@@ -905,7 +921,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.115
   },
   "data_quality.contract.dq_mask_all_valid": {
    "args": {
@@ -914,7 +930,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.088
   },
   "data_quality.contract.dq_mask_defect": {
    "args": {
@@ -925,12 +941,12 @@
      true,
      false
     ],
-    "n_rows": 3
+    "n_rows": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.123
   },
   "data_quality.contract.dq_quantize": {
    "args": {
@@ -940,7 +956,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.136
   },
   "data_quality.contract.dq_quantize_exact": {
    "args": {
@@ -950,7 +966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.148
   },
   "data_quality.contract.dq_relative_tolerance": {
    "args": {
@@ -960,7 +976,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.108
   },
   "data_quality.contract.dq_rows_within_budget": {
    "args": {
@@ -970,7 +986,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.109
   },
   "data_quality.contract.dq_status_name": {
    "args": {
@@ -979,7 +995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.09
   },
   "data_quality.contract.dq_table_defect": {
    "args": {
@@ -988,7 +1004,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3
@@ -996,7 +1016,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.111
   },
   "data_quality.contract.dq_ulp_tolerance": {
    "args": {
@@ -1006,7 +1026,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.075
   },
   "data_quality.contract.dq_values_equal": {
    "args": {
@@ -1016,7 +1036,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.084
   },
   "data_quality.contract.dq_work_fits": {
    "args": {
@@ -1026,7 +1046,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.091
   },
   "data_quality.duplicates.duplicate_key_defect": {
    "args": {
@@ -1037,12 +1057,12 @@
      1,
      5
     ],
-    "n_cols": 3
+    "n_cols": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.127
   },
   "data_quality.duplicates.duplicate_rows_of_group": {
    "args": {
@@ -1059,7 +1079,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.109
   },
   "data_quality.duplicates.duplicate_scan_flat": {
    "args": {
@@ -1068,7 +1088,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -1077,22 +1101,30 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ],
     "key_cols": [
      3,
      1,
      4,
      1,
-     5
+     5,
+     3,
+     1,
+     4,
+     1
     ],
     "decimals": 2,
     "max_reports": 10
    },
-   "verified": false,
-   "outcome": "table_shape_does_not_match_cell_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.163
   },
   "data_quality.duplicates.duplicate_status_name": {
    "args": {
@@ -1101,7 +1133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.085
   },
   "data_quality.expect.expect_column_flat": {
    "args": {
@@ -1110,7 +1142,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -1119,7 +1155,11 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ],
     "col": 0,
     "op": 5,
@@ -1127,10 +1167,10 @@
     "bound_high": 1.0,
     "max_reports": 10
    },
-   "verified": false,
-   "outcome": "table_shape_does_not_match_cell_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.146
   },
   "data_quality.expect.expect_failure_line": {
    "args": {
@@ -1145,7 +1185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.101
   },
   "data_quality.expect.expect_op_name": {
    "args": {
@@ -1154,7 +1194,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.07
   },
   "data_quality.expect.expect_plan_flat": {
    "args": {
@@ -1163,7 +1203,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -1172,30 +1216,42 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ],
     "node_ints": [
      3,
      1,
      4,
      1,
-     5
+     5,
+     3,
+     1,
+     4,
+     1
     ],
     "node_fvals": [
      1.0,
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "root": 0,
     "subject_col": 0,
     "max_reports": 10
    },
    "verified": false,
-   "outcome": "table_shape_does_not_match_cell_count",
+   "outcome": "plan_node_arrays_disagree",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.179
   },
   "data_quality.expect.expect_status_name": {
    "args": {
@@ -1204,7 +1260,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.096
   },
   "data_quality.expect.expect_suite_flat": {
    "args": {
@@ -1213,7 +1269,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -1222,42 +1282,62 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ],
     "cols": [
      1,
      2,
      2,
      3,
-     4
+     4,
+     1,
+     2,
+     2,
+     3
     ],
     "ops": [
      3,
      1,
      4,
      1,
-     5
+     5,
+     3,
+     1,
+     4,
+     1
     ],
     "lows": [
      99.0,
      100.5,
      98.8,
      101.3,
-     102.1
+     102.1,
+     99.0,
+     100.5,
+     98.8,
+     101.3
     ],
     "highs": [
      101.0,
      102.5,
      100.8,
      103.3,
-     104.1
+     104.1,
+     101.0,
+     102.5,
+     100.8,
+     103.3
     ],
     "max_reports": 10
    },
-   "verified": false,
-   "outcome": "table_shape_does_not_match_cell_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.203
   },
   "data_quality.leakage.leakage_scan_flat": {
    "args": {
@@ -1289,14 +1369,14 @@
      true,
      false
     ],
-    "n_rows": 3,
+    "n_rows": 5,
     "corr_threshold": 0.5,
     "missingness_threshold": 0.5
    },
-   "verified": false,
-   "outcome": "null_mask_length_is_not_row_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.15
   },
   "data_quality.leakage.leakage_status_name": {
    "args": {
@@ -1305,7 +1385,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.089
   },
   "data_quality.leakage.leakage_timing_flat": {
    "args": {
@@ -1330,12 +1410,12 @@
      true,
      false
     ],
-    "n_rows": 3
+    "n_rows": 5
    },
-   "verified": false,
-   "outcome": "null_mask_length_is_not_row_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.113
   },
   "data_quality.profile.profile_column": {
    "args": {
@@ -1353,12 +1433,12 @@
      true,
      false
     ],
-    "n_rows": 3
+    "n_rows": 5
    },
-   "verified": false,
-   "outcome": "null_mask_length_is_not_row_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.133
   },
   "data_quality.profile.profile_column_at": {
    "args": {
@@ -1367,7 +1447,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -1377,13 +1461,17 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ]
    },
-   "verified": false,
-   "outcome": "table_shape_does_not_match_cell_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.142
   },
   "data_quality.profile.profile_is_constant": {
    "args": {
@@ -1401,12 +1489,12 @@
      true,
      false
     ],
-    "n_rows": 3
+    "n_rows": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.118
   },
   "data_quality.profile.profile_status_name": {
    "args": {
@@ -1415,7 +1503,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.086
   },
   "data_quality.profile.profile_table": {
    "args": {
@@ -1424,7 +1512,11 @@
      2.0,
      3.0,
      4.0,
-     5.0
+     5.0,
+     1.0,
+     2.0,
+     3.0,
+     4.0
     ],
     "n_rows": 3,
     "n_cols": 3,
@@ -1433,13 +1525,17 @@
      false,
      true,
      true,
-     false
+     false,
+     true,
+     false,
+     true,
+     true
     ]
    },
-   "verified": false,
-   "outcome": "table_shape_does_not_match_cell_count",
+   "verified": true,
+   "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.138
   },
   "json.parser.find_key": {
    "args": {
@@ -1449,7 +1545,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.084
   },
   "json.parser.json_array_get": {
    "args": {
@@ -1459,7 +1555,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.082
   },
   "json.parser.json_array_len": {
    "args": {
@@ -1468,7 +1564,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.091
   },
   "json.parser.json_array_tokens": {
    "args": {
@@ -1477,7 +1573,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.074
   },
   "json.parser.json_decode_base64_bytes": {
    "args": {
@@ -1486,7 +1582,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.099
   },
   "json.parser.json_get_array": {
    "args": {
@@ -1496,7 +1592,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.08
   },
   "json.parser.json_get_bool": {
    "args": {
@@ -1507,7 +1603,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.082
   },
   "json.parser.json_get_float": {
    "args": {
@@ -1518,7 +1614,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.101
   },
   "json.parser.json_get_int": {
    "args": {
@@ -1529,7 +1625,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.093
   },
   "json.parser.json_get_object": {
    "args": {
@@ -1539,7 +1635,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.075
   },
   "json.parser.json_get_string": {
    "args": {
@@ -1549,7 +1645,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.082
   },
   "json.parser.json_is_null": {
    "args": {
@@ -1559,7 +1655,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.083
   },
   "json.parser.json_parse_float64_list": {
    "args": {
@@ -1568,7 +1664,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.089
   },
   "json.parser.skip_json_value": {
    "args": {
@@ -1578,7 +1674,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.077
   },
   "json.parser.skip_whitespace": {
    "args": {
@@ -1588,7 +1684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.103
   },
   "json.writer.json_add_array_float": {
    "args": {
@@ -1605,7 +1701,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.122
   },
   "json.writer.json_add_array_string": {
    "args": {
@@ -1622,7 +1718,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.118
   },
   "json.writer.json_add_bool": {
    "args": {
@@ -1633,7 +1729,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.091
   },
   "json.writer.json_add_float": {
    "args": {
@@ -1644,7 +1740,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.098
   },
   "json.writer.json_add_int": {
    "args": {
@@ -1655,7 +1751,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.083
   },
   "json.writer.json_add_null": {
    "args": {
@@ -1665,7 +1761,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.09
   },
   "json.writer.json_add_raw": {
    "args": {
@@ -1676,7 +1772,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.086
   },
   "json.writer.json_add_string": {
    "args": {
@@ -1687,7 +1783,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.088
   },
   "json.writer.json_build_object": {
    "args": {
@@ -1712,7 +1808,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.113
   },
   "json.writer.json_escape_string": {
    "args": {
@@ -1721,7 +1817,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.08
   },
   "json.writer.json_object_end": {
    "args": {
@@ -1730,14 +1826,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.101
   },
   "json.writer.json_object_start": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.088
   },
   "model_serialization.checkpoint_size_estimate": {
    "args": {
@@ -1748,7 +1844,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.095
   },
   "model_serialization.delta_compression_ratio": {
    "args": {
@@ -1758,7 +1854,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.077
   },
   "model_serialization.lora_parameter_count": {
    "args": {
@@ -1769,7 +1865,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.094
   },
   "model_serialization.model_flops_estimate": {
    "args": {
@@ -1780,7 +1876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.099
   },
   "model_serialization.onnx_op_count_estimate": {
    "args": {
@@ -1791,7 +1887,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.11
   },
   "model_serialization.pruning_sparsity_speedup": {
    "args": {
@@ -1801,7 +1897,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.144
   },
   "model_serialization.version_hash_component": {
    "args": {
@@ -1812,7 +1908,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.094
   },
   "model_serialization.weight_quantization_bits": {
    "args": {
@@ -1821,7 +1917,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.093
   },
   "model_serialization.weight_sharing_ratio": {
    "args": {
@@ -1831,7 +1927,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.077
   },
   "model_serialization.weight_sparsity_ratio": {
    "args": {
@@ -1842,7 +1938,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.081
   },
   "serialization.msgpack.msgpack_decode_float": {
    "args": {
@@ -1874,7 +1970,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.091
   },
   "serialization.msgpack.msgpack_decode_string": {
    "args": {
@@ -1890,7 +1986,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.12
   },
   "serialization.msgpack.msgpack_encode_array_header": {
    "args": {
@@ -1899,7 +1995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.113
   },
   "serialization.msgpack.msgpack_encode_bool": {
    "args": {
@@ -1908,7 +2004,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.106
   },
   "serialization.msgpack.msgpack_encode_float": {
    "args": {
@@ -1917,7 +2013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.105
   },
   "serialization.msgpack.msgpack_encode_int": {
    "args": {
@@ -1926,7 +2022,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.081
   },
   "serialization.msgpack.msgpack_encode_map_header": {
    "args": {
@@ -1935,14 +2031,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.087
   },
   "serialization.msgpack.msgpack_encode_nil": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.076
   },
   "serialization.msgpack.msgpack_encode_string": {
    "args": {
@@ -1951,7 +2047,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.101
   },
   "serialization_io.string_checksum": {
    "args": {
@@ -1960,7 +2056,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.1
   },
   "serialization_io.weights_from_string": {
    "args": {
@@ -1969,7 +2065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.095
   },
   "serialization_io.weights_to_string": {
    "args": {
@@ -2001,7 +2097,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.129
   }
  }
 }

@@ -1,6 +1,6 @@
 {
  "family": "networking",
- "generated_utc": "2026-09-24T02:21:28Z",
+ "generated_utc": "2026-09-24T03:20:02Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -19,7 +19,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 11.556
+   "ms": 11.276
   },
   "compiler_theory.ast_node_count": {
    "args": {
@@ -29,7 +29,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.15
   },
   "compiler_theory.basic_block_throughput": {
    "args": {
@@ -39,7 +39,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.119
   },
   "compiler_theory.first_follow_conflict": {
    "args": {
@@ -49,7 +49,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.103
   },
   "compiler_theory.grammar_is_ambiguous": {
    "args": {
@@ -59,7 +59,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.086
   },
   "compiler_theory.instruction_latency_sum": {
    "args": {
@@ -75,7 +75,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.181
   },
   "compiler_theory.is_nonterminal": {
    "args": {
@@ -84,7 +84,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.105
   },
   "compiler_theory.is_terminal": {
    "args": {
@@ -93,7 +93,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.084
   },
   "compiler_theory.loop_unroll_benefit": {
    "args": {
@@ -104,7 +104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.092
   },
   "compiler_theory.lr_shift_reduce_conflict": {
    "args": {
@@ -114,7 +114,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.086
   },
   "compiler_theory.reduce_reduce_conflict": {
    "args": {
@@ -124,7 +124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.082
   },
   "compiler_theory.register_pressure": {
    "args": {
@@ -135,7 +135,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.097
   },
   "epigenetics.chromatin_accessibility": {
    "args": {
@@ -146,7 +146,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.108
   },
   "epigenetics.cpg_observed_expected": {
    "args": {
@@ -158,7 +158,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.099
   },
   "epigenetics.dna_methylation_age": {
    "args": {
@@ -169,7 +169,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.083
   },
   "epigenetics.enhancer_activity_index": {
    "args": {
@@ -179,7 +179,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.082
   },
   "epigenetics.gene_silencing_efficiency": {
    "args": {
@@ -189,7 +189,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.084
   },
   "epigenetics.histone_acetylation_ratio": {
    "args": {
@@ -199,7 +199,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.088
   },
   "epigenetics.imprinting_ratio": {
    "args": {
@@ -209,7 +209,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.078
   },
   "epigenetics.methylation_index": {
    "args": {
@@ -219,7 +219,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.083
   },
   "epigenetics.polycomb_enrichment": {
    "args": {
@@ -229,7 +229,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.081
   },
   "epigenetics.transcription_factor_occupancy": {
    "args": {
@@ -240,7 +240,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.096
   },
   "genetic.best_individual": {
    "args": {
@@ -280,7 +280,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.184
+   "ms": 0.203
   },
   "genetic.crossover_single_point": {
    "args": {
@@ -308,7 +308,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.141
   },
   "genetic.crossover_uniform": {
    "args": {
@@ -337,7 +337,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.136
   },
   "genetic.evolve_one_generation": {
    "args": {
@@ -387,7 +387,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.208
+   "ms": 0.191
   },
   "genetic.initialize_population": {
    "args": {
@@ -404,7 +404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.488
+   "ms": 0.513
   },
   "genetic.mutate_gaussian": {
    "args": {
@@ -426,7 +426,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.168
   },
   "genetic.run_ga": {
    "args": {
@@ -445,7 +445,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.032
+   "ms": 1.003
   },
   "genetic.tournament_select": {
    "args": {
@@ -486,7 +486,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.177
   },
   "kinetics.activation_energy": {
    "args": {
@@ -498,7 +498,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.102
   },
   "kinetics.arrhenius_rate_constant": {
    "args": {
@@ -509,7 +509,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.087
   },
   "kinetics.collision_frequency": {
    "args": {
@@ -521,7 +521,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.102
   },
   "kinetics.concentration_first_order": {
    "args": {
@@ -532,7 +532,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.118
   },
   "kinetics.half_life_first_order": {
    "args": {
@@ -541,7 +541,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.115
   },
   "kinetics.half_life_second_order": {
    "args": {
@@ -551,7 +551,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.097
   },
   "kinetics.michaelis_menten_rate": {
    "args": {
@@ -562,7 +562,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.098
   },
   "kinetics.reaction_rate_first_order": {
    "args": {
@@ -572,7 +572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.11
   },
   "kinetics.reaction_rate_second_order": {
    "args": {
@@ -583,7 +583,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.084
   },
   "kinetics.turnover_number": {
    "args": {
@@ -593,7 +593,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.099
   },
   "magnetism.biot_savart_infinite_wire": {
    "args": {
@@ -603,7 +603,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.098
   },
   "magnetism.cyclotron_radius": {
    "args": {
@@ -615,7 +615,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.1
   },
   "magnetism.hall_voltage": {
    "args": {
@@ -627,7 +627,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.081
   },
   "magnetism.inductance_solenoid": {
    "args": {
@@ -639,7 +639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.092
   },
   "magnetism.larmor_frequency": {
    "args": {
@@ -659,7 +659,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.092
   },
   "magnetism.magnetic_flux": {
    "args": {
@@ -670,7 +670,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.091
   },
   "magnetism.magnetic_force_wire": {
    "args": {
@@ -682,7 +682,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.09
   },
   "magnetism.solenoid_field": {
    "args": {
@@ -693,7 +693,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.097
   },
   "magnetism.toroid_field": {
    "args": {
@@ -717,7 +717,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.095
   },
   "memory_system.cache_line_padding_bytes": {
    "args": {
@@ -727,7 +727,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.079
   },
   "memory_system.gradient_memory_bytes": {
    "args": {
@@ -737,7 +737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.084
   },
   "memory_system.memory_bandwidth_utilization": {
    "args": {
@@ -747,7 +747,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.081
   },
   "memory_system.numa_locality_score": {
    "args": {
@@ -758,7 +758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.086
   },
   "memory_system.optimizer_state_bytes": {
    "args": {
@@ -768,7 +768,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.083
   },
   "memory_system.peak_memory_estimate": {
    "args": {
@@ -780,7 +780,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.086
   },
   "memory_system.pool_fragmentation_ratio": {
    "args": {
@@ -790,7 +790,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.087
   },
   "memory_system.slab_alloc_waste": {
    "args": {
@@ -800,7 +800,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.075
   },
   "memory_system.strided_access_penalty": {
    "args": {
@@ -810,7 +810,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.074
   },
   "net.url.query_build": {
    "args": {
@@ -835,7 +835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.155
   },
   "net.url.query_get": {
    "args": {
@@ -845,7 +845,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.12
   },
   "net.url.query_parse": {
    "args": {
@@ -854,7 +854,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.146
   },
   "net.url.url_decode": {
    "args": {
@@ -863,7 +863,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.086
   },
   "net.url.url_encode": {
    "args": {
@@ -872,7 +872,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.076
   },
   "net.url.url_parse": {
    "args": {
@@ -881,7 +881,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.082
   },
   "net.url.url_to_string": {
    "args": {
@@ -897,7 +897,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.114
   },
   "network_analysis.avg_clustering_coefficient": {
    "args": {
@@ -922,7 +922,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.109
   },
   "network_analysis.bfs_distances": {
    "args": {
@@ -948,7 +948,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.132
   },
   "network_analysis.closeness_centrality": {
    "args": {
@@ -973,7 +973,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.121
   },
   "network_analysis.clustering_coefficient": {
    "args": {
@@ -999,7 +999,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.126
   },
   "network_analysis.connected_components": {
    "args": {
@@ -1024,7 +1024,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.115
   },
   "network_analysis.degree": {
    "args": {
@@ -1050,7 +1050,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.112
   },
   "network_analysis.degree_centrality": {
    "args": {
@@ -1075,7 +1075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.112
   },
   "network_analysis.degree_distribution": {
    "args": {
@@ -1100,7 +1100,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.115
   },
   "network_analysis.density": {
    "args": {
@@ -1125,7 +1125,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.103
   },
   "network_analysis.is_connected": {
    "args": {
@@ -1150,7 +1150,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.097
   },
   "network_analysis.pagerank": {
    "args": {
@@ -1178,7 +1178,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.111
   },
   "network_protocol.build_query_string": {
    "args": {
@@ -1200,7 +1200,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.12
   },
   "network_protocol.http_status_text": {
    "args": {
@@ -1209,7 +1209,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.093
   },
   "network_protocol.is_client_error": {
    "args": {
@@ -1218,7 +1218,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.077
   },
   "network_protocol.is_json_type": {
    "args": {
@@ -1227,7 +1227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.114
   },
   "network_protocol.is_redirect": {
    "args": {
@@ -1236,7 +1236,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.071
   },
   "network_protocol.is_server_error": {
    "args": {
@@ -1245,7 +1245,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.148
   },
   "network_protocol.is_success": {
    "args": {
@@ -1254,7 +1254,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.079
   },
   "network_protocol.is_text_type": {
    "args": {
@@ -1263,7 +1263,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.079
   },
   "network_protocol.mime_type": {
    "args": {
@@ -1272,7 +1272,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.08
   },
   "network_protocol.parse_content_type": {
    "args": {
@@ -1281,7 +1281,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.073
   },
   "network_protocol.parse_query_string": {
    "args": {
@@ -1300,7 +1300,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.098
   },
   "paleomagnetism.atan_approx": {
    "args": {
@@ -1309,7 +1309,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.086
   },
   "paleomagnetism.coercivity_spectrum_median": {
    "args": {
@@ -1319,7 +1319,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.074
   },
   "paleomagnetism.cos_approx": {
    "args": {
@@ -1328,7 +1328,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.071
   },
   "paleomagnetism.declination_correction": {
    "args": {
@@ -1338,7 +1338,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.077
   },
   "paleomagnetism.geomagnetic_intensity": {
    "args": {
@@ -1348,7 +1348,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.088
   },
   "paleomagnetism.koenigsberger_ratio": {
    "args": {
@@ -1359,7 +1359,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.086
   },
   "paleomagnetism.magnetic_reversal_rate": {
    "args": {
@@ -1369,7 +1369,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.084
   },
   "paleomagnetism.paleolatitude": {
    "args": {
@@ -1378,7 +1378,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.1
   },
   "paleomagnetism.rock_magnetic_susceptibility": {
    "args": {
@@ -1388,7 +1388,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.099
   },
   "paleomagnetism.sin_approx": {
    "args": {
@@ -1397,7 +1397,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.076
   },
   "paleomagnetism.stability_index": {
    "args": {
@@ -1407,7 +1407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.08
   },
   "paleomagnetism.virtual_geomagnetic_pole_lat": {
    "args": {
@@ -1416,7 +1416,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.125
   },
   "petri_net.coverability_check": {
    "args": {
@@ -1426,7 +1426,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.091
   },
   "petri_net.fire_transition_2p": {
    "args": {
@@ -1440,7 +1440,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.097
   },
   "petri_net.fire_transition_list": {
    "args": {
@@ -1470,7 +1470,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.219
   },
   "petri_net.incidence_value": {
    "args": {
@@ -1480,7 +1480,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.101
   },
   "petri_net.is_deadlocked_1t_2p": {
    "args": {
@@ -1492,7 +1492,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.086
   },
   "petri_net.is_deadlocked_2t_2p": {
    "args": {
@@ -1506,7 +1506,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.094
   },
   "petri_net.is_live_transition": {
    "args": {
@@ -1516,7 +1516,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.105
   },
   "petri_net.is_transition_enabled_2p": {
    "args": {
@@ -1528,7 +1528,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.151
   },
   "petri_net.is_transition_enabled_list": {
    "args": {
@@ -1551,7 +1551,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.117
   },
   "petri_net.place_bounded": {
    "args": {
@@ -1561,7 +1561,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.106
   },
   "petri_net.reachable_from_firing": {
    "args": {
@@ -1572,7 +1572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.082
   },
   "petri_net.siphon_empty_3p": {
    "args": {
@@ -1586,7 +1586,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.091
   },
   "petri_net.token_count_3p": {
    "args": {
@@ -1597,7 +1597,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.074
   },
   "pharmacokinetics.accumulation_factor": {
    "args": {
@@ -1607,7 +1607,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.08
   },
   "pharmacokinetics.bioavailability": {
    "args": {
@@ -1617,7 +1617,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.094
   },
   "pharmacokinetics.clearance": {
    "args": {
@@ -1627,7 +1627,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.097
   },
   "pharmacokinetics.drug_auc_trapezoidal": {
    "args": {
@@ -1639,7 +1639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.09
   },
   "pharmacokinetics.elimination_rate": {
    "args": {
@@ -1648,7 +1648,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.079
   },
   "pharmacokinetics.half_life": {
    "args": {
@@ -1657,7 +1657,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.087
   },
   "pharmacokinetics.loading_dose": {
    "args": {
@@ -1667,7 +1667,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.101
   },
   "pharmacokinetics.maintenance_dose": {
    "args": {
@@ -1678,7 +1678,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.084
   },
   "pharmacokinetics.one_compartment_iv": {
    "args": {
@@ -1690,7 +1690,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.093
   },
   "pharmacokinetics.one_compartment_oral": {
    "args": {
@@ -1703,7 +1703,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.079
   },
   "pharmacokinetics.steady_state_concentration": {
    "args": {
@@ -1714,7 +1714,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.085
   },
   "pharmacokinetics.time_to_peak": {
    "args": {
@@ -1724,7 +1724,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.087
   },
   "population_genetics.allele_frequency_drift": {
    "args": {
@@ -1734,7 +1734,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.074
   },
   "population_genetics.effective_population_size": {
    "args": {
@@ -1744,7 +1744,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.074
   },
   "population_genetics.fst_wright": {
    "args": {
@@ -1754,7 +1754,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.082
   },
   "population_genetics.hardy_weinberg_freq": {
    "args": {
@@ -1763,7 +1763,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.075
   },
   "population_genetics.inbreeding_coefficient": {
    "args": {
@@ -1773,7 +1773,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.088
   },
   "population_genetics.linkage_disequilibrium": {
    "args": {
@@ -1784,7 +1784,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.104
   },
   "population_genetics.mutation_load": {
    "args": {
@@ -1794,7 +1794,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.089
   },
   "population_genetics.nucleotide_diversity": {
    "args": {
@@ -1804,7 +1804,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.087
   },
   "population_genetics.selection_coefficient": {
    "args": {
@@ -1815,7 +1815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.096
   },
   "population_genetics.tajimas_d_simplified": {
    "args": {
@@ -1826,7 +1826,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.083
   },
   "social_network.average_path_length_estimate": {
    "args": {
@@ -1852,7 +1852,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.117
   },
   "social_network.community_label_propagation": {
    "args": {
@@ -1878,7 +1878,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.096
   },
   "social_network.in_degree": {
    "args": {
@@ -1904,7 +1904,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.101
   },
   "social_network.influence_spread_ic": {
    "args": {
@@ -1933,12 +1933,12 @@
      5
     ],
     "p": 0.5,
-    "n_simulations": 100
+    "n_simulations": 5
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.12
   },
   "social_network.local_clustering_directed": {
    "args": {
@@ -1964,7 +1964,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.105
   },
   "social_network.network_density": {
    "args": {
@@ -1989,7 +1989,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.095
   },
   "social_network.out_degree": {
    "args": {
@@ -2015,7 +2015,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.123
   },
   "social_network.reciprocity": {
    "args": {
@@ -2040,7 +2040,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.101
   },
   "social_network.strongly_connected_check": {
    "args": {
@@ -2065,7 +2065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.101
   },
   "toxicokinetics.apparent_volume_distribution": {
    "args": {
@@ -2075,7 +2075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.086
   },
   "toxicokinetics.bioconcentration_factor": {
    "args": {
@@ -2085,7 +2085,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.085
   },
   "toxicokinetics.elimination_half_life": {
    "args": {
@@ -2094,7 +2094,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.083
   },
   "toxicokinetics.internal_dose": {
    "args": {
@@ -2104,7 +2104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.071
   },
   "toxicokinetics.margin_of_exposure": {
    "args": {
@@ -2114,7 +2114,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.12
   },
   "toxicokinetics.peak_plasma_concentration": {
    "args": {
@@ -2124,7 +2124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.096
   },
   "toxicokinetics.plasma_auc": {
    "args": {
@@ -2136,7 +2136,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.079
   },
   "toxicokinetics.systemic_clearance": {
    "args": {
@@ -2146,7 +2146,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.085
   },
   "toxicokinetics.time_to_peak": {
    "args": {
@@ -2156,7 +2156,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.073
   },
   "toxicokinetics.toxic_equivalency_factor": {
    "args": {
@@ -2166,7 +2166,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.076
   }
  }
 }

@@ -765,9 +765,10 @@ def render_oss_card(state: OssFacts | OssState | None, *, failed_now: bool = Fal
         f"{_chip(f'released {facts.released_utc}')}"
         f"{cards.status_chip('measured', f'fetched {facts.fetched_utc}')}</div>"
         '<div class="alg-eco-actions">'
-        f'<a class="alg-eco-pill" href="{_esc(facts.source)}" rel="noopener">'
+        f'<a class="alg-eco-pill" href="{_esc(facts.source)}" target="_blank" rel="noopener">'
         "Browse the packages</a>"
-        f'<a class="alg-eco-pill" href="{shell.GITHUB_URL}" rel="noopener">GitHub</a>'
+        f'<a class="alg-eco-pill" href="{shell.GITHUB_URL}" target="_blank" rel="noopener">'
+        "GitHub</a>"
         "</div>"
         f'<div class="alg-card-foot">{_esc(f"{SOURCE_GITHUB} · fetched {facts.fetched_utc}")}</div>'
         "</article>"
@@ -836,8 +837,9 @@ def render_sdk_card(facts: Mapping[str, Any]) -> str:
         f'<div class="alg-eco-rows">{"".join(rows)}</div>'
         f'<div class="alg-chips">{"".join(chips)}</div>'
         '<div class="alg-eco-actions">'
-        f'<a class="alg-eco-pill" href="{shell.DOCS_URL}" rel="noopener">Docs</a>'
-        f'<a class="alg-eco-pill" href="{gov_mcp_endpoint()}" rel="noopener">MCP endpoint</a>'
+        f'<a class="alg-eco-pill" href="{shell.DOCS_URL}" target="_blank" rel="noopener">Docs</a>'
+        f'<a class="alg-eco-pill" href="{gov_mcp_endpoint()}" target="_blank" rel="noopener">'
+        "MCP endpoint</a>"
         "</div>"
         "</article>"
     )

@@ -290,12 +290,14 @@ class OffSwitch(KillSwitch):
 def _assert_result_card(html: str) -> None:
     assert RESULT_CARD_RE.search(html), html[:300]
     assert PARITY_RE.search(html), "the parity chip is the hero and the verifier's marker"
-    assert "not a race" in html
-    assert len(LANE_VAL_RE.findall(html)) == 2, "both lane latencies are on the card"
+    assert llm_tab.PARITY_HERO_LABEL in html  # parity only, no latency pair (round 9)
+    # round 9, rulebook rule 6: no latency pair, no split, no bars — the card is the parity
+    # check plus provenance (a visitor read "14.7 ms vs 0.333 ms" as the kernel being slower
+    # when it was JSON transport around a microsecond of compute)
+    assert not LANE_VAL_RE.findall(html), "no lane latencies on a parity card"
     assert "alg-lane-bar" not in html and "alg-hero-num" not in html, "no ratio, no bars"
-    assert html.count('class="alg-llm-lane-figure"') == 2, "both lanes share one typographic weight"
-    assert llm_tab.SPLIT_PYTHON in html and llm_tab.SPLIT_NOTE in html, "the transport split"
-    assert hubkernel.TRANSPORT_NOTE in html
+    assert "alg-llm-lane-figure" not in html and llm_tab.SPLIT_PYTHON not in html
+    assert llm_tab.PARITY_CARD_NOTE in html and llm_tab.LANE_TORCH in html
     assert FOOT_RE.search(html), "hardware line with a UTC stamp"
     assert HARDWARE in html
     sub = re.search(r'alg-card-sub">([^<]*)<', html)
@@ -530,11 +532,15 @@ def test_transport_split_is_measured_on_the_same_payload_and_never_exceeds_the_l
     card = llm_tab.render_parity_card(panel, HARDWARE)
     ours = panel.cell.lane("algenta")
     assert ours is not None
-    split = re.search(r'alg-llm-split-val">([^<]+)<', card)
-    assert split is not None
-    # the remainder is arithmetic on the median; the Python-side figure is capped at the median
-    assert "the remainder of the median" in card
-    assert card.count('class="alg-llm-split-row"') == 2
+    # round 9 (rulebook rule 6): the parity card shows no latency pair — a visitor read
+    # "14.7 ms vs 0.333 ms" as the kernel being slower when it was JSON transport around a
+    # microsecond of compute; the split stays available to the tooling (`_split_html`)
+    assert "alg-llm-split" not in card and "median of" not in card
+    assert cards.fmt_ms(ours.median_ms) not in card
+    assert llm_tab.PARITY_HERO_LABEL in card and llm_tab.PARITY_CARD_NOTE in card
+    assert "alg-llm-parity" in card and 'class="alg-chips"' in card
+    split = llm_tab._split_html(ours.median_ms, panel.transport_ms or 0.5)
+    assert "the remainder of the median" in split and split.count('class="alg-llm-split-row"') == 2
 
 
 def test_llm_empty_and_loading_cards_name_the_rows_a_run_fills():
@@ -910,7 +916,10 @@ RECOMMEND_BODY = {
     "recommended_action": "expand_eu",
     "confidence": 0.87,
     "rationale": "Highest expected value with acceptable downside.",
-    "action_results": [{"name": "expand_eu"}, {"name": "hold"}],
+    "action_results": [
+        {"name": "expand_eu", "expected_value": 134269.0, "probability_of_loss": 0.0},
+        {"name": "hold", "expected_value": 0.0, "probability_of_loss": 0.5},
+    ],
     "total_actions": 2,
     "decision_plan": None,
 }
@@ -3175,3 +3184,45 @@ def test_round_8_launch_review_regressions():
     assert '<h2 class="alg-card-title">' in empty and "<h3" not in empty
     assert try_tab.HERO_LABEL == "per kernel call · median"
     assert "in-kernel" not in race_tab.HOW_MEASURED and "in-kernel" not in try_tab.HOW_MEASURED
+
+
+def test_logged_decision_carries_the_recommendations_figures_for_the_chosen_action():
+    """Owner (2026-09-24, on the live webhook body): `run_id: null`, `expected_value: null`,
+    `probability_of_loss: null`. The log call sent only what the visitor typed; the engine echoes
+    what it was given. The recommendation's own figures for the chosen action now travel with
+    the decision (`expected_value`, `risk_pol`); `run_id` is the engine's simulation-run binding
+    and a recommend-only decision has none, so that field is the engine's to leave empty."""
+    hook = make_hook()
+    hosted, made = make_hosted(hook=hook)
+    run(gov_deps(), hosted, hook, profile="execute")
+    log_calls = [c for c in made[0].calls if c[0] == "log_decision"]
+    assert len(log_calls) == 1
+    request = log_calls[0][1][0]
+    assert request["chosen_action"] == "expand_eu"
+    assert request["expected_value"] == 134269.0 and request["risk_pol"] == 0.0
+    assert "run_id" not in request  # never invented: no simulation run backs this decision
+    # the helper alone: a compared action answers its figures, an unknown one nothing
+    rec = hosted_api.to_recommendation(RECOMMEND_BODY)
+    assert hosted_api.action_result(rec, "hold") == {
+        "expected_value": 0.0,
+        "probability_of_loss": 0.5,
+    }
+    assert hosted_api.action_result(rec, "nope") == {}
+    # a recommendation without figures leaves the two keys out rather than sending null
+    bare = hosted_api.to_recommendation(
+        {**RECOMMEND_BODY, "action_results": [{"name": "expand_eu"}]}
+    )
+    figures = hosted_api.action_result(bare, "expand_eu")
+    assert figures == {"expected_value": None, "probability_of_loss": None}
+    hosted2, made2 = make_hosted(hook=hook)
+    hosted2.log_decision(
+        "expand_eu",
+        confidence=0.9,
+        risk_p5=0.02,
+        context="c",
+        rationale="r",
+        expected_value=figures["expected_value"],
+        probability_of_loss=figures["probability_of_loss"],
+    )
+    request2 = [c for c in made2[0].calls if c[0] == "log_decision"][0][1][0]
+    assert "expected_value" not in request2 and "risk_pol" not in request2

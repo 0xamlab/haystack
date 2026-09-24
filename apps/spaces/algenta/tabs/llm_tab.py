@@ -9,9 +9,11 @@ relations (`x` holds `n_rows × n_cols`, `pos` holds `n_tok`, `logits` holds
   `REPEATS` calls through the one native lane — the time includes JSON
   marshalling across the C ABI, as every Hub-kernel time on this Space does;
 * torch on the CPU, float64, the same number of calls. torch is C-backed, so
-  the card is labelled "not a race": the product is the parity chip (max |Δ|
-  against a stated tolerance) with both latencies visible in equal weight —
-  no ratio, no bars. The kernel lane is split once more: the Python side of
+  the card is a parity check: the product is the parity chip (max |Δ|
+  against a stated tolerance) with the kernel's and torch's provenance —
+  no ratio, no bars, and (round 9, rulebook rule 6) no latency pair: at
+  these shapes the call is JSON transport around a microsecond kernel. The kernel lane is
+  split once more: the Python side of
   the transport (`json.dumps` of the request envelope the wrapper sends,
   `json.loads` of a reply of the same shape — exactly what the kernel's
   `_native.execute` does) is measured on the same payload and shown beside
@@ -217,8 +219,9 @@ HOW_TEXT = (
     "across the C ABI; the Python side of that marshalling is measured on the same payload "
     "and shown beside the remainder. The torch lane is float64 on the CPU. Parity is the "
     "largest absolute difference between the two outputs against the tolerance printed on "
-    "the chip. torch is C-backed, so this is a parity check with both latencies shown, not "
-    "a race."
+    "the chip. torch is C-backed and at these shapes a kernel call is JSON transport around "
+    "a microsecond of compute, so the card shows the parity check and no latency pair "
+    "(rulebook rule 6: no comparison where transport dominates)."
 )
 
 
@@ -793,8 +796,17 @@ def _split_html(kernel_median_ms: float, python_ms: float) -> str:
     )
 
 
+PARITY_HERO_LABEL = "compiled Mojo kernel · checked against torch"
+#: Why the card shows no latency pair (rulebook rule 6): at these shapes the call is JSON
+#: transport around a microsecond kernel, and torch's single C call is not what a visitor
+#: would take a per-op comparison to be about (owner, 2026-09-24: "user will see it as we are
+#: slower"). The timing still runs (the cell must clear the rulebook to count as measured);
+#: the card prints parity, provenance and the machine line.
+PARITY_CARD_NOTE = "parity check · no timing shown at this shape"
+
+
 def render_parity_card(panel: Panel, hardware: str) -> str:
-    """A parity panel: the parity chip is the hero; both latencies in equal weight, no bars."""
+    """A parity panel: the parity chip is the hero; provenance chips; no latencies (rule 6)."""
     cell = panel.cell
     if not cell.measured:
         return cards.render_not_recorded_card(cell, title=panel.title, hardware=hardware)
@@ -806,15 +818,15 @@ def render_parity_card(panel: Panel, hardware: str) -> str:
         '<div class="alg-hero alg-llm-hero">'
         f'<span class="alg-llm-parity alg-chip alg-chip-ok">{LANE_PARITY} '
         f"{common.esc(cell.parity_label)}</span>"
-        f'<div class="alg-hero-label">{NOT_A_RACE} · torch is C-backed</div>'
+        f'<div class="alg-hero-label">{PARITY_HERO_LABEL}</div>'
         "</div>"
     )
-    split = _split_html(ours.median_ms, panel.transport_ms) if panel.transport_ms else ""
-    lanes = _lane_row(LANE_KERNEL, ours, split=split) + _lane_row(LANE_TORCH, theirs)
     chips = [
+        common.chip(f"{LANE_KERNEL} · {common.esc(ours.name)}"),
+        common.chip(f"{LANE_TORCH} · {common.esc(theirs.name)}"),
         common.chip(f"seed {cell.seed}"),
         common.chip(f"n = {cell.n}"),
-        common.chip(hubkernel.TRANSPORT_NOTE),
+        common.chip(PARITY_CARD_NOTE),
         cards.status_chip("measured", f"measured {cell.ts_utc}"),
     ]
     return (
@@ -823,7 +835,6 @@ def render_parity_card(panel: Panel, hardware: str) -> str:
         f'<div><h2 class="alg-card-title">{common.esc(panel.title)}</h2>'
         f'<div class="alg-card-sub">{common.esc(panel.subtitle)}</div></div>'
         f"{hero}</div>"
-        f'<div class="alg-llm-lanes">{lanes}</div>'
         f'<div class="alg-chips">{"".join(chips)}</div>'
         f"{cards.foot_html(hardware, cell.ts_utc, cell.load_1m)}"
         "</article></div>"

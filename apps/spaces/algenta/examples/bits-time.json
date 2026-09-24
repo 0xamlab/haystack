@@ -1,6 +1,6 @@
 {
  "family": "bits-time",
- "generated_utc": "2026-09-24T02:26:21Z",
+ "generated_utc": "2026-09-24T03:16:34Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -21,7 +21,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 10.747
+   "ms": 11.465
   },
   "agent_runtime.agent_cost_budget_remaining": {
    "args": {
@@ -34,7 +34,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.139
   },
   "agent_runtime.agent_step_reward": {
    "args": {
@@ -46,7 +46,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.11
   },
   "agent_runtime.context_window_budget": {
    "args": {
@@ -57,7 +57,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.094
   },
   "agent_runtime.memory_retrieval_relevance": {
    "args": {
@@ -69,7 +69,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.088
   },
   "agent_runtime.plan_step_dependency_ready": {
    "args": {
@@ -79,7 +79,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.086
   },
   "agent_runtime.retry_should_attempt": {
    "args": {
@@ -90,7 +90,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.116
   },
   "agent_runtime.structured_output_match": {
    "args": {
@@ -100,7 +100,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.103
   },
   "agent_runtime.tool_call_cost_estimate": {
    "args": {
@@ -112,7 +112,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.099
   },
   "agent_runtime.tool_selection_score": {
    "args": {
@@ -123,7 +123,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.107
   },
   "bitops.bit_clear": {
    "args": {
@@ -133,7 +133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.104
   },
   "bitops.bit_set": {
    "args": {
@@ -143,7 +143,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.086
   },
   "bitops.bit_test": {
    "args": {
@@ -153,7 +153,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.082
   },
   "bitops.bit_toggle": {
    "args": {
@@ -163,7 +163,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.102
   },
   "bitops.fnv1a_hash": {
    "args": {
@@ -172,7 +172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.081
   },
   "bitops.is_power_of_2": {
    "args": {
@@ -181,7 +181,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.081
   },
   "bitops.leading_zeros": {
    "args": {
@@ -190,7 +190,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.09
   },
   "bitops.next_power_of_2": {
    "args": {
@@ -199,7 +199,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.088
   },
   "bitops.popcount": {
    "args": {
@@ -208,7 +208,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.084
   },
   "bitops.reverse_bits": {
    "args": {
@@ -217,7 +217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.089
   },
   "bitops.rotate_left": {
    "args": {
@@ -227,7 +227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.079
   },
   "bitops.rotate_right": {
    "args": {
@@ -237,7 +237,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.08
   },
   "bitops.trailing_zeros": {
    "args": {
@@ -246,7 +246,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.078
   },
   "datetime.add_days": {
    "args": {
@@ -256,7 +256,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.068
   },
   "datetime.day": {
    "args": {
@@ -265,7 +265,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.063
   },
   "datetime.day_of_week": {
    "args": {
@@ -274,7 +274,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.08
   },
   "datetime.days_between": {
    "args": {
@@ -284,7 +284,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.085
   },
   "datetime.epoch_to_iso": {
    "args": {
@@ -293,7 +293,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.079
   },
   "datetime.format_duration_ms": {
    "args": {
@@ -302,7 +302,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.079
   },
   "datetime.hour": {
    "args": {
@@ -311,7 +311,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.084
   },
   "datetime.is_leap_year": {
    "args": {
@@ -320,7 +320,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.064
   },
   "datetime.iso_to_epoch": {
    "args": {
@@ -329,7 +329,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.082
   },
   "datetime.minute": {
    "args": {
@@ -338,7 +338,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.089
   },
   "datetime.month": {
    "args": {
@@ -347,7 +347,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.059
   },
   "datetime.second": {
    "args": {
@@ -356,7 +356,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.061
   },
   "datetime.year": {
    "args": {
@@ -365,7 +365,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.056
   },
   "discrete_event.calendar.calendar_order_audit": {
    "args": {
@@ -395,7 +395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.167
   },
   "discrete_event.calendar.calendar_replay_flat": {
    "args": {
@@ -432,7 +432,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.173
   },
   "discrete_event.calendar.calendar_stress_flat": {
    "args": {
@@ -443,7 +443,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.259
+   "ms": 0.288
   },
   "discrete_event.calendar.de_key_less": {
    "args": {
@@ -457,7 +457,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.112
   },
   "number_theory.euler_totient": {
    "args": {
@@ -466,7 +466,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.093
   },
   "number_theory.extended_gcd": {
    "args": {
@@ -476,7 +476,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.102
   },
   "number_theory.fibonacci": {
    "args": {
@@ -485,7 +485,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.084
   },
   "number_theory.gcd": {
    "args": {
@@ -495,7 +495,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.076
   },
   "number_theory.is_coprime": {
    "args": {
@@ -505,7 +505,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.067
   },
   "number_theory.is_perfect_square": {
    "args": {
@@ -514,7 +514,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.076
   },
   "number_theory.is_prime": {
    "args": {
@@ -523,7 +523,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.194
+   "ms": 0.079
   },
   "number_theory.lcm": {
    "args": {
@@ -533,7 +533,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.086
   },
   "number_theory.mod_inverse": {
    "args": {
@@ -543,7 +543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.075
   },
   "number_theory.mod_pow": {
    "args": {
@@ -554,7 +554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.078
   },
   "number_theory.prime_factors": {
    "args": {
@@ -563,7 +563,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.082
   },
   "number_theory.sieve_of_eratosthenes": {
    "args": {
@@ -572,7 +572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.074
   },
   "sentiment.count_negative_words": {
    "args": {
@@ -581,7 +581,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.087
   },
   "sentiment.count_positive_words": {
    "args": {
@@ -590,7 +590,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.075
   },
   "sentiment.most_negative_word": {
    "args": {
@@ -599,7 +599,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.081
   },
   "sentiment.most_positive_word": {
    "args": {
@@ -608,7 +608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.084
   },
   "sentiment.polarity": {
    "args": {
@@ -617,7 +617,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.084
   },
   "sentiment.sentiment_label": {
    "args": {
@@ -626,7 +626,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.094
   },
   "sentiment.sentiment_score": {
    "args": {
@@ -635,7 +635,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.084
   },
   "sentiment.subjectivity": {
    "args": {
@@ -644,7 +644,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.081
   },
   "sentiment.tokenize_lower": {
    "args": {
@@ -653,7 +653,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.085
   },
   "sentiment.word_sentiment": {
    "args": {
@@ -662,7 +662,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.089
   },
   "stateful_runtime.long_term_retrieval_score": {
    "args": {
@@ -673,7 +673,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.069
   },
   "stateful_runtime.memory_consolidation_score": {
    "args": {
@@ -684,7 +684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.067
   },
   "stateful_runtime.memory_decay_score": {
    "args": {
@@ -695,7 +695,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.074
   },
   "stateful_runtime.replay_buffer_priority": {
    "args": {
@@ -706,7 +706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.062
   },
   "stateful_runtime.replayability_score": {
    "args": {
@@ -717,7 +717,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.08
   },
   "stateful_runtime.session_continuity_score": {
    "args": {
@@ -740,7 +740,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.083
   },
   "stateful_runtime.state_compression_ratio": {
    "args": {
@@ -750,7 +750,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.079
   },
   "stateful_runtime.state_transition_validity": {
    "args": {
@@ -762,7 +762,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.076
   },
   "stateful_runtime.working_memory_capacity_used": {
    "args": {
@@ -773,7 +773,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.062
   },
   "time_zone.convert_time": {
    "args": {
@@ -785,7 +785,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.063
   },
   "time_zone.effective_offset": {
    "args": {
@@ -795,7 +795,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.065
   },
   "time_zone.format_offset": {
    "args": {
@@ -804,7 +804,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.079
   },
   "time_zone.is_dst": {
    "args": {
@@ -814,7 +814,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.088
   },
   "time_zone.is_valid_zone": {
    "args": {
@@ -823,7 +823,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.07
   },
   "time_zone.local_to_utc": {
    "args": {
@@ -834,7 +834,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.085
   },
   "time_zone.overlap_hours": {
    "args": {
@@ -856,7 +856,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.06
   },
   "time_zone.utc_offset": {
    "args": {
@@ -865,7 +865,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.081
   },
   "time_zone.utc_to_local": {
    "args": {
@@ -876,7 +876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.083
   }
  }
 }

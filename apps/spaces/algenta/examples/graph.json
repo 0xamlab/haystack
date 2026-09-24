@@ -1,12 +1,12 @@
 {
  "family": "graph",
- "generated_utc": "2026-09-24T02:21:02Z",
+ "generated_utc": "2026-09-24T03:19:36Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
   "functions": 252,
   "verified": 249,
-  "plain": 1,
+  "plain": 0,
   "timeouts": 0,
   "unverified": 3
  },
@@ -21,7 +21,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 12.029
+   "ms": 10.6
   },
   "autograd_graph.dead_node_prune_score": {
    "args": {
@@ -31,7 +31,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.131
   },
   "autograd_graph.grad_accumulate": {
    "args": {
@@ -41,7 +41,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.098
   },
   "autograd_graph.grad_scale_loss": {
    "args": {
@@ -51,7 +51,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.036
+   "ms": 0.076
   },
   "autograd_graph.gradient_norm_clip_scale": {
    "args": {
@@ -61,7 +61,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.056
   },
   "autograd_graph.jacobian_vector_product": {
    "args": {
@@ -71,7 +71,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.093
   },
   "autograd_graph.memory_efficient_backward_step": {
    "args": {
@@ -82,7 +82,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.066
   },
   "autograd_graph.node_output_count": {
    "args": {
@@ -91,7 +91,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.028
+   "ms": 0.045
   },
   "autograd_graph.topological_sort_key": {
    "args": {
@@ -102,7 +102,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.035
   },
   "autograd_graph.vector_jacobian_product": {
    "args": {
@@ -112,7 +112,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.03
   },
   "cartography.contour_interval_suggestion": {
    "args": {
@@ -122,7 +122,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.032
   },
   "cartography.declination_correction": {
    "args": {
@@ -132,7 +132,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.032
   },
   "cartography.equirectangular_x": {
    "args": {
@@ -143,7 +143,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.174
+   "ms": 0.032
   },
   "cartography.equirectangular_y": {
    "args": {
@@ -152,7 +152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.171
   },
   "cartography.great_circle_distance": {
    "args": {
@@ -165,7 +165,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.085
   },
   "cartography.ground_distance_from_map": {
    "args": {
@@ -175,7 +175,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.074
   },
   "cartography.latitude_to_utm_zone": {
    "args": {
@@ -184,7 +184,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.069
   },
   "cartography.map_area_at_scale": {
    "args": {
@@ -194,7 +194,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.068
   },
   "cartography.map_distance_from_ground": {
    "args": {
@@ -204,7 +204,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.053
   },
   "cartography.mercator_y": {
    "args": {
@@ -213,7 +213,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.046
   },
   "cartography.representative_fraction": {
    "args": {
@@ -223,7 +223,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.04
   },
   "cartography.scale_factor": {
    "args": {
@@ -233,7 +233,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.032
   },
   "cellular_automata.elementary_rule": {
    "args": {
@@ -245,7 +245,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.044
   },
   "cellular_automata.game_of_life_cell": {
    "args": {
@@ -255,7 +255,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.042
   },
   "cellular_automata.game_of_life_step": {
    "args": {
@@ -278,7 +278,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.19
   },
   "cellular_automata.langtons_ant_step": {
    "args": {
@@ -288,7 +288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.08
   },
   "cellular_automata.majority_rule": {
    "args": {
@@ -298,7 +298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.066
   },
   "cellular_automata.parity_rule": {
    "args": {
@@ -307,7 +307,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.058
   },
   "cellular_automata.rule110_cell": {
    "args": {
@@ -318,7 +318,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.066
   },
   "cellular_automata.rule_step_1d": {
    "args": {
@@ -335,7 +335,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.073
   },
   "cellular_automata.totalistic_rule": {
    "args": {
@@ -346,7 +346,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.068
   },
   "cellular_automata.wireworld_cell": {
    "args": {
@@ -356,7 +356,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.135
   },
   "chromatography.mobile_phase_velocity": {
    "args": {
@@ -366,7 +366,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.104
   },
   "chromatography.peak_capacity": {
    "args": {
@@ -377,7 +377,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.07
   },
   "chromatography.plate_count": {
    "args": {
@@ -387,7 +387,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.091
   },
   "chromatography.plate_height": {
    "args": {
@@ -397,7 +397,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.073
   },
   "chromatography.resolution": {
    "args": {
@@ -409,7 +409,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.075
   },
   "chromatography.retention_factor": {
    "args": {
@@ -419,7 +419,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.054
   },
   "chromatography.retention_index_kovats": {
    "args": {
@@ -431,7 +431,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.047
   },
   "chromatography.selectivity_factor": {
    "args": {
@@ -441,7 +441,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.036
   },
   "chromatography.separation_number": {
    "args": {
@@ -453,7 +453,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.07
   },
   "chromatography.van_deemter_h": {
    "args": {
@@ -465,21 +465,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.072
   },
   "crystallography.atomic_packing_factor_bcc": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.045
   },
   "crystallography.atomic_packing_factor_fcc": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.049
   },
   "crystallography.bragg_angle": {
    "args": {
@@ -490,7 +490,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.069
   },
   "crystallography.d_spacing_cubic": {
    "args": {
@@ -502,7 +502,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.108
   },
   "crystallography.density_from_crystal": {
    "args": {
@@ -514,7 +514,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.065
   },
   "crystallography.interplanar_angle_cubic": {
    "args": {
@@ -528,7 +528,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.066
   },
   "crystallography.lattice_parameter_from_d": {
    "args": {
@@ -540,7 +540,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.061
   },
   "crystallography.scherrer_crystallite_size": {
    "args": {
@@ -552,7 +552,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.04
   },
   "crystallography.structure_factor_magnitude": {
    "args": {
@@ -562,7 +562,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.088
   },
   "crystallography.unit_cell_volume_cubic": {
    "args": {
@@ -571,7 +571,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.059
   },
   "crystallography.unit_cell_volume_orthorhombic": {
    "args": {
@@ -582,7 +582,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.053
   },
   "crystallography.unit_cell_volume_tetragonal": {
    "args": {
@@ -592,7 +592,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.08
   },
   "demographics.crude_birth_rate": {
    "args": {
@@ -602,7 +602,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.035
+   "ms": 0.054
   },
   "demographics.crude_death_rate": {
    "args": {
@@ -612,7 +612,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.036
   },
   "demographics.dependency_ratio": {
    "args": {
@@ -623,7 +623,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.051
   },
   "demographics.doubling_time": {
    "args": {
@@ -632,7 +632,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.071
   },
   "demographics.infant_mortality_rate": {
    "args": {
@@ -642,7 +642,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.066
   },
   "demographics.life_expectancy_approx": {
    "args": {
@@ -652,7 +652,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.056
   },
   "demographics.median_age_estimate": {
    "args": {
@@ -662,7 +662,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.048
   },
   "demographics.natural_increase_rate": {
    "args": {
@@ -672,7 +672,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.05
   },
   "demographics.population_growth_rate": {
    "args": {
@@ -684,7 +684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.057
   },
   "demographics.sex_ratio": {
    "args": {
@@ -694,7 +694,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.064
   },
   "demographics.total_fertility_rate": {
    "args": {
@@ -704,7 +704,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.051
   },
   "demographics.urbanization_rate": {
    "args": {
@@ -714,7 +714,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.047
   },
   "graph.algorithms.bfs": {
    "args": {
@@ -760,7 +760,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.188
+   "ms": 0.157
   },
   "graph.algorithms.connected_components": {
    "args": {
@@ -805,7 +805,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.089
   },
   "graph.algorithms.dfs": {
    "args": {
@@ -851,7 +851,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.081
   },
   "graph.algorithms.dijkstra": {
    "args": {
@@ -897,7 +897,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.077
   },
   "graph.algorithms.graph_add_edge": {
    "args": {
@@ -945,7 +945,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.111
   },
   "graph.algorithms.graph_new": {
    "args": {
@@ -954,7 +954,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.243
+   "ms": 0.118
   },
   "graph.algorithms.shortest_path": {
    "args": {
@@ -1001,7 +1001,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.082
   },
   "graph.algorithms.topological_sort": {
    "args": {
@@ -1046,11 +1046,11 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.084
   },
   "graph.weighted.bellman_ford": {
    "args": {
-    "n": 100,
+    "n": 3,
     "edges": [
      {
       "src": 0,
@@ -1073,11 +1073,11 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.088
   },
   "graph.weighted.floyd_warshall": {
    "args": {
-    "n": 100,
+    "n": 3,
     "edges": [
      {
       "src": 0,
@@ -1099,11 +1099,11 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 4.829
+   "ms": 0.072
   },
   "graph.weighted.has_negative_cycle": {
    "args": {
-    "n": 100,
+    "n": 3,
     "edges": [
      {
       "src": 0,
@@ -1125,11 +1125,11 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.063
   },
   "graph.weighted.kruskal_mst": {
    "args": {
-    "n_nodes": 5,
+    "n_nodes": 3,
     "edges": [
      {
       "src": 0,
@@ -1151,7 +1151,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.066
   },
   "graph.weighted.mst_total_weight": {
    "args": {
@@ -1176,11 +1176,11 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.058
   },
   "graph.weighted.shortest_path_dijkstra": {
    "args": {
-    "n": 100,
+    "n": 3,
     "edges": [
      {
       "src": 0,
@@ -1203,7 +1203,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.067
   },
   "graph.weighted.union_find_create": {
    "args": {
@@ -1212,7 +1212,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.211
+   "ms": 0.068
   },
   "graph.weighted.union_find_find": {
    "args": {
@@ -1228,7 +1228,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.185
+   "ms": 0.09
   },
   "graph.weighted.union_find_union": {
    "args": {
@@ -1245,7 +1245,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.081
   },
   "graph_algorithms.bellman_ford_relax": {
    "args": {
@@ -1256,7 +1256,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.188
+   "ms": 0.105
   },
   "graph_algorithms.betweenness_centrality_norm": {
    "args": {
@@ -1267,7 +1267,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.076
   },
   "graph_algorithms.closeness_centrality": {
    "args": {
@@ -1277,7 +1277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.056
   },
   "graph_algorithms.clustering_coefficient": {
    "args": {
@@ -1287,7 +1287,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.034
   },
   "graph_algorithms.degree_centrality": {
    "args": {
@@ -1308,7 +1308,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.05
   },
   "graph_algorithms.eigenvector_centrality_update": {
    "args": {
@@ -1318,7 +1318,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.033
   },
   "graph_algorithms.graph_density": {
    "args": {
@@ -1329,7 +1329,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.083
   },
   "graph_algorithms.modularity_contribution": {
    "args": {
@@ -1341,7 +1341,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.098
   },
   "graph_algorithms.pagerank_update": {
    "args": {
@@ -1353,7 +1353,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.07
   },
   "graph_analytics.adjacency.graph_bfs_levels_from_triplets": {
    "args": {
@@ -1384,7 +1384,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.18
+   "ms": 0.124
   },
   "graph_analytics.adjacency.graph_csr_bfs_levels": {
    "args": {
@@ -1420,7 +1420,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.157
   },
   "graph_analytics.adjacency.graph_csr_bfs_levels_driver": {
    "args": {
@@ -1451,7 +1451,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.114
   },
   "graph_analytics.adjacency.graph_csr_build": {
    "args": {
@@ -1481,7 +1481,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.108
   },
   "graph_analytics.adjacency.graph_csr_dedupe_min": {
    "args": {
@@ -1516,7 +1516,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.219
   },
   "graph_analytics.adjacency.graph_csr_dedupe_min_driver": {
    "args": {
@@ -1546,7 +1546,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.102
   },
   "graph_analytics.adjacency.graph_csr_degree_sequence": {
    "args": {
@@ -1581,7 +1581,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.083
   },
   "graph_analytics.adjacency.graph_csr_degree_sequence_driver": {
    "args": {
@@ -1611,7 +1611,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.132
+   "ms": 0.066
   },
   "graph_analytics.adjacency.graph_csr_dijkstra": {
    "args": {
@@ -1647,7 +1647,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.122
   },
   "graph_analytics.adjacency.graph_csr_dijkstra_driver": {
    "args": {
@@ -1678,7 +1678,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.104
   },
   "graph_analytics.adjacency.graph_csr_edge_min_weight": {
    "args": {
@@ -1715,7 +1715,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.096
   },
   "graph_analytics.adjacency.graph_csr_edge_min_weight_driver": {
    "args": {
@@ -1747,7 +1747,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.084
   },
   "graph_analytics.adjacency.graph_csr_empty": {
    "args": {
@@ -1756,7 +1756,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.077
   },
   "graph_analytics.adjacency.graph_csr_from_arrays": {
    "args": {
@@ -1786,7 +1786,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.116
   },
   "graph_analytics.adjacency.graph_csr_from_triplets": {
    "args": {
@@ -1816,7 +1816,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.103
   },
   "graph_analytics.adjacency.graph_csr_has_edge": {
    "args": {
@@ -1853,7 +1853,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.085
   },
   "graph_analytics.adjacency.graph_csr_has_negative_weight": {
    "args": {
@@ -1888,7 +1888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.101
   },
   "graph_analytics.adjacency.graph_csr_in_degrees": {
    "args": {
@@ -1923,7 +1923,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.1
   },
   "graph_analytics.adjacency.graph_csr_in_degrees_driver": {
    "args": {
@@ -1953,7 +1953,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.104
   },
   "graph_analytics.adjacency.graph_csr_out_degrees": {
    "args": {
@@ -1988,7 +1988,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.09
   },
   "graph_analytics.adjacency.graph_csr_out_degrees_driver": {
    "args": {
@@ -2018,7 +2018,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.07
   },
   "graph_analytics.adjacency.graph_csr_reverse": {
    "args": {
@@ -2053,7 +2053,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.126
   },
   "graph_analytics.adjacency.graph_csr_reverse_driver": {
    "args": {
@@ -2083,7 +2083,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.103
   },
   "graph_analytics.adjacency.graph_csr_shortest_path": {
    "args": {
@@ -2120,7 +2120,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.097
   },
   "graph_analytics.adjacency.graph_csr_shortest_path_driver": {
    "args": {
@@ -2152,7 +2152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.076
   },
   "graph_analytics.adjacency.graph_csr_sorted": {
    "args": {
@@ -2187,7 +2187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.081
   },
   "graph_analytics.adjacency.graph_csr_symmetry": {
    "args": {
@@ -2223,7 +2223,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.101
   },
   "graph_analytics.adjacency.graph_csr_symmetry_driver": {
    "args": {
@@ -2254,7 +2254,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.125
   },
   "graph_analytics.adjacency.graph_csr_to_dense": {
    "args": {
@@ -2290,7 +2290,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.099
   },
   "graph_analytics.adjacency.graph_csr_to_dense_driver": {
    "args": {
@@ -2321,7 +2321,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.11
   },
   "graph_analytics.adjacency.graph_csr_validate": {
    "args": {
@@ -2356,7 +2356,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.084
   },
   "graph_analytics.adjacency.graph_csr_validate_driver": {
    "args": {
@@ -2386,7 +2386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.125
   },
   "graph_analytics.adjacency.graph_csr_validate_flat": {
    "args": {
@@ -2416,7 +2416,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.091
   },
   "graph_analytics.adjacency.graph_dijkstra_from_triplets": {
    "args": {
@@ -2447,7 +2447,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.119
   },
   "graph_analytics.adjacency.graph_status_name": {
    "args": {
@@ -2456,7 +2456,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.053
   },
   "graph_analytics.centrality.centrality_status_name": {
    "args": {
@@ -2465,7 +2465,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.047
   },
   "graph_analytics.centrality.graph_betweenness_from_triplets": {
    "args": {
@@ -2497,7 +2497,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.109
   },
   "graph_analytics.centrality.graph_betweenness_unweighted": {
    "args": {
@@ -2528,7 +2528,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.069
   },
   "graph_analytics.centrality.graph_betweenness_weighted": {
    "args": {
@@ -2559,7 +2559,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.066
   },
   "graph_analytics.centrality.graph_closeness_centrality": {
    "args": {
@@ -2590,7 +2590,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.073
   },
   "graph_analytics.centrality.graph_degree_centrality": {
    "args": {
@@ -2621,7 +2621,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.223
+   "ms": 0.072
   },
   "graph_analytics.centrality.graph_eigenvector_centrality": {
    "args": {
@@ -2653,7 +2653,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.085
   },
   "graph_analytics.centrality.graph_harmonic_centrality": {
    "args": {
@@ -2685,7 +2685,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.083
   },
   "graph_analytics.centrality.graph_pagerank": {
    "args": {
@@ -2719,7 +2719,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.08
   },
   "graph_analytics.community.community_aggregate_driver": {
    "args": {
@@ -2756,7 +2756,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.077
   },
   "graph_analytics.community.community_canonical_labels": {
    "args": {
@@ -2771,7 +2771,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.042
   },
   "graph_analytics.community.community_compare_labels": {
    "args": {
@@ -2793,14 +2793,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.049
   },
   "graph_analytics.community.community_default_tolerance": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.04
+   "ms": 0.031
   },
   "graph_analytics.community.community_label_propagation_driver": {
    "args": {
@@ -2864,7 +2864,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.082
   },
   "graph_analytics.community.community_local_moving_driver": {
    "args": {
@@ -2897,7 +2897,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.086
   },
   "graph_analytics.community.community_louvain_default_driver": {
    "args": {
@@ -2928,7 +2928,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.086
   },
   "graph_analytics.community.community_louvain_driver": {
    "args": {
@@ -2962,7 +2962,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.106
   },
   "graph_analytics.community.community_louvain_from_triplets": {
    "args": {
@@ -2996,7 +2996,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.109
   },
   "graph_analytics.community.community_louvain_levels_driver": {
    "args": {
@@ -3030,7 +3030,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.081
   },
   "graph_analytics.community.community_modularity_driver": {
    "args": {
@@ -3067,7 +3067,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.074
   },
   "graph_analytics.community.community_modularity_from_triplets": {
    "args": {
@@ -3104,7 +3104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.111
   },
   "graph_analytics.community.community_modularity_gain": {
    "args": {
@@ -3116,7 +3116,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.062
   },
   "graph_analytics.community.community_modularity_pairwise_driver": {
    "args": {
@@ -3153,7 +3153,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.084
   },
   "graph_analytics.community.community_status_name": {
    "args": {
@@ -3162,7 +3162,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.049
   },
   "graph_analytics.community.community_symmetrized_driver": {
    "args": {
@@ -3192,14 +3192,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.089
   },
   "graph_analytics.community.community_version": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.037
+   "ms": 0.034
   },
   "graph_analytics.community.community_visit_order": {
    "args": {
@@ -3211,7 +3211,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.073
   },
   "graph_analytics.temporal.temporal_activity_summary": {
    "args": {
@@ -3248,7 +3248,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.112
   },
   "graph_analytics.temporal.temporal_earliest_arrival": {
    "args": {
@@ -3287,7 +3287,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.14
   },
   "graph_analytics.temporal.temporal_earliest_arrival_instant": {
    "args": {
@@ -3319,7 +3319,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.102
   },
   "graph_analytics.temporal.temporal_earliest_arrival_path": {
    "args": {
@@ -3359,7 +3359,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.089
   },
   "graph_analytics.temporal.temporal_earliest_arrival_window": {
    "args": {
@@ -3400,7 +3400,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.157
   },
   "graph_analytics.temporal.temporal_fastest_durations": {
    "args": {
@@ -3438,7 +3438,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.426
   },
   "graph_analytics.temporal.temporal_fastest_path": {
    "args": {
@@ -3477,7 +3477,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.107
   },
   "graph_analytics.temporal.temporal_node_activity": {
    "args": {
@@ -3515,7 +3515,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.113
   },
   "graph_analytics.temporal.temporal_reachable_set": {
    "args": {
@@ -3554,7 +3554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.104
   },
   "graph_analytics.temporal.temporal_reaches": {
    "args": {
@@ -3594,7 +3594,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.078
   },
   "graph_analytics.temporal.temporal_sorted_by_time": {
    "args": {
@@ -3631,7 +3631,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.132
+   "ms": 0.118
   },
   "graph_analytics.temporal.temporal_static_gap": {
    "args": {
@@ -3670,7 +3670,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.096
   },
   "graph_analytics.temporal.temporal_status_name": {
    "args": {
@@ -3679,7 +3679,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.052
   },
   "graph_analytics.temporal.temporal_validate": {
    "args": {
@@ -3716,7 +3716,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.086
   },
   "graph_analytics.temporal.temporal_validate_driver": {
    "args": {
@@ -3753,7 +3753,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.068
   },
   "graph_analytics.temporal.temporal_window_subgraph": {
    "args": {
@@ -3792,7 +3792,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.082
   },
   "graph_compiler.common_subexpr_hash": {
    "args": {
@@ -3803,7 +3803,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.039
   },
   "graph_compiler.constant_folding_value": {
    "args": {
@@ -3813,7 +3813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.046
   },
   "graph_compiler.dead_op_elimination_check": {
    "args": {
@@ -3823,7 +3823,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.094
   },
   "graph_compiler.fusion_benefit_score": {
    "args": {
@@ -3835,7 +3835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.094
   },
   "graph_compiler.graph_partition_cost": {
    "args": {
@@ -3846,7 +3846,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.07
   },
   "graph_compiler.kernel_selection_score": {
    "args": {
@@ -3857,7 +3857,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.044
   },
   "graph_compiler.memory_layout_transform_cost": {
    "args": {
@@ -3869,7 +3869,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.043
   },
   "graph_compiler.op_reorder_priority": {
    "args": {
@@ -3880,7 +3880,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.047
   },
   "graph_compiler.shape_inference_broadcast": {
    "args": {
@@ -3890,7 +3890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.036
   },
   "graph_compiler.type_promotion_bits": {
    "args": {
@@ -3900,7 +3900,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.03
   },
   "graph_decision.decision_graph_utility": {
    "args": {
@@ -3912,7 +3912,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.055
   },
   "graph_decision.dynamic_edge_weight_decay": {
    "args": {
@@ -3923,7 +3923,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.048
   },
   "graph_decision.flow_augment_amount": {
    "args": {
@@ -3933,7 +3933,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.063
   },
   "graph_decision.flow_residual_capacity": {
    "args": {
@@ -3943,7 +3943,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.051
   },
   "graph_decision.multi_constraint_relax": {
    "args": {
@@ -3957,7 +3957,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.056
   },
   "graph_decision.network_criticality": {
    "args": {
@@ -3968,7 +3968,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.049
   },
   "graph_decision.probabilistic_route_score": {
    "args": {
@@ -3979,7 +3979,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.066
   },
   "graph_decision.resource_constrained_cost": {
    "args": {
@@ -3992,7 +3992,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.062
   },
   "graph_decision.supply_chain_slack": {
    "args": {
@@ -4003,7 +4003,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.079
   },
   "graph_decision.temporal_edge_validity": {
    "args": {
@@ -4014,7 +4014,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.064
   },
   "heap.heap_peek_max": {
    "args": {
@@ -4029,7 +4029,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.081
   },
   "heap.heap_peek_min": {
    "args": {
@@ -4044,7 +4044,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.083
   },
   "heap.heap_pop_max": {
    "args": {
@@ -4059,7 +4059,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.083
   },
   "heap.heap_pop_min": {
    "args": {
@@ -4074,7 +4074,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.074
   },
   "heap.heap_push_max": {
    "args": {
@@ -4090,7 +4090,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.063
   },
   "heap.heap_push_min": {
    "args": {
@@ -4106,7 +4106,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.065
   },
   "heap.heapify_max": {
    "args": {
@@ -4121,7 +4121,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.047
   },
   "heap.heapify_min": {
    "args": {
@@ -4136,7 +4136,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.066
   },
   "heap.is_min_heap": {
    "args": {
@@ -4151,7 +4151,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.069
   },
   "heap.k_largest": {
    "args": {
@@ -4167,7 +4167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.072
   },
   "heap.k_smallest": {
    "args": {
@@ -4183,7 +4183,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.044
+   "ms": 0.057
   },
   "heap.merge_sorted_lists": {
    "args": {
@@ -4208,7 +4208,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.06
   },
   "heap.running_median": {
    "args": {
@@ -4223,7 +4223,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.05
+   "ms": 0.042
   },
   "oceanography.buoyancy_frequency": {
    "args": {
@@ -4234,7 +4234,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.048
+   "ms": 0.072
   },
   "oceanography.ekman_depth": {
    "args": {
@@ -4244,7 +4244,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.084
   },
   "oceanography.freshwater_flux": {
    "args": {
@@ -4255,7 +4255,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.058
   },
   "oceanography.geostrophic_velocity": {
    "args": {
@@ -4266,7 +4266,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.049
+   "ms": 0.035
   },
   "oceanography.mixed_layer_heat_flux": {
    "args": {
@@ -4279,7 +4279,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.062
   },
   "oceanography.salinity_from_chlorinity": {
    "args": {
@@ -4288,7 +4288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.03
   },
   "oceanography.seawater_density": {
    "args": {
@@ -4298,7 +4298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.054
   },
   "oceanography.tidal_force": {
    "args": {
@@ -4309,7 +4309,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.064
   },
   "oceanography.wave_celerity_deep": {
    "args": {
@@ -4318,7 +4318,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.043
   },
   "oceanography.wave_celerity_shallow": {
    "args": {
@@ -4327,7 +4327,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.048
   },
   "rag_retrieval.answer_faithfulness_score": {
    "args": {
@@ -4337,7 +4337,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.041
   },
   "rag_retrieval.bm25_term_score": {
    "args": {
@@ -4352,7 +4352,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.045
   },
   "rag_retrieval.chunk_overlap_ratio": {
    "args": {
@@ -4362,7 +4362,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.043
+   "ms": 0.063
   },
   "rag_retrieval.citation_coverage": {
    "args": {
@@ -4372,7 +4372,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.041
+   "ms": 0.046
   },
   "rag_retrieval.context_relevance_score": {
    "args": {
@@ -4382,7 +4382,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.038
   },
   "rag_retrieval.cross_encoder_logit": {
    "args": {
@@ -4393,7 +4393,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.031
+   "ms": 0.044
   },
   "rag_retrieval.hybrid_search_score": {
    "args": {
@@ -4404,7 +4404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.046
+   "ms": 0.033
   },
   "rag_retrieval.mmr_diversity_score": {
    "args": {
@@ -4415,7 +4415,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.052
+   "ms": 0.056
   },
   "rag_retrieval.retrieval_precision": {
    "args": {
@@ -4425,7 +4425,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.053
+   "ms": 0.039
   },
   "rag_retrieval.rrf_score": {
    "args": {
@@ -4436,7 +4436,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.042
+   "ms": 0.043
   },
   "retrieval.fuse.rrf_fuse_flat": {
    "args": {
@@ -4454,14 +4454,14 @@
      1,
      5
     ],
-    "n_lanes": 100,
+    "n_lanes": 5,
     "k": 105.0,
     "top_k": 3
    },
    "verified": false,
-   "outcome": "lane_count_does_not_match_lane_lengths",
+   "outcome": "declared_count_exceeds_payload",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.08
   },
   "retrieval.fuse.rrf_provenance_flat": {
    "args": {
@@ -4479,45 +4479,39 @@
      1,
      5
     ],
-    "n_lanes": 100,
+    "n_lanes": 5,
     "k": 105.0,
     "top_k": 3
    },
    "verified": false,
-   "outcome": "lane_count_does_not_match_lane_lengths",
+   "outcome": "declared_count_exceeds_payload",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.065
   },
   "retrieval.score.hybrid_rank_flat": {
    "args": {
     "dense": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
     "sparse": [
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5,
-     0.5
+     1.0,
+     2.0,
+     3.0,
+     4.0,
+     5.0
     ],
-    "n": 2,
-    "alpha": 0.5,
-    "top_k": 2
+    "n": 5,
+    "alpha": 0.05,
+    "top_k": 3
    },
    "verified": true,
    "outcome": "result",
-   "source": "plain",
-   "ms": 0.087
+   "source": "rules",
+   "ms": 0.079
   },
   "retrieval.score.mmr_select_flat": {
    "args": {
@@ -4535,21 +4529,21 @@
      4.0,
      5.0
     ],
-    "n": 100,
+    "n": 5,
     "k": 3,
     "lambda_mmr": 0.5
    },
    "verified": false,
-   "outcome": "declared_count_exceeds_payload",
+   "outcome": "invalid_shape",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.064
   },
   "retrieval.score.retrieval_ceiling_report": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.031
   },
   "retrieval.score.retrieval_finite": {
    "args": {
@@ -4558,7 +4552,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.048
   },
   "retrieval.score.retrieval_quality_flat": {
    "args": {
@@ -4571,7 +4565,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.067
   },
   "retrieval.score.retrieval_rank_order": {
    "args": {
@@ -4602,7 +4596,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.077
   },
   "retrieval.score.retrieval_truncation": {
    "args": {
@@ -4612,7 +4606,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.033
+   "ms": 0.053
   },
   "stratigraphy.age_from_depth": {
    "args": {
@@ -4623,7 +4617,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.032
+   "ms": 0.072
   },
   "stratigraphy.compaction_correction": {
    "args": {
@@ -4634,7 +4628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.03
+   "ms": 0.055
   },
   "stratigraphy.isotope_fractionation": {
    "args": {
@@ -4644,7 +4638,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.053
   },
   "stratigraphy.radiocarbon_age": {
    "args": {
@@ -4653,7 +4647,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.055
   },
   "stratigraphy.radiometric_age": {
    "args": {
@@ -4663,7 +4657,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.045
+   "ms": 0.054
   },
   "stratigraphy.sea_level_proxy": {
    "args": {
@@ -4674,7 +4668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.051
   },
   "stratigraphy.sedimentation_rate": {
    "args": {
@@ -4684,7 +4678,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.029
+   "ms": 0.042
   },
   "stratigraphy.stratigraphic_column_depth": {
    "args": {
@@ -4695,7 +4689,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.034
+   "ms": 0.091
   },
   "stratigraphy.thermal_maturity_vitrinite": {
    "args": {
@@ -4705,7 +4699,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.047
+   "ms": 0.045
   },
   "stratigraphy.unconformity_gap": {
    "args": {
@@ -4715,7 +4709,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.039
+   "ms": 0.037
   },
   "topology.betti_0": {
    "args": {
@@ -4741,7 +4735,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.062
   },
   "topology.bottleneck_distance": {
    "args": {
@@ -4783,7 +4777,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.073
   },
   "topology.connected_components_from_edges": {
    "args": {
@@ -4809,7 +4803,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.055
+   "ms": 0.051
   },
   "topology.distance_matrix": {
    "args": {
@@ -4834,7 +4828,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.066
   },
   "topology.euler_characteristic": {
    "args": {
@@ -4845,7 +4839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.038
+   "ms": 0.056
   },
   "topology.rips_triangle_count": {
    "args": {
@@ -4871,7 +4865,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.072
   },
   "topology.total_persistence": {
    "args": {
@@ -4896,7 +4890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.064
   }
  }
 }

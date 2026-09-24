@@ -46,6 +46,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -301,6 +302,22 @@ def to_recommendation(data: Any) -> Recommendation:
     )
 
 
+def action_result(recommendation: Recommendation, name: str) -> dict[str, float | None]:
+    """The engine's figures for one compared action — `expected_value` and
+    `probability_of_loss` from `action_results` — or an empty mapping when the action was not
+    compared. They travel into the logged decision so the webhook body names them instead of
+    null (owner, 2026-09-24: "why run_id: null" — the summary carried only what the visitor
+    typed; a recommend-only decision has no simulation run, so `run_id` is the engine's to
+    leave empty)."""
+    for entry in recommendation.raw.get("action_results") or ():
+        if isinstance(entry, Mapping) and str(entry.get("name", "")) == name:
+            return {
+                "expected_value": _float_or_none(entry.get("expected_value")),
+                "probability_of_loss": _float_or_none(entry.get("probability_of_loss")),
+            }
+    return {}
+
+
 def to_decision(data: Any) -> Decision:
     """`DecisionLogResponse` (log or get) → `Decision`; the id is required."""
     plain = _as_dict(data, "decision")
@@ -544,6 +561,8 @@ class HostedGoverned:
         context: str,
         rationale: str,
         options_considered: list[str] | None = None,
+        expected_value: float | None = None,
+        probability_of_loss: float | None = None,
     ) -> Decision:
         request: dict[str, Any] = {
             "chosen_action": chosen_action.strip(),
@@ -554,6 +573,12 @@ class HostedGoverned:
         }
         if options_considered:
             request["options_considered"] = list(options_considered)
+        # the recommendation's own figures for the chosen action (`LogDecisionRequest` takes
+        # `expected_value` and `risk_pol`); absent, the engine echoes null for them
+        if expected_value is not None and math.isfinite(expected_value):
+            request["expected_value"] = round(float(expected_value), 6)
+        if probability_of_loss is not None and 0.0 <= probability_of_loss <= 1.0:
+            request["risk_pol"] = round(float(probability_of_loss), 6)
         return to_decision(self._call("log_decision", request))
 
     def execute_decision(

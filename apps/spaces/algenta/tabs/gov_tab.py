@@ -686,6 +686,7 @@ def run_chain(
     _audit(state, "recommend", f"recommends {out.recommendation.recommended_action}")
 
     rationale = out.recommendation.rationale or "Recommended by the hosted engine."
+    figures = hosted_api.action_result(out.recommendation, action)
     out.decision = hosted.log_decision(
         action,
         confidence=confidence,
@@ -693,6 +694,8 @@ def run_chain(
         context=CONTEXT,
         rationale=rationale,
         options_considered=[a["name"] for a in actions],
+        expected_value=figures.get("expected_value"),
+        probability_of_loss=figures.get("probability_of_loss"),
     )
     out.raw["log_decision"] = out.decision.raw
     state["decisions"][out.decision.decision_id] = {

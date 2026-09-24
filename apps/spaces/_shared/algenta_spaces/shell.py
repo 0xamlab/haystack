@@ -318,7 +318,12 @@ def _links_html(
         if label == active:
             inner = f'<span class="{active_class}" aria-current="page">{_esc(label)}</span>'
         else:
-            inner = f'<a class="{link_class}" href="{url}">{_esc(label)}</a>'
+            # every nav and footer link leaves the Space: a new tab, because inside the
+            # Hub's Space iframe a same-frame navigation to another site renders nothing
+            inner = (
+                f'<a class="{link_class}" href="{url}" target="_blank" rel="noopener">'
+                f"{_esc(label)}</a>"
+            )
         items.append(f'<li class="{item_class}">{inner}</li>')
     return "".join(items)
 
@@ -330,7 +335,8 @@ def _nav_html(active: str | None, space_id: str) -> str:
     right = ""
     if space_id:
         right = (
-            f'<a class="alg-shell-nav-dup" href="{duplicate_url(space_id)}" rel="noopener">'
+            f'<a class="alg-shell-nav-dup" href="{duplicate_url(space_id)}"'
+            ' target="_blank" rel="noopener">'
             "Duplicate this Space</a>"
         )
     return (

@@ -350,7 +350,8 @@ def render_tile(
         raise ValueError("an unavailable tile names its code")
     tile = cards.tile(title, value, meta=caption, state=TILE_STATE_OF[kind], code=code)
     action = (
-        f'<a class="alg-tile-link" href="{esc(link)}" rel="noopener">{LABEL_OPEN}</a>'
+        f'<a class="alg-tile-link" href="{esc(link)}" target="_blank" rel="noopener">'
+        f"{LABEL_OPEN}</a>"
         if link
         else ""
     )
