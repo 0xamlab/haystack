@@ -20,9 +20,25 @@ from typing import Any
 
 import probe_config as cfg
 
-SCHEMA = "algenta-gpu-probe/2"
+SCHEMA = "algenta-gpu-probe/3"
 #: The phases in the order they run. `record` writes run.json and is the only in-process one.
-PHASES: tuple[str, ...] = ("driver", "kernel", "convert", "decode", "reference", "record")
+#: `baseline` (the same decode without Algenta) runs right after `decode`: the decode process has
+#: exited by then, which is what returns the session's device memory (run 13 measured the runtime
+#: keeping 7.2 GB after `close()`), so the baseline has the whole GPU; the CPU reference, the
+#: heaviest host-memory stage, still runs last before the page is served.
+PHASES: tuple[str, ...] = (
+    "driver",
+    "kernel",
+    "convert",
+    "decode",
+    "baseline",
+    "reference",
+    "record",
+)
+#: Phases whose failure is recorded and does not stop the run. The baseline is the comparison
+#: beside the parity verdict, not the verdict: its block on `/health` carries its own code and
+#: the page shows its lanes as unavailable, while the parity record is still written.
+SOFT_PHASES: frozenset[str] = frozenset({"baseline"})
 PENDING, RUNNING, OK, ERROR, SKIPPED = "pending", "running", "ok", "error", "skipped"
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _SNAPSHOT_RE = re.compile(r"/snapshots/([0-9a-f]{40})(?:/|$)")
@@ -88,17 +104,24 @@ class PhaseRecord:
 class PhaseMachine:
     """Phases run strictly in `order`; a failure marks the rest `skipped` with `upstream_failed`.
 
-    `start` refuses a phase whose predecessor is not `ok`, and refuses to start anything twice:
-    the run is one pass, and a restart is a new machine.
+    `start` refuses a phase whose predecessor is not settled (`ok`, or failed and soft), and
+    refuses to start anything twice: the run is one pass, and a restart is a new machine. A
+    `soft` phase's failure is recorded on its own record and the run goes on; every other
+    failure marks the rest `skipped` with `upstream_failed`.
     """
 
-    def __init__(self, order: Sequence[str] = PHASES) -> None:
+    def __init__(self, order: Sequence[str] = PHASES, soft: Iterable[str] = SOFT_PHASES) -> None:
         if not order or len(set(order)) != len(order):
             raise ValueError("phase order must be a non-empty sequence of distinct names")
         self.order = tuple(order)
+        self.soft = frozenset(soft) & frozenset(self.order)
         self.records: dict[str, PhaseRecord] = {name: PhaseRecord(name) for name in self.order}
         self.started_utc: str | None = None
         self.finished_utc: str | None = None
+
+    def _settled(self, name: str) -> bool:
+        rec = self.records[name]
+        return rec.status == OK or (rec.status == ERROR and name in self.soft)
 
     def _record(self, name: str) -> PhaseRecord:
         try:
@@ -109,7 +132,7 @@ class PhaseMachine:
     def start(self, name: str, *, now: str | None = None) -> PhaseRecord:
         rec = self._record(name)
         index = self.order.index(name)
-        if any(self.records[p].status != OK for p in self.order[:index]):
+        if not all(self._settled(p) for p in self.order[:index]):
             raise ValueError(f"phase {name!r} cannot start before its predecessors are ok")
         if rec.status != PENDING:
             raise ValueError(f"phase {name!r} is {rec.status}; it can only start once")
@@ -162,6 +185,8 @@ class PhaseMachine:
         rec.wall_s = None if wall_s is None else round(float(wall_s), 2)
         rec.log_tail = list(log_tail)
         rec.finished_utc = stamp
+        if name in self.soft:
+            return rec
         for later in self.order[self.order.index(name) + 1 :]:
             self.records[later].status = SKIPPED
             self.records[later].code = "upstream_failed"
@@ -169,13 +194,17 @@ class PhaseMachine:
         self.finished_utc = stamp
         return rec
 
+    def _hard_failed(self, rec: PhaseRecord) -> bool:
+        return rec.status == ERROR and rec.name not in self.soft
+
     @property
     def status(self) -> str:
-        """`pending` before any start, `running`, `ok` once every phase is ok, else `error`."""
+        """`pending` before any start, `running`, `ok` once every phase is settled (a soft
+        phase may have failed), `error` once a phase that stops the run has failed."""
         statuses = [r.status for r in self.records.values()]
-        if any(s == ERROR for s in statuses):
+        if any(self._hard_failed(r) for r in self.records.values()):
             return ERROR
-        if all(s == OK for s in statuses):
+        if all(self._settled(name) for name in self.order):
             return OK
         if all(s == PENDING for s in statuses):
             return PENDING
@@ -183,12 +212,12 @@ class PhaseMachine:
 
     @property
     def phase(self) -> str:
-        """The running phase, else the failed one, else `done`, else the next one to run."""
+        """The running phase, else the one that stopped the run, else `done`, else the next."""
         for rec in self.records.values():
             if rec.status == RUNNING:
                 return rec.name
         for rec in self.records.values():
-            if rec.status == ERROR:
+            if self._hard_failed(rec):
                 return rec.name
         if self.status == OK:
             return "done"
@@ -199,7 +228,8 @@ class PhaseMachine:
 
     @property
     def failure(self) -> PhaseRecord | None:
-        return next((r for r in self.records.values() if r.status == ERROR), None)
+        """The failure that stopped the run; a soft phase's failure is on its own record."""
+        return next((r for r in self.records.values() if self._hard_failed(r)), None)
 
     def data(self, name: str) -> dict[str, Any]:
         return dict(self._record(name).data)
@@ -431,37 +461,332 @@ def parity_report(
     return report
 
 
-def decode_timings(open_s: float | None, step_ms: Sequence[float]) -> dict[str, Any]:
-    """What the decode measured, named for what it is.
+def step_timings(
+    step_ms: Sequence[float], *, steady_from: int = cfg.STEADY_FROM_STEP
+) -> dict[str, Any]:
+    """Per-step figures defined identically for every lane.
 
-    `open_s` is the session open: weight upload to the device and the prompt prefill, after which
-    the first token is already computed (its step is sub-millisecond). `ttft_s` is therefore open
-    plus the first step. `tok_per_s` counts the steps after the first, the steady per-token cost;
-    with one token there is no rate.
+    `steady_step_ms` is the mean of steps `steady_from` to n (3 to 8 for an eight-token decode)
+    and `steady_tok_per_s` is 1000 over it: the per-token cost once the lane is past its first
+    step and its warm-up. `all_steps_tok_per_s` is n tokens over the sum of all n steps, first
+    step and warm-up included. Fewer than `steady_from` steps give no steady figure.
     """
     steps = [float(s) for s in step_ms]
     n = len(steps)
-    out: dict[str, Any] = {
+    total = sum(steps)
+    steady = steps[steady_from - 1 :] if n >= steady_from else []
+    steady_mean = sum(steady) / len(steady) if steady else None
+    return {
         "n_tokens": n,
-        "open_s": None if open_s is None else round(float(open_s), 2),
-        "first_token_ms": round(steps[0], 2) if steps else None,
-        "ttft_s": None,
-        "tok_per_s": None,
-        "mean_step_ms": round(sum(steps) / n, 2) if n else None,
         "step_ms": [round(s, 2) for s in steps],
+        "first_step_ms": round(steps[0], 2) if steps else None,
+        "mean_step_ms": round(total / n, 2) if n else None,
+        "steady_steps": f"{steady_from}-{n}" if steady else None,
+        "steady_step_ms": None if steady_mean is None else round(steady_mean, 2),
+        "steady_tok_per_s": round(1000.0 / steady_mean, 2) if steady_mean else None,
+        "all_steps_tok_per_s": round(n / (total / 1000.0), 2) if n and total > 0 else None,
     }
+
+
+def decode_timings(open_s: float | None, step_ms: Sequence[float]) -> dict[str, Any]:
+    """What the Algenta decode measured, named for what it is.
+
+    `open_s` is the session open: the f64 blob uploaded to the device as f32 and the prompt
+    prefilled, after which the first token is already computed (its step is sub-millisecond, so
+    `ttft_s`, open plus the first step, is the session open). Step 2 is the warm-up, inside the
+    timed steps. The steady figures come from `step_timings`; `tok_per_s` is the older headline,
+    the steps after the first (warm-up included), kept so earlier records read the same.
+    """
+    out = step_timings(step_ms)
+    steps = out["step_ms"]
+    n = len(steps)
+    out["open_s"] = None if open_s is None else round(float(open_s), 2)
+    out["ttft_s"] = None
+    out["ttft_is_session_open"] = True
+    out["tok_per_s"] = None
     if steps and open_s is not None:
-        out["ttft_s"] = round(float(open_s) + steps[0] / 1000.0, 2)
+        out["ttft_s"] = round(float(open_s) + float(step_ms[0]) / 1000.0, 2)
     if n >= 2:
-        after_first = sum(steps[1:])
+        after_first = sum(float(s) for s in step_ms[1:])
         if after_first > 0:
             out["tok_per_s"] = round((n - 1) / (after_first / 1000.0), 2)
+    return out
+
+
+def baseline_timings(load_s: float | None, step_ms: Sequence[float]) -> dict[str, Any]:
+    """What a transformers lane measured: `load_s` is `from_pretrained` plus the move to the
+    device; the steps are the timed generate's, step 1 being the prefill of the prompt, so
+    `ttft_s` is step 1 from the timed call's start. The steady figures are `step_timings`."""
+    out = step_timings(step_ms)
+    out["load_s"] = None if load_s is None else round(float(load_s), 2)
+    out["ttft_s"] = round(float(step_ms[0]) / 1000.0, 3) if step_ms else None
+    out["ttft_is_session_open"] = False
     return out
 
 
 def log_tail(text: str, lines: int = 20) -> list[str]:
     rows = [row for row in str(text or "").splitlines() if row.strip()]
     return rows[-lines:]
+
+
+# ---------------------------------------------------------------------------
+# The baseline lanes and the side-by-side view
+# ---------------------------------------------------------------------------
+
+LANE_TITLES: dict[str, str] = {
+    "algenta": "Algenta CUDA kernels",
+    "float32": "transformers CUDA",
+    "float16": "transformers CUDA",
+}
+LANE_PRECISION: dict[str, str] = {
+    "algenta": "f32 resident, uploaded from the f64 blob",
+    "float32": "float32",
+    "float16": "float16",
+}
+OK_LANE, UNAVAILABLE, ABSENT_LANE, PENDING_LANE = "ok", "unavailable", "absent", "pending"
+
+
+def lane_view(lane: Mapping[str, Any], reference: Mapping[str, Any] | None) -> dict[str, Any]:
+    """One baseline lane as `/health` shows it: the stage's facts, its timings and its parity
+    against the CPU reference once that has run. A lane that failed keeps only its code."""
+    if not lane.get("ok"):
+        return {
+            "ok": False,
+            "dtype": lane.get("dtype"),
+            "code": str(lane.get("code") or "baseline_failed"),
+            "message": lane.get("message"),
+        }
+    out = dict(lane)
+    out["timings"] = baseline_timings(lane.get("load_s"), lane.get("step_ms") or [])
+    warm = lane.get("warmup") or {}
+    out["warmup_timings"] = baseline_timings(None, warm.get("step_ms") or []) if warm else None
+    out["parity"] = None
+    if reference:
+        out["parity"] = parity_report(
+            lane.get("tokens") or [],
+            reference.get("tokens") or [],
+            reference_margins=reference.get("top2_margins"),
+            native_decoded=lane.get("decoded"),
+            reference_decoded=reference.get("decoded"),
+        )
+    return out
+
+
+def baseline_block(machine: PhaseMachine, reference: Mapping[str, Any]) -> dict[str, Any]:
+    """The `baseline` block of `/health`: the phase's status and code, then the stage's facts
+    and each lane through `lane_view` once the phase is ok."""
+    rec = machine.records["baseline"]
+    block: dict[str, Any] = {
+        "status": rec.status,
+        "code": rec.code,
+        "message": rec.message,
+        "wall_s": rec.wall_s,
+        "lanes": {},
+    }
+    if rec.status != OK:
+        return block
+    data = machine.data("baseline")
+    block.update({k: v for k, v in data.items() if k != "lanes"})
+    for dtype in cfg.BASELINE_DTYPES:
+        lane = (data.get("lanes") or {}).get(dtype)
+        if isinstance(lane, Mapping):
+            block["lanes"][dtype] = lane_view(lane, reference)
+        else:
+            block["lanes"][dtype] = {
+                "ok": False,
+                "dtype": dtype,
+                "code": "baseline_lane_missing",
+                "message": "the stage reported no such lane",
+            }
+    return block
+
+
+def _algenta_lane(body: Mapping[str, Any]) -> dict[str, Any]:
+    decode = body.get("decode") or {}
+    kernel = body.get("kernel") or decode
+    phases = body.get("phases") or {}
+    rec = phases.get("decode") or {}
+    lane: dict[str, Any] = {
+        "id": "algenta",
+        "title": LANE_TITLES["algenta"],
+        "precision": LANE_PRECISION["algenta"],
+        "status": ABSENT_LANE,
+        "code": None,
+        "message": None,
+    }
+    if not decode:
+        if rec.get("status") in (ERROR, SKIPPED):
+            lane.update(status=UNAVAILABLE, code=rec.get("code"), message=rec.get("message"))
+        elif rec.get("status") in (PENDING, RUNNING):
+            lane["status"] = PENDING_LANE
+        return lane
+    timings = decode_timings(decode.get("open_s"), decode.get("step_ms") or [])
+    steps = timings["step_ms"]
+    taken = None
+    start, after_open = decode.get("gpu_free_bytes_start"), decode.get("gpu_free_bytes_after_open")
+    if isinstance(start, int) and isinstance(after_open, int):
+        taken = max(0, start - after_open)
+    revision = str(kernel.get("revision") or "")
+    lane.update(
+        status=OK_LANE,
+        stack=" · ".join(
+            part
+            for part in (
+                f"{cfg.KERNEL_REPO}@{revision[:8]}" if revision else cfg.KERNEL_REPO,
+                str(kernel.get("mojo_version") or ""),
+                str(kernel.get("selected_library") or ""),
+            )
+            if part
+        ),
+        tokens=list(decode.get("tokens") or []),
+        decoded=decode.get("decoded"),
+        parity=body.get("parity"),
+        load_s=timings["open_s"],
+        load_label="session open: the f64 blob uploaded as f32, then the prompt prefilled",
+        ttft_s=timings["ttft_s"],
+        ttft_note="= session open; the prefill runs there",
+        first_step_ms=timings["first_step_ms"],
+        first_step_note=(
+            "prefill done at session open"
+            + (
+                f"; step 2 ({steps[1]:.1f} ms) is the warm-up, inside the timed steps"
+                if len(steps) > 1
+                else ""
+            )
+        ),
+        steady_steps=timings["steady_steps"],
+        steady_step_ms=timings["steady_step_ms"],
+        steady_tok_per_s=timings["steady_tok_per_s"],
+        all_steps_tok_per_s=timings["all_steps_tok_per_s"],
+        step_ms=steps,
+        device_taken_bytes=taken,
+        peak_allocated_bytes=None,
+        device_memory_note="taken on the device at session open (free memory before minus after)",
+        versions={
+            "kernel_revision": revision or None,
+            "mojo_version": kernel.get("mojo_version"),
+            "library": kernel.get("selected_library"),
+            "backend": kernel.get("backend"),
+        },
+    )
+    return lane
+
+
+def _transformers_lane(dtype: str, block: Mapping[str, Any] | None) -> dict[str, Any]:
+    lane: dict[str, Any] = {
+        "id": dtype,
+        "title": LANE_TITLES.get(dtype, "transformers CUDA"),
+        "precision": LANE_PRECISION.get(dtype, dtype),
+        "status": ABSENT_LANE,
+        "code": None,
+        "message": None,
+    }
+    if block is None:
+        lane["message"] = "not in this record: the run predates the baseline stage"
+        return lane
+    status = block.get("status")
+    if status in (ERROR, SKIPPED):
+        lane.update(status=UNAVAILABLE, code=block.get("code"), message=block.get("message"))
+        return lane
+    if status != OK:
+        lane["status"] = PENDING_LANE
+        return lane
+    data = (block.get("lanes") or {}).get(dtype) or {}
+    if not data.get("ok"):
+        lane.update(
+            status=UNAVAILABLE,
+            code=data.get("code") or "baseline_lane_missing",
+            message=data.get("message"),
+        )
+        return lane
+    timings = data.get("timings") or baseline_timings(data.get("load_s"), data.get("step_ms") or [])
+    warm = data.get("warmup_timings") or {}
+    n_prompt = block.get("n_prompt")
+    warm_note = ""
+    if warm.get("ttft_s") is not None:
+        warm_note = f"; one warm-up generate excluded (first token {warm['ttft_s']:.2f} s"
+        if warm.get("steady_step_ms") is not None:
+            warm_note += f", steady {warm['steady_step_ms']:.1f} ms"
+        warm_note += ")"
+    lane.update(
+        status=OK_LANE,
+        stack=" · ".join(
+            part
+            for part in (
+                f"transformers {block.get('transformers') or ''}".strip(),
+                f"torch {block.get('torch') or ''}".strip(),
+                f"CUDA {block.get('cuda') or ''}".strip() if block.get("cuda") else "",
+            )
+            if part
+        ),
+        tokens=list(data.get("tokens") or []),
+        decoded=data.get("decoded"),
+        parity=data.get("parity"),
+        load_s=timings["load_s"],
+        load_label="model load: from_pretrained, then moved to the device",
+        ttft_s=timings["ttft_s"],
+        ttft_note=(
+            f"timed generate: the prefill of the {n_prompt} prompt tokens"
+            if n_prompt
+            else "timed generate: the prefill"
+        ),
+        first_step_ms=timings["first_step_ms"],
+        first_step_note="step 1 is the prefill" + warm_note,
+        steady_steps=timings["steady_steps"],
+        steady_step_ms=timings["steady_step_ms"],
+        steady_tok_per_s=timings["steady_tok_per_s"],
+        all_steps_tok_per_s=timings["all_steps_tok_per_s"],
+        step_ms=timings["step_ms"],
+        device_taken_bytes=data.get("device_taken_bytes"),
+        peak_allocated_bytes=data.get("peak_allocated_bytes"),
+        device_memory_note=(
+            "taken on the device after the load (free memory before minus after); "
+            "peak allocated by torch over load and both generates"
+        ),
+        versions={
+            "transformers": block.get("transformers"),
+            "torch": block.get("torch"),
+            "cuda": block.get("cuda"),
+            "dtype": data.get("dtype"),
+            "model_dtype": data.get("model_dtype"),
+        },
+    )
+    return lane
+
+
+def side_by_side(body: Mapping[str, Any]) -> dict[str, Any]:
+    """The comparison as columns: the Algenta lane from `decode`, one lane per baseline dtype.
+
+    Every figure is the run's own measurement through `decode_timings` / `baseline_timings`,
+    so an earlier record renders with today's definitions. `predates` is true when the record
+    has no `baseline` block at all (a run before the stage existed), which the page says in
+    words rather than as a failure. A ratio is reported only for a baseline lane that decoded
+    the same tokens as the Algenta lane, and only of the steady per-token times.
+    """
+    block = body.get("baseline")
+    predates = "baseline" not in body
+    lanes = [_algenta_lane(body)]
+    for dtype in cfg.BASELINE_DTYPES:
+        lanes.append(_transformers_lane(dtype, block if isinstance(block, Mapping) else None))
+    algenta = lanes[0]
+    ratios: list[dict[str, Any]] = []
+    for lane in lanes[1:]:
+        entry: dict[str, Any] = {"lane": lane["id"], "same_tokens": None, "steady_step_ratio": None}
+        if lane["status"] == OK_LANE and algenta["status"] == OK_LANE:
+            entry["same_tokens"] = bool(lane["tokens"]) and lane["tokens"] == algenta["tokens"]
+            a, b = algenta.get("steady_step_ms"), lane.get("steady_step_ms")
+            if entry["same_tokens"] and a and b:
+                entry["steady_step_ratio"] = round(float(b) / float(a), 2)
+        ratios.append(entry)
+    driver = body.get("driver") or {}
+    return {
+        "gpu": driver.get("device_name") or (driver.get("nvidia_smi") or {}).get("name"),
+        "predates": predates,
+        "reference_tokens": list((body.get("reference") or {}).get("tokens") or []) or None,
+        "steady_from_step": cfg.STEADY_FROM_STEP,
+        "lanes": lanes,
+        "ratios": ratios,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -562,6 +887,7 @@ def health_body(
     convert = machine.data("convert") if machine.records["convert"].status == OK else {}
     decode = machine.data("decode") if machine.records["decode"].status == OK else {}
     reference = machine.data("reference") if machine.records["reference"].status == OK else {}
+    baseline = baseline_block(machine, reference) if "baseline" in machine.records else None
     parity = None
     if decode and reference:
         parity = parity_report(
@@ -601,6 +927,7 @@ def health_body(
             if decode
             else None
         ),
+        "baseline": baseline,
         "reference": reference or None,
         "parity": parity,
         "run12_recorded": {
@@ -622,11 +949,12 @@ def health_body(
 def run_record(body: Mapping[str, Any]) -> dict[str, Any]:
     """`run.json`: the health body plus the evidence rows and the decision.
 
-    Built by the `record` phase while it is the one running, so every measuring phase must be
-    `ok` and nothing may have failed; the record itself says `status: ok`, `phase: done`.
+    Built by the `record` phase while it is the one running, so every measuring phase that can
+    stop the run must be `ok` and nothing may have failed; a soft phase (the baseline) may be
+    `error`, and its block then carries the code. The record says `status: ok`, `phase: done`.
     """
     phases = body.get("phases") or {}
-    measuring = [name for name in PHASES if name != "record"]
+    measuring = [name for name in PHASES if name != "record" and name not in SOFT_PHASES]
     not_ok = [name for name in measuring if (phases.get(name) or {}).get("status") != OK]
     if not_ok or body.get("failure"):
         raise ProbeError(

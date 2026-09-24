@@ -22,7 +22,8 @@ tags:
 Qwen3-1.7B decoded on an NVIDIA GPU by the compiled CUDA kernels published at
 [thyn-ai/algenta-llm](https://huggingface.co/thyn-ai/algenta-llm), and checked token by token
 against an independent reference. One fixed prompt, eight greedy tokens, the same token ids on
-both sides or the index where they part.
+both sides or the index where they part. The same decode without Algenta — transformers on the
+same GPU, float32 and float16 — sits beside it.
 
 This Space is private and stays paused between runs. A run is one boot: it costs a few minutes
 of `t4-small` time and leaves `run.json` behind.
@@ -39,18 +40,25 @@ of `t4-small` time and leaves `run.json` behind.
   `algenta.inference.prepare_model_checkpoint`, timed.
 - `DecodeSession` produces eight greedy tokens for the prompt, with the session open time and
   each step's wall time.
+- Plain transformers on the same GPU decodes the same prompt with the same greedy settings, in
+  float32 (the precision of Algenta's resident weights) and in float16, each lane its own model
+  load with a warm-up generate excluded; the page prints the two beside the Algenta lane —
+  tokens, parity, load, time to first token, steady per-token time, tokens per second, device
+  memory — every number measured in the same run, and a lane that cannot run says so with a
+  code.
 - transformers in float32 on the CPU produces the same eight token ids, or the page names the
   first divergent index and the reference's top-2 logit margin there.
 
 ## How the run is made
 
 The probe runs at boot, one phase after another, each in its own process with a wall-clock
-budget: `driver`, `kernel`, `convert`, `decode`, `reference`, then `record`. `/health` is the
-live record of the run: the phase that is running, every phase's status, code and time, and
-each fact once it has been measured. The page at `/` renders that record; a number appears
-only after it was measured in this container, and a phase that cannot run says so with a code.
-`/run.json` is the finished record with the evidence rows' fields, written once every phase
-is ok.
+budget: `driver`, `kernel`, `convert`, `decode`, `baseline`, `reference`, then `record`.
+`/health` is the live record of the run: the phase that is running, every phase's status, code
+and time, and each fact once it has been measured. The page at `/` renders that record; a
+number appears only after it was measured in this container, and a phase that cannot run says
+so with a code. `/run.json` is the finished record with the evidence rows' fields and the
+`baseline` block, written once every phase that decides the verdict is ok (a baseline that
+could not run is recorded with its code, not as a stop).
 
 The image bakes the kernel snapshot and the model snapshot at build time and boots with
 `HF_HUB_OFFLINE=1`, so nothing downloads at boot. The 13.8 GB conversion happens on the Space's

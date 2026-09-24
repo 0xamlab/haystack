@@ -2,11 +2,13 @@
 
 Everything the Space decides on the T4 is a pure helper in `probe_core.py`: the phase machine,
 the driver and compute-capability gates, the kernel revision/variant/tier/library gates, the
-parity comparison and the timings. Those run here on the build Mac. The orchestrator and the
-FastAPI routes run against a fake stage runner that answers with the run-12 artifact's data
-(`docs/hf-kernels/evidence/artifacts/gpu-probe-run12-t4-small-qwen3-1p7b.json`), so the page
-and `run.json` are checked against the one real run that exists. torch, kernels, transformers
-and algenta are never imported.
+parity comparison, the timings and the side-by-side lanes. Those run here on the build Mac.
+The orchestrator and the FastAPI routes run against a fake stage runner that answers with the
+run-12 artifact's data (`docs/hf-kernels/evidence/artifacts/gpu-probe-run12-t4-small-qwen3-1p7b.json`)
+and replay the run-13 record (`gpu-probe-run13-*.json`, the health-body shape), so the page and
+`run.json` are checked against the real runs that exist. The baseline stage (transformers on the
+GPU) has no real run yet: its report is a shape-only fixture here, and no figure from it is
+asserted as a measurement. torch, kernels, transformers and algenta are never imported.
 """
 
 from __future__ import annotations
@@ -28,6 +30,12 @@ from manifest import load_manifest
 REPO = Path(__file__).resolve().parents[2]
 PROBE_DIR = REPO / "apps" / "spaces" / "gpu-probe"
 ARTIFACT = REPO / "docs/hf-kernels/evidence/artifacts/gpu-probe-run12-t4-small-qwen3-1p7b.json"
+ARTIFACT_RUN13 = (
+    REPO / "docs/hf-kernels/evidence/artifacts/gpu-probe-run13-t4-small-qwen3-1p7b.json"
+)
+#: The step times of the run-13 rerun (2026-09-24 18:19Z, Tesla T4), as the page printed them.
+RUN13_STEP_MS = [0.1, 194.7, 26.7, 26.8, 26.9, 26.9, 27.0, 27.0]
+RUN13_OPEN_S = 42.64
 FLAGSHIP_DIR = REPO / "apps" / "spaces" / "algenta"
 
 # Appended, not inserted: the flagship's tests import their own `app` and `hf_ua_shim` from
@@ -56,6 +64,78 @@ app = _load_by_file("gpu_probe_app", "app.py")
 @pytest.fixture(scope="module")
 def artifact() -> dict:
     return json.loads(ARTIFACT.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def artifact13() -> dict:
+    return json.loads(ARTIFACT_RUN13.read_text(encoding="utf-8"))
+
+
+def _fixture_baseline(tokens: list[int], *, float16_code: str | None = None) -> dict:
+    """The baseline stage's report in shape only. Every figure here is invented so the
+    orchestrator, the `baseline` block and the page can be exercised without a GPU; none is a
+    measurement and none is asserted as one. `float16_code` makes that lane fail closed."""
+
+    def lane(dtype: str, load_s: float, ttft_s: float, step: float, taken: int) -> dict:
+        steps = [ttft_s * 1000.0, *([step] * 7)]
+        return {
+            "ok": True,
+            "dtype": dtype,
+            "torch_dtype": f"torch.{dtype}",
+            "model_dtype": f"torch.{dtype}",
+            "load_s": load_s,
+            "ttft_s": ttft_s,
+            "step_ms": steps,
+            "generate_s": round(sum(steps) / 1000.0, 3),
+            "tokens": list(tokens),
+            "decoded": cfg.RUN12_DECODED,
+            "stopped_on_eos": False,
+            "eos_token_id": [151645, 151643],
+            "gpu_free_bytes_before": 15_000_000_000,
+            "gpu_free_bytes_after_load": 15_000_000_000 - taken,
+            "device_taken_bytes": taken,
+            "weights_allocated_bytes": taken,
+            "peak_allocated_bytes": taken + 300_000_000,
+            "peak_reserved_bytes": taken + 500_000_000,
+            "same_tokens_as_warmup": True,
+            "warmup": {
+                "excluded": True,
+                "tokens": list(tokens),
+                "step_ms": [ttft_s * 3000.0, *([step * 2] * 7)],
+                "ttft_s": ttft_s * 3,
+                "generate_s": 1.0,
+            },
+        }
+
+    lanes = {
+        "float32": lane("float32", 9.0, 0.09, 40.0, 7_000_000_000),
+        "float16": lane("float16", 6.0, 0.05, 30.0, 3_500_000_000),
+    }
+    if float16_code:
+        lanes["float16"] = {
+            "ok": False,
+            "dtype": "float16",
+            "code": float16_code,
+            "message": "OutOfMemoryError: CUDA out of memory",
+        }
+    return {
+        "method": "transformers generate on CUDA (fixture)",
+        "device_name": "Tesla T4",
+        "compute_capability": [7, 5],
+        "torch": "2.9.1+cu128",
+        "cuda": "12.8",
+        "transformers": "5.17.0",
+        "prompt": cfg.PROMPT,
+        "prompt_ids": list(cfg.RUN12_PROMPT_IDS),
+        "n_prompt": len(cfg.RUN12_PROMPT_IDS),
+        "max_new_tokens": cfg.MAX_NEW_TOKENS,
+        "dtypes": list(cfg.BASELINE_DTYPES),
+        "gpu_total_bytes": 15_828_320_256,
+        "gpu_free_bytes_start": 15_000_000_000,
+        "gpu_free_bytes_end": 15_000_000_000,
+        "lanes": lanes,
+        "max_rss_mib": 1.0,
+    }
 
 
 def _run12_stage_data(artifact: dict) -> dict[str, dict]:
@@ -117,7 +197,27 @@ def _run12_stage_data(artifact: dict) -> dict[str, dict]:
                 "prompt_ids_agree_with_algenta_tokenizer"
             ],
         },
+        "baseline": _fixture_baseline(reference["tokens"]),
     }
+
+
+def _run13_stage_data(artifact13: dict, *, baseline: dict | None = None) -> dict[str, dict]:
+    """The run-13 record's blocks as the stages reported them (the orchestrator's own keys
+    stripped), plus a baseline report when given: run 13 predates that stage."""
+    added = {"started_utc", "finished_utc", "stage_wall_s", "timings"}
+    data = {
+        name: {k: v for k, v in artifact13[block].items() if k not in added}
+        for name, block in (
+            ("driver", "driver"),
+            ("kernel", "kernel"),
+            ("convert", "model"),
+            ("decode", "decode"),
+            ("reference", "reference"),
+        )
+    }
+    if baseline is not None:
+        data["baseline"] = baseline
+    return data
 
 
 def _fake_runner(stage_data: dict[str, dict], failures: dict[str, dict] | None = None):
@@ -195,13 +295,23 @@ def test_phase_machine_runs_in_order_and_reports_status() -> None:
     m.finish("driver", {"device_name": "Tesla T4"}, wall_s=0.5234)
     assert m.records["driver"].wall_s == 0.52 and m.data("driver") == {"device_name": "Tesla T4"}
     assert m.phase == "kernel"
-    for name in ("kernel", "convert", "decode", "reference", "record"):
+    for name in ("kernel", "convert", "decode", "baseline", "reference", "record"):
         m.start(name)
         m.finish(name, {})
     assert m.status == core.OK and m.phase == "done" and m.finished_utc
     snap = m.snapshot()
     assert list(snap) == list(core.PHASES)
+    assert list(core.PHASES) == [
+        "driver",
+        "kernel",
+        "convert",
+        "decode",
+        "baseline",
+        "reference",
+        "record",
+    ]
     assert all(rec["status"] == core.OK for rec in snap.values())
+    assert set(cfg.STAGE_TIMEOUTS_S) == set(app.STAGE_PHASES)
 
 
 def test_phase_machine_failure_skips_the_rest() -> None:
@@ -214,7 +324,7 @@ def test_phase_machine_failure_skips_the_rest() -> None:
     m.fail("kernel", "kernel_tier_mismatch", "tier 3072", wall_s=1.0)
     assert m.status == core.ERROR and m.phase == "kernel"
     assert m.failure is not None and m.failure.code == "kernel_tier_mismatch"
-    for later in ("convert", "decode", "reference", "record"):
+    for later in ("convert", "decode", "baseline", "reference", "record"):
         rec = m.records[later]
         assert rec.status == core.SKIPPED and rec.code == "upstream_failed"
         assert "kernel failed with kernel_tier_mismatch" in (rec.message or "")
@@ -224,6 +334,35 @@ def test_phase_machine_failure_skips_the_rest() -> None:
         m.start("nope")
     with pytest.raises(ValueError, match="distinct"):
         core.PhaseMachine(["a", "a"])
+
+
+def test_baseline_phase_failure_is_soft_and_the_run_goes_on() -> None:
+    """The comparison beside the verdict is not the verdict: its failure is on its own record,
+    `reference` and `record` still run, and the machine ends `ok` with no top-level failure."""
+    assert core.SOFT_PHASES == frozenset({"baseline"})
+    m = core.PhaseMachine()
+    for name in ("driver", "kernel", "convert", "decode"):
+        m.start(name)
+        m.finish(name, {})
+    m.start("baseline")
+    m.fail("baseline", "stage_crashed", "signal 11", wall_s=2.0)
+    assert m.records["baseline"].status == core.ERROR
+    assert m.records["reference"].status == core.PENDING, "nothing was skipped"
+    assert m.status == core.RUNNING and m.phase == "reference" and m.failure is None
+    assert m.finished_utc is None
+    for name in ("reference", "record"):
+        m.start(name)
+        m.finish(name, {})
+    assert m.status == core.OK and m.phase == "done" and m.failure is None
+    # a phase that stops the run still does, whatever the soft one did
+    n = core.PhaseMachine()
+    for name in ("driver", "kernel", "convert", "decode", "baseline"):
+        n.start(name)
+        n.finish(name, {})
+    n.start("reference")
+    n.fail("reference", "RuntimeError", "boom")
+    assert n.status == core.ERROR and n.failure is not None and n.failure.name == "reference"
+    assert n.records["record"].status == core.SKIPPED
 
 
 # --- gates -----------------------------------------------------------------------------------
@@ -366,21 +505,53 @@ def test_decode_timings_from_the_run12_steps(artifact: dict) -> None:
     decode = artifact["steps"]["gpu"]["data"]["decode"]
     timings = core.decode_timings(decode["open_s"], decode["step_ms"])
     assert timings["n_tokens"] == 8
-    assert timings["open_s"] == 41.67 and timings["first_token_ms"] == 0.24
+    assert timings["open_s"] == 41.67 and timings["first_step_ms"] == 0.24
     assert timings["ttft_s"] == round(41.67 + 0.24 / 1000, 2)
+    assert timings["ttft_is_session_open"] is True
     after_first = sum(decode["step_ms"][1:])
     assert timings["tok_per_s"] == round(7 / (after_first / 1000.0), 2)
     assert timings["mean_step_ms"] == round(sum(decode["step_ms"]) / 8, 2)
     assert core.decode_timings(None, []) == {
         "n_tokens": 0,
-        "open_s": None,
-        "first_token_ms": None,
-        "ttft_s": None,
-        "tok_per_s": None,
-        "mean_step_ms": None,
         "step_ms": [],
+        "first_step_ms": None,
+        "mean_step_ms": None,
+        "steady_steps": None,
+        "steady_step_ms": None,
+        "steady_tok_per_s": None,
+        "all_steps_tok_per_s": None,
+        "open_s": None,
+        "ttft_s": None,
+        "ttft_is_session_open": True,
+        "tok_per_s": None,
     }
     assert core.decode_timings(1.0, [5.0])["tok_per_s"] is None
+
+
+def test_steady_tokens_per_second_is_steps_three_to_eight() -> None:
+    """The run-13 step times: the 0.1 ms first step (prefill at session open) and the 194.7 ms
+    warm-up are outside the steady figure; the older `tok_per_s` (7 tokens over steps 2 to 8,
+    the 19.67 the page used to headline) is kept under its own name."""
+    steady = RUN13_STEP_MS[2:]
+    steady_mean = sum(steady) / len(steady)
+    t = core.step_timings(RUN13_STEP_MS)
+    assert t["steady_steps"] == "3-8" and cfg.STEADY_FROM_STEP == 3
+    assert t["steady_step_ms"] == round(steady_mean, 2) == 26.88
+    assert t["steady_tok_per_s"] == round(1000.0 / steady_mean, 2) == 37.2
+    assert t["all_steps_tok_per_s"] == round(8 / (sum(RUN13_STEP_MS) / 1000.0), 2) == 22.47
+    assert t["first_step_ms"] == 0.1 and t["mean_step_ms"] == round(sum(RUN13_STEP_MS) / 8, 2)
+    d = core.decode_timings(RUN13_OPEN_S, RUN13_STEP_MS)
+    assert d["tok_per_s"] == round(7 / (sum(RUN13_STEP_MS[1:]) / 1000.0), 2) == 19.66
+    assert d["ttft_s"] == 42.64 == d["open_s"], "the prefill ran at session open"
+    assert {k: d[k] for k in t} == t, "the steady figures are the shared definition"
+    # the same definition for a transformers lane: step 1 is its prefill
+    b = core.baseline_timings(9.0, [90.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0, 40.0])
+    assert b["load_s"] == 9.0 and b["ttft_s"] == 0.09 and b["ttft_is_session_open"] is False
+    assert b["steady_step_ms"] == 40.0 and b["steady_tok_per_s"] == 25.0
+    assert b["all_steps_tok_per_s"] == round(8 / 0.37, 2)
+    short = core.step_timings([50.0, 40.0])
+    assert short["steady_steps"] is None and short["steady_tok_per_s"] is None
+    assert short["all_steps_tok_per_s"] == round(2 / 0.09, 2)
 
 
 # --- the stage protocol ----------------------------------------------------------------------
@@ -464,10 +635,16 @@ def test_full_run_reproduces_the_run12_record(tmp_path: Path, artifact: dict) ->
     assert body["parity"]["native_tokens"] == artifact["parity"]["native"]["tokens"]
     assert body["run12_recorded"]["matches_this_run"] is True
     assert body["decode"]["timings"]["open_s"] == 41.67
+    assert body["decode"]["timings"]["steady_steps"] == "3-8"
     assert body["kernel"]["selected_library"] == "libalgenta_algenta_llm.sm_75.so"
     assert body["phases"]["record"]["status"] == core.OK and body["run_json"] is True
+    assert body["schema"] == core.SCHEMA == "algenta-gpu-probe/3"
     record = json.loads(state.run_json.read_text(encoding="utf-8"))
     assert record["decision"] == "ok"
+    assert record["baseline"]["status"] == core.OK and set(record["baseline"]["lanes"]) == {
+        "float32",
+        "float16",
+    }
     row = record["evidence"]["GPU-SPACE-PARITY-001"]
     expected = artifact["evidence"]["GPU-SPACE-PARITY-001"]
     for key in ("native_tokens", "reference_tokens", "step_ms", "open_s", "blob_bytes"):
@@ -560,8 +737,256 @@ def test_routes_and_page(tmp_path: Path, artifact: dict) -> None:
     _assert_clean_copy(text)
 
 
+def _page_text(page: str) -> str:
+    """The page's rendered words: tags and the stylesheet stripped, whitespace collapsed."""
+    import html as _html
+
+    without_css = re.sub(r"<style>.*?</style>", " ", page, flags=re.DOTALL)
+    return _html.unescape(" ".join(re.sub(r"<[^>]+>", " ", without_css).split()))
+
+
+def test_baseline_block_shape_and_lane_failure_codes(tmp_path: Path, artifact: dict) -> None:
+    """`/health.baseline`: the stage's facts, each lane with its timings (the shared steady
+    definition) and its parity against the CPU reference; a failed lane is its code alone."""
+    data = _run12_stage_data(artifact)
+    tokens = artifact["parity"]["reference_tokens"]
+    data["baseline"] = _fixture_baseline(tokens, float16_code="baseline_oom")
+    state = app.ProbeState(work=tmp_path, versions={}, space={}, build={})
+    app.run_probe(state, _fake_runner(data))
+    body = state.health()
+    assert body["status"] == core.OK and body["phases"]["baseline"]["status"] == core.OK
+    block = body["baseline"]
+    assert block["status"] == core.OK and block["code"] is None
+    for key in ("device_name", "torch", "cuda", "transformers", "n_prompt", "dtypes", "method"):
+        assert key in block, key
+    f32 = block["lanes"]["float32"]
+    assert f32["ok"] is True and f32["dtype"] == "float32"
+    assert f32["timings"] == core.baseline_timings(f32["load_s"], f32["step_ms"])
+    assert f32["timings"]["steady_step_ms"] == 40.0 and f32["timings"]["ttft_s"] == 0.09
+    assert f32["warmup_timings"]["n_tokens"] == 8 and f32["warmup"]["excluded"] is True
+    assert f32["parity"]["verdict"] == "8/8" and f32["parity"]["full_match"] is True
+    f16 = block["lanes"]["float16"]
+    assert f16 == {
+        "ok": False,
+        "dtype": "float16",
+        "code": "baseline_oom",
+        "message": "OutOfMemoryError: CUDA out of memory",
+    }
+    assert "timings" not in f16 and "step_ms" not in f16, "a failed lane carries no number"
+    record = json.loads(state.run_json.read_text(encoding="utf-8"))
+    assert record["baseline"]["lanes"]["float16"]["code"] == "baseline_oom"
+    assert record["baseline"]["lanes"]["float32"]["parity"]["verdict"] == "8/8"
+    # a lane the stage did not report at all is unavailable with its own code
+    data["baseline"] = {**_fixture_baseline(tokens), "lanes": {}}
+    other = app.ProbeState(work=tmp_path / "b", versions={}, space={}, build={})
+    app.run_probe(other, _fake_runner(data))
+    lanes = other.health()["baseline"]["lanes"]
+    assert lanes["float32"]["code"] == lanes["float16"]["code"] == "baseline_lane_missing"
+
+
+def test_side_by_side_lanes_and_the_unavailable_state(tmp_path: Path, artifact: dict) -> None:
+    data = _run12_stage_data(artifact)
+    tokens = artifact["parity"]["reference_tokens"]
+    data["baseline"] = _fixture_baseline(tokens, float16_code="baseline_oom")
+    state = app.ProbeState(work=tmp_path, versions={}, space={}, build={})
+    app.run_probe(state, _fake_runner(data))
+    body = state.health()
+    view = core.side_by_side(body)
+    assert view["gpu"] == "Tesla T4" and view["predates"] is False
+    assert [lane["id"] for lane in view["lanes"]] == ["algenta", "float32", "float16"]
+    algenta, f32, f16 = view["lanes"]
+    assert algenta["status"] == core.OK_LANE and algenta["ttft_s"] == algenta["load_s"] == 41.67
+    assert algenta["steady_step_ms"] == body["decode"]["timings"]["steady_step_ms"]
+    assert algenta["first_step_note"].startswith("prefill done at session open; step 2 (")
+    assert algenta["device_taken_bytes"] is None, "run 12 did not record device memory"
+    assert f32["status"] == core.OK_LANE and f32["tokens"] == tokens
+    assert f32["parity"]["verdict"] == "8/8" and f32["load_s"] == 9.0 and f32["ttft_s"] == 0.09
+    assert f32["steady_step_ms"] == 40.0 and f32["steady_tok_per_s"] == 25.0
+    assert f32["device_taken_bytes"] == 7_000_000_000
+    assert f32["peak_allocated_bytes"] == 7_300_000_000
+    assert "warm-up generate excluded" in f32["first_step_note"]
+    assert f16["status"] == core.UNAVAILABLE and f16["code"] == "baseline_oom"
+    assert "steady_step_ms" not in f16
+    ratio_f32, ratio_f16 = view["ratios"]
+    assert ratio_f32["same_tokens"] is True
+    assert ratio_f32["steady_step_ratio"] == round(40.0 / algenta["steady_step_ms"], 2)
+    assert ratio_f16 == {"lane": "float16", "same_tokens": None, "steady_step_ratio": None}
+
+    page = app.render_page(body)
+    text = _page_text(page)
+    _assert_clean_copy(page)
+    verdict = text.index("Run complete. Parity 8/8")
+    section = text.index("Side by side on the same Tesla T4")
+    assert verdict < section < text.index("Phases driver ok"), "right under the verdict"
+    assert "Algenta CUDA kernels · f32 resident" in text
+    assert "transformers CUDA · float32" in text and "transformers CUDA · float16" in text
+    assert "unavailable (baseline_oom)" in text
+    assert text.count("Germany. Which of the following is true (the same 8 tokens)") == 1
+    assert "9.00 s (model load: from_pretrained, then moved to the device)" in text
+    assert "0.090 s (timed generate: the prefill of the 12 prompt tokens)" in text
+    assert app._s(0.0654, fine=True) == "0.065 s" and app._s(42.64, fine=True) == "42.64 s"
+    assert "41.67 s (= session open; the prefill runs there)" in text
+    assert "Ratio of steady per-token times, transformers CUDA float32 over Algenta:" in text
+    assert "7.00 GB (7,000,000,000 bytes) taken on the device; peak allocated 7.30 GB" in text
+    for needle in (
+        "Steady per-token (steps 3 to 8)",
+        "Tokens per second (steady)",
+        "Tokens per second (over all 8 steps)",
+        "First step and warm-up",
+        "Device memory",
+        "Precision",
+        "transformers 5.17.0 · torch 2.9.1+cu128 · CUDA 12.8",
+        "same eight greedy tokens requested, same GPU",
+        "one warm-up generate first, excluded from every timed figure",
+    ):
+        assert needle in text, needle
+    assert "differs from the Algenta lane" not in text
+
+    # tokens that differ: marked on the page, and no ratio
+    other = [*tokens[:4], 100, *tokens[5:]]
+    data["baseline"] = _fixture_baseline(other)
+    diverged = app.ProbeState(work=tmp_path / "d", versions={}, space={}, build={})
+    app.run_probe(diverged, _fake_runner(data))
+    text = _page_text(app.render_page(diverged.health()))
+    assert "(differs from the Algenta lane at index 4)" in text
+    assert "4/8, first divergence at index 4" in text
+    assert "No ratio for transformers CUDA float32: its tokens differ" in text
+    assert "Ratio of steady" not in text
+
+
+def test_baseline_stage_failure_is_unavailable_not_a_stop(tmp_path: Path, artifact: dict) -> None:
+    """The baseline subprocess crashing (or timing out) keeps the parity record: the run is ok,
+    `run.json` is written, and both transformers columns say unavailable with the code."""
+    data = _run12_stage_data(artifact)
+    crashed = app.ProbeState(work=tmp_path, versions={}, space={}, build={})
+    runner = _fake_runner(data, {"baseline": {"stdout": "", "returncode": -11}})
+    app.run_probe(crashed, runner)
+    assert runner.calls == list(app.STAGE_PHASES)
+    body = crashed.health()
+    assert body["status"] == core.OK and body["phase"] == "done" and body["failure"] is None
+    assert body["phases"]["baseline"]["status"] == core.ERROR
+    assert body["phases"]["baseline"]["code"] == "stage_crashed"
+    assert body["baseline"]["status"] == core.ERROR and body["baseline"]["lanes"] == {}
+    assert body["parity"]["verdict"] == "8/8" and body["run_json"] is True
+    record = json.loads(crashed.run_json.read_text(encoding="utf-8"))
+    assert record["decision"] == "ok" and record["baseline"]["code"] == "stage_crashed"
+    text = _page_text(app.render_page(body))
+    assert "Run complete. Parity 8/8" in text
+    assert text.count("unavailable (stage_crashed)") == 2
+    assert "baseline error in 0.5 s (stage_crashed)" in text
+    slow = app.ProbeState(work=tmp_path / "t", versions={}, space={}, build={})
+    app.run_probe(slow, _fake_runner(data, {"baseline": {"timed_out": True}}))
+    assert slow.health()["baseline"]["code"] == "stage_timeout"
+    assert slow.health()["status"] == core.OK
+    # while it runs, the columns say so
+    machine = core.PhaseMachine()
+    for name in ("driver", "kernel", "convert", "decode"):
+        machine.start(name)
+        machine.finish(name, data[name])
+    machine.start("baseline")
+    live = core.health_body(machine, versions={}, space={})
+    assert live["baseline"]["status"] == core.RUNNING
+    assert _page_text(app.render_page(live)).count("not measured yet") == 2
+
+
+def test_run13_record_replays_and_predates_the_baseline(tmp_path: Path, artifact13: dict) -> None:
+    """The run-13 record (schema 2, no `baseline` block) renders as it was measured: the section
+    says the run predates the stage, in words, and nothing reads as a failure. Its stage data
+    replays through today's orchestrator with a baseline report beside it."""
+    assert artifact13["schema"] == "algenta-gpu-probe/2" and "baseline" not in artifact13
+    view = core.side_by_side(artifact13)
+    assert view["predates"] is True and view["gpu"] == "Tesla T4"
+    algenta, f32, f16 = view["lanes"]
+    assert algenta["status"] == core.OK_LANE and algenta["parity"]["verdict"] == "8/8"
+    assert algenta["load_s"] == algenta["ttft_s"] == artifact13["decode"]["open_s"] == 42.81
+    assert algenta["device_taken_bytes"] == (
+        artifact13["decode"]["gpu_free_bytes_start"]
+        - artifact13["decode"]["gpu_free_bytes_after_open"]
+    )
+    assert f32["status"] == f16["status"] == core.ABSENT_LANE and f32["code"] is None
+    page = app.render_page(artifact13)
+    text = _page_text(page)
+    _assert_clean_copy(page)
+    assert app.SIDE_BY_SIDE_PREDATES in text
+    assert text.count("not measured in this run") == 2
+    assert "unavailable" not in text and "Stopped at" not in text and " error" not in text
+    assert "Tokens 9856, 13, 15920, 315, 279, 2701, 374, 830" in text
+    assert "First step 0.12 ms (prefill done at session open)" in text
+    assert "Time to first token 42.81 s (= session open)" in text
+    assert "First token" not in text
+    steady = core.step_timings(artifact13["decode"]["step_ms"])
+    assert f"Tokens per second (steady) {steady['steady_tok_per_s']:.2f}" in text
+    assert f"Tokens per second (over all 8 steps) {steady['all_steps_tok_per_s']:.2f}" in text
+
+    state = app.ProbeState(work=tmp_path, versions={}, space={}, build={})
+    tokens = artifact13["reference"]["tokens"]
+    data = _run13_stage_data(artifact13, baseline=_fixture_baseline(tokens))
+    app.run_probe(state, _fake_runner(data))
+    body = state.health()
+    assert body["status"] == core.OK and body["parity"]["verdict"] == "8/8"
+    assert body["decode"]["timings"]["open_s"] == 42.81
+    assert body["baseline"]["lanes"]["float32"]["parity"]["full_match"] is True
+    record = json.loads(state.run_json.read_text(encoding="utf-8"))
+    row = record["evidence"]["GPU-SPACE-PARITY-001"]
+    for key in ("native_tokens", "reference_tokens", "step_ms", "open_s", "blob_bytes"):
+        assert row[key] == artifact13["evidence"]["GPU-SPACE-PARITY-001"][key], key
+    text = _page_text(app.render_page(body))
+    assert app.SIDE_BY_SIDE_PREDATES not in text
+    assert "(the same 8 tokens)" in text and "Side by side on the same Tesla T4" in text
+
+
+def test_identifiers_render_plain_and_quantities_with_separators(artifact13: dict) -> None:
+    text = _page_text(app.render_page(artifact13))
+    assert "59604, 374, 279, 6722" in text and "59,604" not in text
+    assert "9856, 13, 15920" in text and "9,856" not in text and "15,920" not in text
+    assert "Staging tier 6144" in text and "6,144" not in text
+    assert "Memory 15,360 MiB (15,828,320,256 bytes)" in text
+    assert "12.82 GiB (13,764,599,808 bytes)" in text
+    assert app._fmt([59604, 374], plain=True) == "59604, 374"
+    assert app._fmt(13764599808) == "13,764,599,808"
+    assert app._memory("15360 MiB", 15828320256) == "15,360 MiB (15,828,320,256 bytes)"
+    assert app._memory("n/a", None) == "n/a" and app._memory(None, None) == app.ABSENT
+
+
+def test_step_clock_times_tokens_as_they_reach_the_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The streamer skips the prompt echo and times each single-token put from the previous
+    one; step 1 counts from `start()`, the timed call's start."""
+
+    class Tensor:
+        def __init__(self, values: list[int]) -> None:
+            self.values = values
+
+        def reshape(self, _shape: int) -> Tensor:
+            return self
+
+        def tolist(self) -> list[int]:
+            return list(self.values)
+
+    ticks = iter([100.0, 100.0, 100.09, 100.13, 100.17, 100.21])
+    monkeypatch.setattr(probe.time, "perf_counter", lambda: next(ticks))
+    clock = probe.StepClock()  # 100.0
+    clock.start()  # 100.0
+    clock.put(Tensor([59604, 374, 279]))  # 100.09: the prompt echo, before the prefill
+    clock.put(Tensor([9856]))  # 100.13
+    clock.put(Tensor([13]))  # 100.17
+    clock.put(Tensor([15920]))  # 100.21
+    assert clock.prompt_echoed(3) and not clock.prompt_echoed(4)
+    tokens, step_ms = clock.token_times()
+    assert tokens == [9856, 13, 15920]
+    assert [round(ms, 3) for ms in step_ms] == [130.0, 40.0, 40.0]
+    assert probe.STAGES["baseline"] is probe.stage_baseline
+    assert "baseline" in app.STAGE_PHASES and cfg.BASELINE_DTYPES == ("float32", "float16")
+
+
 def test_page_copy_has_no_banned_words_or_exclamations() -> None:
-    for text in (app.TITLE, app.HEADLINE, app.SUBLINE, app.PAGE_TEMPLATE):
+    for text in (
+        app.TITLE,
+        app.HEADLINE,
+        app.SUBLINE,
+        app.PAGE_TEMPLATE,
+        app.SIDE_BY_SIDE_CAPTION,
+        app.SIDE_BY_SIDE_PREDATES,
+    ):
         _assert_clean_copy(text)
     assert copy_lint.word_count(app.HEADLINE) <= copy_lint.HEADLINE_MAX_WORDS
     assert copy_lint.word_count(app.SUBLINE) <= copy_lint.SUBLINE_MAX_WORDS
@@ -595,6 +1020,10 @@ def test_readme_card_and_copy_lint() -> None:
         assert url in body, url
     assert "licensing@" not in body and "decision engine" not in body.lower()
     assert "Apache-2.0" in body and "private" in body and "paused" in body
+    assert (
+        "The same decode without Algenta — transformers on the same GPU, float32 and float16 — "
+        "sits beside it." in " ".join(body.split())
+    )
     assert copy_lint.lint_space(PROBE_DIR) == []
 
 
@@ -672,6 +1101,8 @@ def test_probe_is_not_in_the_fleet_manifest_and_deploys_by_hand() -> None:
     assert "licensing@" not in deploy_md
     doc = (REPO / "docs/spaces/GPU-PROBE.md").read_text(encoding="utf-8")
     assert "t4-small" in doc and "M3.1" in doc and cfg.RUN12_ARTIFACT in doc
+    for needle in ("`baseline`", "float16", "steady", "baseline_oom", "same prompt"):
+        assert needle in doc, needle
 
 
 def test_stage_ignore_patterns_keep_tests_and_caches_out_of_the_upload() -> None:

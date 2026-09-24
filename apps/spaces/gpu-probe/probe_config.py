@@ -38,6 +38,15 @@ PROMPT = "Paris is the capital of France. Berlin is the capital of"
 MAX_NEW_TOKENS = 8
 #: Threads for the transformers float32 CPU reference (run 12 used four on the 3-vCPU tier).
 REFERENCE_THREADS = 4
+#: The baseline lanes: the same decode without Algenta, plain transformers on the same GPU.
+#: float32 is the like-for-like row (Algenta's resident weights are f32); float16 is the stack
+#: most people run on a T4 (no bfloat16 on sm_75). Each lane is its own model load and is freed
+#: before the next.
+BASELINE_DTYPES: tuple[str, ...] = ("float32", "float16")
+#: The first step counted in the steady per-token figures, for every lane: steps 1 and 2 are
+#: where the lanes differ (Algenta's prefill is at session open and its step 2 is the warm-up;
+#: transformers' step 1 is the prefill), steps 3 onwards are the per-token cost.
+STEADY_FROM_STEP = 3
 
 #: What run 12 recorded on a Tesla T4 (kernel v1 92ef06d7, tier 6144). The page shows these only
 #: as "run 12 recorded", next to what this run measured; they never stand in for a measurement.
@@ -66,6 +75,7 @@ STAGE_TIMEOUTS_S: dict[str, float] = {
     "kernel": 600.0,
     "convert": 1800.0,
     "decode": 1800.0,
+    "baseline": 900.0,
     "reference": 1500.0,
 }
 

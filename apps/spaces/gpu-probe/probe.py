@@ -15,6 +15,9 @@ and the transformers reference's memory is returned to the host before the page 
                algenta.inference.prepare_model_checkpoint, timed; reused when already on disk.
     decode     eight greedy tokens for the fixed prompt through the kernel's DecodeSession,
                with the session open time and every step's wall time.
+    baseline   the same decode without Algenta: plain transformers on the same GPU, greedy, one
+               lane per dtype (float32, float16), each its own model load; a warm-up generate
+               excluded, then a timed generate with every token's arrival time.
     reference  the same prompt through transformers in float32 on the CPU, greedy, with each
                step's top-2 logit margin.
 
@@ -26,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import gc
 import importlib
 import importlib.metadata
 import json
@@ -585,6 +589,219 @@ def stage_decode() -> dict[str, Any]:
         "gpu_free_bytes_start": free_start,
         "gpu_free_bytes_after_open": free_after_open,
         "gpu_free_bytes_after_close": free_after_close,
+        "max_rss_mib": max_rss_mib(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# The baseline: the same decode without Algenta, transformers on the same GPU
+# ---------------------------------------------------------------------------
+
+
+class StepClock:
+    """A `generate` streamer that timestamps every token as it reaches the host.
+
+    transformers calls `put(input_ids.cpu())` once with the prompt before the prefill and
+    `put(next_tokens.cpu())` after each token is chosen; `.cpu()` synchronises the device, so
+    a timestamp is the moment that token is on the host. Step 1 is measured from `t0` (set
+    right before the timed call) and is the prefill: generate's setup, the forward pass over
+    the prompt, the argmax and the copy. Every later step is the gap between two consecutive
+    tokens: the stopping check, the cache update, one forward pass over one token, the argmax
+    and the copy — the whole per-token cost as a caller of `generate` sees it.
+    """
+
+    def __init__(self) -> None:
+        self.t0 = time.perf_counter()
+        self.puts: list[tuple[float, list[int]]] = []
+        self.ended_at: float | None = None
+
+    def start(self) -> None:
+        self.t0 = time.perf_counter()
+
+    def put(self, value: Any) -> None:
+        stamp = time.perf_counter()
+        flat = value.reshape(-1).tolist()
+        self.puts.append((stamp, [int(t) for t in flat]))
+
+    def end(self) -> None:
+        self.ended_at = time.perf_counter()
+
+    def prompt_echoed(self, n_prompt: int) -> bool:
+        return bool(self.puts) and len(self.puts[0][1]) == n_prompt
+
+    def token_times(self) -> tuple[list[int], list[float]]:
+        """(token ids, per-step ms) from the single-token puts; the prompt echo is skipped."""
+        tokens: list[int] = []
+        step_ms: list[float] = []
+        prev = self.t0
+        for stamp, values in self.puts:
+            if len(values) != 1:
+                continue
+            tokens.append(values[0])
+            step_ms.append((stamp - prev) * 1000.0)
+            prev = stamp
+        return tokens, step_ms
+
+
+def timed_generate(model: Any, prompt: Any, n_prompt: int) -> dict[str, Any]:
+    """One greedy `generate` of `MAX_NEW_TOKENS` on the device, every token timestamped."""
+    import torch
+
+    clock = StepClock()
+    torch.cuda.synchronize()
+    clock.start()
+    out = model.generate(
+        prompt,
+        max_new_tokens=cfg.MAX_NEW_TOKENS,
+        do_sample=False,
+        num_beams=1,
+        streamer=clock,
+    )
+    torch.cuda.synchronize()
+    generate_s = time.perf_counter() - clock.t0
+    sequences = getattr(out, "sequences", out)
+    tokens = [int(t) for t in sequences[0, n_prompt:].tolist()]
+    streamed, step_ms = clock.token_times()
+    return {
+        "tokens": tokens,
+        "streamed_tokens": streamed,
+        "step_ms": [round(ms, 3) for ms in step_ms],
+        "ttft_s": round(step_ms[0] / 1000.0, 3) if step_ms else None,
+        "generate_s": round(generate_s, 3),
+        "prompt_echoed": clock.prompt_echoed(n_prompt),
+    }
+
+
+def _lane_failure(lane: dict[str, Any], code: str, exc: BaseException) -> dict[str, Any]:
+    text = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
+    log.error("baseline lane %s: %s — %s", lane.get("dtype"), code, text[:300])
+    return {**lane, "ok": False, "code": code, "message": f"{type(exc).__name__}: {text[:300]}"}
+
+
+def baseline_lane(dtype_name: str, snapshot: Path, ids: list[int]) -> dict[str, Any]:
+    """One lane: load the model in `dtype_name` onto the device, one warm-up generate
+    (excluded), one timed generate; the device is emptied before returning. Fails closed with
+    `baseline_oom`, `baseline_load_failed`, `baseline_generate_failed` or
+    `baseline_step_count_mismatch`; a failed lane carries no timing."""
+    import torch
+    from transformers import AutoModelForCausalLM
+
+    device = torch.device("cuda", 0)
+    dtype = getattr(torch, dtype_name)
+    lane: dict[str, Any] = {"ok": False, "dtype": dtype_name, "torch_dtype": str(dtype)}
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    torch.cuda.reset_peak_memory_stats(device)
+    free_before = int(torch.cuda.mem_get_info(0)[0])
+    lane["gpu_free_bytes_before"] = free_before
+    model = None
+    try:
+        t0 = time.perf_counter()
+        try:
+            try:
+                model = AutoModelForCausalLM.from_pretrained(str(snapshot), dtype=dtype)
+            except TypeError:
+                model = AutoModelForCausalLM.from_pretrained(str(snapshot), torch_dtype=dtype)
+            model.to(device)
+            model.eval()
+            torch.cuda.synchronize()
+        except torch.cuda.OutOfMemoryError as exc:
+            return _lane_failure(lane, "baseline_oom", exc)
+        except Exception as exc:  # noqa: BLE001 - reported as the lane's code
+            return _lane_failure(lane, "baseline_load_failed", exc)
+        lane["load_s"] = round(time.perf_counter() - t0, 2)
+        free_after_load = int(torch.cuda.mem_get_info(0)[0])
+        lane["gpu_free_bytes_after_load"] = free_after_load
+        lane["device_taken_bytes"] = max(0, free_before - free_after_load)
+        lane["weights_allocated_bytes"] = int(torch.cuda.memory_allocated(device))
+        lane["model_dtype"] = str(next(model.parameters()).dtype)
+        lane["eos_token_id"] = getattr(model.generation_config, "eos_token_id", None)
+        prompt = torch.tensor([ids], dtype=torch.long, device=device)
+        try:
+            with torch.no_grad():
+                warm = timed_generate(model, prompt, len(ids))
+                timed = timed_generate(model, prompt, len(ids))
+        except torch.cuda.OutOfMemoryError as exc:
+            return _lane_failure(lane, "baseline_oom", exc)
+        except Exception as exc:  # noqa: BLE001
+            return _lane_failure(lane, "baseline_generate_failed", exc)
+        lane["peak_allocated_bytes"] = int(torch.cuda.max_memory_allocated(device))
+        lane["peak_reserved_bytes"] = int(torch.cuda.max_memory_reserved(device))
+        if timed["tokens"] != timed["streamed_tokens"] or not timed["prompt_echoed"]:
+            return _lane_failure(
+                lane,
+                "baseline_step_count_mismatch",
+                RuntimeError(
+                    f"the streamer saw {timed['streamed_tokens']} for {timed['tokens']}; "
+                    "the per-step times cannot be attributed"
+                ),
+            )
+        eos = lane["eos_token_id"]
+        eos_ids = {int(e) for e in (eos if isinstance(eos, list) else [eos]) if e is not None}
+        tokens = timed["tokens"]
+        short = bool(tokens) and len(tokens) < cfg.MAX_NEW_TOKENS
+        lane.update(
+            ok=True,
+            warmup={
+                "excluded": True,
+                "tokens": warm["tokens"],
+                "step_ms": warm["step_ms"],
+                "ttft_s": warm["ttft_s"],
+                "generate_s": warm["generate_s"],
+            },
+            tokens=tokens,
+            step_ms=timed["step_ms"],
+            ttft_s=timed["ttft_s"],
+            generate_s=timed["generate_s"],
+            same_tokens_as_warmup=tokens == warm["tokens"],
+            stopped_on_eos=short and tokens[-1] in eos_ids,
+            decoded=decode_text(snapshot, tokens),
+        )
+        return lane
+    finally:
+        del model
+        gc.collect()
+        torch.cuda.empty_cache()
+
+
+@stage
+def stage_baseline() -> dict[str, Any]:
+    import torch
+    import transformers
+
+    if not torch.cuda.is_available():
+        raise core.ProbeError(
+            "torch_cuda_unavailable", f"torch {torch.__version__} sees no CUDA device"
+        )
+    torch.manual_seed(0)
+    snapshot = model_snapshot()
+    ids = prompt_token_ids(snapshot)
+    free_start, total = (int(v) for v in torch.cuda.mem_get_info(0))
+    lanes: dict[str, dict[str, Any]] = {}
+    for name in cfg.BASELINE_DTYPES:
+        lanes[name] = baseline_lane(name, snapshot, ids)
+    return {
+        "method": (
+            "transformers generate on CUDA, greedy, max_new_tokens 8; one warm-up generate "
+            "excluded; per-step times are the gaps between consecutive tokens reaching the host "
+            "through the generate streamer"
+        ),
+        "device_name": torch.cuda.get_device_name(0),
+        "compute_capability": list(torch.cuda.get_device_capability(0)),
+        "torch": torch.__version__,
+        "cuda": torch.version.cuda,
+        "transformers": transformers.__version__,
+        "snapshot": str(snapshot),
+        "prompt": cfg.PROMPT,
+        "prompt_ids": ids,
+        "n_prompt": len(ids),
+        "max_new_tokens": cfg.MAX_NEW_TOKENS,
+        "dtypes": list(cfg.BASELINE_DTYPES),
+        "gpu_total_bytes": total,
+        "gpu_free_bytes_start": free_start,
+        "gpu_free_bytes_end": int(torch.cuda.mem_get_info(0)[0]),
+        "lanes": lanes,
         "max_rss_mib": max_rss_mib(),
     }
 

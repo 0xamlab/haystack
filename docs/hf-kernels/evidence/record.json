@@ -1532,6 +1532,24 @@
       "accessed": "2026-09-24",
       "contradicts": "",
       "interpretation": "Thirteen review rounds (rounds 1–9 on staging, 10–13 on production) converged from six NOT-YET tabs to three SHIPs with zero P0/P1: each round's confirmed P1s were fixed and re-verified on the live Space; fifteen P2 polish items remain as backlog, none a launch blocker."
+    },
+    {
+      "id": "GPU-SPACE-SIDE-BY-SIDE-001",
+      "question": "On the same Tesla T4, same prompt and the same 8 greedy tokens, how does Qwen3-1.7B through Algenta's CUDA kernels compare with plain transformers on CUDA (float32 like-for-like, float16 as commonly run)?",
+      "claim": "Measured on run 14 (2026-09-24 18:59–19:03Z, private Space thyn-ai/algenta-gpu-probe on t4-small, build c806dd2c3): Algenta CUDA kernels (f32 resident): session open 43.82 s (= time to first token), steady 26.9 ms/token (37.1 tok/s), 7.25 GB taken; transformers CUDA float32: load 12.79 s, time to first token 0.048 s, steady 39.6 ms/token (25.3 tok/s), 7.00 GB; transformers CUDA float16: load 4.5 s, time to first token 0.048 s, steady 44.7 ms/token (22.4 tok/s), 3.45 GB. All three lanes decoded the same 8 ids [9856, 13, 15920, 315, 279, 2701, 374, 830] = the CPU reference (parity 8/8 each). Steady per-token ratio: Algenta 1.47× faster than transformers float32 and 1.66× faster than float16; time to first token: Algenta 43.82 s (the f64→f32 upload at session open) vs 0.048 s / 0.048 s after a 12.79 s / 4.5 s load. Steady = mean of steps 3–8 for every lane; transformers' per-step times come from a streamer (each token's .cpu() copy is the device sync), one warm-up generate excluded; Algenta's 0.11 ms first step is the prefill done at session open.",
+      "kind": "measurement",
+      "source": "apps/spaces/gpu-probe probe.py stage baseline (transformers 5.17.0 generate, do_sample=False, streamer timestamps) beside stages decode/reference; artifact docs/hf-kernels/evidence/artifacts/gpu-probe-run14-t4-small-qwen3-1p7b-side-by-side.json; deploy_gpu_probe14.py",
+      "result": "tokens identical across Algenta / float32 / float16 / CPU reference; steady ms per token 26.94 / 39.55 / 44.71; time to first token 43.82 / 0.048 / 0.048 s; load or open 43.82 / 12.79 / 4.5 s; GPU memory taken 7.25 / 7.00 / 3.45 GB",
+      "confidence": "high",
+      "impact": "P1",
+      "outcome_class": "informational",
+      "capability_scope": "linux x86_64 × cuda × sm_75 (T4); algenta-llm v1 8ae3da4a; Qwen3-1.7B",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "eng",
+      "accessed": "2026-09-24",
+      "contradicts": [],
+      "interpretation": "The like-for-like row (both f32) shows Algenta's resident decode ahead per token on this GPU while its session open — the f64 blob uploaded and cast to f32 — is the cost the page now prints beside transformers' load; float16 transformers is slower per token than float32 here (eager generate overhead at batch 1 on sm_75), not faster, and uses half the memory. Nothing is claimed beyond one run's numbers; every figure is on the page with its definition."
     }
   ]
 }

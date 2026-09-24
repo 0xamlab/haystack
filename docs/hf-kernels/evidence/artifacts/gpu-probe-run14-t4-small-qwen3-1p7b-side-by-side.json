@@ -1,0 +1,1089 @@
+{
+ "baseline": {
+  "code": null,
+  "compute_capability": [
+   7,
+   5
+  ],
+  "cuda": "12.8",
+  "device_name": "Tesla T4",
+  "dtypes": [
+   "float32",
+   "float16"
+  ],
+  "finished_utc": "2026-09-24T19:02:27+00:00",
+  "gpu_free_bytes_end": 15665922048,
+  "gpu_free_bytes_start": 15718350848,
+  "gpu_total_bytes": 15828320256,
+  "lanes": {
+   "float16": {
+    "decoded": " Germany. Which of the following is true",
+    "device_taken_bytes": 3451912192,
+    "dtype": "float16",
+    "eos_token_id": [
+     151645,
+     151643
+    ],
+    "generate_s": 0.358,
+    "gpu_free_bytes_after_load": 12218204160,
+    "gpu_free_bytes_before": 15670116352,
+    "load_s": 4.5,
+    "model_dtype": "torch.float16",
+    "ok": true,
+    "parity": {
+     "compared": 8,
+     "first_divergence": null,
+     "full_match": true,
+     "native_decoded": " Germany. Which of the following is true",
+     "native_tokens": [
+      9856,
+      13,
+      15920,
+      315,
+      279,
+      2701,
+      374,
+      830
+     ],
+     "prefix_match": 8,
+     "reference_decoded": " Germany. Which of the following is true",
+     "reference_tokens": [
+      9856,
+      13,
+      15920,
+      315,
+      279,
+      2701,
+      374,
+      830
+     ],
+     "reference_top2_margin_at_divergence": null,
+     "verdict": "8/8"
+    },
+    "peak_allocated_bytes": 3453915136,
+    "peak_reserved_bytes": 3477078016,
+    "same_tokens_as_warmup": true,
+    "step_ms": [
+     48.203,
+     41.147,
+     44.435,
+     41.622,
+     42.245,
+     44.766,
+     48.644,
+     46.569
+    ],
+    "stopped_on_eos": false,
+    "timings": {
+     "all_steps_tok_per_s": 22.37,
+     "first_step_ms": 48.2,
+     "load_s": 4.5,
+     "mean_step_ms": 44.7,
+     "n_tokens": 8,
+     "steady_step_ms": 44.71,
+     "steady_steps": "3-8",
+     "steady_tok_per_s": 22.36,
+     "step_ms": [
+      48.2,
+      41.15,
+      44.44,
+      41.62,
+      42.24,
+      44.77,
+      48.64,
+      46.57
+     ],
+     "ttft_is_session_open": false,
+     "ttft_s": 0.048
+    },
+    "tokens": [
+     9856,
+     13,
+     15920,
+     315,
+     279,
+     2701,
+     374,
+     830
+    ],
+    "torch_dtype": "torch.float16",
+    "ttft_s": 0.048,
+    "warmup": {
+     "excluded": true,
+     "generate_s": 0.46,
+     "step_ms": [
+      158.969,
+      42.251,
+      48.441,
+      41.292,
+      43.248,
+      43.117,
+      40.902,
+      41.226
+     ],
+     "tokens": [
+      9856,
+      13,
+      15920,
+      315,
+      279,
+      2701,
+      374,
+      830
+     ],
+     "ttft_s": 0.159
+    },
+    "warmup_timings": {
+     "all_steps_tok_per_s": 17.41,
+     "first_step_ms": 158.97,
+     "load_s": null,
+     "mean_step_ms": 57.43,
+     "n_tokens": 8,
+     "steady_step_ms": 43.04,
+     "steady_steps": "3-8",
+     "steady_tok_per_s": 23.24,
+     "step_ms": [
+      158.97,
+      42.25,
+      48.44,
+      41.29,
+      43.25,
+      43.12,
+      40.9,
+      41.23
+     ],
+     "ttft_is_session_open": false,
+     "ttft_s": 0.159
+    },
+    "weights_allocated_bytes": 3450209280
+   },
+   "float32": {
+    "decoded": " Germany. Which of the following is true",
+    "device_taken_bytes": 7002390528,
+    "dtype": "float32",
+    "eos_token_id": [
+     151645,
+     151643
+    ],
+    "generate_s": 0.324,
+    "gpu_free_bytes_after_load": 8715960320,
+    "gpu_free_bytes_before": 15718350848,
+    "load_s": 12.79,
+    "model_dtype": "torch.float32",
+    "ok": true,
+    "parity": {
+     "compared": 8,
+     "first_divergence": null,
+     "full_match": true,
+     "native_decoded": " Germany. Which of the following is true",
+     "native_tokens": [
+      9856,
+      13,
+      15920,
+      315,
+      279,
+      2701,
+      374,
+      830
+     ],
+     "prefix_match": 8,
+     "reference_decoded": " Germany. Which of the following is true",
+     "reference_tokens": [
+      9856,
+      13,
+      15920,
+      315,
+      279,
+      2701,
+      374,
+      830
+     ],
+     "reference_top2_margin_at_divergence": null,
+     "verdict": "8/8"
+    },
+    "peak_allocated_bytes": 6898057728,
+    "peak_reserved_bytes": 7029653504,
+    "same_tokens_as_warmup": true,
+    "step_ms": [
+     47.792,
+     39.076,
+     39.742,
+     38.64,
+     39.121,
+     38.565,
+     39.517,
+     41.729
+    ],
+    "stopped_on_eos": false,
+    "timings": {
+     "all_steps_tok_per_s": 24.68,
+     "first_step_ms": 47.79,
+     "load_s": 12.79,
+     "mean_step_ms": 40.52,
+     "n_tokens": 8,
+     "steady_step_ms": 39.55,
+     "steady_steps": "3-8",
+     "steady_tok_per_s": 25.28,
+     "step_ms": [
+      47.79,
+      39.08,
+      39.74,
+      38.64,
+      39.12,
+      38.56,
+      39.52,
+      41.73
+     ],
+     "ttft_is_session_open": false,
+     "ttft_s": 0.048
+    },
+    "tokens": [
+     9856,
+     13,
+     15920,
+     315,
+     279,
+     2701,
+     374,
+     830
+    ],
+    "torch_dtype": "torch.float32",
+    "ttft_s": 0.048,
+    "warmup": {
+     "excluded": true,
+     "generate_s": 0.835,
+     "step_ms": [
+      535.299,
+      58.979,
+      39.619,
+      39.052,
+      42.755,
+      40.821,
+      38.943,
+      39.558
+     ],
+     "tokens": [
+      9856,
+      13,
+      15920,
+      315,
+      279,
+      2701,
+      374,
+      830
+     ],
+     "ttft_s": 0.535
+    },
+    "warmup_timings": {
+     "all_steps_tok_per_s": 9.58,
+     "first_step_ms": 535.3,
+     "load_s": null,
+     "mean_step_ms": 104.38,
+     "n_tokens": 8,
+     "steady_step_ms": 40.12,
+     "steady_steps": "3-8",
+     "steady_tok_per_s": 24.92,
+     "step_ms": [
+      535.3,
+      58.98,
+      39.62,
+      39.05,
+      42.76,
+      40.82,
+      38.94,
+      39.56
+     ],
+     "ttft_is_session_open": false,
+     "ttft_s": 0.535
+    },
+    "weights_allocated_bytes": 6883349504
+   }
+  },
+  "max_new_tokens": 8,
+  "max_rss_mib": 11595.1,
+  "message": null,
+  "method": "transformers generate on CUDA, greedy, max_new_tokens 8; one warm-up generate excluded; per-step times are the gaps between consecutive tokens reaching the host through the generate streamer",
+  "n_prompt": 12,
+  "prompt": "Paris is the capital of France. Berlin is the capital of",
+  "prompt_ids": [
+   59604,
+   374,
+   279,
+   6722,
+   315,
+   9625,
+   13,
+   19846,
+   374,
+   279,
+   6722,
+   315
+  ],
+  "snapshot": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "stage_wall_s": 32.36,
+  "started_utc": "2026-09-24T19:01:55+00:00",
+  "status": "ok",
+  "torch": "2.9.1+cu128",
+  "transformers": "5.17.0",
+  "wall_s": 33.93
+ },
+ "build": {
+  "built_utc": "2026-09-24T18:54:21+00:00",
+  "cpu_count": 16,
+  "cuda_version_env": "12.8.1",
+  "glibc": "2.39",
+  "hf_home": "/home/user/hf",
+  "hf_hub_offline": null,
+  "hub_cache": "/home/user/hf/hub",
+  "implementation": "CPython",
+  "kernel": {
+   "abi_version": 1,
+   "backend": "cuda",
+   "cuda_libraries": {
+    "sm_75": "libalgenta_algenta_llm.sm_75.so",
+    "sm_80": "libalgenta_algenta_llm.sm_80.so",
+    "sm_89": "libalgenta_algenta_llm.sm_89.so",
+    "sm_90": "libalgenta_algenta_llm.sm_90.so"
+   },
+   "cuda_targets": [
+    "sm_75",
+    "sm_80",
+    "sm_89",
+    "sm_90"
+   ],
+   "expected_variant": "torch29-cxx11-cu128-x86_64-linux",
+   "install_s": 5.49,
+   "load_order": [
+    "libgcc_s.mojo1_0_0.so.1",
+    "libstdc++.mojo1_0_0.so.6",
+    "libMSupportGlobals.mojo1_0_0.so",
+    "libAsyncRTRuntimeGlobals.mojo1_0_0.so",
+    "libAsyncRTMojoBindings.mojo1_0_0.so",
+    "libKGENCompilerRTShared.mojo1_0_0.so"
+   ],
+   "mojo_version": "Mojo 1.0.0 (ed45d567)",
+   "native_bytes": 38912510,
+   "native_manifest": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/8ae3da4a6c33b7484bbff01ca53317e320e06293/build/torch29-cxx11-cu128-x86_64-linux/algenta_llm/_native/manifest.json",
+   "path": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/8ae3da4a6c33b7484bbff01ca53317e320e06293/build/torch29-cxx11-cu128-x86_64-linux",
+   "primary_library": "libalgenta_algenta_llm.sm_90.so",
+   "repo": "thyn-ai/algenta-llm",
+   "resident_stage_tier": 6144,
+   "revision": "8ae3da4a6c33b7484bbff01ca53317e320e06293",
+   "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
+   "tree_listings_pruned": [
+    "8ae3da4a6c33b7484bbff01ca53317e320e06293.json"
+   ],
+   "variant": "torch29-cxx11-cu128-x86_64-linux"
+  },
+  "ld_library_path": "/usr/local/cuda/lib64",
+  "machine": "x86_64",
+  "model": {
+   "architectures": [
+    "Qwen3ForCausalLM"
+   ],
+   "download_s": 6.77,
+   "eos_token_id": 151645,
+   "files": [
+    [
+     ".gitattributes",
+     1570
+    ],
+    [
+     "LICENSE",
+     11343
+    ],
+    [
+     "README.md",
+     13963
+    ],
+    [
+     "config.json",
+     726
+    ],
+    [
+     "generation_config.json",
+     239
+    ],
+    [
+     "merges.txt",
+     1671853
+    ],
+    [
+     "model-00001-of-00002.safetensors",
+     3441185608
+    ],
+    [
+     "model-00002-of-00002.safetensors",
+     622329984
+    ],
+    [
+     "model.safetensors.index.json",
+     25605
+    ],
+    [
+     "tokenizer.json",
+     11422654
+    ],
+    [
+     "tokenizer_config.json",
+     9732
+    ],
+    [
+     "vocab.json",
+     2776833
+    ]
+   ],
+   "hidden_size": 2048,
+   "intermediate_size": 6144,
+   "num_hidden_layers": 28,
+   "path": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+   "repo": "Qwen/Qwen3-1.7B",
+   "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+   "tie_word_embeddings": true,
+   "torch_dtype": "bfloat16",
+   "total_bytes": 4079450110,
+   "vocab_size": 151936
+  },
+  "nvidia_disable_require": "1",
+  "nvidia_require_cuda": "cuda>=12.8 brand=unknown,driver>=470,driver<471 brand=grid,driver>=470,driver<471 brand=tesla,driver>=470,driver<471 bra",
+  "packages": {
+   "algenta": "1.0.28",
+   "algenta-runtime-native": "1.0.7",
+   "fastapi": "0.141.1",
+   "huggingface_hub": "1.26.1",
+   "kernels": "0.17.1",
+   "numpy": "2.5.3",
+   "safetensors": "0.8.0",
+   "tokenizers": "0.23.2",
+   "torch": "2.9.1+cu128",
+   "transformers": "5.17.0",
+   "uvicorn": "0.53.0"
+  },
+  "python": "3.14.7",
+  "schema": "algenta-gpu-probe-build/1",
+  "system": "Linux",
+  "verify": {
+   "kernel_path": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/8ae3da4a6c33b7484bbff01ca53317e320e06293/build/torch29-cxx11-cu128-x86_64-linux",
+   "model_path": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+   "offline": true,
+   "offline_import": {
+    "file": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/8ae3da4a6c33b7484bbff01ca53317e320e06293/build/torch29-cxx11-cu128-x86_64-linux/__init__.py",
+    "ok": true
+   },
+   "prompt_ids": [
+    59604,
+    374,
+    279,
+    6722,
+    315,
+    9625,
+    13,
+    19846,
+    374,
+    279,
+    6722,
+    315
+   ],
+   "prompt_ids_match_run12": true,
+   "verified_utc": "2026-09-24T18:54:36+00:00"
+  }
+ },
+ "decision": "ok",
+ "decision_reason": "native CUDA build loaded and decoded; all tokens match the reference",
+ "decode": {
+  "abi_answered": 1,
+  "abi_version": 1,
+  "arch_check": "passed",
+  "backend": "cuda",
+  "checkpoint_dir": "/home/user/work/qwen3-1.7b-f64-cuda",
+  "compute_capability": [
+   7,
+   5
+  ],
+  "cuda_libraries": {
+   "sm_75": "libalgenta_algenta_llm.sm_75.so",
+   "sm_80": "libalgenta_algenta_llm.sm_80.so",
+   "sm_89": "libalgenta_algenta_llm.sm_89.so",
+   "sm_90": "libalgenta_algenta_llm.sm_90.so"
+  },
+  "cuda_targets": [
+   "sm_75",
+   "sm_80",
+   "sm_89",
+   "sm_90"
+  ],
+  "decoded": " Germany. Which of the following is true",
+  "expected_variant": "torch29-cxx11-cu128-x86_64-linux",
+  "file": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/8ae3da4a6c33b7484bbff01ca53317e320e06293/build/torch29-cxx11-cu128-x86_64-linux/__init__.py",
+  "finished_utc": "2026-09-24T19:01:53+00:00",
+  "get_kernel_s": 3.62,
+  "gpu_free_bytes_after_close": 8468496384,
+  "gpu_free_bytes_after_open": 8468496384,
+  "gpu_free_bytes_start": 15718350848,
+  "loaded": true,
+  "max_new_tokens": 8,
+  "max_rss_mib": 4505.2,
+  "mojo_version": "Mojo 1.0.0 (ed45d567)",
+  "n_prompt": 12,
+  "native_init_s": 0.12,
+  "open_s": 43.82,
+  "positions": [
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20
+  ],
+  "primary_library": "libalgenta_algenta_llm.sm_90.so",
+  "prompt": "Paris is the capital of France. Berlin is the capital of",
+  "prompt_ids": [
+   59604,
+   374,
+   279,
+   6722,
+   315,
+   9625,
+   13,
+   19846,
+   374,
+   279,
+   6722,
+   315
+  ],
+  "repo": "thyn-ai/algenta-llm",
+  "resident_stage_tier": 6144,
+  "revision": "8ae3da4a6c33b7484bbff01ca53317e320e06293",
+  "selected_library": "libalgenta_algenta_llm.sm_75.so",
+  "session_n_prompt": 12,
+  "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
+  "stage_wall_s": 50.6,
+  "started_utc": "2026-09-24T19:01:03+00:00",
+  "step_ms": [
+   0.11,
+   182.87,
+   26.72,
+   26.86,
+   26.97,
+   26.98,
+   27.04,
+   27.05
+  ],
+  "stopped_on_eos": false,
+  "timings": {
+   "all_steps_tok_per_s": 23.22,
+   "first_step_ms": 0.11,
+   "mean_step_ms": 43.08,
+   "n_tokens": 8,
+   "open_s": 43.82,
+   "steady_step_ms": 26.94,
+   "steady_steps": "3-8",
+   "steady_tok_per_s": 37.12,
+   "step_ms": [
+    0.11,
+    182.87,
+    26.72,
+    26.86,
+    26.97,
+    26.98,
+    27.04,
+    27.05
+   ],
+   "tok_per_s": 20.32,
+   "ttft_is_session_open": true,
+   "ttft_s": 43.82
+  },
+  "tokens": [
+   9856,
+   13,
+   15920,
+   315,
+   279,
+   2701,
+   374,
+   830
+  ],
+  "variant": "torch29-cxx11-cu128-x86_64-linux"
+ },
+ "driver": {
+  "base_driver_major": 580,
+  "compute_capability": [
+   7,
+   5
+  ],
+  "compute_capability_supported": true,
+  "cu_driver_get_version": 13000,
+  "cu_init": 0,
+  "cuda_driver_api": "13.0",
+  "device_count": 1,
+  "device_name": "Tesla T4",
+  "driver_floor": 580,
+  "driver_version": "580.178.4",
+  "finished_utc": "2026-09-24T18:59:43+00:00",
+  "ld_library_path": "/usr/local/cuda/lib64",
+  "libcuda_mapped_paths": [
+   "/usr/lib64/libcuda.so.580.178.04"
+  ],
+  "meets_driver_floor": true,
+  "nvidia_smi": {
+   "compute_cap": "7.5",
+   "driver_version": "580.178.04",
+   "memory.total": "15360 MiB",
+   "name": "Tesla T4",
+   "query_fields": "name,driver_version,compute_cap,memory.total"
+  },
+  "proc_driver_version": "NVRM version: NVIDIA UNIX x86_64 Kernel Module  580.178.04  Tue Jul  7 12:38:21 UTC 2026\nGCC version:  gcc version 11.5.0 20240719 (Red Hat 11.5.0-5) (GCC)",
+  "stage_wall_s": 4.87,
+  "started_utc": "2026-09-24T18:59:38+00:00",
+  "torch": {
+   "compute_capability": [
+    7,
+    5
+   ],
+   "cuda": "12.8",
+   "cuda_available": true,
+   "cxx11_abi": true,
+   "device_name": "Tesla T4",
+   "free_bytes": 15718350848,
+   "total_bytes": 15828320256,
+   "version": "2.9.1+cu128"
+  },
+  "total_memory_bytes": 15828320256
+ },
+ "evidence": {
+  "GPU-SPACE-DRIVER-001": {
+   "compute_capability": [
+    7,
+    5
+   ],
+   "cuDriverGetVersion": 13000,
+   "cuda_driver_api": "13.0",
+   "driver_floor": 580,
+   "gpu": "Tesla T4",
+   "libcuda_mapped_paths": [
+    "/usr/lib64/libcuda.so.580.178.04"
+   ],
+   "meets_driver_floor": true,
+   "nvidia_smi_driver_version": "580.178.4"
+  },
+  "GPU-SPACE-PARITY-001": {
+   "blob_bytes": 13764599808,
+   "conversion_reused": false,
+   "conversion_wall_s": 70.81,
+   "kernel_revision": "8ae3da4a6c33b7484bbff01ca53317e320e06293",
+   "native_full_match": true,
+   "native_tokens": [
+    9856,
+    13,
+    15920,
+    315,
+    279,
+    2701,
+    374,
+    830
+   ],
+   "open_s": 43.82,
+   "prompt_token_ids": [
+    59604,
+    374,
+    279,
+    6722,
+    315,
+    9625,
+    13,
+    19846,
+    374,
+    279,
+    6722,
+    315
+   ],
+   "reference_tokens": [
+    9856,
+    13,
+    15920,
+    315,
+    279,
+    2701,
+    374,
+    830
+   ],
+   "resident_stage_tier": 6144,
+   "selected_library": "libalgenta_algenta_llm.sm_75.so",
+   "step_ms": [
+    0.11,
+    182.87,
+    26.72,
+    26.86,
+    26.97,
+    26.98,
+    27.04,
+    27.05
+   ],
+   "variant": "torch29-cxx11-cu128-x86_64-linux"
+  }
+ },
+ "failure": null,
+ "finished_utc": null,
+ "kernel": {
+  "abi_answered": 1,
+  "abi_version": 1,
+  "arch_check": "passed",
+  "backend": "cuda",
+  "compute_capability": [
+   7,
+   5
+  ],
+  "cuda_libraries": {
+   "sm_75": "libalgenta_algenta_llm.sm_75.so",
+   "sm_80": "libalgenta_algenta_llm.sm_80.so",
+   "sm_89": "libalgenta_algenta_llm.sm_89.so",
+   "sm_90": "libalgenta_algenta_llm.sm_90.so"
+  },
+  "cuda_targets": [
+   "sm_75",
+   "sm_80",
+   "sm_89",
+   "sm_90"
+  ],
+  "expected_variant": "torch29-cxx11-cu128-x86_64-linux",
+  "file": "/home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/8ae3da4a6c33b7484bbff01ca53317e320e06293/build/torch29-cxx11-cu128-x86_64-linux/__init__.py",
+  "finished_utc": "2026-09-24T18:59:49+00:00",
+  "get_kernel_s": 3.81,
+  "loaded": true,
+  "mojo_version": "Mojo 1.0.0 (ed45d567)",
+  "native_init_s": 0.11,
+  "primary_library": "libalgenta_algenta_llm.sm_90.so",
+  "repo": "thyn-ai/algenta-llm",
+  "resident_stage_tier": 6144,
+  "revision": "8ae3da4a6c33b7484bbff01ca53317e320e06293",
+  "selected_library": "libalgenta_algenta_llm.sm_75.so",
+  "source_commit": "4c6fe5efa56a639b2bbaa5a0a4ab830932201cb0",
+  "stage_wall_s": 5.32,
+  "started_utc": "2026-09-24T18:59:44+00:00",
+  "variant": "torch29-cxx11-cu128-x86_64-linux"
+ },
+ "model": {
+  "backend": "cuda",
+  "blob_bytes": 13764599808,
+  "disk_free_after_bytes": 79713583104,
+  "disk_free_before_bytes": 93485010944,
+  "finished_utc": "2026-09-24T19:01:02+00:00",
+  "manifest_config": {
+   "attention_bias": 0,
+   "eos_token_id": 151645,
+   "has_qk_norm": 1,
+   "head_dim": 128,
+   "hidden_size": 2048,
+   "intermediate_size": 6144,
+   "n_tokens": 12,
+   "num_attention_heads": 16,
+   "num_hidden_layers": 28,
+   "num_key_value_heads": 8,
+   "rms_norm_eps": 1e-06,
+   "rope_theta": 1000000.0,
+   "tie_word_embeddings": 1,
+   "vocab_size": 151936
+  },
+  "max_rss_mib": 736.3,
+  "n_tensors": 310,
+  "out_dir": "/home/user/work/qwen3-1.7b-f64-cuda",
+  "prompt_ids": [
+   59604,
+   374,
+   279,
+   6722,
+   315,
+   9625,
+   13,
+   19846,
+   374,
+   279,
+   6722,
+   315
+  ],
+  "prompt_ids_match_run12": true,
+  "repo": "Qwen/Qwen3-1.7B",
+  "returned_dir": "/home/user/work/qwen3-1.7b-f64-cuda",
+  "reused": false,
+  "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "snapshot": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "stage_wall_s": 71.68,
+  "started_utc": "2026-09-24T18:59:50+00:00",
+  "wall_s": 70.81,
+  "weights_dtype": "f64"
+ },
+ "parity": {
+  "compared": 8,
+  "first_divergence": null,
+  "full_match": true,
+  "native_decoded": " Germany. Which of the following is true",
+  "native_tokens": [
+   9856,
+   13,
+   15920,
+   315,
+   279,
+   2701,
+   374,
+   830
+  ],
+  "prefix_match": 8,
+  "reference_decoded": " Germany. Which of the following is true",
+  "reference_tokens": [
+   9856,
+   13,
+   15920,
+   315,
+   279,
+   2701,
+   374,
+   830
+  ],
+  "reference_top2_margin_at_divergence": null,
+  "verdict": "8/8"
+ },
+ "phase": "done",
+ "phases": {
+  "baseline": {
+   "code": null,
+   "finished_utc": "2026-09-24T19:02:28+00:00",
+   "log_tail": [
+    "Loading weights:  68%|\u2588\u2588\u2588\u2588\u2588\u2588\u258a   | 213/311 [00:07<00:02, 33.07it/s]",
+    "Loading weights:  72%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f  | 224/311 [00:07<00:02, 34.17it/s]",
+    "Loading weights:  76%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 235/311 [00:08<00:02, 34.50it/s]",
+    "Loading weights:  79%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589  | 246/311 [00:08<00:01, 36.08it/s]",
+    "Loading weights:  82%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f | 255/311 [00:08<00:01, 39.87it/s]",
+    "Loading weights:  84%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e | 260/311 [00:08<00:01, 35.75it/s]",
+    "Loading weights:  86%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c | 268/311 [00:09<00:01, 32.17it/s]",
+    "Loading weights:  90%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589 | 279/311 [00:09<00:00, 33.98it/s]",
+    "Loading weights:  93%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e| 290/311 [00:09<00:00, 36.79it/s]",
+    "Loading weights:  95%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d| 294/311 [00:09<00:00, 35.53it/s]",
+    "Loading weights:  97%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b| 301/311 [00:09<00:00, 33.60it/s]",
+    "Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 311/311 [00:10<00:00, 31.02it/s]",
+    "Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]",
+    "Loading weights:   0%|          | 1/311 [00:01<08:15,  1.60s/it]",
+    "Loading weights:  24%|\u2588\u2588\u258d       | 75/311 [00:01<00:03, 61.05it/s]",
+    "Loading weights:  51%|\u2588\u2588\u2588\u2588\u2588     | 158/311 [00:01<00:01, 137.80it/s]",
+    "Loading weights:  68%|\u2588\u2588\u2588\u2588\u2588\u2588\u258a   | 212/311 [00:02<00:00, 162.80it/s]",
+    "Loading weights:  82%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f | 254/311 [00:02<00:00, 164.49it/s]",
+    "Loading weights:  92%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f| 287/311 [00:02<00:00, 174.99it/s]",
+    "Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 311/311 [00:02<00:00, 120.29it/s]"
+   ],
+   "message": null,
+   "started_utc": "2026-09-24T19:01:54+00:00",
+   "status": "ok",
+   "wall_s": 33.93
+  },
+  "convert": {
+   "code": null,
+   "finished_utc": "2026-09-24T19:01:02+00:00",
+   "message": null,
+   "started_utc": "2026-09-24T18:59:50+00:00",
+   "status": "ok",
+   "wall_s": 72.15
+  },
+  "decode": {
+   "code": null,
+   "finished_utc": "2026-09-24T19:01:54+00:00",
+   "message": null,
+   "started_utc": "2026-09-24T19:01:02+00:00",
+   "status": "ok",
+   "wall_s": 52.14
+  },
+  "driver": {
+   "code": null,
+   "finished_utc": "2026-09-24T18:59:44+00:00",
+   "message": null,
+   "started_utc": "2026-09-24T18:59:37+00:00",
+   "status": "ok",
+   "wall_s": 6.11
+  },
+  "kernel": {
+   "code": null,
+   "finished_utc": "2026-09-24T18:59:50+00:00",
+   "message": null,
+   "started_utc": "2026-09-24T18:59:44+00:00",
+   "status": "ok",
+   "wall_s": 6.52
+  },
+  "record": {
+   "code": null,
+   "finished_utc": null,
+   "message": null,
+   "started_utc": "2026-09-24T19:02:50+00:00",
+   "status": "running",
+   "wall_s": null
+  },
+  "reference": {
+   "code": null,
+   "finished_utc": "2026-09-24T19:02:50+00:00",
+   "log_tail": [
+    "Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]",
+    "Loading weights:   0%|          | 1/311 [00:01<05:13,  1.01s/it]",
+    "Loading weights:  27%|\u2588\u2588\u258b       | 83/311 [00:01<00:02, 96.43it/s]",
+    "Loading weights:  37%|\u2588\u2588\u2588\u258b      | 116/311 [00:01<00:01, 119.99it/s]",
+    "Loading weights:  46%|\u2588\u2588\u2588\u2588\u258b     | 144/311 [00:01<00:01, 135.59it/s]",
+    "Loading weights:  54%|\u2588\u2588\u2588\u2588\u2588\u258d    | 169/311 [00:01<00:00, 142.24it/s]",
+    "Loading weights:  61%|\u2588\u2588\u2588\u2588\u2588\u2588\u258f   | 191/311 [00:01<00:00, 144.65it/s]",
+    "Loading weights:  68%|\u2588\u2588\u2588\u2588\u2588\u2588\u258a   | 211/311 [00:01<00:00, 153.04it/s]",
+    "Loading weights:  74%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d  | 230/311 [00:02<00:00, 148.55it/s]",
+    "Loading weights:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589  | 248/311 [00:02<00:00, 136.74it/s]",
+    "Loading weights:  88%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a | 274/311 [00:02<00:00, 159.75it/s]",
+    "Loading weights:  94%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d| 292/311 [00:02<00:00, 151.51it/s]",
+    "Loading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 311/311 [00:02<00:00, 124.09it/s]"
+   ],
+   "message": null,
+   "started_utc": "2026-09-24T19:02:28+00:00",
+   "status": "ok",
+   "wall_s": 21.37
+  }
+ },
+ "pins": {
+  "driver_floor": 580,
+  "expected_stage_tier": 6144,
+  "expected_variant": "torch29-cxx11-cu128-x86_64-linux",
+  "kernel_repo": "thyn-ai/algenta-llm",
+  "kernel_revision": "8ae3da4a6c33b7484bbff01ca53317e320e06293",
+  "max_new_tokens": 8,
+  "model_repo": "Qwen/Qwen3-1.7B",
+  "model_revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "prompt": "Paris is the capital of France. Berlin is the capital of"
+ },
+ "reference": {
+  "decoded": " Germany. Which of the following is true",
+  "eos_token_id": [
+   151645,
+   151643
+  ],
+  "finished_utc": "2026-09-24T19:02:49+00:00",
+  "generate_s": 4.28,
+  "load_s": 3.51,
+  "max_rss_mib": 12407.5,
+  "prompt_ids": [
+   59604,
+   374,
+   279,
+   6722,
+   315,
+   9625,
+   13,
+   19846,
+   374,
+   279,
+   6722,
+   315
+  ],
+  "prompt_ids_agree_with_algenta_tokenizer": true,
+  "reference": "transformers float32 greedy, CPU",
+  "snapshot": "/home/user/hf/hub/models--Qwen--Qwen3-1.7B/snapshots/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "stage_wall_s": 19.92,
+  "started_utc": "2026-09-24T19:02:29+00:00",
+  "threads": 4,
+  "tokens": [
+   9856,
+   13,
+   15920,
+   315,
+   279,
+   2701,
+   374,
+   830
+  ],
+  "top2_margins": [
+   5.371189,
+   4.909258,
+   0.145649,
+   3.238644,
+   2.028484,
+   8.314959,
+   0.808479,
+   0.306843
+  ],
+  "torch": "2.9.1+cu128",
+  "transformers": "5.17.0",
+  "transformers_prompt_ids": [
+   59604,
+   374,
+   279,
+   6722,
+   315,
+   9625,
+   13,
+   19846,
+   374,
+   279,
+   6722,
+   315
+  ]
+ },
+ "run12_recorded": {
+  "artifact": "docs/hf-kernels/evidence/artifacts/gpu-probe-run12-t4-small-qwen3-1p7b.json",
+  "decoded": " Germany. Which of the following is true",
+  "matches_this_run": true,
+  "prompt_ids": [
+   59604,
+   374,
+   279,
+   6722,
+   315,
+   9625,
+   13,
+   19846,
+   374,
+   279,
+   6722,
+   315
+  ],
+  "tokens": [
+   9856,
+   13,
+   15920,
+   315,
+   279,
+   2701,
+   374,
+   830
+  ]
+ },
+ "run_json": false,
+ "schema": "algenta-gpu-probe/3",
+ "space": {
+  "CPU_CORES": "3",
+  "MEMORY": "16.0G",
+  "SPACE_HOST": "thyn-ai-algenta-gpu-probe.hf.space",
+  "SPACE_ID": "thyn-ai/algenta-gpu-probe",
+  "SPACE_REPO_NAME": "algenta-gpu-probe",
+  "hardware_requested": "t4-small"
+ },
+ "started_utc": "2026-09-24T18:59:37+00:00",
+ "status": "ok",
+ "updated_utc": "2026-09-24T19:02:50+00:00",
+ "versions": {
+  "cpu_count": 4,
+  "cuda_version_env": "12.8.1",
+  "glibc": "2.39",
+  "hf_hub_offline": "1",
+  "implementation": "CPython",
+  "ld_library_path": "/usr/local/cuda/lib64",
+  "machine": "x86_64",
+  "nvidia_disable_require": "1",
+  "nvidia_require_cuda": "cuda>=12.8 brand=unknown,driver>=470,driver<471 brand=grid,driver>=470,driver<471 brand=tesla,driver>=470,driver<471 bra",
+  "packages": {
+   "algenta": "1.0.28",
+   "algenta-runtime-native": "1.0.7",
+   "fastapi": "0.141.1",
+   "huggingface_hub": "1.26.1",
+   "kernels": "0.17.1",
+   "numpy": "2.5.3",
+   "safetensors": "0.8.0",
+   "tokenizers": "0.23.2",
+   "torch": "2.9.1+cu128",
+   "transformers": "5.17.0",
+   "uvicorn": "0.53.0"
+  },
+  "python": "3.14.7",
+  "system": "Linux"
+ }
+}
