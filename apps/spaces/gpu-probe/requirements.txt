@@ -1,0 +1,24 @@
+# The GPU probe's dependencies (CPython 3.14, linux x86_64, CUDA 12.8). Every line is an exact
+# pin; the Dockerfile installs this file with `uv pip install --index-strategy unsafe-best-match`
+# so the `+cu128` torch build resolves from the PyTorch index while everything else comes from
+# PyPI. The versions are the ones run 12 of the probe recorded on 2026-09-22
+# (docs/hf-kernels/evidence/artifacts/gpu-probe-run12-t4-small-qwen3-1p7b.json), with the
+# algenta package and the web server brought to what the flagship's requirements.lock pins.
+#
+# torch 2.9.1+cu128 is what makes `kernels` resolve the torch29-cxx11-cu128-x86_64-linux
+# variant, the one CUDA build thyn-ai/algenta-llm publishes. huggingface_hub is held at 1.26.1,
+# the version kernels 0.17.1 is published against (the flagship's pin). algenta provides
+# prepare_model_checkpoint and the byte-exact Qwen3 tokenizer; its native runtime wheel comes
+# with it (algenta-runtime-native, CPython 3.14 only). transformers + safetensors + tokenizers
+# are the float32 CPU reference.
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.9.1+cu128
+kernels==0.17.1
+huggingface_hub==1.26.1
+transformers==5.17.0
+tokenizers==0.23.2
+safetensors==0.8.0
+numpy==2.5.3
+algenta==1.0.28
+fastapi==0.141.1
+uvicorn==0.53.0

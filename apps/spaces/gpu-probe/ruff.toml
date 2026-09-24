@@ -1,0 +1,5 @@
+# The probe runs on CPython 3.14 in its image and its helpers are unit-tested on 3.12 in the
+# repository suite (tests/spaces/test_gpu_probe.py), so it is linted against the lower floor.
+# Rules come from the repository configuration.
+extend = "../../../pyproject.toml"
+target-version = "py312"

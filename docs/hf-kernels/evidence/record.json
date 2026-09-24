@@ -1497,6 +1497,23 @@
       "owner": "eng",
       "accessed": "2026-09-24",
       "contradicts": []
+    },
+    {
+      "id": "GPU-SPACE-PARITY-002",
+      "question": "After the probe Space was deleted (2026-09-24) and rebuilt as tracked source, does Qwen3-1.7B still decode token-exact through the REPUBLISHED (REPUBLISH-006, v1 8ae3da4a) algenta-llm CUDA kernels on a T4?",
+      "claim": "Yes. Private Space thyn-ai/algenta-gpu-probe rebuilt from apps/spaces/gpu-probe (PR #1169, commit 9fc48b9fa) on t4-small: Tesla T4 (compute capability 7.5), driver 580.178.4 (CUDA driver API 13.0), image nvidia/cuda:12.8.1-runtime-ubuntu24.04, CPython 3.14, torch 2.9.1+cu128, kernels 0.17.1. get_kernel('thyn-ai/algenta-llm', revision 8ae3da4a, backend cuda) resolved torch29-cxx11-cu128-x86_64-linux, loaded libalgenta_algenta_llm.sm_75.so (ABI 1, tier 6144), converted Qwen3-1.7B to the f64 blob in 72.31 s, decoded 8 greedy tokens through DecodeSession — per-step 0–188 ms (median 27 ms), and the transformers fp32 CPU reference produced the same 8 ids: parity 8/8 (full match), decoded text ' Germany. Which of the following is true'. Phases: driver 5.49 s, kernel 6.47 s, convert 72.31 s, decode 51.44 s, reference 28.89 s. Space paused after the run.",
+      "kind": "measurement",
+      "source": "apps/spaces/gpu-probe (probe.py stages driver→kernel→convert→decode→reference→record), run 13 at 2026-09-24T15:27Z; huggingface_hub get_space_runtime; /health + /run.json read with the token; artifact docs/hf-kernels/evidence/artifacts/gpu-probe-run13-t4-small-qwen3-1p7b.json",
+      "result": "parity 8/8 full match; native ids [9856, 13, 15920, 315, 279, 2701, 374, 830] == reference ids [9856, 13, 15920, 315, 279, 2701, 374, 830]; first_divergence null; kernel file /home/user/hf/hub/kernels--thyn-ai--algenta-llm/snapshots/8ae3da4a6c33b7484bbff01ca53317e320e06293/build/torch29-cxx11-cu128-x86_64-linux/__init__.py; session open 42.8 s, steady decode ≈ 27 ms/token (≈ 37 tok/s) on the T4, ≈ 7.25 GB VRAM resident, f64 blob 13,764,599,808 bytes",
+      "confidence": "high",
+      "impact": "P1",
+      "outcome_class": "informational",
+      "capability_scope": "linux x86_64 × cuda × sm_75 (T4); algenta-llm v1 8ae3da4a, tier 6144",
+      "required_before": "ga_promotion",
+      "status": "pass",
+      "owner": "eng",
+      "accessed": "2026-09-24",
+      "contradicts": []
     }
   ]
 }

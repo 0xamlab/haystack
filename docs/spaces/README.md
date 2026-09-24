@@ -14,6 +14,7 @@ Everything below is a command you can run from the repository root today.
 | `apps/spaces/{algenta,speed-arena,governed-agent}/` | The live Spaces. |
 | `apps/spaces/_redirects/*/` | Static redirect stubs for the retired Spaces (`README.md`, `index.html`, `style.css`). |
 | `apps/spaces/_retired/*/` | The retired Space sources, kept for reference; never deployed. |
+| `apps/spaces/gpu-probe/` | The private GPU parity probe (`thyn-ai/algenta-gpu-probe`, `t4-small`, paused between runs); deployed by hand, see `docs/spaces/GPU-PROBE.md`. |
 | `apps/spaces/tools/` | `manifest.py`, `stage.py`, `deploy.py`, `verify_remote.py`, `copy_lint.py`, `pin_drift.py`, `board_check.py`. |
 | `tests/spaces/` | Tests for the shared package and the tooling; no network, no heavy dependencies. |
 
