@@ -366,12 +366,14 @@ CHROME_CSS = stylesheet(
     page_rule(
         f"height: auto; {_TARGET} overflow: visible; align-items: stretch;"
         " border: 1px solid var(--alg-hairline); border-radius: var(--alg-radius-input);"
-        " background: var(--alg-surface-2);",
+        " background: var(--alg-surface-2);"
+        " box-sizing: border-box;",  # the bordered box is the target; the input inside is 44 - 2
         suffix=_SLIDER_BOX,
     ),
     page_rule("align-items: center; gap: 8px 16px; margin: 0 0 8px;", suffix=_SLIDER_HEAD),
     page_rule(
-        f"{_TARGET} height: auto; padding: 8px 12px;"
+        # the bordered box around it is the 44 px target (round 10: the box measured 46)
+        f"{_INNER_TARGET} height: auto; padding: 0 12px;"
         f" {_MONO_TYPE} text-align: right; min-width: 72px; border: 0;"
         " border-radius: var(--alg-radius-input); background: transparent;"
         " color: var(--alg-text);",

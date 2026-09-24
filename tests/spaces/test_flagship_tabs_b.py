@@ -2028,6 +2028,9 @@ def test_oss_facts_from_github_or_the_unavailable_card():
 
 
 def test_sdk_card_reads_facts_and_omits_a_missing_registry(monkeypatch):
+    from tabs import try_tab  # noqa: PLC0415
+
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [])  # no earlier live read in this process
     facts = {
         "versions": {"algenta": "1.0.24", "kernels": "0.17.1", "torch": "2.5.1"},
         "mcp_tools": 140,
@@ -2051,12 +2054,29 @@ def test_sdk_card_reads_facts_and_omits_a_missing_registry(monkeypatch):
     assert all(name != "algenta-mcp" for name, _ in eco_tab.SDK_DISTS)
     assert gov_tab.MCP_ENDPOINT in card
     _assert_clean_copy(card)
-    monkeypatch.setattr(eco_tab, "mcp_tool_count", lambda: None)
+    monkeypatch.setattr(
+        eco_tab,
+        "mcp_tool_count_with_caption",
+        lambda: (None, "unavailable · mcp_tools_unreachable · down", "unavailable"),
+    )
     card = eco_tab.render_sdk_card({"versions": {}})
     assert code_of(card) is None, "absent is not unavailable: the count check stays reachable"
     assert eco_tab.MCP_NOT_INSTALLED_TEXT in card and "alg-chip-err" not in card
-    assert "MCP tools" in card
+    assert "MCP tools" in card and "not installed here" not in card  # round 9 wording
     _assert_clean_copy(card)
+    # a count read earlier in this process stays on the card with its time when the API is down
+    monkeypatch.setattr(
+        eco_tab,
+        "mcp_tool_count_with_caption",
+        lambda: (
+            140,
+            "MCP tools read 2026-09-24 03:13 UTC · mcp_tools_unreachable now · down",
+            "measured",
+        ),
+    )
+    stale = eco_tab.render_sdk_card({"versions": {}})
+    assert ">140<" in stale and "MCP tools read 2026-09-24 03:13 UTC" in stale
+    assert eco_tab.MCP_LIVE_LABEL not in stale
 
 
 def test_ecosystem_repeats_no_shell_link():
@@ -3183,6 +3203,14 @@ def test_round_8_launch_review_regressions():
     empty = common.render_empty("t", "x")
     assert '<h2 class="alg-card-title">' in empty and "<h3" not in empty
     assert try_tab.HERO_LABEL == "per kernel call · median"
+    # round 10 (journalist, production): the Ecosystem pills and the slider value boxes were 46
+    pill = _css_rules(eco_tab.ECO_CSS)[("alg-eco-pill", "")]
+    assert pill["min-height"] == "var(--alg-target)" and pill["box-sizing"] == "border-box"
+    assert pill["display"] == "inline-flex" and pill["padding"] == "0 16px"
+    box = css.CHROME_CSS.split(f"{css._SLIDER_BOX} {{", 1)[1].split("}", 1)[0]
+    assert "min-height: var(--alg-target)" in box and "box-sizing: border-box" in box
+    value = css.CHROME_CSS.split(f"{css.SLIDER_VALUE_INPUT} {{", 1)[1].split("}", 1)[0]
+    assert "min-height: calc(var(--alg-target) - 2px)" in value and "padding: 0 12px" in value
     assert "in-kernel" not in race_tab.HOW_MEASURED and "in-kernel" not in try_tab.HOW_MEASURED
 
 

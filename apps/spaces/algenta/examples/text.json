@@ -1,6 +1,6 @@
 {
  "family": "text",
- "generated_utc": "2026-09-24T03:23:50Z",
+ "generated_utc": "2026-09-24T04:35:16Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -18,7 +18,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 20.542
+   "ms": 9.796
   },
   "string_distance.common_prefix_length": {
    "args": {
@@ -28,7 +28,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.326
+   "ms": 0.076
   },
   "string_distance.common_suffix_length": {
    "args": {
@@ -38,7 +38,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.339
+   "ms": 0.046
   },
   "string_distance.damerau_levenshtein": {
    "args": {
@@ -48,7 +48,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.156
+   "ms": 0.053
   },
   "string_distance.dice_coefficient": {
    "args": {
@@ -58,7 +58,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.195
+   "ms": 0.079
   },
   "string_distance.edit_similarity": {
    "args": {
@@ -68,7 +68,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.07
   },
   "string_distance.is_palindrome": {
    "args": {
@@ -77,7 +77,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.214
+   "ms": 0.048
   },
   "string_distance.overlap_coefficient": {
    "args": {
@@ -87,7 +87,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.062
   },
   "string_distance.soundex": {
    "args": {
@@ -96,7 +96,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.065
   },
   "string_distance.string_reverse": {
    "args": {
@@ -105,7 +105,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.237
+   "ms": 0.043
   },
   "text.column_scorer.score_column_hint": {
    "args": {
@@ -118,7 +118,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.233
+   "ms": 0.075
   },
   "text.column_scorer.score_ngram_overlap": {
    "args": {
@@ -129,7 +129,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.207
+   "ms": 0.061
   },
   "text.column_scorer.score_prefix_match": {
    "args": {
@@ -139,7 +139,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.19
+   "ms": 0.079
   },
   "text.column_scorer.score_token_overlap": {
    "args": {
@@ -149,7 +149,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.05
   },
   "text.fuzzy.fuzzy_ratio": {
    "args": {
@@ -159,7 +159,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.222
+   "ms": 0.049
   },
   "text.fuzzy.hamming_distance": {
    "args": {
@@ -169,7 +169,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.161
+   "ms": 0.044
   },
   "text.fuzzy.jaro_similarity": {
    "args": {
@@ -179,7 +179,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.211
+   "ms": 0.045
   },
   "text.fuzzy.jaro_winkler_similarity": {
    "args": {
@@ -190,7 +190,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.055
   },
   "text.fuzzy.levenshtein_distance": {
    "args": {
@@ -200,7 +200,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.147
+   "ms": 0.035
   },
   "text.fuzzy.longest_common_subsequence": {
    "args": {
@@ -210,7 +210,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.063
   },
   "text.fuzzy.normalized_levenshtein": {
    "args": {
@@ -220,7 +220,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.202
+   "ms": 0.039
   },
   "text.regex.is_match_literal": {
    "args": {
@@ -230,7 +230,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.228
+   "ms": 0.058
   },
   "text.regex.is_match_simple": {
    "args": {
@@ -240,7 +240,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.155
+   "ms": 0.04
   },
   "text.regex.regex_find_all": {
    "args": {
@@ -250,7 +250,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.049
   },
   "text.regex.regex_match": {
    "args": {
@@ -260,7 +260,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.043
   },
   "text.regex.regex_replace": {
    "args": {
@@ -271,7 +271,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.043
   },
   "text.regex.regex_search": {
    "args": {
@@ -281,7 +281,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.361
+   "ms": 0.041
   },
   "text.regex.regex_split": {
    "args": {
@@ -291,7 +291,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.386
+   "ms": 0.042
   },
   "text.string_utils.str_center": {
    "args": {
@@ -302,7 +302,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.218
+   "ms": 0.038
   },
   "text.string_utils.str_contains": {
    "args": {
@@ -312,7 +312,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.481
+   "ms": 0.045
   },
   "text.string_utils.str_count": {
    "args": {
@@ -322,7 +322,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.174
+   "ms": 0.06
   },
   "text.string_utils.str_endswith": {
    "args": {
@@ -332,7 +332,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.039
   },
   "text.string_utils.str_join": {
    "args": {
@@ -348,7 +348,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.282
+   "ms": 0.089
   },
   "text.string_utils.str_lower": {
    "args": {
@@ -357,7 +357,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.287
+   "ms": 0.039
   },
   "text.string_utils.str_pad_left": {
    "args": {
@@ -368,7 +368,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.039
   },
   "text.string_utils.str_pad_right": {
    "args": {
@@ -379,7 +379,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.248
+   "ms": 0.032
   },
   "text.string_utils.str_repeat": {
    "args": {
@@ -389,7 +389,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.416
+   "ms": 0.087
   },
   "text.string_utils.str_replace": {
    "args": {
@@ -400,7 +400,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.282
+   "ms": 0.04
   },
   "text.string_utils.str_reverse": {
    "args": {
@@ -409,7 +409,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.044
   },
   "text.string_utils.str_split": {
    "args": {
@@ -419,7 +419,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.209
+   "ms": 0.059
   },
   "text.string_utils.str_startswith": {
    "args": {
@@ -429,7 +429,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.211
+   "ms": 0.057
   },
   "text.string_utils.str_trim": {
    "args": {
@@ -438,7 +438,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.039
   },
   "text.string_utils.str_truncate": {
    "args": {
@@ -449,7 +449,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.353
+   "ms": 0.037
   },
   "text.string_utils.str_upper": {
    "args": {
@@ -458,7 +458,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.031
   },
   "textile.breaking_tenacity": {
    "args": {
@@ -468,7 +468,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.221
+   "ms": 0.036
   },
   "textile.denier_to_tex": {
    "args": {
@@ -477,7 +477,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.029
   },
   "textile.fabric_cover_factor": {
    "args": {
@@ -487,7 +487,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.4
+   "ms": 0.034
   },
   "textile.fabric_gsm": {
    "args": {
@@ -497,7 +497,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.249
+   "ms": 0.043
   },
   "textile.moisture_regain": {
    "args": {
@@ -507,7 +507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.368
+   "ms": 0.056
   },
   "textile.pilling_resistance_score": {
    "args": {
@@ -517,7 +517,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.05
   },
   "textile.shrinkage_percentage": {
    "args": {
@@ -527,7 +527,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.189
+   "ms": 0.051
   },
   "textile.tex_from_diameter_density": {
    "args": {
@@ -537,7 +537,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.039
   },
   "textile.tex_to_denier": {
    "args": {
@@ -546,7 +546,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.179
+   "ms": 0.035
   },
   "textile.twist_multiplier": {
    "args": {
@@ -556,7 +556,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.295
+   "ms": 0.035
   },
   "textile.twist_per_meter": {
    "args": {
@@ -565,7 +565,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.179
+   "ms": 0.031
   },
   "textile.yarn_count_ne": {
    "args": {
@@ -575,7 +575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.188
+   "ms": 0.032
   }
  }
 }

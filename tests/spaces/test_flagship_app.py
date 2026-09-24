@@ -1346,9 +1346,9 @@ def test_headline_counts_what_loaded_never_the_catalogue(state: Any) -> None:
     the way it lowers the Try tab's Hub tile — `app.headline` is `boot_sequence.headline`."""
     facts = state.facts
     text = app_mod.headline(facts)
-    assert text == f"{facts['functions_loaded']:,} compiled Mojo kernels, live"
+    assert text == f"{facts['functions_loaded']:,} compiled Mojo kernels"
     assert len(text.split()) <= shell.HEADLINE_WORDS
-    assert app_mod.headline({}) == "Compiled Mojo kernels, live"
+    assert app_mod.headline({}) == "Compiled Mojo kernels"
     assert app_mod.headline is boot_sequence.headline
     # the umbrella loaded and one family did not: the catalogue says 6,040, the page 5,683
     partial = {
@@ -1357,7 +1357,7 @@ def test_headline_counts_what_loaded_never_the_catalogue(state: Any) -> None:
         "families_loaded": ["stats", "text"],
         "families_failed": {"llm": "variant_unavailable"},
     }
-    assert app_mod.headline(partial) == "5,683 compiled Mojo kernels, live"
+    assert app_mod.headline(partial) == "5,683 compiled Mojo kernels"
 
 
 def test_badges_are_words_with_no_variant_string(state: Any) -> None:

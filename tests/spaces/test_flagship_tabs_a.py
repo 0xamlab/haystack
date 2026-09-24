@@ -1284,6 +1284,17 @@ def test_mcp_tool_count_from_the_live_endpoint_or_unavailable(monkeypatch):
     )
     assert (count, kind) == (2, "live") and caption.startswith(f"{try_tab.LIVE_HOSTED} · ")
     assert caption.endswith(" UTC") and common.cards.hostname_token(caption) is None
+    # round 9: after one successful read the container keeps the count; a failed fetch reports
+    # that count with its time and the code — never "not installed", never a bare dash
+    count, caption, kind = try_tab.mcp_tool_count(
+        lambda url: common.Fetched(url, 0, error="URLError: down")
+    )
+    assert (count, kind) == (2, "measured")  # it was measured, at the time the caption names
+    assert caption.startswith(f"{try_tab.LAST_READ} ") and "mcp_tools_unreachable now" in caption
+    stale = try_tab.hosted_tile(lambda url: common.Fetched(url, 0, error="URLError: down"))
+    assert "2 MCP tools" in stale and "mcp_tools_unreachable" in stale
+    # with no read behind it, a failure is the unavailable tile with the code once
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [])
     count, caption, kind = try_tab.mcp_tool_count(
         lambda url: common.Fetched(url, 0, error="URLError: down")
     )
@@ -1291,6 +1302,7 @@ def test_mcp_tool_count_from_the_live_endpoint_or_unavailable(monkeypatch):
     tile = try_tab.hosted_tile(lambda url: common.Fetched(url, 200, {"tools": [1, 2, 3]}))
     _assert_clean_copy(tile)
     assert "3 MCP tools" in tile
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [])
     down = try_tab.hosted_tile(lambda url: common.Fetched(url, 0, error="URLError: down"))
     assert "alg-stat-unavailable" in down and "mcp_tools_unreachable" in down
     assert "URLError: down" in down
@@ -2099,12 +2111,12 @@ def test_boot_headline_and_family_summary_read_the_loaded_counts_never_the_catal
         "families_loaded": ["a"] * 18,
         "families_published": 19,
     }
-    assert boot_sequence.headline(degraded) == "5,683 compiled Mojo kernels, live"
+    assert boot_sequence.headline(degraded) == "5,683 compiled Mojo kernels"
     assert boot_sequence.families_summary(degraded) == "18 of 19 families loaded"
     whole = {**degraded, "functions_loaded": 6040, "families_loaded": ["a"] * 19}
-    assert boot_sequence.headline(whole) == "6,040 compiled Mojo kernels, live"
+    assert boot_sequence.headline(whole) == "6,040 compiled Mojo kernels"
     assert boot_sequence.families_summary(whole) == "19 families loaded"
-    assert boot_sequence.headline({}) == "Compiled Mojo kernels, live"
+    assert boot_sequence.headline({}) == "Compiled Mojo kernels"
     assert boot_sequence.functions_loaded({"functions_loaded": True}) == 0, "a bool is not a count"
     assert boot_sequence.families_published({}) == len(hubkernel.TRUST) - 1
 

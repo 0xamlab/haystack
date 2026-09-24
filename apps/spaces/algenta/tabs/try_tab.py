@@ -128,6 +128,10 @@ MCP_TOOLS_URL = "https://api.algenta.ai/mcp/tools"
 LIVE_HOSTED = "live · hosted API"
 MCP_DIST = "algenta-mcp"
 CODE_MCP_UNREACHABLE = "mcp_tools_unreachable"
+#: The caption prefix when the hosted API is unreachable now but this container read it before.
+LAST_READ = "MCP tools read"
+#: `[count, stamp]` of the last successful live read in this process (empty until one succeeds).
+_LAST_LIVE: list[Any] = []
 
 TITLE = "Two-proportion z-test"
 HERO_LABEL = "per kernel call · median"
@@ -834,8 +838,15 @@ def mcp_tool_count(
     fetched = fetch_json(MCP_TOOLS_URL)
     tools = fetched.data.get("tools") if fetched.ok and isinstance(fetched.data, Mapping) else None
     if isinstance(tools, list):
+        _LAST_LIVE[:] = [len(tools), utc_stamp()]
         return len(tools), f"{LIVE_HOSTED} · {utc_stamp()}", "live"
     reason = fetched.error or "no tools list in the response"
+    if _LAST_LIVE:
+        # the last count this container read, with its time — never a stored number passed
+        # off as live, never "not installed" (round 9: the SDK card said so while the Try tile
+        # read 140; the fetch had failed once under load)
+        count, stamp = _LAST_LIVE
+        return count, f"{LAST_READ} {stamp} · {CODE_MCP_UNREACHABLE} now · {reason}", "measured"
     return None, f"unavailable · {CODE_MCP_UNREACHABLE} · {reason}", "unavailable"
 
 
@@ -856,6 +867,7 @@ def hosted_tile(fetch_json: Callable[[str], common.Fetched] = common.fetch_json)
         value=f"{count:,} MCP tools",
         caption=caption,
         kind=kind,
+        code=CODE_MCP_UNREACHABLE if f"{CODE_MCP_UNREACHABLE} now" in caption else "",
         link=shell.DOCS_URL,
     )
 

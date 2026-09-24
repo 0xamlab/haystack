@@ -1,6 +1,6 @@
 {
  "family": "finance",
- "generated_utc": "2026-09-24T03:16:36Z",
+ "generated_utc": "2026-09-24T04:28:04Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -20,7 +20,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 11.252
+   "ms": 12.445
   },
   "accounting.compound_annual_growth": {
    "args": {
@@ -31,7 +31,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.163
   },
   "accounting.current_ratio": {
    "args": {
@@ -41,7 +41,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.101
   },
   "accounting.debt_to_equity": {
    "args": {
@@ -51,7 +51,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.117
   },
   "accounting.declining_balance": {
    "args": {
@@ -62,7 +62,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.109
   },
   "accounting.future_value": {
    "args": {
@@ -73,7 +73,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.118
   },
   "accounting.gross_profit_margin": {
    "args": {
@@ -83,7 +83,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.085
   },
   "accounting.net_profit_margin": {
    "args": {
@@ -93,7 +93,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.108
   },
   "accounting.present_value_single": {
    "args": {
@@ -104,7 +104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.11
   },
   "accounting.return_on_equity": {
    "args": {
@@ -114,7 +114,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.082
   },
   "accounting.straight_line_depreciation": {
    "args": {
@@ -125,7 +125,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.112
   },
   "accounting.sum_of_years_digits": {
    "args": {
@@ -137,7 +137,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.31
   },
   "finance.annuity_payment": {
    "args": {
@@ -148,7 +148,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.148
   },
   "finance.cagr": {
    "args": {
@@ -159,7 +159,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.133
   },
   "finance.compound_interest": {
    "args": {
@@ -170,7 +170,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.185
   },
   "finance.future_value": {
    "args": {
@@ -181,7 +181,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.192
   },
   "finance.irr": {
    "args": {
@@ -198,7 +198,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.229
   },
   "finance.max_drawdown": {
    "args": {
@@ -213,7 +213,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.164
   },
   "finance.npv": {
    "args": {
@@ -228,7 +228,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.15
   },
   "finance.payback_period": {
    "args": {
@@ -242,7 +242,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.162
   },
   "finance.present_value": {
    "args": {
@@ -253,7 +253,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.117
   },
   "finance.roi": {
    "args": {
@@ -263,7 +263,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.091
   },
   "finance.sharpe_ratio": {
    "args": {
@@ -279,7 +279,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.172
   },
   "finance.wacc": {
    "args": {
@@ -292,7 +292,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.248
   },
   "option_greeks_batch.chain_greeks": {
    "args": {
@@ -342,7 +342,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.204
+   "ms": 0.239
   },
   "option_pricing.binomial_tree_call": {
    "args": {
@@ -356,7 +356,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.138
   },
   "option_pricing.black_scholes_call": {
    "args": {
@@ -369,7 +369,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.239
   },
   "option_pricing.black_scholes_put": {
    "args": {
@@ -382,7 +382,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.18
   },
   "option_pricing.delta_call": {
    "args": {
@@ -395,7 +395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.112
   },
   "option_pricing.gamma": {
    "args": {
@@ -408,7 +408,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.101
   },
   "option_pricing.implied_volatility": {
    "args": {
@@ -422,7 +422,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.13
   },
   "option_pricing.norm_cdf": {
    "args": {
@@ -431,7 +431,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.111
   },
   "option_pricing.put_call_parity": {
    "args": {
@@ -444,7 +444,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.138
   },
   "option_pricing.theta_call": {
    "args": {
@@ -457,7 +457,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.11
   },
   "option_pricing.vega": {
    "args": {
@@ -470,7 +470,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.136
   }
  }
 }

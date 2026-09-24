@@ -561,7 +561,32 @@ def test_machine_token_names_what_is_not_copy():
         "19 families warm in 2.0 s",
         "Hub kernels · Linux x86-64 and macOS arm64",
         "CPU upgrade · 8 vCPU",
-        "Race them against the Python libraries they replace, on this machine.",
+        "Mojo kernels running on this machine. Race them against Python.",
         "measured 2026-09-22 14:02 UTC",
     ):
         assert shell.machine_token(human) is None, human
+
+
+def test_headline_count_is_its_own_gradient_display_line():
+    """Round 11 (owner): "6,040 is huge — must be visible right away", "AI-ish gradient". A
+    headline that opens with a number renders the number as a display line in the accent
+    gradient above the words; a headline without one is plain text; the copy check sees the
+    whole sentence either way."""
+    html = shell.render_header(
+        "6,040 compiled Mojo kernels", "Mojo kernels running on this machine."
+    )
+    assert (
+        f'<span class="alg-shell-count alg-accent-text" style="{shell.COUNT_STYLE}">6,040</span>'
+        in html
+    )
+    assert "var(--alg-accent-from)" in shell.COUNT_STYLE and "#" not in shell.COUNT_STYLE
+    assert '<span class="alg-shell-title-text">compiled Mojo kernels</span>' in html
+    plain = shell.render_header("Compiled Mojo kernels", "Mojo kernels running on this machine.")
+    assert "alg-shell-count" not in plain and ">Compiled Mojo kernels</h1>" in plain
+    count_rule = _rules(shell.SHELL_CSS)[("alg-shell-count", "")]
+    assert count_rule["font-size"] == "var(--alg-count-size)" and count_rule["display"] == "block"
+    assert "tabular-nums" in count_rule["font-variant-numeric"]
+    assert design.TYPE_SCALE["count"] == (64, 64, "-0.03em", 600)
+    assert "background-clip: text" in shell.COUNT_STYLE
+    assert f"--alg-accent-gradient: {design.ACCENT_GRADIENT};" in design.build_tokens_css()
+    assert design.ACCENT_GRADIENT == "linear-gradient(90deg, #7C5CFA, #3B82F6)"

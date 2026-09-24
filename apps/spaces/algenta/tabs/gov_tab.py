@@ -1530,7 +1530,10 @@ def build(
         state = gr.State(initial_state())
 
         def slider(spec: tuple, label: str) -> Any:
-            return gr.Slider(*spec[:2], step=spec[2], value=spec[3], label=label, buttons=[])
+            # a number box, not a slider: a typed value above the range must be refused with a
+            # field message, never clamped in silence (round 9: Rows 50 kept '50' in the box while
+            # the slider and the run used 32); the handlers' range checks answer
+            return gr.Number(value=spec[3], label=label, step=spec[2], precision=None)
 
         def pair(*builders: Any) -> list[Any]:
             """Two controls side by side, one column each, one under the other on a phone."""

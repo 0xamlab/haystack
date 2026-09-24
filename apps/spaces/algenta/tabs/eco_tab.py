@@ -158,7 +158,9 @@ NEXT_REFRESH_BUTTON = "Next refresh in {seconds:.0f} s"
 #: How often the disabled button counts down; the timer stops when the floor clears.
 COOLDOWN_TICK_S = 1.0
 COUNTED_TEXT = "counted {stamp}"
-MCP_NOT_INSTALLED_TEXT = "not installed here"
+#: The SDK card's MCP chip when no count exists yet: the hosted API could not be read and this
+#: container never read it — never "not installed" (round 9: the package is not what is counted).
+MCP_NOT_INSTALLED_TEXT = "MCP tools · hosted API unreachable"
 #: The hero label when the count came from the hosted endpoint, not an installed registry.
 MCP_LIVE_LABEL = "MCP tools · live · hosted API"
 #: The SDK card's toolchain row: what compiled the libraries every call runs through.
@@ -464,18 +466,28 @@ def fetch_oss_facts(fetch: Fetch = https_get, *, now: datetime | None = None) ->
     return OssFacts(count, tag, released, utc_stamp(now))
 
 
-def mcp_tool_count() -> int | None:
-    """`len(algenta_mcp.registry.TOOLS)` from the installed package, else the live hosted
-    endpoint the Try tile reads (`try_tab.mcp_tool_count`), else None. One source for both tabs:
-    the launch review saw the Try tile say 140 while this card said the package was absent."""
+def mcp_tool_count_with_caption() -> tuple[int | None, str, str]:
+    """`(count, caption, kind)`: the installed registry, else the live hosted endpoint the Try
+    tile reads (`try_tab.mcp_tool_count`, which keeps this container's last successful read
+    and reports it with its time when the API is unreachable). One source for both tabs: the
+    launch review saw the Try tile say 140 while this card said the package was absent."""
     try:
         from algenta_mcp.registry import TOOLS
     except Exception:  # noqa: BLE001 - not installed, or a 3.14-only import on 3.12
         from tabs import try_tab
 
-        count, _caption, _kind = try_tab.mcp_tool_count()
-        return count
-    return len(TOOLS)
+        return try_tab.mcp_tool_count()
+    return len(TOOLS), "installed registry", "registry"
+
+
+def mcp_tool_count() -> int | None:
+    return mcp_tool_count_with_caption()[0]
+
+
+def try_tab_code() -> str:
+    from tabs import try_tab
+
+    return try_tab.CODE_MCP_UNREACHABLE
 
 
 def snippet_for(family: str) -> str:
@@ -780,13 +792,17 @@ def sdk_facts(facts: Mapping[str, Any]) -> dict[str, Any]:
     versions = facts.get("versions") if isinstance(facts.get("versions"), Mapping) else {}
     tools = facts.get("mcp_tools")
     source = "registry"
+    caption = ""
     if not isinstance(tools, int) or isinstance(tools, bool) or tools < 1:
-        tools = mcp_tool_count()
-        source = "live" if isinstance(tools, int) else ""
+        tools, caption, kind = mcp_tool_count_with_caption()
+        source = "live" if kind == "live" else ("stale" if isinstance(tools, int) else "")
+        if kind == "registry":
+            source = "registry"
     return {
         "versions": {name: versions.get(name) for name, _ in SDK_DISTS},
         "mcp_tools": tools,
         "mcp_source": source,
+        "mcp_caption": caption if source == "stale" else "",
         # the toolchain that compiled every loaded family's shared library (`/health`
         # facts.mojo_version, read from the packages' own manifests — never typed)
         "mojo_version": str(facts.get("mojo_version") or ""),
@@ -813,16 +829,17 @@ def render_sdk_card(facts: Mapping[str, Any]) -> str:
         )
     tools = data["mcp_tools"]
     if tools is None:
-        # Absent, not failed: a neutral chip without the unavailable marker, so the verifier's
-        # count check on this tab is never short-circuited by a package this image lacks.
+        # No count in this process yet and the hosted API unreachable now: say so, with the code;
+        # a neutral chip without the unavailable marker, so the verifier's count check on this
+        # tab is never short-circuited.
         hero = _chip(MCP_NOT_INSTALLED_TEXT)
-        label = "MCP tools"
+        label = f"unavailable · {try_tab_code()}"
     else:
         hero = f'<div class="alg-hero-num">{_num(tools)}</div>'
         label = (
             MCP_LIVE_LABEL
             if data.get("mcp_source") == "live"
-            else "MCP tools in the installed registry"
+            else data.get("mcp_caption") or "MCP tools in the installed registry"
         )
     stamp = data["generated_utc"]
     chips = [_chip(f"Python {data['python']}")] if data["python"] else []
@@ -972,11 +989,14 @@ def staged_refresh(
 
 _CAPTION = "font-size: var(--alg-caption-size); line-height: var(--alg-caption-line);"
 _MONO = "font-family: var(--alg-font-mono); font-variant-numeric: tabular-nums;"
+#: A 44 px pill with the hairline inside the target (round 10: 12 px pads around a 20 px line
+#: plus two 1 px borders measured 46) — a flex-centred line in a 44 px border-box.
 _PILL = (
-    "display: inline-block; font-family: var(--alg-font); font-size: var(--alg-mono-size);"
-    " line-height: var(--alg-mono-line); color: var(--alg-text); text-decoration: none;"
-    " border: 1px solid var(--alg-hairline); border-radius: var(--alg-radius-pill);"
-    " padding: 12px 16px;"
+    "display: inline-flex; align-items: center; font-family: var(--alg-font);"
+    " font-size: var(--alg-mono-size); line-height: var(--alg-mono-line);"
+    " color: var(--alg-text); text-decoration: none; border: 1px solid var(--alg-hairline);"
+    " border-radius: var(--alg-radius-pill); min-height: var(--alg-target);"
+    " box-sizing: border-box; padding: 0 16px;"
 )
 
 # alg-eco-* classes only; the table shape is llm_tab.STATE_CSS's alg-stack-table. The table's

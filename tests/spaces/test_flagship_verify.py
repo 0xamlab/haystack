@@ -2474,9 +2474,9 @@ def test_identifier_patterns_catch_the_round_1_findings_and_spare_prose() -> Non
     for text, name in caught.items():
         assert patterns[name].search(text), (name, text)
     prose = (
-        "6,040 compiled Mojo kernels, live",
+        "6,040 compiled Mojo kernels",
         "19 Mojo kernel families · this container",
-        "Race them against the Python libraries they replace, on this machine.",
+        "Mojo kernels running on this machine. Race them against Python.",
         "Space code Apache-2.0 · kernels under the Algenta Community License 1.1 — commercial"
         " plans at algenta.ai/pricing",
         f"local run · Apple M4 Max · 16 vCPU · Darwin arm64 · Python 3.12.5 · rulebook v{bench.RULEBOOK_VERSION}",

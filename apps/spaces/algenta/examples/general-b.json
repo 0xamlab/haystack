@@ -1,6 +1,6 @@
 {
  "family": "general-b",
- "generated_utc": "2026-09-24T03:17:58Z",
+ "generated_utc": "2026-09-24T04:29:37Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -33,7 +33,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 12.64
+   "ms": 13.159
   },
   "ensembles.stack_fit_ridge": {
    "args": {
@@ -58,7 +58,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.187
   },
   "ensembles.stack_predict": {
    "args": {
@@ -82,7 +82,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.158
   },
   "ensembles.voting_classify": {
    "args": {
@@ -107,7 +107,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.2
   },
   "entomology.accumulated_degree_days": {
    "args": {
@@ -117,7 +117,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.211
   },
   "entomology.biocontrol_efficacy": {
    "args": {
@@ -127,7 +127,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.11
   },
   "entomology.degree_days": {
    "args": {
@@ -138,7 +138,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.11
   },
   "entomology.doubling_time_population": {
    "args": {
@@ -147,7 +147,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.101
   },
   "entomology.generation_time": {
    "args": {
@@ -157,7 +157,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.125
   },
   "entomology.infestation_rate": {
    "args": {
@@ -167,7 +167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.096
   },
   "entomology.larval_mortality_rate": {
    "args": {
@@ -177,7 +177,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.1
   },
   "entomology.metabolic_rate_insect": {
    "args": {
@@ -187,7 +187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.095
   },
   "entomology.net_reproductive_rate": {
    "args": {
@@ -197,7 +197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.098
   },
   "entomology.population_growth_intrinsic": {
    "args": {
@@ -208,7 +208,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.087
   },
   "entomology.species_diversity_simpson": {
    "args": {
@@ -217,7 +217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.083
   },
   "entomology.trap_catch_index": {
    "args": {
@@ -228,7 +228,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.079
   },
   "epidemiology.attack_rate": {
    "args": {
@@ -237,7 +237,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.077
   },
   "epidemiology.basic_reproduction_number": {
    "args": {
@@ -247,7 +247,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.073
   },
   "epidemiology.case_fatality_rate": {
    "args": {
@@ -257,7 +257,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.092
   },
   "epidemiology.doubling_time": {
    "args": {
@@ -266,7 +266,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.097
   },
   "epidemiology.effective_reproduction": {
    "args": {
@@ -276,7 +276,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.111
   },
   "epidemiology.herd_immunity_threshold": {
    "args": {
@@ -285,7 +285,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.073
   },
   "epidemiology.incidence_rate": {
    "args": {
@@ -296,7 +296,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.173
   },
   "epidemiology.seir_step": {
    "args": {
@@ -312,7 +312,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.121
   },
   "epidemiology.sir_simulate": {
    "args": {
@@ -327,7 +327,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.164
+   "ms": 0.173
   },
   "epidemiology.sir_step": {
    "args": {
@@ -341,7 +341,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.126
   },
   "ergonomics.body_mass_index": {
    "args": {
@@ -351,7 +351,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.109
   },
   "ergonomics.comfort_temperature_pmv_simplified": {
    "args": {
@@ -362,7 +362,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.23
   },
   "ergonomics.cumulative_noise_dose_2": {
    "args": {
@@ -374,7 +374,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.13
   },
   "ergonomics.decibel_addition": {
    "args": {
@@ -384,7 +384,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.096
   },
   "ergonomics.fitts_law_movement_time": {
    "args": {
@@ -396,7 +396,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.084
   },
   "ergonomics.heat_stress_index": {
    "args": {
@@ -406,7 +406,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.124
   },
   "ergonomics.hicks_law_reaction_time": {
    "args": {
@@ -417,7 +417,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.146
   },
   "ergonomics.lifting_index": {
    "args": {
@@ -427,7 +427,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.247
   },
   "ergonomics.metabolic_rate_walking": {
    "args": {
@@ -438,7 +438,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.079
   },
   "ergonomics.niosh_rwl": {
    "args": {
@@ -453,7 +453,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.077
   },
   "ergonomics.noise_dose": {
    "args": {
@@ -473,7 +473,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.078
   },
   "esrnn.bias_correction.esrnn_apply_bias": {
    "args": {
@@ -489,7 +489,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.168
   },
   "esrnn.bias_correction.esrnn_bias_mean": {
    "args": {
@@ -504,7 +504,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.091
   },
   "esrnn.global_residual.esrnn_apply_correction": {
    "args": {
@@ -526,7 +526,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.108
   },
   "esrnn.global_residual.esrnn_backbone_forecast": {
    "args": {
@@ -543,7 +543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.303
+   "ms": 0.307
   },
   "esrnn.global_residual.esrnn_method_name": {
    "args": {
@@ -552,7 +552,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.082
   },
   "esrnn.global_residual.esrnn_residual": {
    "args": {
@@ -574,7 +574,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.103
   },
   "esrnn.global_residual.esrnn_scaled_window": {
    "args": {
@@ -591,7 +591,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.099
   },
   "esrnn.global_residual.esrnn_select_backbone": {
    "args": {
@@ -607,7 +607,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.696
+   "ms": 0.827
   },
   "esrnn.global_residual.esrnn_window_scale": {
    "args": {
@@ -622,7 +622,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.131
   },
   "esrnn.per_frequency.esrnn_apply_linear_correction": {
    "args": {
@@ -660,7 +660,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.164
+   "ms": 0.123
   },
   "esrnn.per_frequency.esrnn_fit_frequency_corrector": {
    "args": {
@@ -693,7 +693,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.157
+   "ms": 0.158
   },
   "etiology.attributable_risk": {
    "args": {
@@ -703,7 +703,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.084
   },
   "etiology.likelihood_ratio_positive": {
    "args": {
@@ -713,7 +713,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.073
   },
   "etiology.negative_predictive_value": {
    "args": {
@@ -724,7 +724,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.081
   },
   "etiology.number_needed_to_treat": {
    "args": {
@@ -734,7 +734,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.081
   },
   "etiology.odds_ratio": {
    "args": {
@@ -746,7 +746,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.082
   },
   "etiology.population_attributable_risk": {
    "args": {
@@ -756,7 +756,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.065
   },
   "etiology.positive_predictive_value": {
    "args": {
@@ -767,7 +767,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.072
   },
   "etiology.relative_risk": {
    "args": {
@@ -777,7 +777,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.062
   },
   "etiology.sensitivity_test": {
    "args": {
@@ -787,7 +787,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.116
   },
   "etiology.specificity_test": {
    "args": {
@@ -797,7 +797,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.105
   },
   "evaluation.binning.eval_bin_assign_flat": {
    "args": {
@@ -815,7 +815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.115
   },
   "evaluation.binning.eval_bin_counts_flat": {
    "args": {
@@ -833,7 +833,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.094
   },
   "evaluation.binning.eval_bin_edges_flat": {
    "args": {
@@ -851,7 +851,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.08
   },
   "evaluation.binning.eval_bins_build": {
    "args": {
@@ -876,7 +876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.114
   },
   "evaluation.contract.eval_bin_policy_name": {
    "args": {
@@ -885,7 +885,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.075
   },
   "evaluation.contract.eval_bins_status": {
    "args": {
@@ -895,7 +895,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.063
   },
   "evaluation.contract.eval_ece_comparable": {
    "args": {
@@ -907,7 +907,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.066
   },
   "evaluation.contract.eval_finite": {
    "args": {
@@ -916,7 +916,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.075
   },
   "evaluation.contract.eval_log2_ceil": {
    "args": {
@@ -925,7 +925,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.07
   },
   "evaluation.contract.eval_metric_higher_is_better": {
    "args": {
@@ -934,7 +934,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.065
   },
   "evaluation.contract.eval_metric_name": {
    "args": {
@@ -943,7 +943,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.065
   },
   "evaluation.contract.eval_pairs_status": {
    "args": {
@@ -966,7 +966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.109
   },
   "evaluation.contract.eval_resample_work_fits": {
    "args": {
@@ -979,7 +979,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.076
   },
   "evaluation.contract.eval_scores_status": {
    "args": {
@@ -995,7 +995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.121
   },
   "evaluation.contract.eval_status_is_ok": {
    "args": {
@@ -1004,7 +1004,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.11
   },
   "evaluation.contract.eval_status_name": {
    "args": {
@@ -1013,7 +1013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.075
   },
   "evaluation.contract.eval_work_fits": {
    "args": {
@@ -1024,7 +1024,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.069
   },
   "evaluation.gates.metric_gate": {
    "args": {
@@ -1036,7 +1036,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.138
   },
   "evaluation.gates.metric_regression_gate_flat": {
    "args": {
@@ -1078,7 +1078,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.18
   },
   "evaluation.gates.psi_drift_gate_flat": {
    "args": {
@@ -1104,7 +1104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.125
   },
   "evaluation.resample.bootstrap_draw_index": {
    "args": {
@@ -1115,7 +1115,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.082
   },
   "evaluation.resample.bootstrap_metric_ci_flat": {
    "args": {
@@ -1144,7 +1144,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.111
   },
   "evaluation.resample.bootstrap_min_replicates": {
    "args": {
@@ -1153,7 +1153,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.064
   },
   "evaluation.scores.brier_decomposition_flat": {
    "args": {
@@ -1178,7 +1178,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.121
   },
   "evaluation.scores.calibration_error_flat": {
    "args": {
@@ -1203,7 +1203,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.113
   },
   "evaluation.scores.evaluate_flat": {
    "args": {
@@ -1228,7 +1228,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.126
   },
   "evaluation.scores.log_loss_flat": {
    "args": {
@@ -1251,7 +1251,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.11
   },
   "evaluation.scores.metric_value_flat": {
    "args": {
@@ -1277,7 +1277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.11
   },
   "evaluation.scores.reliability_diagram_flat": {
    "args": {
@@ -1302,7 +1302,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.108
   },
   "evaluation_feedback.accuracy_rolling_update": {
    "args": {
@@ -1313,7 +1313,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.079
   },
   "evaluation_feedback.calibration_drift_score": {
    "args": {
@@ -1323,7 +1323,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.083
   },
   "evaluation_feedback.evaluation_sample_efficiency": {
    "args": {
@@ -1333,7 +1333,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.064
   },
   "evaluation_feedback.feedback_reward_signal": {
    "args": {
@@ -1344,7 +1344,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.062
   },
   "evaluation_feedback.label_noise_rate_estimate": {
    "args": {
@@ -1354,7 +1354,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.072
   },
   "evaluation_feedback.model_drift_ks_stat": {
    "args": {
@@ -1364,7 +1364,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.054
+   "ms": 0.076
   },
   "evaluation_feedback.online_auc_update": {
    "args": {
@@ -1376,7 +1376,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.078
   },
   "evaluation_feedback.population_stability_index": {
    "args": {
@@ -1386,7 +1386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.051
+   "ms": 0.083
   },
   "evaluation_feedback.prediction_shift_score": {
    "args": {
@@ -1397,7 +1397,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.068
   },
   "evaluation_feedback.shadow_model_divergence": {
    "args": {
@@ -1407,7 +1407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.068
   },
   "evolutionary_search.ga_best": {
    "args": {
@@ -1430,7 +1430,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.104
   },
   "evolutionary_search.ga_diversity": {
    "args": {
@@ -1446,7 +1446,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.076
   },
   "evolutionary_search.ga_init": {
    "args": {
@@ -1470,7 +1470,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.097
   },
   "evolutionary_search.ga_saturation": {
    "args": {
@@ -1499,7 +1499,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.093
   },
   "evolutionary_search.ga_step": {
    "args": {
@@ -1542,21 +1542,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.105
   },
   "evolutionary_search.search_selftest": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.263
+   "ms": 0.248
   },
   "evolutionary_search.search_version": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.062
   },
   "exactnum.eft.dd_add": {
    "args": {
@@ -1572,7 +1572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.092
   },
   "exactnum.eft.dd_add_d": {
    "args": {
@@ -1585,7 +1585,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.132
+   "ms": 0.087
   },
   "exactnum.eft.dd_div": {
    "args": {
@@ -1601,7 +1601,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.082
   },
   "exactnum.eft.dd_from": {
    "args": {
@@ -1610,7 +1610,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.085
   },
   "exactnum.eft.dd_mul": {
    "args": {
@@ -1626,7 +1626,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.106
   },
   "exactnum.eft.dd_mul_d": {
    "args": {
@@ -1639,7 +1639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.083
   },
   "exactnum.eft.dd_neg": {
    "args": {
@@ -1651,7 +1651,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.079
   },
   "exactnum.eft.dd_sqrt": {
    "args": {
@@ -1663,7 +1663,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.078
   },
   "exactnum.eft.dd_sub": {
    "args": {
@@ -1679,7 +1679,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.112
   },
   "exactnum.eft.eft_dd_add": {
    "args": {
@@ -1691,7 +1691,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.071
   },
   "exactnum.eft.eft_dd_div": {
    "args": {
@@ -1703,7 +1703,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.111
   },
   "exactnum.eft.eft_dd_mul": {
    "args": {
@@ -1715,7 +1715,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.073
   },
   "exactnum.eft.eft_dd_sqrt": {
    "args": {
@@ -1725,7 +1725,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.082
   },
   "exactnum.eft.eft_dot2": {
    "args": {
@@ -1748,7 +1748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.097
   },
   "exactnum.eft.eft_fast_two_sum": {
    "args": {
@@ -1758,7 +1758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.074
   },
   "exactnum.eft.eft_kahan_sum_f64": {
    "args": {
@@ -1773,14 +1773,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.069
   },
   "exactnum.eft.eft_selfcheck_code": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.057
   },
   "exactnum.eft.eft_status_name": {
    "args": {
@@ -1789,7 +1789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.091
   },
   "exactnum.eft.eft_sum2": {
    "args": {
@@ -1805,7 +1805,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.088
   },
   "exactnum.eft.eft_two_product": {
    "args": {
@@ -1815,7 +1815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.064
   },
   "exactnum.eft.eft_two_product_dekker": {
    "args": {
@@ -1825,7 +1825,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.07
   },
   "exactnum.eft.eft_two_product_pair": {
    "args": {
@@ -1835,7 +1835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.062
   },
   "exactnum.eft.eft_two_sum": {
    "args": {
@@ -1845,7 +1845,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.083
   },
   "exactnum.eft.eft_two_sum_pair": {
    "args": {
@@ -1855,7 +1855,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.091
   },
   "exactnum.lstsq.dd_lstsq_flat": {
    "args": {
@@ -1888,7 +1888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.135
   },
   "exactnum.lstsq.dd_poly_lstsq": {
    "args": {
@@ -1915,7 +1915,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.106
   },
   "exactnum.lstsq.dd_poly_lstsq_scaled": {
    "args": {
@@ -1942,7 +1942,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.112
   },
   "exactnum.lstsq.f64_lstsq_flat": {
    "args": {
@@ -1974,7 +1974,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.114
   },
   "exactnum.lstsq.f64_poly_lstsq": {
    "args": {
@@ -2000,7 +2000,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.102
   },
   "exactnum.lstsq.lstsq_cells_fit": {
    "args": {
@@ -2011,7 +2011,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.067
   },
   "exactnum.lstsq.lstsq_pivot_floor": {
    "args": {
@@ -2020,7 +2020,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.067
   },
   "exactnum.lstsq.lstsq_status_name": {
    "args": {
@@ -2029,7 +2029,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.073
   },
   "exactnum.lstsq.lstsq_work_fits": {
    "args": {
@@ -2040,7 +2040,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.068
   },
   "execution_planner.adaptive_batch_size": {
    "args": {
@@ -2053,7 +2053,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.072
   },
   "execution_planner.batching_strategy_score": {
    "args": {
@@ -2065,7 +2065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.071
   },
   "execution_planner.device_placement_score": {
    "args": {
@@ -2076,7 +2076,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.077
   },
   "execution_planner.fusion_opportunity_score": {
    "args": {
@@ -2087,7 +2087,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.077
   },
   "execution_planner.graph_rewrite_gain": {
    "args": {
@@ -2100,7 +2100,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.067
   },
   "execution_planner.kv_policy_eviction_priority": {
    "args": {
@@ -2112,7 +2112,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.061
   },
   "execution_planner.memory_placement_affinity": {
    "args": {
@@ -2124,7 +2124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.077
   },
   "execution_planner.pipeline_depth_optimal": {
    "args": {
@@ -2135,7 +2135,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.081
   },
   "execution_planner.prefetch_benefit_estimate": {
    "args": {
@@ -2146,7 +2146,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.077
   },
   "execution_planner.scheduling_priority_score": {
    "args": {
@@ -2158,7 +2158,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.068
   },
   "explainability.kernel_shap_weight": {
    "args": {
@@ -2168,7 +2168,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.075
   },
   "explainability.partial_dependence_grid": {
    "args": {
@@ -2185,7 +2185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.093
   },
   "explainability.permutation_importance_from_preds": {
    "args": {
@@ -2203,7 +2203,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.087
   },
   "explainability.shapley_sampling_weights": {
    "args": {
@@ -2214,7 +2214,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 2.913
+   "ms": 3.108
   },
   "fault_tolerance.checkpoint_interval_optimal": {
    "args": {
@@ -2224,7 +2224,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.141
   },
   "fault_tolerance.deterministic_seed": {
    "args": {
@@ -2235,7 +2235,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.073
   },
   "fault_tolerance.elastic_training_scale": {
    "args": {
@@ -2246,7 +2246,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.075
   },
   "fault_tolerance.failure_detection_latency": {
    "args": {
@@ -2256,7 +2256,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.076
   },
   "fault_tolerance.gradient_staleness_factor": {
    "args": {
@@ -2266,7 +2266,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.089
   },
   "fault_tolerance.mtbf_checkpoint_frequency": {
    "args": {
@@ -2276,7 +2276,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.098
   },
   "fault_tolerance.node_failure_probability": {
    "args": {
@@ -2287,7 +2287,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.112
   },
   "fault_tolerance.partial_batch_replay_loss": {
    "args": {
@@ -2298,7 +2298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.069
   },
   "fault_tolerance.recovery_cost_estimate": {
    "args": {
@@ -2309,7 +2309,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.067
   },
   "fault_tolerance.replication_overhead": {
    "args": {
@@ -2320,7 +2320,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.091
   },
   "feature_engineering.binning_equal_width": {
    "args": {
@@ -2332,7 +2332,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.09
   },
   "feature_engineering.box_cox_transform": {
    "args": {
@@ -2342,7 +2342,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.098
   },
   "feature_engineering.feature_cross": {
    "args": {
@@ -2353,7 +2353,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.108
   },
   "feature_engineering.log_transform": {
    "args": {
@@ -2362,7 +2362,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.081
   },
   "feature_engineering.minmax_scale": {
    "args": {
@@ -2373,7 +2373,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.066
   },
   "feature_engineering.quantile_rank": {
    "args": {
@@ -2384,7 +2384,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.074
   },
   "feature_engineering.robust_scale": {
    "args": {
@@ -2395,7 +2395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.097
   },
   "feature_engineering.standard_scale": {
    "args": {
@@ -2406,7 +2406,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.071
   },
   "feature_engineering.target_encode_smooth": {
    "args": {
@@ -2418,7 +2418,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.089
   },
   "feature_engineering.yeo_johnson_transform": {
    "args": {
@@ -2428,7 +2428,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.092
   },
   "feature_selection.column_mean": {
    "args": {
@@ -2453,7 +2453,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.101
   },
   "feature_selection.column_variance": {
    "args": {
@@ -2478,7 +2478,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.103
   },
   "feature_selection.correlation_filter": {
    "args": {
@@ -2504,7 +2504,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.122
   },
   "feature_selection.f_test_scores": {
    "args": {
@@ -2536,7 +2536,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.116
   },
   "feature_selection.feature_importance_permutation": {
    "args": {
@@ -2569,7 +2569,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.139
   },
   "feature_selection.forward_selection_greedy": {
    "args": {
@@ -2602,7 +2602,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.148
   },
   "feature_selection.information_gain": {
    "args": {
@@ -2625,7 +2625,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.13
   },
   "feature_selection.select_k_best": {
    "args": {
@@ -2641,7 +2641,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.117
   },
   "feature_selection.variance_threshold": {
    "args": {
@@ -2667,7 +2667,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.097
   },
   "fermentation.alcohol_by_volume": {
    "args": {
@@ -2677,7 +2677,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.084
   },
   "fermentation.carbon_dioxide_produced": {
    "args": {
@@ -2686,7 +2686,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.066
   },
   "fermentation.dissolved_oxygen_kla": {
    "args": {
@@ -2697,7 +2697,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.066
   },
   "fermentation.ethanol_yield": {
    "args": {
@@ -2706,7 +2706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.061
   },
   "fermentation.fermentation_efficiency": {
    "args": {
@@ -2716,7 +2716,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.07
   },
   "fermentation.heat_generation_rate": {
    "args": {
@@ -2726,7 +2726,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.063
   },
   "fermentation.ph_buffer_capacity": {
    "args": {
@@ -2737,7 +2737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.067
   },
   "fermentation.substrate_consumption": {
    "args": {
@@ -2748,7 +2748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.062
   },
   "fermentation.volumetric_productivity": {
    "args": {
@@ -2758,7 +2758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.063
   },
   "fermentation.yeast_growth_rate": {
    "args": {
@@ -2770,7 +2770,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.067
   },
   "filepath.pathlib.path_basename": {
    "args": {
@@ -2779,7 +2779,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.084
   },
   "filepath.pathlib.path_dirname": {
    "args": {
@@ -2788,7 +2788,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.065
   },
   "filepath.pathlib.path_extension": {
    "args": {
@@ -2797,7 +2797,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.08
   },
   "filepath.pathlib.path_is_absolute": {
    "args": {
@@ -2806,7 +2806,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.094
   },
   "filepath.pathlib.path_join": {
    "args": {
@@ -2821,7 +2821,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.1
   },
   "filepath.pathlib.path_normalize": {
    "args": {
@@ -2830,7 +2830,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.062
   },
   "filepath.pathlib.path_split": {
    "args": {
@@ -2839,7 +2839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.066
   },
   "filepath.pathlib.path_stem": {
    "args": {
@@ -2848,7 +2848,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.13
   },
   "fire_safety.co_concentration_danger": {
    "args": {
@@ -2857,7 +2857,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.111
   },
   "fire_safety.evacuation_time": {
    "args": {
@@ -2868,7 +2868,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.261
   },
   "fire_safety.fire_load_density": {
    "args": {
@@ -2878,7 +2878,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.089
   },
   "fire_safety.fire_resistance_rating": {
    "args": {
@@ -2888,7 +2888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.109
   },
   "fire_safety.fire_severity": {
    "args": {
@@ -2898,7 +2898,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.08
   },
   "fire_safety.flashover_mfo": {
    "args": {
@@ -2909,7 +2909,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.097
   },
   "fire_safety.heat_release_rate": {
    "args": {
@@ -2919,7 +2919,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.075
   },
   "fire_safety.occupant_load": {
    "args": {
@@ -2929,7 +2929,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.077
   },
   "fire_safety.safe_egress_time": {
    "args": {
@@ -2941,7 +2941,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.076
   },
   "fire_safety.smoke_layer_height": {
    "args": {
@@ -2952,7 +2952,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.073
   },
   "fire_safety.sprinkler_activation_time": {
    "args": {
@@ -2964,7 +2964,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.103
   },
   "fire_safety.ventilation_factor": {
    "args": {
@@ -2974,7 +2974,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.122
   },
   "fisheries.biomass_at_msy": {
    "args": {
@@ -2983,7 +2983,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.13
   },
   "fisheries.catch_per_unit_effort": {
    "args": {
@@ -2993,7 +2993,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.076
   },
   "fisheries.condition_factor": {
    "args": {
@@ -3003,7 +3003,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.076
   },
   "fisheries.exploitation_rate": {
    "args": {
@@ -3013,7 +3013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.129
   },
   "fisheries.fishing_mortality": {
    "args": {
@@ -3023,7 +3023,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.079
   },
   "fisheries.gonadosomatic_index": {
    "args": {
@@ -3033,7 +3033,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.093
   },
   "fisheries.maximum_sustainable_yield": {
    "args": {
@@ -3043,7 +3043,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.066
   },
   "fisheries.schaefer_surplus_production": {
    "args": {
@@ -3054,7 +3054,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.09
   },
   "fisheries.stock_recruitment_bevholt": {
    "args": {
@@ -3065,7 +3065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.093
   },
   "fisheries.survival_rate": {
    "args": {
@@ -3074,7 +3074,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.082
   },
   "fisheries.total_mortality": {
    "args": {
@@ -3084,7 +3084,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.093
   },
   "fisheries.von_bertalanffy_length": {
    "args": {
@@ -3096,7 +3096,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.113
   },
   "fluid.bernoulli_velocity": {
    "args": {
@@ -3109,7 +3109,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.072
   },
   "fluid.buoyancy_force": {
    "args": {
@@ -3120,7 +3120,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.067
   },
   "fluid.darcy_weisbach": {
    "args": {
@@ -3133,7 +3133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.069
   },
   "fluid.drag_force": {
    "args": {
@@ -3145,7 +3145,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.069
   },
   "fluid.flow_rate": {
    "args": {
@@ -3155,7 +3155,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.083
   },
   "fluid.friction_factor_laminar": {
    "args": {
@@ -3164,7 +3164,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.087
   },
   "fluid.hydraulic_diameter": {
    "args": {
@@ -3174,7 +3174,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.079
   },
   "fluid.is_turbulent": {
    "args": {
@@ -3183,7 +3183,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.068
   },
   "fluid.mach_number": {
    "args": {
@@ -3193,7 +3193,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.065
   },
   "fluid.pipe_velocity": {
    "args": {
@@ -3203,7 +3203,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.057
   },
   "fluid.reynolds_number": {
    "args": {
@@ -3214,7 +3214,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.068
   },
   "fluid.stokes_drag": {
    "args": {
@@ -3225,7 +3225,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.086
   },
   "food_science.blanching_time_estimate": {
    "args": {
@@ -3235,7 +3235,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.099
   },
   "food_science.brix_to_sugar_g_per_l": {
    "args": {
@@ -3244,7 +3244,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.078
   },
   "food_science.caloric_density": {
    "args": {
@@ -3256,7 +3256,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.07
   },
   "food_science.d_value_from_z": {
    "args": {
@@ -3268,7 +3268,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.068
   },
   "food_science.freezing_point_depression": {
    "args": {
@@ -3278,7 +3278,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.08
   },
   "food_science.moisture_content_dry_basis": {
    "args": {
@@ -3288,7 +3288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.063
   },
   "food_science.moisture_content_wet_basis": {
    "args": {
@@ -3298,7 +3298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.068
   },
   "food_science.pasteurization_units": {
    "args": {
@@ -3310,7 +3310,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.075
   },
   "food_science.ph_from_h_concentration": {
    "args": {
@@ -3319,7 +3319,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.087
   },
   "food_science.shelf_life_q10": {
    "args": {
@@ -3330,7 +3330,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.069
   },
   "food_science.thermal_death_time": {
    "args": {
@@ -3340,7 +3340,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.06
   },
   "food_science.water_activity": {
    "args": {
@@ -3349,7 +3349,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.075
   },
   "forecast_metrics.base_rate": {
    "args": {
@@ -3364,7 +3364,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.072
   },
   "forecast_metrics.brier_score": {
    "args": {
@@ -3386,7 +3386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.077
   },
   "forecast_metrics.brier_skill_score": {
    "args": {
@@ -3409,7 +3409,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.081
   },
   "forecast_metrics.expected_calibration_error": {
    "args": {
@@ -3432,7 +3432,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.084
   },
   "forecast_metrics.log_loss": {
    "args": {
@@ -3455,21 +3455,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.114
   },
   "forecast_metrics.metrics_selftest": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.132
   },
   "forecast_metrics.metrics_version": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.09
   },
   "forecast_metrics.murphy_decomposition": {
    "args": {
@@ -3492,7 +3492,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.099
   },
   "forecast_metrics.reliability_bins": {
    "args": {
@@ -3515,7 +3515,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.105
   },
   "forecast_metrics.spearman_rho": {
    "args": {
@@ -3537,7 +3537,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.083
   },
   "forecasting.backtest.backtest_flat": {
    "args": {
@@ -3563,7 +3563,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.103
   },
   "forecasting.backtest.backtest_origin_count": {
    "args": {
@@ -3575,7 +3575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.081
   },
   "forecasting.backtest.backtest_residuals_at_step": {
    "args": {
@@ -3593,7 +3593,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.115
   },
   "forecasting.backtest.forecast_errors_flat": {
    "args": {
@@ -3623,7 +3623,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.125
   },
   "forecasting.bagging.bagged_candidate_forecast": {
    "args": {
@@ -3645,7 +3645,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.134
   },
   "forecasting.bagging.mbb_replicate": {
    "args": {
@@ -3664,7 +3664,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.122
   },
   "forecasting.bagging.shrinking_ma_trend": {
    "args": {
@@ -3680,7 +3680,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.115
   },
   "forecasting.contract.fc_all_finite": {
    "args": {
@@ -3695,14 +3695,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.196
   },
   "forecasting.contract.fc_ceilings": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.083
   },
   "forecasting.contract.fc_cells_fit": {
    "args": {
@@ -3713,7 +3713,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.071
   },
   "forecasting.contract.fc_damping_defect": {
    "args": {
@@ -3722,7 +3722,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.087
   },
   "forecasting.contract.fc_finite": {
    "args": {
@@ -3731,7 +3731,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.083
   },
   "forecasting.contract.fc_horizon_defect": {
    "args": {
@@ -3741,7 +3741,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.086
   },
   "forecasting.contract.fc_level_defect": {
    "args": {
@@ -3750,7 +3750,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.215
   },
   "forecasting.contract.fc_method_family": {
    "args": {
@@ -3759,7 +3759,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.151
   },
   "forecasting.contract.fc_method_name": {
    "args": {
@@ -3768,7 +3768,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.099
   },
   "forecasting.contract.fc_min_samples_for_level": {
    "args": {
@@ -3777,7 +3777,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.088
   },
   "forecasting.contract.fc_period_defect": {
    "args": {
@@ -3787,7 +3787,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.076
   },
   "forecasting.contract.fc_quantile_of": {
    "args": {
@@ -3803,7 +3803,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.207
   },
   "forecasting.contract.fc_series_defect": {
    "args": {
@@ -3818,7 +3818,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.119
   },
   "forecasting.contract.fc_smoothing_defect": {
    "args": {
@@ -3827,7 +3827,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.092
   },
   "forecasting.contract.fc_status_name": {
    "args": {
@@ -3836,7 +3836,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.097
   },
   "forecasting.contract.fc_sum_tolerance": {
    "args": {
@@ -3847,7 +3847,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.1
   },
   "forecasting.contract.fc_tolerance": {
    "args": {
@@ -3857,7 +3857,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.103
   },
   "forecasting.contract.fc_work_fits": {
    "args": {
@@ -3868,7 +3868,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.282
   },
   "forecasting.fitted.damped_fitted": {
    "args": {
@@ -3884,7 +3884,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.314
+   "ms": 0.465
   },
   "forecasting.fitted.dotm_fitted": {
    "args": {
@@ -3900,7 +3900,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.251
   },
   "forecasting.fitted.ets_aaa_fitted": {
    "args": {
@@ -3917,7 +3917,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.484
+   "ms": 0.647
   },
   "forecasting.fitted.fitted_init_solve": {
    "args": {
@@ -3935,7 +3935,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.196
   },
   "forecasting.fitted.holt_fitted": {
    "args": {
@@ -3951,7 +3951,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.162
+   "ms": 0.224
   },
   "forecasting.fitted.theta_fitted": {
    "args": {
@@ -3967,7 +3967,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.434
+   "ms": 1.036
   },
   "forecasting.fitted.theta_fitted_at": {
    "args": {
@@ -3984,7 +3984,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.234
   },
   "forecasting.hierarchy.hierarchy_coherence_flat": {
    "args": {
@@ -4008,7 +4008,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.234
   },
   "forecasting.hierarchy.hierarchy_shape_defect": {
    "args": {
@@ -4031,7 +4031,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.154
   },
   "forecasting.hierarchy.reconcile_bottom_up_flat": {
    "args": {
@@ -4055,7 +4055,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.172
+   "ms": 0.239
   },
   "forecasting.hierarchy.reconcile_flat": {
    "args": {
@@ -4080,7 +4080,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.151
   },
   "forecasting.hierarchy.reconcile_top_down_flat": {
    "args": {
@@ -4104,7 +4104,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.179
   },
   "forecasting.intermittent.croston_forecast": {
    "args": {
@@ -4123,7 +4123,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.129
   },
   "forecasting.intermittent.croston_variant_name": {
    "args": {
@@ -4132,7 +4132,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.156
   },
   "forecasting.intermittent.demand_class_name": {
    "args": {
@@ -4141,7 +4141,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.107
   },
   "forecasting.intermittent.demand_classify": {
    "args": {
@@ -4156,7 +4156,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.202
   },
   "forecasting.origin_select.crn_origin_select": {
    "args": {
@@ -4176,7 +4176,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 4.864
+   "ms": 5.81
   },
   "forecasting.origin_select.origin_schedule": {
    "args": {
@@ -4187,7 +4187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.148
   },
   "forecasting.origin_select.tournament_gated_select": {
    "args": {
@@ -4208,7 +4208,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 4.862
+   "ms": 5.602
   },
   "forecasting.point.ar_forecast_checked": {
    "args": {
@@ -4225,7 +4225,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.173
+   "ms": 0.2
   },
   "forecasting.point.baseline_forecast": {
    "args": {
@@ -4243,7 +4243,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.176
   },
   "forecasting.point.deseasonalise_flat": {
    "args": {
@@ -4259,7 +4259,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.132
+   "ms": 0.223
   },
   "forecasting.point.ets_aaa_forecast": {
    "args": {
@@ -4279,7 +4279,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.207
   },
   "forecasting.point.ets_aan_forecast": {
    "args": {
@@ -4298,7 +4298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.142
   },
   "forecasting.point.ets_ann_forecast": {
    "args": {
@@ -4315,7 +4315,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.142
   },
   "forecasting.point.theta_drift_forecast": {
    "args": {
@@ -4332,7 +4332,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.165
   },
   "forecasting.point.theta_forecast": {
    "args": {
@@ -4350,7 +4350,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.138
+   "ms": 0.119
   },
   "forecasting.pool.pool_blend_flat": {
    "args": {
@@ -4383,7 +4383,7 @@
    "verified": false,
    "outcome": "length_mismatch",
    "source": "rules",
-   "ms": 0.167
+   "ms": 0.188
   },
   "forecasting.pool.pool_candidate_name": {
    "args": {
@@ -4392,7 +4392,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.137
   },
   "forecasting.pool.pool_holdout_forecast": {
    "args": {
@@ -4418,7 +4418,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.18
   },
   "forecasting.pool.pool_holdout_report": {
    "args": {
@@ -4448,7 +4448,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 8.012
+   "ms": 11.483
   },
   "forecasting.pool.pool_mode_name": {
    "args": {
@@ -4457,7 +4457,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.169
   },
   "forecasting.select.combine_inverse_mae_fitted": {
    "args": {
@@ -4473,7 +4473,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.353
+   "ms": 0.435
   },
   "forecasting.select.select_best_fitted": {
    "args": {
@@ -4489,7 +4489,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.332
+   "ms": 0.473
   },
   "forensics.alcohol_elimination_rate": {
    "args": {
@@ -4500,7 +4500,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.149
   },
   "forensics.algor_mortis_rate": {
    "args": {
@@ -4510,7 +4510,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.108
   },
   "forensics.ballistic_drop": {
    "args": {
@@ -4521,7 +4521,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.127
   },
   "forensics.blood_alcohol_widmark": {
    "args": {
@@ -4532,7 +4532,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.099
   },
   "forensics.bloodstain_impact_angle": {
    "args": {
@@ -4542,7 +4542,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.101
   },
   "forensics.decomposition_add": {
    "args": {
@@ -4553,7 +4553,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.113
   },
   "forensics.dna_match_probability": {
    "args": {
@@ -4573,7 +4573,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.095
   },
   "forensics.glass_refractive_index_match": {
    "args": {
@@ -4584,7 +4584,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.117
   },
   "forensics.rigor_mortis_stage": {
    "args": {
@@ -4593,7 +4593,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.101
   },
   "forensics.time_of_death_newton": {
    "args": {
@@ -4605,7 +4605,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.136
   },
   "forensics.toxicology_lethal_dose": {
    "args": {
@@ -4615,7 +4615,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.153
   },
   "formal_logic.disjunctive_syllogism": {
    "args": {
@@ -4625,7 +4625,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.127
   },
   "formal_logic.hypothetical_syllogism": {
    "args": {
@@ -4635,7 +4635,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.114
   },
   "formal_logic.is_contradiction_2var": {
    "args": {
@@ -4644,7 +4644,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.105
   },
   "formal_logic.is_tautology_2var": {
    "args": {
@@ -4653,7 +4653,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.084
   },
   "formal_logic.modus_ponens": {
    "args": {
@@ -4663,7 +4663,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.087
   },
   "formal_logic.modus_tollens": {
    "args": {
@@ -4673,7 +4673,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.1
   },
   "formal_logic.truth_and": {
    "args": {
@@ -4683,7 +4683,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.09
   },
   "formal_logic.truth_iff": {
    "args": {
@@ -4693,7 +4693,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.095
   },
   "formal_logic.truth_implies": {
    "args": {
@@ -4703,7 +4703,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.095
   },
   "formal_logic.truth_nand": {
    "args": {
@@ -4713,7 +4713,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.093
   },
   "formal_logic.truth_nor": {
    "args": {
@@ -4723,7 +4723,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.091
   },
   "formal_logic.truth_not": {
    "args": {
@@ -4732,7 +4732,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.094
   },
   "formal_logic.truth_or": {
    "args": {
@@ -4742,7 +4742,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.085
   },
   "formal_logic.truth_xor": {
    "args": {
@@ -4752,7 +4752,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.064
   },
   "fused_kernels.fused_add_norm": {
    "args": {
@@ -4766,7 +4766,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.087
   },
   "fused_kernels.fused_attention_score": {
    "args": {
@@ -4779,7 +4779,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.101
   },
   "fused_kernels.fused_dropout_residual": {
    "args": {
@@ -4791,7 +4791,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.097
   },
   "fused_kernels.fused_layernorm_element": {
    "args": {
@@ -4804,7 +4804,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.075
   },
   "fused_kernels.fused_matmul_bias_gelu": {
    "args": {
@@ -4814,7 +4814,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.074
   },
   "fused_kernels.fused_matmul_bias_relu": {
    "args": {
@@ -4824,7 +4824,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.08
   },
   "fused_kernels.fused_rope_attention": {
    "args": {
@@ -4839,7 +4839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.08
   },
   "fused_kernels.fused_scale_shift": {
    "args": {
@@ -4850,7 +4850,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.077
   },
   "fused_kernels.fused_softmax_mask": {
    "args": {
@@ -4862,7 +4862,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.083
   },
   "fused_kernels.kernel_fusion_savings": {
    "args": {
@@ -4873,7 +4873,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.092
   },
   "fuzzy_logic.alpha_cut": {
    "args": {
@@ -4918,7 +4918,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.108
   },
   "fuzzy_logic.defuzzify_centroid": {
    "args": {
@@ -4940,7 +4940,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.096
   },
   "fuzzy_logic.defuzzify_mom": {
    "args": {
@@ -4962,7 +4962,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.13
   },
   "fuzzy_logic.fuzzy_and": {
    "args": {
@@ -4972,7 +4972,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.089
   },
   "fuzzy_logic.fuzzy_not": {
    "args": {
@@ -4981,7 +4981,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.077
   },
   "fuzzy_logic.fuzzy_or": {
    "args": {
@@ -4991,7 +4991,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.09
   },
   "fuzzy_logic.fuzzy_rule_eval": {
    "args": {
@@ -5007,7 +5007,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.113
   },
   "fuzzy_logic.gaussian_mf": {
    "args": {
@@ -5018,7 +5018,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.097
   },
   "fuzzy_logic.trapezoidal_mf": {
    "args": {
@@ -5031,7 +5031,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.08
   },
   "fuzzy_logic.triangular_mf": {
    "args": {
@@ -5043,7 +5043,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.078
   },
   "game_physics.angular_velocity_from_linear": {
    "args": {
@@ -5053,7 +5053,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.074
   },
   "game_physics.coefficient_of_restitution": {
    "args": {
@@ -5063,7 +5063,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.066
   },
   "game_physics.drag_force_quadratic": {
    "args": {
@@ -5075,7 +5075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.086
   },
   "game_physics.elastic_collision_1d": {
    "args": {
@@ -5087,7 +5087,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.077
   },
   "game_physics.gravitational_force": {
    "args": {
@@ -5099,7 +5099,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.157
+   "ms": 0.093
   },
   "game_physics.kinetic_energy": {
    "args": {
@@ -5109,7 +5109,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.104
   },
   "game_physics.moment_of_inertia_sphere": {
    "args": {
@@ -5119,7 +5119,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.075
   },
   "game_physics.position_update": {
    "args": {
@@ -5131,7 +5131,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.073
   },
   "game_physics.projectile_range": {
    "args": {
@@ -5142,7 +5142,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.082
   },
   "game_physics.spring_force": {
    "args": {
@@ -5152,7 +5152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.068
   },
   "game_physics.velocity_update": {
    "args": {
@@ -5163,7 +5163,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.087
   },
   "game_physics.verlet_position": {
    "args": {
@@ -5175,7 +5175,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.069
   },
   "game_theory.dominated_strategy_check": {
    "args": {
@@ -5200,7 +5200,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.103
   },
   "game_theory.expected_payoff": {
    "args": {
@@ -5239,7 +5239,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.217
+   "ms": 0.151
   },
   "game_theory.iterated_pd": {
    "args": {
@@ -5250,7 +5250,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.113
   },
   "game_theory.minimax_value": {
    "args": {
@@ -5275,7 +5275,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.091
   },
   "game_theory.nash_2x2": {
    "args": {
@@ -5317,7 +5317,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.349
+   "ms": 0.117
   },
   "game_theory.pareto_optimal_outcomes": {
    "args": {
@@ -5339,7 +5339,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.126
   },
   "game_theory.prisoners_dilemma_payoff": {
    "args": {
@@ -5362,7 +5362,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.117
   },
   "gaussian_process.gp_fit": {
    "args": {
@@ -5389,7 +5389,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.135
   },
   "gaussian_process.gp_loglik": {
    "args": {
@@ -5428,7 +5428,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.172
+   "ms": 0.208
   },
   "gaussian_process.gp_predict": {
    "args": {
@@ -5474,7 +5474,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.171
+   "ms": 0.19
   },
   "gaussian_process.kernel_matern32": {
    "args": {
@@ -5485,7 +5485,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.097
   },
   "gaussian_process.kernel_rbf": {
    "args": {
@@ -5496,7 +5496,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.091
   },
   "gbdt.gbdt_fit": {
    "args": {
@@ -5525,7 +5525,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.148
   },
   "gbdt.gbdt_n_nodes": {
    "args": {
@@ -5579,7 +5579,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.165
+   "ms": 0.139
   },
   "gbdt.gbdt_predict_batch": {
    "args": {
@@ -5641,7 +5641,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.148
   },
   "generation_loop.eos_stop_score": {
    "args": {
@@ -5651,7 +5651,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.075
   },
   "generation_loop.eta_sampling_accept": {
    "args": {
@@ -5662,7 +5662,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.079
   },
   "generation_loop.frequency_penalty_logit": {
    "args": {
@@ -5673,7 +5673,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.064
   },
   "generation_loop.min_p_accept": {
    "args": {
@@ -5684,7 +5684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.187
+   "ms": 0.077
   },
   "generation_loop.presence_penalty_logit": {
    "args": {
@@ -5695,7 +5695,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.088
   },
   "generation_loop.repetition_penalty_logit": {
    "args": {
@@ -5706,7 +5706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.085
   },
   "generation_loop.temperature_logit_scale": {
    "args": {
@@ -5716,7 +5716,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.099
   },
   "generation_loop.top_k_accept": {
    "args": {
@@ -5726,7 +5726,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.102
   },
   "generation_loop.top_p_cumulative_accept": {
    "args": {
@@ -5737,7 +5737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.098
   },
   "generation_loop.typical_sampling_accept": {
    "args": {
@@ -5748,7 +5748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.087
   },
   "genomics.coverage_depth": {
    "args": {
@@ -5759,7 +5759,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.077
   },
   "genomics.gc_content": {
    "args": {
@@ -5770,7 +5770,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.071
   },
   "genomics.gene_density": {
    "args": {
@@ -5780,7 +5780,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.081
   },
   "genomics.genome_size_from_cot": {
    "args": {
@@ -5790,7 +5790,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.099
   },
   "genomics.indel_rate": {
    "args": {
@@ -5800,7 +5800,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.073
   },
   "genomics.n50_approximation": {
    "args": {
@@ -5810,7 +5810,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.107
   },
   "genomics.read_mapping_efficiency": {
    "args": {
@@ -5820,7 +5820,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.101
   },
   "genomics.repeat_fraction": {
    "args": {
@@ -5830,7 +5830,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.087
   },
   "genomics.sequencing_error_rate": {
    "args": {
@@ -5839,7 +5839,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.097
   },
   "genomics.snp_density": {
    "args": {
@@ -5849,7 +5849,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.101
   },
   "glaciology.ablation_degree_day": {
    "args": {
@@ -5859,7 +5859,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.095
   },
   "glaciology.albedo_feedback": {
    "args": {
@@ -5870,7 +5870,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.091
   },
   "glaciology.basal_shear_stress": {
    "args": {
@@ -5880,7 +5880,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.085
   },
   "glaciology.calving_flux": {
    "args": {
@@ -5891,7 +5891,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.096
   },
   "glaciology.equilibrium_line_altitude": {
    "args": {
@@ -5902,7 +5902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.082
   },
   "glaciology.glacier_mass_balance": {
    "args": {
@@ -5912,7 +5912,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.096
   },
   "glaciology.ice_thickness_from_surface": {
    "args": {
@@ -5922,7 +5922,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.089
   },
   "glaciology.ice_velocity_internal": {
    "args": {
@@ -5934,7 +5934,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.088
   },
   "glaciology.sea_level_equivalent": {
    "args": {
@@ -5944,7 +5944,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.085
   },
   "glaciology.snow_water_equivalent": {
    "args": {
@@ -5954,7 +5954,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.103
   },
   "greenhouse.co2_enrichment_rate": {
    "args": {
@@ -5966,7 +5966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.112
   },
   "greenhouse.energy_cost_heating": {
    "args": {
@@ -5976,7 +5976,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.09
   },
   "greenhouse.growing_area_utilization": {
    "args": {
@@ -5986,7 +5986,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.095
   },
   "greenhouse.heat_loss_conduction": {
    "args": {
@@ -5997,7 +5997,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.098
   },
   "greenhouse.heating_requirement": {
    "args": {
@@ -6007,7 +6007,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.09
   },
   "greenhouse.irrigation_volume": {
    "args": {
@@ -6018,7 +6018,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.112
   },
   "greenhouse.light_supplementation_hours": {
    "args": {
@@ -6029,7 +6029,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.138
   },
   "greenhouse.shade_factor": {
    "args": {
@@ -6038,7 +6038,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.091
   },
   "greenhouse.solar_gain": {
    "args": {
@@ -6049,7 +6049,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.194
+   "ms": 0.101
   },
   "greenhouse.temperature_setpoint_night": {
    "args": {
@@ -6059,7 +6059,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.084
   },
   "greenhouse.ventilation_rate": {
    "args": {
@@ -6069,7 +6069,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.067
   },
   "greenhouse.yield_per_sq_meter": {
    "args": {
@@ -6079,7 +6079,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.084
   },
   "hematology.blood_viscosity_relative": {
    "args": {
@@ -6088,7 +6088,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.073
   },
   "hematology.coagulation_inr": {
    "args": {
@@ -6099,7 +6099,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.093
   },
   "hematology.erythrocyte_sedimentation": {
    "args": {
@@ -6110,7 +6110,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.096
   },
   "hematology.hematocrit": {
    "args": {
@@ -6120,7 +6120,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.094
   },
   "hematology.mchc": {
    "args": {
@@ -6130,7 +6130,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.095
   },
   "hematology.mean_corpuscular_hemoglobin": {
    "args": {
@@ -6140,7 +6140,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.087
   },
   "hematology.mean_corpuscular_volume": {
    "args": {
@@ -6150,7 +6150,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.104
   },
   "hematology.oxygen_carrying_capacity": {
    "args": {
@@ -6159,7 +6159,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.066
   },
   "hematology.platelet_count_index": {
    "args": {
@@ -6169,7 +6169,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.085
   },
   "hematology.red_cell_distribution_width": {
    "args": {
@@ -6179,7 +6179,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.063
   },
   "hmm.hmm_backward": {
    "args": {
@@ -6235,7 +6235,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.166
   },
   "hmm.hmm_baum_welch": {
    "args": {
@@ -6254,7 +6254,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.169
+   "ms": 0.161
   },
   "hmm.hmm_forward": {
    "args": {
@@ -6310,7 +6310,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.165
   },
   "hmm.hmm_viterbi": {
    "args": {
@@ -6366,7 +6366,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.177
   },
   "horticulture.chilling_requirement": {
    "args": {
@@ -6377,7 +6377,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.081
   },
   "horticulture.crop_growth_rate": {
    "args": {
@@ -6387,7 +6387,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.065
   },
   "horticulture.fertigation_dose": {
    "args": {
@@ -6398,7 +6398,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.078
   },
   "horticulture.net_assimilation_rate": {
    "args": {
@@ -6411,7 +6411,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.1
   },
   "horticulture.photosynthesis_rate": {
    "args": {
@@ -6422,7 +6422,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.113
   },
   "horticulture.pruning_efficiency": {
    "args": {
@@ -6432,7 +6432,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.096
   },
   "horticulture.rooting_hormone_index": {
    "args": {
@@ -6442,7 +6442,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.07
   },
   "horticulture.specific_leaf_area": {
    "args": {
@@ -6452,7 +6452,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.064
   },
   "horticulture.transplant_shock_index": {
    "args": {
@@ -6462,7 +6462,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.08
   },
   "horticulture.vpd_plant": {
    "args": {
@@ -6473,7 +6473,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.11
   },
   "hvac.air_changes_per_hour": {
    "args": {
@@ -6483,7 +6483,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.08
   },
   "hvac.btu_from_tons": {
    "args": {
@@ -6492,7 +6492,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.128
   },
   "hvac.cooling_degree_days": {
    "args": {
@@ -6502,7 +6502,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.079
   },
   "hvac.cooling_tons": {
    "args": {
@@ -6511,7 +6511,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.073
   },
   "hvac.cop_to_eer": {
    "args": {
@@ -6520,7 +6520,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.088
   },
   "hvac.duct_velocity": {
    "args": {
@@ -6530,7 +6530,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.113
   },
   "hvac.eer_to_cop": {
    "args": {
@@ -6539,7 +6539,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.09
   },
   "hvac.heating_degree_days": {
    "args": {
@@ -6549,7 +6549,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.098
   },
   "hvac.latent_heat_load": {
    "args": {
@@ -6559,7 +6559,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.085
   },
   "hvac.sensible_heat_load": {
    "args": {
@@ -6569,7 +6569,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.101
   },
   "hvac.sensible_heat_ratio": {
    "args": {
@@ -6579,7 +6579,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.074
   },
   "hvac.total_heat_load": {
    "args": {
@@ -6589,7 +6589,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.085
   },
   "hybrid_reasoning.counterfactual_reasoning_score": {
    "args": {
@@ -6600,7 +6600,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.081
   },
   "hybrid_reasoning.hybrid_uncertainty_estimate": {
    "args": {
@@ -6611,7 +6611,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.067
   },
   "hybrid_reasoning.meta_reasoning_switch": {
    "args": {
@@ -6623,7 +6623,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.079
   },
   "hybrid_reasoning.ml_confidence_simulation_cost": {
    "args": {
@@ -6634,7 +6634,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.084
   },
   "hybrid_reasoning.ml_simulation_blend": {
    "args": {
@@ -6645,7 +6645,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.098
   },
   "hybrid_reasoning.optimization_objective_gate": {
    "args": {
@@ -6656,7 +6656,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.065
   },
   "hybrid_reasoning.reasoning_chain_coherence": {
    "args": {
@@ -6667,7 +6667,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.102
   },
   "hybrid_reasoning.rule_violation_penalty": {
    "args": {
@@ -6678,7 +6678,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.084
   },
   "hybrid_reasoning.simulation_rollout_value": {
    "args": {
@@ -6691,7 +6691,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.081
   },
   "hybrid_reasoning.symbolic_constraint_score": {
    "args": {
@@ -6702,7 +6702,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.078
   },
   "hydraulics.accumulator_volume": {
    "args": {
@@ -6713,7 +6713,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.083
+   "ms": 0.098
   },
   "hydraulics.cylinder_bore_from_force": {
    "args": {
@@ -6723,7 +6723,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.081
   },
   "hydraulics.cylinder_velocity": {
    "args": {
@@ -6733,7 +6733,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.068
   },
   "hydraulics.flow_rate_cylinder": {
    "args": {
@@ -6743,7 +6743,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.082
   },
   "hydraulics.hydraulic_advantage": {
    "args": {
@@ -6753,7 +6753,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.095
   },
   "hydraulics.hydraulic_power": {
    "args": {
@@ -6763,7 +6763,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.07
   },
   "hydraulics.oil_compressibility": {
    "args": {
@@ -6774,7 +6774,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.076
   },
   "hydraulics.pascals_law_force": {
    "args": {
@@ -6784,7 +6784,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.066
   },
   "hydraulics.pascals_law_pressure": {
    "args": {
@@ -6794,7 +6794,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.063
   },
   "hydraulics.pump_displacement": {
    "args": {
@@ -6804,7 +6804,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.079
   },
   "hydraulics.relief_valve_flow": {
    "args": {
@@ -6815,7 +6815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.092
   },
   "hydraulics.system_pressure_loss": {
    "args": {
@@ -6825,7 +6825,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.065
   },
   "hydrology.curve_number_runoff": {
    "args": {
@@ -6835,7 +6835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.059
   },
   "hydrology.darcy_groundwater_velocity": {
    "args": {
@@ -6845,7 +6845,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.058
   },
   "hydrology.darcy_weisbach_head_loss": {
    "args": {
@@ -6858,7 +6858,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.074
   },
   "hydrology.evapotranspiration_hargreaves": {
    "args": {
@@ -6869,7 +6869,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.066
   },
   "hydrology.froude_number": {
    "args": {
@@ -6880,7 +6880,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.077
   },
   "hydrology.hydraulic_radius": {
    "args": {
@@ -6890,7 +6890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.085
   },
   "hydrology.manning_discharge": {
    "args": {
@@ -6902,7 +6902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.079
   },
   "hydrology.manning_velocity": {
    "args": {
@@ -6913,7 +6913,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.068
   },
   "hydrology.rational_method_peak_flow": {
    "args": {
@@ -6924,7 +6924,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.078
   },
   "hydrology.reynolds_number_pipe": {
    "args": {
@@ -6935,7 +6935,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.085
   },
   "hydrology.specific_yield": {
    "args": {
@@ -6945,7 +6945,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.066
   },
   "hydrology.time_of_concentration_kirpich": {
    "args": {
@@ -6955,7 +6955,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.058
   },
   "hydrometeorology.actual_evapotranspiration": {
    "args": {
@@ -6965,7 +6965,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.066
   },
   "hydrometeorology.antecedent_moisture_condition": {
    "args": {
@@ -6975,7 +6975,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.06
   },
   "hydrometeorology.flood_frequency_factor": {
    "args": {
@@ -6984,7 +6984,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.057
   },
   "hydrometeorology.green_ampt_infiltration": {
    "args": {
@@ -6996,7 +6996,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.064
   },
   "hydrometeorology.palmer_drought_index": {
    "args": {
@@ -7007,7 +7007,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.067
   },
   "hydrometeorology.rain_intensity_from_depth": {
    "args": {
@@ -7017,7 +7017,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.063
   },
   "hydrometeorology.rational_method_peak_flow": {
    "args": {
@@ -7028,7 +7028,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.064
   },
   "hydrometeorology.runoff_curve_number": {
    "args": {
@@ -7038,7 +7038,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.059
   },
   "hydrometeorology.snow_water_equivalent": {
    "args": {
@@ -7048,7 +7048,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.06
   },
   "hydrometeorology.time_of_concentration": {
    "args": {
@@ -7058,7 +7058,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.066
   },
   "hydroponics.crop_cycle_roi": {
    "args": {
@@ -7068,7 +7068,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.063
   },
   "hydroponics.ec_from_tds": {
    "args": {
@@ -7078,7 +7078,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.066
   },
   "hydroponics.grow_light_efficiency": {
    "args": {
@@ -7088,7 +7088,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.07
   },
   "hydroponics.light_daily_integral": {
    "args": {
@@ -7098,7 +7098,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.061
   },
   "hydroponics.nutrient_concentration": {
    "args": {
@@ -7120,7 +7120,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.086
   },
   "hydroponics.ph_adjustment_acid": {
    "args": {
@@ -7131,7 +7131,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.103
   },
   "hydroponics.reservoir_dilution": {
    "args": {
@@ -7142,7 +7142,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.063
   },
   "hydroponics.tds_from_ec": {
    "args": {
@@ -7162,7 +7162,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.061
   },
   "hydroponics.water_consumption_rate": {
    "args": {
@@ -7172,7 +7172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.063
   },
   "hydroponics.yield_per_area": {
    "args": {
@@ -7182,7 +7182,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.065
   },
   "imbalance.class_weights": {
    "args": {
@@ -7197,7 +7197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.087
   },
   "imbalance.random_oversample_indices": {
    "args": {
@@ -7213,7 +7213,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.078
   },
   "imbalance.random_undersample_indices": {
    "args": {
@@ -7229,7 +7229,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.075
   },
   "imbalance.smote_1d": {
    "args": {
@@ -7255,7 +7255,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.092
   },
   "imbalance.smote_nd": {
    "args": {
@@ -7282,7 +7282,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.081
   },
   "immunology.antibody_avidity_index": {
    "args": {
@@ -7292,7 +7292,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.08
   },
   "immunology.antibody_titer": {
    "args": {
@@ -7302,7 +7302,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.091
   },
   "immunology.antigen_antibody_binding": {
    "args": {
@@ -7313,7 +7313,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.073
   },
   "immunology.complement_activation": {
    "args": {
@@ -7324,7 +7324,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.076
   },
   "immunology.herd_immunity_threshold": {
    "args": {
@@ -7333,7 +7333,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.091
   },
   "immunology.innate_response_decay": {
    "args": {
@@ -7344,7 +7344,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.067
   },
   "immunology.opsonisation_index": {
    "args": {
@@ -7354,7 +7354,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.065
   },
   "immunology.seroconversion_rate": {
    "args": {
@@ -7364,7 +7364,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.075
   },
   "immunology.t_cell_proliferation": {
    "args": {
@@ -7376,7 +7376,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.081
   },
   "immunology.vaccine_efficacy": {
    "args": {
@@ -7386,7 +7386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.063
   },
   "information_theory.binary_entropy": {
    "args": {
@@ -7395,7 +7395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.261
+   "ms": 0.066
   },
   "information_theory.channel_capacity_bsc": {
    "args": {
@@ -7404,7 +7404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.082
   },
   "information_theory.conditional_entropy": {
    "args": {
@@ -7429,7 +7429,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.115
   },
   "information_theory.cross_entropy": {
    "args": {
@@ -7451,7 +7451,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.085
   },
   "information_theory.entropy": {
    "args": {
@@ -7466,7 +7466,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.073
   },
   "information_theory.joint_entropy": {
    "args": {
@@ -7491,7 +7491,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.092
   },
   "information_theory.kl_divergence": {
    "args": {
@@ -7513,7 +7513,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.081
   },
   "information_theory.mutual_information": {
    "args": {
@@ -7538,7 +7538,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.088
   },
   "information_theory.normalized_entropy": {
    "args": {
@@ -7553,7 +7553,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.067
   },
   "information_theory.redundancy": {
    "args": {
@@ -7579,7 +7579,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.095
   },
   "insurance.burning_cost": {
    "args": {
@@ -7589,7 +7589,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.081
   },
   "insurance.combined_ratio": {
    "args": {
@@ -7599,7 +7599,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.09
   },
   "insurance.credibility_buhlmann": {
    "args": {
@@ -7609,7 +7609,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.078
   },
   "insurance.expected_claim_frequency": {
    "args": {
@@ -7619,7 +7619,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.07
   },
   "insurance.expected_claim_severity": {
    "args": {
@@ -7629,7 +7629,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.065
   },
   "insurance.expense_ratio": {
    "args": {
@@ -7639,7 +7639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.074
   },
   "insurance.gross_premium": {
    "args": {
@@ -7650,7 +7650,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.089
   },
   "insurance.loss_ratio": {
    "args": {
@@ -7660,7 +7660,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.067
   },
   "insurance.pure_premium": {
    "args": {
@@ -7670,7 +7670,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.059
   },
   "insurance.retention_rate": {
    "args": {
@@ -7680,7 +7680,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.054
   },
   "insurance.risk_load": {
    "args": {
@@ -7690,7 +7690,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.063
   },
   "integrate.cumulative_trapezoid": {
    "args": {
@@ -7706,7 +7706,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.09
   },
   "integrate.integrate_poly": {
    "args": {
@@ -7721,7 +7721,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.102
   },
   "integrate.quad_gauss_legendre": {
    "args": {
@@ -7738,7 +7738,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.078
   },
   "integrate.romberg": {
    "args": {
@@ -7755,7 +7755,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.088
   },
   "integrate.simpson": {
    "args": {
@@ -7771,7 +7771,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.093
   },
   "integrate.trapezoid": {
    "args": {
@@ -7787,7 +7787,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.091
   },
   "interpolate.cubic_spline_natural": {
    "args": {
@@ -7810,7 +7810,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.113
   },
   "interpolate.extrapolate_linear": {
    "args": {
@@ -7833,7 +7833,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.097
   },
   "interpolate.interp_array": {
    "args": {
@@ -7863,7 +7863,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.102
   },
   "interpolate.lagrange_interp": {
    "args": {
@@ -7886,7 +7886,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.079
   },
   "interpolate.linear_interp": {
    "args": {
@@ -7909,7 +7909,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.093
   },
   "interpolate.nearest_interp": {
    "args": {
@@ -7932,7 +7932,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.108
   },
   "inventory.abc_classify": {
    "args": {
@@ -7947,7 +7947,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.107
   },
   "inventory.days_of_supply": {
    "args": {
@@ -7957,7 +7957,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.069
   },
   "inventory.eoq": {
    "args": {
@@ -7968,7 +7968,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.073
   },
   "inventory.fill_rate": {
    "args": {
@@ -7978,7 +7978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.092
   },
   "inventory.inventory_turnover": {
    "args": {
@@ -7988,7 +7988,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.067
   },
   "inventory.newsvendor_qty": {
    "args": {
@@ -8011,7 +8011,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.087
   },
   "inventory.reorder_point": {
    "args": {
@@ -8022,7 +8022,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.07
   },
   "inventory.safety_stock": {
    "args": {
@@ -8033,7 +8033,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.062
   },
   "inventory.service_level": {
    "args": {
@@ -8042,7 +8042,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.065
   },
   "inventory.total_inventory_cost": {
    "args": {
@@ -8054,7 +8054,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.06
   },
   "kalman.kalman_predict": {
    "args": {
@@ -8122,7 +8122,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.215
+   "ms": 0.173
   },
   "kalman.kalman_smooth_1d": {
    "args": {
@@ -8139,7 +8139,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.083
   },
   "kalman.kalman_update": {
    "args": {
@@ -8214,7 +8214,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.192
+   "ms": 0.162
   },
   "kalman.mat_add": {
    "args": {
@@ -8256,7 +8256,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.121
   },
   "kalman.mat_identity": {
    "args": {
@@ -8265,7 +8265,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 3.472
+   "ms": 3.467
   },
   "kalman.mat_inv_2x2": {
    "args": {
@@ -8290,7 +8290,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.151
   },
   "kalman.mat_mul": {
    "args": {
@@ -8332,7 +8332,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.126
   },
   "kalman.mat_scale": {
    "args": {
@@ -8358,7 +8358,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.099
   },
   "kalman.mat_sub": {
    "args": {
@@ -8400,7 +8400,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.122
   },
   "kalman.mat_transpose": {
    "args": {
@@ -8425,7 +8425,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.093
   },
   "kalman.matvec": {
    "args": {
@@ -8455,7 +8455,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.089
   },
   "laundry.color_fastness_delta_e": {
    "args": {
@@ -8469,7 +8469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.068
   },
   "laundry.cost_per_wash": {
    "args": {
@@ -8481,7 +8481,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.064
   },
   "laundry.detergent_dose_ml": {
    "args": {
@@ -8492,7 +8492,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.065
   },
   "laundry.drying_time_estimate": {
    "args": {
@@ -8502,7 +8502,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.066
   },
   "laundry.energy_per_cycle": {
    "args": {
@@ -8512,7 +8512,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.067
   },
   "laundry.fabric_wear_cycles": {
    "args": {
@@ -8523,7 +8523,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.068
   },
   "laundry.moisture_retention": {
    "args": {
@@ -8533,7 +8533,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.062
   },
   "laundry.spin_g_force": {
    "args": {
@@ -8543,7 +8543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.061
   },
   "laundry.stain_removal_efficiency": {
    "args": {
@@ -8553,7 +8553,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.06
   },
   "laundry.wash_temperature_energy": {
    "args": {
@@ -8564,7 +8564,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.062
   },
   "laundry.water_hardness_compensation": {
    "args": {
@@ -8575,7 +8575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.055
   },
   "laundry.water_usage_liters": {
    "args": {
@@ -8585,7 +8585,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.056
   },
   "lidar.canopy_height": {
    "args": {
@@ -8595,7 +8595,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.068
   },
   "lidar.footprint_diameter": {
    "args": {
@@ -8605,7 +8605,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.076
   },
   "lidar.ground_sampling_distance": {
    "args": {
@@ -8616,7 +8616,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.116
   },
   "lidar.intensity_normalization": {
    "args": {
@@ -8627,7 +8627,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.117
   },
   "lidar.overlap_percentage": {
    "args": {
@@ -8637,7 +8637,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.104
   },
   "lidar.point_cloud_file_size_mb": {
    "args": {
@@ -8647,7 +8647,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.11
   },
   "lidar.point_density": {
    "args": {
@@ -8657,7 +8657,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.096
   },
   "lidar.pulse_repetition_frequency_to_point_rate": {
    "args": {
@@ -8668,7 +8668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.074
   },
   "lidar.range_from_tof": {
    "args": {
@@ -8678,7 +8678,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.064
   },
   "lidar.scan_swath_width": {
    "args": {
@@ -8688,7 +8688,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.064
   },
   "lidar.slope_from_elevation": {
    "args": {
@@ -8698,7 +8698,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.082
   },
   "lidar.vegetation_index_from_returns": {
    "args": {
@@ -8708,7 +8708,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.107
   },
   "lidar_mapping.beam_divergence_footprint": {
    "args": {
@@ -8718,7 +8718,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.091
   },
   "lidar_mapping.canopy_height_model": {
    "args": {
@@ -8728,7 +8728,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.094
   },
   "lidar_mapping.ground_filter_threshold": {
    "args": {
@@ -8738,7 +8738,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.073
   },
   "lidar_mapping.leaf_area_index_from_lidar": {
    "args": {
@@ -8748,7 +8748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.08
   },
   "lidar_mapping.point_density": {
    "args": {
@@ -8758,7 +8758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.092
   },
   "lidar_mapping.pulse_return_intensity": {
    "args": {
@@ -8769,7 +8769,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.095
   },
   "lidar_mapping.range_from_time_of_flight": {
    "args": {
@@ -8778,7 +8778,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.09
   },
   "lidar_mapping.scan_line_spacing": {
    "args": {
@@ -8789,7 +8789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.078
   },
   "lidar_mapping.surface_roughness_lidar": {
    "args": {
@@ -8799,7 +8799,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.068
   },
   "lidar_mapping.vertical_accuracy": {
    "args": {
@@ -8809,7 +8809,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.081
   },
   "limnochemistry.activity_coefficient_davies": {
    "args": {
@@ -8819,7 +8819,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.107
   },
   "limnochemistry.carbonate_alkalinity": {
    "args": {
@@ -8831,7 +8831,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.096
   },
   "limnochemistry.doc_light_attenuation": {
    "args": {
@@ -8841,7 +8841,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.092
   },
   "limnochemistry.epilimnion_mixing_depth": {
    "args": {
@@ -8852,7 +8852,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.069
   },
   "limnochemistry.ionic_strength": {
    "args": {
@@ -8862,7 +8862,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.07
   },
   "limnochemistry.nitrogen_speciation": {
    "args": {
@@ -8873,7 +8873,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.077
   },
   "limnochemistry.phosphorus_fractionation": {
    "args": {
@@ -8883,7 +8883,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.072
   },
   "limnochemistry.pow_10": {
    "args": {
@@ -8892,7 +8892,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.077
   },
   "limnochemistry.redox_pe_eh": {
    "args": {
@@ -8902,7 +8902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.089
   },
   "limnochemistry.saturation_index_calcite": {
    "args": {
@@ -8914,7 +8914,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.072
   },
   "limnochemistry.silicon_weathering_flux": {
    "args": {
@@ -8925,7 +8925,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.069
   },
   "limnology.attenuation_coefficient": {
    "args": {
@@ -8934,7 +8934,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.06
+   "ms": 0.095
   },
   "limnology.hydraulic_retention_time": {
    "args": {
@@ -8944,7 +8944,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.09
   },
   "limnology.lake_flushing_rate": {
    "args": {
@@ -8954,7 +8954,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.074
   },
   "limnology.lake_volume_ellipsoid": {
    "args": {
@@ -8965,7 +8965,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.088
   },
   "limnology.nitrogen_fixation_rate": {
    "args": {
@@ -8975,7 +8975,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.077
   },
   "limnology.oxygen_saturation": {
    "args": {
@@ -8985,7 +8985,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.085
   },
   "limnology.phosphorus_loading": {
    "args": {
@@ -8995,7 +8995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.079
   },
   "limnology.secchi_depth_estimate": {
    "args": {
@@ -9004,7 +9004,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.084
   },
   "limnology.thermal_stratification_index": {
    "args": {
@@ -9015,7 +9015,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.079
   },
   "limnology.trophic_state_index": {
    "args": {
@@ -9024,7 +9024,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.086
   },
   "linear_models.elasticnet_fit": {
    "args": {
@@ -9050,7 +9050,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.151
   },
   "linear_models.logistic_fit": {
    "args": {
@@ -9075,7 +9075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.143
   },
   "linear_models.logistic_predict_proba": {
    "args": {
@@ -9098,7 +9098,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.089
   },
   "linear_models.logistic_std_errors": {
    "args": {
@@ -9129,7 +9129,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.115
   },
   "linear_programming.dual_value": {
    "args": {
@@ -9168,7 +9168,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.139
   },
   "linear_programming.enumerate_vertices_2d": {
    "args": {
@@ -9200,7 +9200,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.156
+   "ms": 0.151
   },
   "linear_programming.is_feasible": {
    "args": {
@@ -9239,7 +9239,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.111
   },
   "linear_programming.line_intersection_2d": {
    "args": {
@@ -9253,7 +9253,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.069
   },
   "linear_programming.lp_solve_2var": {
    "args": {
@@ -9292,7 +9292,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.111
   },
   "linear_programming.objective_value": {
    "args": {
@@ -9314,7 +9314,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.081
   },
   "linear_programming.sensitivity_rhs": {
    "args": {
@@ -9355,7 +9355,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.14
   },
   "linear_programming.transportation_cost": {
    "args": {
@@ -9394,7 +9394,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.157
   },
   "linguistics.automated_readability_index": {
    "args": {
@@ -9405,7 +9405,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.122
   },
   "linguistics.coleman_liau_index": {
    "args": {
@@ -9415,7 +9415,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.093
   },
   "linguistics.flesch_kincaid_grade": {
    "args": {
@@ -9426,7 +9426,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.096
   },
   "linguistics.flesch_reading_ease": {
    "args": {
@@ -9437,7 +9437,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.096
   },
   "linguistics.gunning_fog_index": {
    "args": {
@@ -9448,7 +9448,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.083
   },
   "linguistics.hapax_legomena_ratio": {
    "args": {
@@ -9458,7 +9458,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.081
   },
   "linguistics.heaps_law": {
    "args": {
@@ -9469,7 +9469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.098
   },
   "linguistics.lexical_density": {
    "args": {
@@ -9479,7 +9479,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.075
   },
   "linguistics.mean_word_length": {
    "args": {
@@ -9489,7 +9489,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.061
   },
   "linguistics.type_token_ratio": {
    "args": {
@@ -9499,7 +9499,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.072
   },
   "linguistics.yules_k": {
    "args": {
@@ -9509,7 +9509,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.072
   },
   "linguistics.zipfs_frequency": {
    "args": {
@@ -9520,7 +9520,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.074
   },
   "logging.logger.get_logger": {
    "args": {
@@ -9529,7 +9529,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.082
   },
   "logic_circuit.bits_to_int": {
    "args": {
@@ -9544,7 +9544,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.082
   },
   "logic_circuit.decoder_2to4": {
    "args": {
@@ -9554,7 +9554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.075
   },
   "logic_circuit.full_adder": {
    "args": {
@@ -9565,7 +9565,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.071
   },
   "logic_circuit.gate_and": {
    "args": {
@@ -9575,7 +9575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.078
   },
   "logic_circuit.gate_nand": {
    "args": {
@@ -9585,7 +9585,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.064
   },
   "logic_circuit.gate_nor": {
    "args": {
@@ -9595,7 +9595,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.074
   },
   "logic_circuit.gate_not": {
    "args": {
@@ -9604,7 +9604,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.09
   },
   "logic_circuit.gate_or": {
    "args": {
@@ -9614,7 +9614,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.098
   },
   "logic_circuit.gate_xor": {
    "args": {
@@ -9624,7 +9624,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.096
   },
   "logic_circuit.half_adder": {
    "args": {
@@ -9634,7 +9634,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.097
   },
   "logic_circuit.int_to_bits": {
    "args": {
@@ -9644,7 +9644,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.095
   },
   "logic_circuit.multiplexer_2to1": {
    "args": {
@@ -9655,7 +9655,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.078
   },
   "logic_circuit.ripple_carry_adder": {
    "args": {
@@ -9677,7 +9677,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.101
   },
   "logistics.carbon_per_tonne_km": {
    "args": {
@@ -9688,7 +9688,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.083
   },
   "logistics.cost_per_unit_shipped": {
    "args": {
@@ -9698,7 +9698,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.102
   },
   "logistics.cross_dock_throughput": {
    "args": {
@@ -9708,7 +9708,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.088
   },
   "logistics.days_of_supply": {
    "args": {
@@ -9718,7 +9718,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.071
   },
   "logistics.dwell_time": {
    "args": {
@@ -9728,7 +9728,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.07
   },
   "logistics.inventory_turns": {
    "args": {
@@ -9738,7 +9738,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.067
   },
   "logistics.on_time_delivery_rate": {
    "args": {
@@ -9748,7 +9748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.072
   },
   "logistics.order_fill_rate": {
    "args": {
@@ -9758,7 +9758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.062
   },
   "logistics.perfect_order_rate": {
    "args": {
@@ -9768,7 +9768,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.061
   },
   "logistics.route_efficiency": {
    "args": {
@@ -9778,7 +9778,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.057
   },
   "logistics.vehicle_utilization": {
    "args": {
@@ -9788,7 +9788,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.064
   },
   "logistics.warehouse_utilization": {
    "args": {
@@ -9798,7 +9798,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.067
   },
   "lora_adapters.adapter_param_efficiency": {
    "args": {
@@ -9808,7 +9808,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.067
   },
   "lora_adapters.adapter_scaling_factor": {
    "args": {
@@ -9818,7 +9818,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.059
   },
   "lora_adapters.dora_magnitude_scale": {
    "args": {
@@ -9829,7 +9829,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.065
+   "ms": 0.064
   },
   "lora_adapters.lora_forward": {
    "args": {
@@ -9841,7 +9841,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.073
   },
   "lora_adapters.lora_gradient_a": {
    "args": {
@@ -9853,7 +9853,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.062
   },
   "lora_adapters.lora_gradient_b": {
    "args": {
@@ -9864,7 +9864,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.086
   },
   "lora_adapters.lora_merge_weight": {
    "args": {
@@ -9876,7 +9876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.1
   },
   "lora_adapters.prefix_tuning_key_aug": {
    "args": {
@@ -9888,7 +9888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.075
   },
   "lora_adapters.prompt_tuning_embed": {
    "args": {
@@ -9900,7 +9900,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.078
   },
   "lora_adapters.qlora_dequant_forward": {
    "args": {
@@ -9912,7 +9912,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.088
   },
   "lottery.annuity_vs_lump_sum": {
    "args": {
@@ -9923,7 +9923,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.082
   },
   "lottery.combinations": {
    "args": {
@@ -9933,7 +9933,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.061
   },
   "lottery.expected_value": {
    "args": {
@@ -9943,7 +9943,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.079
   },
   "lottery.expected_value_net": {
    "args": {
@@ -9953,7 +9953,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.097
   },
   "lottery.house_edge": {
    "args": {
@@ -9963,7 +9963,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.07
   },
   "lottery.jackpot_ev_threshold": {
    "args": {
@@ -9973,7 +9973,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.059
   },
   "lottery.lottery_odds": {
    "args": {
@@ -9984,7 +9984,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.069
   },
   "lottery.odds_to_probability": {
    "args": {
@@ -9993,7 +9993,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.071
   },
   "lottery.permutations": {
    "args": {
@@ -10003,7 +10003,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.059
   },
   "lottery.probability_at_least_one_win": {
    "args": {
@@ -10013,7 +10013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.083
   },
   "lottery.probability_to_odds": {
    "args": {
@@ -10022,7 +10022,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.095
   },
   "lottery.tax_after_winnings": {
    "args": {
@@ -10033,7 +10033,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.07
   },
   "marine.buoyancy_frequency": {
    "args": {
@@ -10044,7 +10044,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.072
   },
   "marine.coriolis_parameter": {
    "args": {
@@ -10053,7 +10053,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.067
   },
   "marine.ekman_depth": {
    "args": {
@@ -10064,7 +10064,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.071
   },
   "marine.mixed_layer_depth_estimate": {
    "args": {
@@ -10074,7 +10074,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.069
   },
   "marine.ocean_pressure_at_depth": {
    "args": {
@@ -10085,7 +10085,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.064
   },
   "marine.salinity_from_conductivity": {
    "args": {
@@ -10095,7 +10095,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.092
   },
   "marine.seawater_density": {
    "args": {
@@ -10105,7 +10105,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.079
   },
   "marine.significant_wave_height": {
    "args": {
@@ -10114,7 +10114,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.077
   },
   "marine.tidal_range": {
    "args": {
@@ -10124,7 +10124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.077
   },
   "marine.wave_period": {
    "args": {
@@ -10134,7 +10134,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.057
   },
   "marine.wave_speed_deep": {
    "args": {
@@ -10144,7 +10144,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.065
   },
   "marine.wave_speed_shallow": {
    "args": {
@@ -10154,7 +10154,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.126
   },
   "materials.beam_deflection_cantilever": {
    "args": {
@@ -10166,7 +10166,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.073
   },
   "materials.bulk_modulus": {
    "args": {
@@ -10176,7 +10176,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.071
   },
   "materials.fatigue_life": {
    "args": {
@@ -10187,7 +10187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.082
   },
   "materials.moment_of_inertia_rect": {
    "args": {
@@ -10197,7 +10197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.107
   },
   "materials.poisson_ratio_from_moduli": {
    "args": {
@@ -10207,7 +10207,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.064
   },
   "materials.safety_factor": {
    "args": {
@@ -10217,7 +10217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.059
   },
   "materials.shear_modulus": {
    "args": {
@@ -10227,7 +10227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.067
   },
   "materials.strain_from_deformation": {
    "args": {
@@ -10237,7 +10237,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.059
   },
   "materials.stress_concentration": {
    "args": {
@@ -10247,7 +10247,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.059
   },
   "materials.stress_from_force": {
    "args": {
@@ -10257,7 +10257,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.078
   },
   "materials.thermal_expansion": {
    "args": {
@@ -10268,7 +10268,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.106
   },
   "materials.youngs_modulus": {
    "args": {
@@ -10278,7 +10278,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.079
   },
   "metabolomics.chemical_similarity_index": {
    "args": {
@@ -10289,7 +10289,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.107
   },
   "metabolomics.isotope_label_fraction": {
    "args": {
@@ -10299,7 +10299,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.089
   },
   "metabolomics.metabolic_distance": {
    "args": {
@@ -10309,7 +10309,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.089
   },
   "metabolomics.metabolic_flux_ratio": {
    "args": {
@@ -10319,7 +10319,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.065
   },
   "metabolomics.metabolite_fold_change": {
    "args": {
@@ -10329,7 +10329,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.058
   },
   "metabolomics.metabolite_half_life": {
    "args": {
@@ -10338,7 +10338,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.057
   },
   "metabolomics.normalization_zscore": {
    "args": {
@@ -10349,7 +10349,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.099
   },
   "metabolomics.pathway_enrichment_score": {
    "args": {
@@ -10361,7 +10361,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.12
   },
   "metabolomics.principal_component_variance": {
    "args": {
@@ -10371,7 +10371,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.092
   },
   "metabolomics.vip_score": {
    "args": {
@@ -10382,7 +10382,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.096
   },
   "metallurgy.avrami_fraction": {
    "args": {
@@ -10393,7 +10393,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.073
   },
   "metallurgy.carbon_equivalent": {
    "args": {
@@ -10408,7 +10408,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.084
   },
   "metallurgy.density_of_alloy_rule_of_mixtures": {
    "args": {
@@ -10420,7 +10420,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.111
   },
   "metallurgy.fatigue_life_basquin": {
    "args": {
@@ -10431,7 +10431,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.093
   },
   "metallurgy.hall_petch": {
    "args": {
@@ -10442,7 +10442,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.111
   },
   "metallurgy.hardness_to_tensile": {
    "args": {
@@ -10451,7 +10451,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.084
   },
   "metallurgy.johnson_cook_flow_stress": {
    "args": {
@@ -10463,7 +10463,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.095
   },
   "metallurgy.jominy_distance_to_hardness": {
    "args": {
@@ -10474,7 +10474,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.089
   },
   "metallurgy.quench_severity": {
    "args": {
@@ -10484,7 +10484,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.087
   },
   "metallurgy.strain_hardening_exponent_from_points": {
    "args": {
@@ -10496,7 +10496,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.095
   },
   "metallurgy.tempering_parameter": {
    "args": {
@@ -10507,7 +10507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.118
   },
   "metallurgy.thermal_conductivity_wiedemann_franz": {
    "args": {
@@ -10518,7 +10518,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.085
   },
   "meteorology.absolute_humidity": {
    "args": {
@@ -10528,7 +10528,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.099
   },
   "meteorology.dew_point": {
    "args": {
@@ -10538,7 +10538,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.098
   },
   "meteorology.heat_index": {
    "args": {
@@ -10548,7 +10548,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.084
   },
   "meteorology.potential_temperature": {
    "args": {
@@ -10558,7 +10558,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.102
   },
   "meteorology.precipitable_water": {
    "args": {
@@ -10568,7 +10568,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.084
   },
   "meteorology.pressure_altitude": {
    "args": {
@@ -10577,7 +10577,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.093
   },
   "meteorology.relative_humidity": {
    "args": {
@@ -10587,7 +10587,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.094
   },
   "meteorology.visibility_extinction": {
    "args": {
@@ -10597,7 +10597,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.086
   },
   "meteorology.wet_bulb_temperature": {
    "args": {
@@ -10607,7 +10607,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.087
   },
   "meteorology.wind_chill": {
    "args": {
@@ -10617,7 +10617,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.093
   },
   "metrics_agg.compute_throughput": {
    "args": {
@@ -10627,7 +10627,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.108
   },
   "metrics_agg.counter_create": {
    "args": {
@@ -10636,7 +10636,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.083
   },
   "metrics_agg.counter_inc": {
    "args": {
@@ -10649,7 +10649,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.106
   },
   "metrics_agg.counter_value": {
    "args": {
@@ -10661,7 +10661,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.113
   },
   "metrics_agg.gauge_set": {
    "args": {
@@ -10671,7 +10671,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.099
   },
   "metrics_agg.histogram_bucket_counts": {
    "args": {
@@ -10696,7 +10696,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.129
   },
   "metrics_agg.histogram_create": {
    "args": {
@@ -10712,7 +10712,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.116
   },
   "metrics_agg.histogram_mean": {
    "args": {
@@ -10737,7 +10737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.131
   },
   "metrics_agg.histogram_observe": {
    "args": {
@@ -10763,7 +10763,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.148
   },
   "metrics_agg.histogram_percentile": {
    "args": {
@@ -10789,7 +10789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.148
   },
   "metrics_agg.latency_stats": {
    "args": {
@@ -10804,7 +10804,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.109
   },
   "metrics_agg.rate": {
    "args": {
@@ -10820,7 +10820,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.107
   },
   "microbiology.bacterial_generation_time": {
    "args": {
@@ -10831,7 +10831,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.093
   },
   "microbiology.biofilm_formation_index": {
    "args": {
@@ -10841,7 +10841,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.072
   },
   "microbiology.colony_forming_units": {
    "args": {
@@ -10852,7 +10852,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.068
   },
   "microbiology.d_value": {
    "args": {
@@ -10861,7 +10861,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.073
   },
   "microbiology.doubling_time": {
    "args": {
@@ -10870,7 +10870,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.066
   },
   "microbiology.exponential_growth": {
    "args": {
@@ -10881,7 +10881,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.059
   },
   "microbiology.inactivation_first_order": {
    "args": {
@@ -10902,7 +10902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.064
   },
   "microbiology.monod_growth_rate": {
    "args": {
@@ -10913,7 +10913,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.075
   },
   "microbiology.z_value": {
    "args": {
@@ -10925,7 +10925,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.062
+   "ms": 0.074
   },
   "mineralogy.birefringence": {
    "args": {
@@ -10935,7 +10935,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.065
   },
   "mineralogy.crystal_d_spacing": {
    "args": {
@@ -10946,7 +10946,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.064
   },
   "mineralogy.geochemical_activity": {
    "args": {
@@ -10956,7 +10956,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.061
   },
   "mineralogy.mineral_density": {
    "args": {
@@ -10966,7 +10966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.104
   },
   "mineralogy.mineral_formula_weight": {
    "args": {
@@ -10978,7 +10978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.112
   },
   "mineralogy.mineral_saturation_index": {
    "args": {
@@ -10988,7 +10988,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.058
+   "ms": 0.071
   },
   "mineralogy.mohs_hardness_scratch": {
    "args": {
@@ -10998,7 +10998,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.057
   },
   "mineralogy.solubility_product": {
    "args": {
@@ -11010,7 +11010,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.082
   },
   "mineralogy.specific_gravity_ratio": {
    "args": {
@@ -11019,7 +11019,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.095
   },
   "mineralogy.thermal_conductivity_mixing": {
    "args": {
@@ -11030,7 +11030,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.074
   },
   "mining.bond_work_index_energy": {
    "args": {
@@ -11041,7 +11041,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.07
   },
   "mining.cut_off_grade": {
    "args": {
@@ -11053,7 +11053,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.087
   },
   "mining.dilution_factor": {
    "args": {
@@ -11063,7 +11063,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.1
   },
   "mining.mill_throughput": {
    "args": {
@@ -11073,7 +11073,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.105
   },
   "mining.net_smelter_return": {
    "args": {
@@ -11085,7 +11085,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.098
   },
   "mining.ore_grade": {
    "args": {
@@ -11095,7 +11095,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.075
   },
   "mining.powder_factor": {
    "args": {
@@ -11105,7 +11105,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.075
   },
   "mining.recovery_rate": {
    "args": {
@@ -11115,7 +11115,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.072
   },
   "mining.reserve_life": {
    "args": {
@@ -11125,7 +11125,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.07
   },
   "mining.strip_ratio": {
    "args": {
@@ -11135,7 +11135,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.071
   },
   "mining.subsidence_factor": {
    "args": {
@@ -11145,7 +11145,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.075
   },
   "mining.ventilation_quantity": {
    "args": {
@@ -11155,7 +11155,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.094
   },
   "mixture_models.gmm_bic": {
    "args": {
@@ -11167,7 +11167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.093
   },
   "mixture_models.gmm_fit": {
    "args": {
@@ -11186,7 +11186,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.165
+   "ms": 0.197
   },
   "mixture_models.gmm_fit_nd": {
    "args": {
@@ -11211,7 +11211,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.137
   },
   "mixture_models.gmm_responsibilities": {
    "args": {
@@ -11247,7 +11247,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.154
   },
   "mixture_models.gmm_responsibilities_nd": {
    "args": {
@@ -11301,7 +11301,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.18
   },
   "mixture_of_experts.expert_capacity": {
    "args": {
@@ -11312,7 +11312,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.075
   },
   "mixture_of_experts.expert_load_fraction": {
    "args": {
@@ -11322,7 +11322,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.069
   },
   "mixture_of_experts.expert_utilization": {
    "args": {
@@ -11332,7 +11332,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.067
+   "ms": 0.072
   },
   "mixture_of_experts.load_balance_loss": {
    "args": {
@@ -11343,7 +11343,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.064
   },
   "mixture_of_experts.moe_ffn_output": {
    "args": {
@@ -11353,7 +11353,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.061
   },
   "mixture_of_experts.router_z_loss": {
    "args": {
@@ -11363,7 +11363,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.065
   },
   "mixture_of_experts.soft_moe_slot_score": {
    "args": {
@@ -11373,7 +11373,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.081
   },
   "mixture_of_experts.sparse_gate_entropy": {
    "args": {
@@ -11383,7 +11383,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.091
   },
   "mixture_of_experts.token_dispatch_weight": {
    "args": {
@@ -11393,7 +11393,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.079
   },
   "mixture_of_experts.topk_gate_score": {
    "args": {
@@ -11403,7 +11403,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.065
   },
   "ml.classifiers.cosine_similarity": {
    "args": {
@@ -11425,7 +11425,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.092
   },
   "ml.classifiers.euclidean_distance": {
    "args": {
@@ -11447,7 +11447,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.079
   },
   "ml.classifiers.kmeans_cluster": {
    "args": {
@@ -11514,7 +11514,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.125
   },
   "ml.classifiers.logistic_sigmoid": {
    "args": {
@@ -11523,7 +11523,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.091
   },
   "ml.classifiers.manhattan_distance": {
    "args": {
@@ -11545,7 +11545,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.105
   },
   "ml.classifiers.softmax": {
    "args": {
@@ -11560,7 +11560,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.107
   },
   "ml.clustering.assign_cluster": {
    "args": {
@@ -11592,7 +11592,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.123
   },
   "ml.clustering.euclidean_distance": {
    "args": {
@@ -11614,7 +11614,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.276
   },
   "ml.clustering.kmeans": {
    "args": {
@@ -11642,7 +11642,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.123
   },
   "ml.clustering.silhouette_score": {
    "args": {
@@ -11674,7 +11674,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.129
   },
   "ml.knn.euclidean_distance_knn": {
    "args": {
@@ -11696,7 +11696,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.092
   },
   "ml.knn.k_nearest_indices": {
    "args": {
@@ -11712,7 +11712,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.088
   },
   "ml.knn.knn_distances": {
    "args": {
@@ -11744,7 +11744,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.297
+   "ms": 0.126
   },
   "ml.knn.knn_predict": {
    "args": {
@@ -11784,7 +11784,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.113
   },
   "ml.knn.knn_predict_batch": {
    "args": {
@@ -11834,7 +11834,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.125
   },
   "ml.knn.knn_regression": {
    "args": {
@@ -11874,7 +11874,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.111
   },
   "ml.knn.leave_one_out_cv": {
    "args": {
@@ -11907,7 +11907,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.092
   },
   "ml.knn.manhattan_distance": {
    "args": {
@@ -11929,7 +11929,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.11
   },
   "ml.knn.optimal_k": {
    "args": {
@@ -11962,7 +11962,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.135
   },
   "ml.knn.weighted_knn_predict": {
    "args": {
@@ -12002,7 +12002,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.131
   },
   "ml.metrics.accuracy": {
    "args": {
@@ -12024,7 +12024,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.081
   },
   "ml.metrics.confusion_matrix": {
    "args": {
@@ -12047,7 +12047,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.104
   },
   "ml.metrics.mae": {
    "args": {
@@ -12069,7 +12069,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.083
   },
   "ml.metrics.mse": {
    "args": {
@@ -12091,7 +12091,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.095
   },
   "ml.metrics.precision_recall_f1": {
    "args": {
@@ -12113,7 +12113,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.11
   },
   "ml.metrics.r2_score": {
    "args": {
@@ -12157,7 +12157,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.099
   },
   "ml.preprocessing.normalize_minmax": {
    "args": {
@@ -12172,7 +12172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.108
   },
   "ml.preprocessing.normalize_robust": {
    "args": {
@@ -12187,7 +12187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.097
   },
   "ml.preprocessing.normalize_zscore": {
    "args": {
@@ -12202,7 +12202,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.103
   },
   "ml.preprocessing.one_hot_encode": {
    "args": {
@@ -12218,7 +12218,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.118
   },
   "ml.preprocessing.polynomial_features": {
    "args": {
@@ -12234,7 +12234,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.117
   },
   "ml.preprocessing.train_test_split": {
    "args": {
@@ -12257,7 +12257,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.124
   },
   "ml.random_forest.bagging_variance": {
    "args": {
@@ -12282,7 +12282,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.112
   },
   "ml.random_forest.bootstrap_indices": {
    "args": {
@@ -12292,7 +12292,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.08
   },
   "ml.random_forest.feature_importance_rf": {
    "args": {
@@ -12326,7 +12326,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.191
+   "ms": 0.221
   },
   "ml.random_forest.feature_subsample": {
    "args": {
@@ -12336,7 +12336,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.092
   },
   "ml.random_forest.oob_score": {
    "args": {
@@ -12370,7 +12370,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.119
   },
   "ml.random_forest.random_forest_predict": {
    "args": {
@@ -12411,7 +12411,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.168
   },
   "ml.random_forest.random_forest_predict_batch": {
    "args": {
@@ -12462,7 +12462,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.165
+   "ms": 0.187
   },
   "ml.random_forest.tree_predict_simple": {
    "args": {
@@ -12508,7 +12508,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.139
   },
   "model_abi.abi_version_compatible": {
    "args": {
@@ -12519,7 +12519,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.093
   },
   "model_abi.activation_layout_index": {
    "args": {
@@ -12535,7 +12535,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.11
   },
   "model_abi.attention_head_dim": {
    "args": {
@@ -12545,7 +12545,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.094
   },
   "model_abi.dtype_byte_width": {
    "args": {
@@ -12554,7 +12554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.086
   },
   "model_abi.ffn_dim_from_model_dim": {
    "args": {
@@ -12565,7 +12565,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.097
   },
   "model_abi.kv_head_group_size": {
    "args": {
@@ -12575,7 +12575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.089
   },
   "model_abi.model_config_head_count": {
    "args": {
@@ -12585,7 +12585,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.101
   },
   "model_abi.rope_theta_scale": {
    "args": {
@@ -12596,7 +12596,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.101
   },
   "model_abi.tensor_layout_stride": {
    "args": {
@@ -12607,7 +12607,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.119
   },
   "model_abi.weight_shard_offset": {
    "args": {
@@ -12618,7 +12618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.119
   },
   "model_compare.diebold_mariano": {
    "args": {
@@ -12641,7 +12641,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.22
   },
   "model_compare.mcnemar_exact_p": {
    "args": {
@@ -12651,7 +12651,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.121
   },
   "model_compare.paired_bootstrap_diff_ci": {
    "args": {
@@ -12676,7 +12676,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.166
   },
   "model_compare.sharpe_diff_bootstrap_ci": {
    "args": {
@@ -12701,7 +12701,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.139
   }
  }
 }

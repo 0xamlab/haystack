@@ -852,11 +852,29 @@ def value_for(
         return list_value(name, inner, structs, module, depth)
     struct = _struct(structs, type_name)
     if struct is not None:
-        return {
-            f["name"]: value_for(f["name"], f["type"], structs, module, depth + 1)
-            for f in struct["fields"]
-        }
+        return struct_value(name, struct, structs, module, depth)
     return scalar(name, type_name, module)
+
+
+def struct_value(
+    name: str, struct: Mapping[str, Any], structs: Any, module: str, depth: int
+) -> dict:
+    """A struct field by field; an indexed parameter (`p1` … `p4`) shifts its numeric fields by
+    the index so four points are four different points (round 9: `line_intersection(p1, p2,
+    p3, p4)` opened with four identical points and the kernel refused them)."""
+    _, idx = _base(name.lower())
+    shift = 0 if idx is None else idx - 1
+    out: dict[str, Any] = {}
+    pair_sign = 1 if ((shift) // 2) % 2 == 0 else -1  # p1,p2 climb; p3,p4 fall: two slopes
+    for k, f in enumerate(struct["fields"]):
+        value = value_for(f["name"], f["type"], structs, module, depth + 1)
+        sign = 1 if k % 2 == 0 else pair_sign  # x always rises; y by the pair's slope
+        if shift and isinstance(value, float) and not isinstance(value, bool):
+            value = round(value + 0.5 * shift * sign, 6)
+        elif shift and isinstance(value, int) and not isinstance(value, bool):
+            value = value + shift * sign
+        out[f["name"]] = value
+    return out
 
 
 def list_value(name: str, inner: str, structs: Any, module: str, depth: int) -> list[Any]:
@@ -922,8 +940,10 @@ def list_value(name: str, inner: str, structs: Any, module: str, depth: int) -> 
             for _ in range(SIDE)
         ]
     struct = _struct(structs, inner)
-    if struct is not None:
-        return [value_for(name, inner, structs, module, depth + 1) for _ in range(SIDE)]
+    if struct is not None:  # a list of structs: each element a different point (`p1` … `p3`)
+        return [
+            struct_value(f"{name}{i + 1}", struct, structs, module, depth + 1) for i in range(SIDE)
+        ]
     return [scalar(name, inner, module) for _ in range(LIST_LEN)]
 
 

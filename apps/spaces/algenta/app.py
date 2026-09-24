@@ -64,7 +64,7 @@ from tabs import LOAD_HOOKS, TAB_GOV, TAB_IDS, TabSpec, common  # noqa: E402
 log = logging.getLogger("algenta.flagship")
 
 TITLE = "Algenta"
-SUBLINE = "Race them against the Python libraries they replace, on this machine."
+SUBLINE = "Mojo kernels running on this machine. Race them against Python."
 LABEL_PERMALINK = "Permalink"
 LABEL_BOOT = "How this booted"
 LABEL_TABS = "Tabs"

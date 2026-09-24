@@ -27,7 +27,7 @@ report (`algenta_spaces.boot.BootRegistry`):
    counts have one truth: `functions_loaded` and `families_loaded` are what this container
    runs (the umbrella is never a family and never counted twice); `catalogue_functions` is the
    published catalogue the umbrella describes, quoted only in the boot disclosure and the
-   Reproduce notes. `headline(facts)` — `5,683 compiled Mojo kernels, live` — is the one sentence
+   Reproduce notes. `headline(facts)` — `5,683 compiled Mojo kernels` — is the one sentence
    the header and the tabs derive from those counts.
 5. **flags** — the kill switch starts polling `flags.json` (`KILLSWITCH_URL`, default the
    public results Dataset). Reads fail open; spend features are off until the file has been
@@ -518,14 +518,16 @@ def families_published(facts: Mapping[str, Any]) -> int:
 
 
 def headline(facts: Mapping[str, Any]) -> str:
-    """`5,683 compiled Mojo kernels, live` — the functions loaded here, never the catalogue's count.
+    """`5,683 compiled Mojo kernels` — the functions loaded here, never the catalogue's count.
 
     The header, the Hub tile and the boot card read this one number, so a container that lost
-    a family says the smaller truth everywhere; `Compiled Mojo kernels, live` before anything
+    a family says the smaller truth everywhere; `Compiled Mojo kernels` before anything
     loaded.
     """
     count = functions_loaded(facts)
-    text = f"{count:,} compiled Mojo kernels, live" if count else "Compiled Mojo kernels, live"
+    # Apple states the fact and stops (owner, round 11): no ", live" appended — the subline
+    # says "Running on this machine."
+    text = f"{count:,} compiled Mojo kernels" if count else "Compiled Mojo kernels"
     return shell.check_copy(text, max_words=shell.HEADLINE_WORDS, what="headline")
 
 

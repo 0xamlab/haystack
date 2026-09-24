@@ -488,7 +488,7 @@ card titles are `h2` under the page's `h1` (axe `heading-order` on every tab), t
 says `per kernel call` instead of `in-kernel` for a timing that includes the marshalling, the
 races' How-measured text states the qualification file's own rule (three recorded runs within
 five presses), and — at the owner's request — the Space names Mojo where a visitor looks first:
-the headline (`6,040 compiled Mojo kernels, live`), the header pill (`19 Mojo kernel families ·
+the headline (`6,040 compiled Mojo kernels`), the header pill (`19 Mojo kernel families ·
 this container`), every measured card's chip (`compiled Mojo kernel over the C ABI · includes
 JSON marshalling`), the Try tile (`Mojo kernels on the Hub`) and the Hub card's description and
 first paragraph (`/health` proves it per family).

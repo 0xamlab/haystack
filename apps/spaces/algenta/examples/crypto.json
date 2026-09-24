@@ -1,6 +1,6 @@
 {
  "family": "crypto",
- "generated_utc": "2026-09-24T03:16:35Z",
+ "generated_utc": "2026-09-24T04:28:03Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -31,7 +31,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 11.256
+   "ms": 11.155
   },
   "crypto.aes_sbox.aes_inv_sbox": {
    "args": {
@@ -40,7 +40,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.147
+   "ms": 0.146
   },
   "crypto.aes_sbox.aes_sbox": {
    "args": {
@@ -64,7 +64,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.14
   },
   "crypto.aes_sbox.inv_sub_bytes": {
    "args": {
@@ -79,7 +79,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.156
   },
   "crypto.aes_sbox.shift_rows": {
    "args": {
@@ -94,7 +94,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.11
   },
   "crypto.aes_sbox.sub_bytes": {
    "args": {
@@ -109,7 +109,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.145
   },
   "crypto.aes_sbox.xor_bytes": {
    "args": {
@@ -131,7 +131,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.169
+   "ms": 0.144
   },
   "crypto.base64.b64_decode": {
    "args": {
@@ -140,7 +140,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.118
   },
   "crypto.base64.b64_encode": {
    "args": {
@@ -149,7 +149,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.109
   },
   "crypto.base64.b64_url_decode": {
    "args": {
@@ -158,7 +158,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.216
+   "ms": 0.121
   },
   "crypto.base64.b64_url_encode": {
    "args": {
@@ -167,7 +167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.111
   },
   "crypto.chacha20.add_states": {
    "args": {
@@ -189,7 +189,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.104
   },
   "crypto.chacha20.chacha20_block": {
    "args": {
@@ -212,7 +212,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.183
+   "ms": 0.1
   },
   "crypto.chacha20.chacha20_decrypt": {
    "args": {
@@ -241,7 +241,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.469
+   "ms": 0.13
   },
   "crypto.chacha20.chacha20_encrypt": {
    "args": {
@@ -270,7 +270,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.253
+   "ms": 0.148
   },
   "crypto.chacha20.chacha20_init_state": {
    "args": {
@@ -293,7 +293,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.12
   },
   "crypto.chacha20.quarter_round": {
    "args": {
@@ -312,7 +312,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.172
+   "ms": 0.154
   },
   "crypto.chacha20.rotl32": {
    "args": {
@@ -322,7 +322,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.1
   },
   "crypto.chacha20.xor_states": {
    "args": {
@@ -344,7 +344,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.096
   },
   "crypto.crc32.crc32": {
    "args": {
@@ -353,7 +353,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.084
   },
   "crypto.crc32.crc32_combine": {
    "args": {
@@ -364,7 +364,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.091
   },
   "crypto.crc32.crc32_hex": {
    "args": {
@@ -373,7 +373,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.076
   },
   "crypto.hash_chain.combine_hashes": {
    "args": {
@@ -383,7 +383,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.092
   },
   "crypto.hash_chain.hash_chain_build": {
    "args": {
@@ -408,7 +408,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.112
   },
   "crypto.hash_chain.hash_chain_verify": {
    "args": {
@@ -440,7 +440,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.108
   },
   "crypto.hash_chain.hash_single": {
    "args": {
@@ -449,7 +449,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.067
   },
   "crypto.hash_chain.int_to_bytes": {
    "args": {
@@ -458,7 +458,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.078
   },
   "crypto.hash_chain.merkle_proof": {
    "args": {
@@ -474,7 +474,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.11
   },
   "crypto.hash_chain.merkle_root": {
    "args": {
@@ -489,7 +489,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.091
   },
   "crypto.hash_chain.merkle_verify": {
    "args": {
@@ -507,7 +507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.115
   },
   "crypto.hash_chain.simple_hash": {
    "args": {
@@ -522,7 +522,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.067
   },
   "crypto.hmac.hmac_sha256": {
    "args": {
@@ -532,7 +532,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.069
   },
   "crypto.hmac.hmac_sha256_verify": {
    "args": {
@@ -543,7 +543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.083
   },
   "crypto.pbkdf2.bytes_from_string": {
    "args": {
@@ -552,7 +552,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.087
   },
   "crypto.pbkdf2.bytes_to_hex": {
    "args": {
@@ -567,7 +567,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.076
   },
   "crypto.pbkdf2.hmac_sha256_bytes": {
    "args": {
@@ -589,7 +589,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.106
   },
   "crypto.pbkdf2.int_to_bytes_be": {
    "args": {
@@ -599,7 +599,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.067
   },
   "crypto.pbkdf2.pbkdf2_hmac_sha256": {
    "args": {
@@ -623,7 +623,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.337
+   "ms": 0.325
   },
   "crypto.pbkdf2.sha256_bytes": {
    "args": {
@@ -638,7 +638,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.088
   },
   "crypto.pbkdf2.xor_byte_lists": {
    "args": {
@@ -660,21 +660,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.085
   },
   "crypto.uuid.uuid4": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.075
   },
   "crypto.uuid.uuid4_hex": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.077
   },
   "feature_hashing.collision_rate_estimate": {
    "args": {
@@ -684,7 +684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.111
   },
   "feature_hashing.hash_feature": {
    "args": {
@@ -695,7 +695,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.074
   },
   "feature_hashing.hash_features_row": {
    "args": {
@@ -719,7 +719,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.161
+   "ms": 0.129
   },
   "feature_hashing.hash_sign": {
    "args": {
@@ -729,7 +729,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.06
   },
   "perceptual_hash.ahash": {
    "args": {
@@ -754,7 +754,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.111
   },
   "perceptual_hash.ahash_flat": {
    "args": {
@@ -771,7 +771,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.106
   },
   "perceptual_hash.dhash": {
    "args": {
@@ -796,7 +796,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.13
   },
   "perceptual_hash.dhash_flat": {
    "args": {
@@ -813,7 +813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.103
   },
   "perceptual_hash.hamming_distance": {
    "args": {
@@ -823,7 +823,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.098
   },
   "perceptual_hash.is_duplicate": {
    "args": {
@@ -834,7 +834,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.085
   },
   "perceptual_hash.phash": {
    "args": {
@@ -859,7 +859,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.138
   },
   "perceptual_hash.phash_flat": {
    "args": {
@@ -876,7 +876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.163
   }
  }
 }

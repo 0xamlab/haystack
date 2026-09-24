@@ -345,6 +345,31 @@ def _nav_html(active: str | None, space_id: str) -> str:
     )
 
 
+#: The count's gradient fill travels inline: Gradio's processing of the `css=` sheet dropped the
+#: rule's `background` and `-webkit-background-clip` declarations (measured on the served sheet,
+#: with literal stops and with a token alike) while inline styles reach the browser untouched, as
+#: the card bars' widths do. Tokens only — no literal colour.
+COUNT_STYLE = (
+    "background: linear-gradient(90deg, var(--alg-accent-from), var(--alg-accent-to));"
+    " -webkit-background-clip: text; background-clip: text; color: transparent;"
+)
+_LEADING_COUNT_RE = re.compile(r"^(\d{1,3}(?:,\d{3})*|\d+)\s+(.+)$")
+
+
+def _title_html(title: str) -> str:
+    """The headline; a leading number ("6,040 compiled Mojo kernels") becomes its own display
+    line in the accent gradient above the words (owner, round 11: "6,040 is huge — must be
+    visible right away", "AI-ish gradient"). Any other headline renders as plain text."""
+    m = _LEADING_COUNT_RE.match(title.strip())
+    if m is None:
+        return _esc(title)
+    return (
+        f'<span class="alg-shell-count alg-accent-text" style="{COUNT_STYLE}">'
+        f"{_esc(m.group(1))}</span>"
+        f'<span class="alg-shell-title-text">{_esc(m.group(2))}</span>'
+    )
+
+
 def render_header(
     title: str,
     tagline: str,
@@ -368,7 +393,7 @@ def render_header(
     parts = [
         '<header class="alg-shell-header">',
         f'<div class="alg-shell-eyebrow">{_esc(EYEBROW)}</div>',
-        f'<h1 class="alg-shell-title">{_esc(title)}</h1>',
+        f'<h1 class="alg-shell-title">{_title_html(title)}</h1>',
         f'<p class="alg-shell-tagline">{_esc(tagline)}</p>',
     ]
     if badges:
@@ -489,6 +514,13 @@ SHELL_CSS = stylesheet(
         " letter-spacing: var(--alg-display-tracking); font-weight: 600;"
         " color: var(--alg-text); margin: 0 0 8px; overflow-wrap: anywhere;",
     ),
+    rule(
+        "alg-shell-count",
+        "display: block; font-size: var(--alg-count-size); line-height: var(--alg-count-line);"
+        " letter-spacing: var(--alg-count-tracking); font-weight: var(--alg-count-weight);"
+        " font-variant-numeric: tabular-nums; margin: 0 0 4px;",
+    ),
+    rule("alg-shell-title-text", "display: block;"),
     rule(
         "alg-shell-tagline",
         "font-size: var(--alg-body-size); line-height: var(--alg-body-line);"

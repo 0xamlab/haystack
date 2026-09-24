@@ -1,6 +1,6 @@
 {
  "family": "general-c",
- "generated_utc": "2026-09-24T03:18:34Z",
+ "generated_utc": "2026-09-24T04:30:12Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -19,7 +19,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 12.821
+   "ms": 12.391
   },
   "model_interop.dtype_convert_scale": {
    "args": {
@@ -29,7 +29,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.119
   },
   "model_interop.gguf_kv_metadata_size": {
    "args": {
@@ -40,7 +40,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.127
   },
   "model_interop.hf_config_head_dim": {
    "args": {
@@ -50,7 +50,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.113
   },
   "model_interop.hf_rope_theta_scale": {
    "args": {
@@ -70,7 +70,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.092
   },
   "model_interop.onnx_node_flops": {
    "args": {
@@ -83,7 +83,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.104
   },
   "model_interop.safetensors_tensor_offset": {
    "args": {
@@ -93,7 +93,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.101
   },
   "model_interop.tokenizer_vocab_overlap": {
    "args": {
@@ -104,7 +104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.091
   },
   "model_interop.weight_remap_cost": {
    "args": {
@@ -115,7 +115,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.114
   },
   "model_parallel.activation_checkpointing_ratio": {
    "args": {
@@ -125,7 +125,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.12
   },
   "model_parallel.communication_computation_ratio": {
    "args": {
@@ -136,7 +136,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.1
   },
   "model_parallel.data_parallel_gradient_scale": {
    "args": {
@@ -145,7 +145,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.077
   },
   "model_parallel.ddp_sync_overhead": {
    "args": {
@@ -155,7 +155,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.091
   },
   "model_parallel.gradient_all_reduce_bytes": {
    "args": {
@@ -166,7 +166,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.09
   },
   "model_parallel.microbatch_throughput": {
    "args": {
@@ -177,7 +177,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.082
   },
   "model_parallel.pipeline_bubble_fraction": {
    "args": {
@@ -187,7 +187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.068
   },
   "model_parallel.pipeline_stage_assignment": {
    "args": {
@@ -198,7 +198,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.078
   },
   "model_parallel.tensor_parallel_split_dim": {
    "args": {
@@ -208,7 +208,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.074
   },
   "model_parallel.zero_stage3_param_bytes": {
    "args": {
@@ -218,7 +218,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.083
   },
   "model_router.capability_match_score": {
    "args": {
@@ -230,7 +230,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.092
   },
   "model_router.ensemble_weight": {
    "args": {
@@ -242,7 +242,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.087
   },
   "model_router.fallback_trigger_score": {
    "args": {
@@ -254,7 +254,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.093
   },
   "model_router.hybrid_pipeline_stage_score": {
    "args": {
@@ -265,7 +265,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.091
   },
   "model_router.latency_tier_assignment": {
    "args": {
@@ -276,7 +276,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.079
   },
   "model_router.model_freshness_score": {
    "args": {
@@ -287,7 +287,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.074
   },
   "model_router.model_load_score": {
    "args": {
@@ -298,7 +298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.073
   },
   "model_router.model_selection_utility": {
    "args": {
@@ -309,7 +309,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.079
   },
   "model_router.routing_uncertainty": {
    "args": {
@@ -319,7 +319,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.069
   },
   "model_router.shadow_routing_fraction": {
    "args": {
@@ -330,7 +330,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.065
   },
   "model_selection.kfold_splits": {
    "args": {
@@ -342,7 +342,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.254
+   "ms": 0.213
   },
   "model_selection.purged_walk_forward_splits": {
    "args": {
@@ -355,7 +355,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.078
   },
   "model_selection.stratified_kfold_splits": {
    "args": {
@@ -372,7 +372,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.139
   },
   "model_selection.train_test_split_temporal": {
    "args": {
@@ -382,7 +382,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.101
   },
   "model_selection.walk_forward_splits": {
    "args": {
@@ -394,7 +394,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.07
   },
   "moe_production.capacity_overflow_penalty": {
    "args": {
@@ -405,7 +405,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.075
   },
   "moe_production.communication_efficiency_moe": {
    "args": {
@@ -415,7 +415,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.088
   },
   "moe_production.dynamic_capacity_factor": {
    "args": {
@@ -427,7 +427,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.094
   },
   "moe_production.expert_activation_sparsity": {
    "args": {
@@ -437,7 +437,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.071
   },
   "moe_production.expert_affinity_score": {
    "args": {
@@ -448,7 +448,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.076
   },
   "moe_production.expert_load_imbalance": {
    "args": {
@@ -458,7 +458,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.092
   },
   "moe_production.expert_shard_memory_bytes": {
    "args": {
@@ -469,7 +469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.081
   },
   "moe_production.gradient_through_router": {
    "args": {
@@ -479,7 +479,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.068
   },
   "moe_production.routing_entropy_balance": {
    "args": {
@@ -489,7 +489,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.066
   },
   "moe_production.token_drop_fraction": {
    "args": {
@@ -499,7 +499,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.084
   },
   "moe_routing.aux_loss_coefficient": {
    "args": {
@@ -510,7 +510,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.069
   },
   "moe_routing.combined_jitter_noise": {
    "args": {
@@ -521,7 +521,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.061
   },
   "moe_routing.cosine_router_score": {
    "args": {
@@ -532,7 +532,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.065
   },
   "moe_routing.expert_choice_gate": {
    "args": {
@@ -543,7 +543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.077
   },
   "moe_routing.expert_dropout_mask": {
    "args": {
@@ -554,7 +554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.065
   },
   "moe_routing.expert_parallel_shard_id": {
    "args": {
@@ -564,7 +564,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.065
   },
   "moe_routing.gshard_gate_weight": {
    "args": {
@@ -575,7 +575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.066
   },
   "moe_routing.heterogeneous_expert_capacity": {
    "args": {
@@ -585,7 +585,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.068
   },
   "moe_routing.noisy_top_k_gate": {
    "args": {
@@ -596,7 +596,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.069
   },
   "moe_routing.switch_transformer_gate": {
    "args": {
@@ -607,7 +607,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.071
   },
   "multi_objective.ideal_point": {
    "args": {
@@ -639,7 +639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.133
   },
   "multi_objective.is_dominated": {
    "args": {
@@ -668,7 +668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.122
   },
   "multi_objective.nadir_point": {
    "args": {
@@ -700,7 +700,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.113
   },
   "multi_objective.normalize_objectives": {
    "args": {
@@ -725,7 +725,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.112
   },
   "multi_objective.pareto_front": {
    "args": {
@@ -757,7 +757,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.128
   },
   "multi_objective.topsis_rank": {
    "args": {
@@ -796,7 +796,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.145
   },
   "multi_objective.weighted_score": {
    "args": {
@@ -818,7 +818,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.099
   },
   "multimodal.audio_feature_norm": {
    "args": {
@@ -829,7 +829,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.065
   },
   "multimodal.cross_modal_similarity": {
    "args": {
@@ -842,7 +842,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.066
   },
   "multimodal.image_patch_count": {
    "args": {
@@ -852,7 +852,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.068
   },
   "multimodal.image_patch_embed": {
    "args": {
@@ -863,7 +863,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.093
   },
   "multimodal.image_token_count": {
    "args": {
@@ -874,7 +874,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.067
   },
   "multimodal.multimodal_fusion_weight": {
    "args": {
@@ -885,7 +885,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.065
   },
   "multimodal.ocr_confidence_score": {
    "args": {
@@ -895,7 +895,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.068
   },
   "multimodal.spectrogram_mel_freq": {
    "args": {
@@ -904,7 +904,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.084
   },
   "multimodal.spectrogram_stft_magnitude": {
    "args": {
@@ -914,7 +914,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.075
   },
   "multimodal.vision_attention_scale": {
    "args": {
@@ -923,7 +923,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.056
+   "ms": 0.072
   },
   "museum.climate_stability_score": {
    "args": {
@@ -933,7 +933,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.057
+   "ms": 0.075
   },
   "museum.collection_growth_rate": {
    "args": {
@@ -944,7 +944,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.059
+   "ms": 0.076
   },
   "museum.conservation_priority_score": {
    "args": {
@@ -955,7 +955,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.075
   },
   "museum.insurance_value_appreciation": {
    "args": {
@@ -966,7 +966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.064
   },
   "museum.light_damage_reciprocity": {
    "args": {
@@ -976,7 +976,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.062
   },
   "museum.lux_hours_annual": {
    "args": {
@@ -987,7 +987,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.062
   },
   "museum.moisture_content_equilibrium": {
    "args": {
@@ -997,7 +997,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.064
   },
   "museum.relative_humidity_from_temps": {
    "args": {
@@ -1007,7 +1007,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.076
   },
   "museum.storage_density": {
    "args": {
@@ -1017,7 +1017,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.064
   },
   "museum.time_weighted_preservation_index": {
    "args": {
@@ -1028,7 +1028,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.08
   },
   "museum.uv_exposure": {
    "args": {
@@ -1038,7 +1038,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.065
   },
   "museum.visitor_density": {
    "args": {
@@ -1048,7 +1048,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.073
   },
   "music_theory.beat_frequency": {
    "args": {
@@ -1058,7 +1058,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.069
   },
   "music_theory.cents_between": {
    "args": {
@@ -1068,7 +1068,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.069
   },
   "music_theory.frequency_from_midi": {
    "args": {
@@ -1077,7 +1077,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.079
   },
   "music_theory.interval_ratio_just": {
    "args": {
@@ -1086,7 +1086,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.078
   },
   "music_theory.is_enharmonic": {
    "args": {
@@ -1096,7 +1096,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.068
   },
   "music_theory.measures_duration": {
    "args": {
@@ -1107,7 +1107,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.106
   },
   "music_theory.midi_from_frequency": {
    "args": {
@@ -1116,7 +1116,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.074
   },
   "music_theory.note_in_scale": {
    "args": {
@@ -1127,7 +1127,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.058
   },
   "music_theory.octave_from_midi": {
    "args": {
@@ -1136,7 +1136,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.066
   },
   "music_theory.semitones_between": {
    "args": {
@@ -1146,7 +1146,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.07
   },
   "music_theory.tempo_to_beat_duration": {
    "args": {
@@ -1155,7 +1155,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.07
   },
   "music_theory.transpose_midi": {
    "args": {
@@ -1165,7 +1165,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.076
   },
   "mycology.colony_diameter": {
    "args": {
@@ -1175,7 +1175,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.083
   },
   "mycology.competitive_exclusion_index": {
    "args": {
@@ -1185,7 +1185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.111
   },
   "mycology.epidemic_progress_rate": {
    "args": {
@@ -1197,7 +1197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.112
   },
   "mycology.fungal_biomass": {
    "args": {
@@ -1207,7 +1207,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.092
   },
   "mycology.infection_efficiency": {
    "args": {
@@ -1217,7 +1217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.066
   },
   "mycology.latent_period": {
    "args": {
@@ -1228,7 +1228,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.071
   },
   "mycology.mycelial_growth_rate": {
    "args": {
@@ -1239,7 +1239,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.073
   },
   "mycology.spore_dispersal_distance": {
    "args": {
@@ -1250,7 +1250,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.076
   },
   "mycology.spore_germination_prob": {
    "args": {
@@ -1261,7 +1261,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.077
   },
   "mycology.sporulation_index": {
    "args": {
@@ -1271,7 +1271,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.08
   },
   "nanotechnology.aspect_ratio": {
    "args": {
@@ -1281,7 +1281,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.091
   },
   "nanotechnology.diffusion_coefficient_stokes_einstein": {
    "args": {
@@ -1293,7 +1293,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.069
   },
   "nanotechnology.knudsen_number": {
    "args": {
@@ -1303,7 +1303,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.062
   },
   "nanotechnology.mean_free_path": {
    "args": {
@@ -1315,7 +1315,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.065
   },
   "nanotechnology.nanoparticle_surface_area": {
    "args": {
@@ -1324,7 +1324,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.072
   },
   "nanotechnology.nanoparticle_volume": {
    "args": {
@@ -1333,14 +1333,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.102
   },
   "nanotechnology.packing_fraction_fcc": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.099
   },
   "nanotechnology.quantum_confinement_energy": {
    "args": {
@@ -1351,7 +1351,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.086
   },
   "nanotechnology.specific_surface_area": {
    "args": {
@@ -1361,7 +1361,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.073
   },
   "nanotechnology.surface_to_volume_sphere": {
    "args": {
@@ -1370,7 +1370,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.082
   },
   "nanotechnology.van_der_waals_force": {
    "args": {
@@ -1381,7 +1381,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.076
   },
   "nanotechnology.zeta_potential_mobility": {
    "args": {
@@ -1392,7 +1392,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.073
   },
   "nephrology.creatinine_clearance_cockroft": {
    "args": {
@@ -1404,7 +1404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.08
   },
   "nephrology.filtration_fraction": {
    "args": {
@@ -1414,7 +1414,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.078
   },
   "nephrology.fractional_excretion_sodium": {
    "args": {
@@ -1426,7 +1426,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.087
   },
   "nephrology.free_water_clearance": {
    "args": {
@@ -1436,7 +1436,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.071
   },
   "nephrology.gfr_ckd_epi": {
    "args": {
@@ -1447,7 +1447,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.065
   },
   "nephrology.osmolar_clearance": {
    "args": {
@@ -1458,7 +1458,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.066
   },
   "nephrology.protein_creatinine_ratio": {
    "args": {
@@ -1468,7 +1468,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.061
+   "ms": 0.063
   },
   "nephrology.renal_plasma_flow": {
    "args": {
@@ -1491,7 +1491,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.069
   },
   "nephrology.urine_anion_gap": {
    "args": {
@@ -1502,7 +1502,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.062
   },
   "neuropharmacology.bbb_penetration_ratio": {
    "args": {
@@ -1512,7 +1512,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.064
   },
   "neuropharmacology.blood_brain_barrier_efflux": {
    "args": {
@@ -1522,7 +1522,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.072
   },
   "neuropharmacology.cns_drug_exposure": {
    "args": {
@@ -1533,7 +1533,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.069
   },
   "neuropharmacology.cns_side_effect_threshold": {
    "args": {
@@ -1543,7 +1543,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.078
   },
   "neuropharmacology.d2_receptor_occupancy": {
    "args": {
@@ -1553,7 +1553,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.072
   },
   "neuropharmacology.minimal_effective_dose_cns": {
    "args": {
@@ -1565,7 +1565,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.065
   },
   "neuropharmacology.neuronal_firing_modulation": {
    "args": {
@@ -1576,7 +1576,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.065
   },
   "neuropharmacology.receptor_binding_ki": {
    "args": {
@@ -1587,7 +1587,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.063
   },
   "neuropharmacology.receptor_occupancy_brain": {
    "args": {
@@ -1598,7 +1598,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.065
   },
   "neuropharmacology.synapse_neurotransmitter_level": {
    "args": {
@@ -1609,7 +1609,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.065
   },
   "neurophysics.action_potential_threshold": {
    "args": {
@@ -1620,7 +1620,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.071
   },
   "neurophysics.cable_length_constant": {
    "args": {
@@ -1630,7 +1630,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.059
   },
   "neurophysics.conduction_velocity": {
    "args": {
@@ -1639,7 +1639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.059
   },
   "neurophysics.eeg_spectral_power": {
    "args": {
@@ -1649,7 +1649,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.061
   },
   "neurophysics.firing_rate_simple": {
    "args": {
@@ -1659,7 +1659,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.064
+   "ms": 0.06
   },
   "neurophysics.goldman_equation": {
    "args": {
@@ -1676,7 +1676,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.07
   },
   "neurophysics.integrate_and_fire_voltage": {
    "args": {
@@ -1689,7 +1689,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.08
   },
   "neurophysics.membrane_time_constant": {
    "args": {
@@ -1699,7 +1699,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.09
   },
   "neurophysics.nernst_potential": {
    "args": {
@@ -1711,7 +1711,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.068
   },
   "neurophysics.synaptic_current": {
    "args": {
@@ -1722,7 +1722,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.07
   },
   "nlp.char_count": {
    "args": {
@@ -1731,7 +1731,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.221
+   "ms": 0.065
   },
   "nlp.cosine_similarity_vec": {
    "args": {
@@ -1753,7 +1753,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.084
   },
   "nlp.idf": {
    "args": {
@@ -1779,7 +1779,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.147
+   "ms": 0.115
   },
   "nlp.jaccard_similarity": {
    "args": {
@@ -1801,7 +1801,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.084
   },
   "nlp.ngrams": {
    "args": {
@@ -1817,7 +1817,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.076
   },
   "nlp.term_frequency": {
    "args": {
@@ -1832,7 +1832,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.088
   },
   "nlp.tf": {
    "args": {
@@ -1848,7 +1848,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.073
   },
   "nlp.tfidf": {
    "args": {
@@ -1881,7 +1881,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.109
   },
   "nlp.tokenize": {
    "args": {
@@ -1890,7 +1890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.083
   },
   "nlp.unique_tokens": {
    "args": {
@@ -1905,7 +1905,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.083
   },
   "nlp.word_count": {
    "args": {
@@ -1914,7 +1914,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.056
   },
   "nuclear.activity": {
    "args": {
@@ -1924,7 +1924,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.064
   },
   "nuclear.binding_energy_per_nucleon": {
    "args": {
@@ -1934,7 +1934,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.061
   },
   "nuclear.critical_mass_estimate": {
    "args": {
@@ -1945,7 +1945,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.063
   },
   "nuclear.decay_constant_from_activity": {
    "args": {
@@ -1955,7 +1955,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.059
   },
   "nuclear.dose_rate_inverse_square": {
    "args": {
@@ -1966,7 +1966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.066
   },
   "nuclear.half_life_from_lambda": {
    "args": {
@@ -1975,7 +1975,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.061
   },
   "nuclear.lambda_from_half_life": {
    "args": {
@@ -1984,7 +1984,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.054
   },
   "nuclear.mass_defect": {
    "args": {
@@ -1997,7 +1997,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.066
   },
   "nuclear.neutron_multiplication": {
    "args": {
@@ -2007,7 +2007,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.057
   },
   "nuclear.q_value": {
    "args": {
@@ -2018,7 +2018,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.071
   },
   "nuclear.radioactive_decay": {
    "args": {
@@ -2029,7 +2029,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.074
   },
   "nuclear.shielding_attenuation": {
    "args": {
@@ -2040,7 +2040,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.075
   },
   "numerical_stability.kahan_sum": {
    "args": {
@@ -2055,7 +2055,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.087
   },
   "numerical_stability.log_add_exp": {
    "args": {
@@ -2065,7 +2065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.08
   },
   "numerical_stability.log_sigmoid": {
    "args": {
@@ -2074,7 +2074,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.064
   },
   "numerical_stability.log_softmax": {
    "args": {
@@ -2089,7 +2089,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.084
   },
   "numerical_stability.logsumexp": {
    "args": {
@@ -2104,7 +2104,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.084
   },
   "numerical_stability.normalize_probabilities": {
    "args": {
@@ -2119,7 +2119,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.103
   },
   "numerical_stability.relative_error": {
    "args": {
@@ -2129,7 +2129,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.084
   },
   "numerical_stability.safe_divide": {
    "args": {
@@ -2140,7 +2140,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.086
   },
   "numerical_stability.sigmoid_stable": {
    "args": {
@@ -2149,7 +2149,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.064
   },
   "numerical_stability.softmax": {
    "args": {
@@ -2164,7 +2164,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.07
   },
   "numerical_stability.softplus": {
    "args": {
@@ -2173,7 +2173,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.057
   },
   "numerical_stability.welford_mean_var": {
    "args": {
@@ -2188,7 +2188,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.065
   },
   "numismatics.annual_return": {
    "args": {
@@ -2199,7 +2199,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.061
   },
   "numismatics.auction_fee": {
    "args": {
@@ -2209,7 +2209,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.061
   },
   "numismatics.bullion_content_troy_oz": {
    "args": {
@@ -2219,7 +2219,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.062
   },
   "numismatics.grade_numeric_to_scale": {
    "args": {
@@ -2228,7 +2228,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.07
   },
   "numismatics.insurance_value": {
    "args": {
@@ -2238,7 +2238,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.059
   },
   "numismatics.melt_value": {
    "args": {
@@ -2248,7 +2248,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.06
   },
   "numismatics.mintage_per_capita": {
    "args": {
@@ -2258,7 +2258,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.057
   },
   "numismatics.population_scarcity": {
    "args": {
@@ -2268,7 +2268,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.063
   },
   "numismatics.premium_over_melt": {
    "args": {
@@ -2278,7 +2278,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.052
   },
   "numismatics.price_trend": {
    "args": {
@@ -2288,7 +2288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.056
   },
   "numismatics.survival_rate_estimate": {
    "args": {
@@ -2298,7 +2298,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.053
   },
   "numismatics.total_cost_acquisition": {
    "args": {
@@ -2309,7 +2309,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.062
   },
   "numpy_ops.np_clip": {
    "args": {
@@ -2320,7 +2320,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.061
   },
   "numpy_ops.np_digitize_bin": {
    "args": {
@@ -2331,7 +2331,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.059
   },
   "numpy_ops.np_expm1": {
    "args": {
@@ -2340,7 +2340,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.059
   },
   "numpy_ops.np_heaviside": {
    "args": {
@@ -2350,7 +2350,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.055
   },
   "numpy_ops.np_hypot": {
    "args": {
@@ -2360,7 +2360,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.059
   },
   "numpy_ops.np_lerp": {
    "args": {
@@ -2371,7 +2371,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.064
   },
   "numpy_ops.np_log1p": {
    "args": {
@@ -2380,7 +2380,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.069
   },
   "numpy_ops.np_logaddexp": {
    "args": {
@@ -2390,7 +2390,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.088
   },
   "numpy_ops.np_sign": {
    "args": {
@@ -2399,7 +2399,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.065
   },
   "numpy_ops.np_sinc": {
    "args": {
@@ -2408,7 +2408,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.067
   },
   "nutrition.bmi": {
    "args": {
@@ -2418,7 +2418,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.057
   },
   "nutrition.bmi_category": {
    "args": {
@@ -2427,7 +2427,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.078
   },
   "nutrition.bmr_mifflin": {
    "args": {
@@ -2439,7 +2439,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.073
   },
   "nutrition.body_fat_estimate": {
    "args": {
@@ -2450,7 +2450,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.087
   },
   "nutrition.caloric_deficit": {
    "args": {
@@ -2460,7 +2460,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.076
   },
   "nutrition.heart_rate_max": {
    "args": {
@@ -2469,7 +2469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.08
   },
   "nutrition.ideal_body_weight": {
    "args": {
@@ -2479,7 +2479,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.069
   },
   "nutrition.macro_split": {
    "args": {
@@ -2490,7 +2490,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.072
   },
   "nutrition.target_heart_rate": {
    "args": {
@@ -2501,7 +2501,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.067
   },
   "nutrition.tdee": {
    "args": {
@@ -2511,7 +2511,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.064
   },
   "nutrition.vo2max_estimate": {
    "args": {
@@ -2521,7 +2521,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.074
   },
   "nutrition.water_intake": {
    "args": {
@@ -2530,7 +2530,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.057
   },
   "observability.batch_queue_wait_percentile": {
    "args": {
@@ -2541,7 +2541,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.061
   },
   "observability.cache_miss_rate": {
    "args": {
@@ -2551,7 +2551,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.084
   },
   "observability.cost_per_token_rolling": {
    "args": {
@@ -2563,7 +2563,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.091
   },
   "observability.gpu_utilization_rolling": {
    "args": {
@@ -2574,7 +2574,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.082
   },
   "observability.health_check_score": {
    "args": {
@@ -2586,7 +2586,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.089
   },
   "observability.memory_pressure_score": {
    "args": {
@@ -2597,7 +2597,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.079
   },
   "observability.model_drift_alert_score": {
    "args": {
@@ -2608,7 +2608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.07
   },
   "observability.p99_latency_estimate": {
    "args": {
@@ -2618,7 +2618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.056
   },
   "observability.request_success_rate": {
    "args": {
@@ -2628,7 +2628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.056
   },
   "observability.token_throughput_ema": {
    "args": {
@@ -2640,7 +2640,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.074
   },
   "ode.euler_solve": {
    "args": {
@@ -2662,7 +2662,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 1.292
+   "ms": 1.313
   },
   "ode.euler_step": {
    "args": {
@@ -2685,7 +2685,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.115
   },
   "ode.exponential_decay": {
    "args": {
@@ -2696,7 +2696,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.114
   },
   "ode.logistic_growth": {
    "args": {
@@ -2708,7 +2708,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.09
   },
   "ode.rk4_solve": {
    "args": {
@@ -2725,7 +2725,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.262
+   "ms": 0.237
   },
   "ode.rk4_solve_system": {
    "args": {
@@ -2748,7 +2748,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.607
+   "ms": 0.585
   },
   "ode.rk4_step": {
    "args": {
@@ -2764,7 +2764,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.123
   },
   "ode.rk4_step_system": {
    "args": {
@@ -2786,7 +2786,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.148
   },
   "online_learning.adagrad_online_update": {
    "args": {
@@ -2799,7 +2799,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.119
   },
   "online_learning.concept_drift_ddm_error": {
    "args": {
@@ -2813,7 +2813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.095
   },
   "online_learning.exponential_moving_average": {
    "args": {
@@ -2824,7 +2824,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.089
   },
   "online_learning.exponential_moving_variance": {
    "args": {
@@ -2836,7 +2836,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.089
   },
   "online_learning.ftrl_step": {
    "args": {
@@ -2850,7 +2850,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.087
   },
   "online_learning.passive_aggressive_step": {
    "args": {
@@ -2861,7 +2861,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.075
   },
   "online_learning.perceptron_update": {
    "args": {
@@ -2874,7 +2874,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.077
   },
   "online_learning.river_sgd_update": {
    "args": {
@@ -2885,7 +2885,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.072
   },
   "online_learning.streaming_mean_update": {
    "args": {
@@ -2896,7 +2896,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.072
   },
   "online_learning.streaming_variance_update": {
    "args": {
@@ -2908,7 +2908,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.082
   },
   "operations_research.assignment_cost_3": {
    "args": {
@@ -2919,7 +2919,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.133
   },
   "operations_research.eoq_quantity": {
    "args": {
@@ -2930,7 +2930,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.082
   },
   "operations_research.eoq_total_cost": {
    "args": {
@@ -2941,7 +2941,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.074
   },
   "operations_research.little_law_l": {
    "args": {
@@ -2951,7 +2951,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.079
   },
   "operations_research.little_law_w": {
    "args": {
@@ -2961,7 +2961,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.091
   },
   "operations_research.mm1_expected_queue_length": {
    "args": {
@@ -2970,7 +2970,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.092
   },
   "operations_research.mm1_expected_wait_time": {
    "args": {
@@ -2980,7 +2980,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.099
   },
   "operations_research.newsvendor_critical_ratio": {
    "args": {
@@ -2990,7 +2990,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.088
   },
   "operations_research.simplex_objective_value_2": {
    "args": {
@@ -3002,7 +3002,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.098
   },
   "operations_research.simplex_objective_value_3": {
    "args": {
@@ -3016,7 +3016,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.078
   },
   "operations_research.total_transportation_cost_2x2": {
    "args": {
@@ -3032,7 +3032,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.089
   },
   "operations_research.transportation_cost": {
    "args": {
@@ -3042,7 +3042,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.069
   },
   "operations_research.utilization_factor": {
    "args": {
@@ -3062,7 +3062,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.077
   },
   "ophthalmology.corneal_radius_from_keratometry": {
    "args": {
@@ -3071,7 +3071,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.089
   },
   "ophthalmology.critical_flicker_frequency": {
    "args": {
@@ -3082,7 +3082,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.08
   },
   "ophthalmology.dark_adaptation_kinetics": {
    "args": {
@@ -3093,7 +3093,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.064
   },
   "ophthalmology.depth_of_focus": {
    "args": {
@@ -3103,7 +3103,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.068
   },
   "ophthalmology.intraocular_pressure": {
    "args": {
@@ -3113,7 +3113,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.063
   },
   "ophthalmology.lens_power": {
    "args": {
@@ -3125,7 +3125,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.066
   },
   "ophthalmology.refractive_error_spherical": {
    "args": {
@@ -3134,7 +3134,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.064
   },
   "ophthalmology.retinal_image_size": {
    "args": {
@@ -3145,7 +3145,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.059
   },
   "ophthalmology.visual_acuity_decimal": {
    "args": {
@@ -3155,7 +3155,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.067
   },
   "optics.brewster_angle": {
    "args": {
@@ -3165,7 +3165,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.061
   },
   "optics.critical_angle": {
    "args": {
@@ -3175,7 +3175,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.073
   },
   "optics.diffraction_limit": {
    "args": {
@@ -3185,7 +3185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.078
   },
   "optics.fresnel_reflectance_normal": {
    "args": {
@@ -3195,7 +3195,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.068
   },
   "optics.magnification": {
    "args": {
@@ -3205,7 +3205,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.068
   },
   "optics.numerical_aperture": {
    "args": {
@@ -3215,7 +3215,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.071
   },
   "optics.photon_energy": {
    "args": {
@@ -3224,7 +3224,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.058
   },
   "optics.snells_law": {
    "args": {
@@ -3245,7 +3245,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.071
   },
   "optics.wavelength_to_frequency": {
    "args": {
@@ -3254,7 +3254,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.076
   },
   "optimization.assignment.assign_status_name": {
    "args": {
@@ -3263,7 +3263,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.085
   },
   "optimization.assignment.assignment_cost_of": {
    "args": {
@@ -3295,7 +3295,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.124
   },
   "optimization.assignment.assignment_dual_check": {
    "args": {
@@ -3337,7 +3337,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.17
+   "ms": 0.135
   },
   "optimization.assignment.assignment_dual_check_masked": {
    "args": {
@@ -3390,7 +3390,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.172
+   "ms": 0.14
   },
   "optimization.assignment.assignment_solve": {
    "args": {
@@ -3411,7 +3411,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.124
   },
   "optimization.assignment.assignment_solve_masked": {
    "args": {
@@ -3443,7 +3443,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.155
+   "ms": 0.136
   },
   "optimization.assignment.greedy_assignment_flat": {
    "args": {
@@ -3464,7 +3464,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.114
   },
   "optimization.explain.binding_constraints": {
    "args": {
@@ -3523,7 +3523,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.173
   },
   "optimization.explain.binding_constraints_default": {
    "args": {
@@ -3578,7 +3578,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.156
+   "ms": 0.149
   },
   "optimization.explain.explain_status_name": {
    "args": {
@@ -3633,7 +3633,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.143
   },
   "optimization.explain.infeasibility_core_default": {
    "args": {
@@ -3676,7 +3676,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.151
   },
   "optimization.explain.model_binding_constraints": {
    "args": {
@@ -3840,7 +3840,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.314
+   "ms": 0.298
   },
   "optimization.explain.model_contributions": {
    "args": {
@@ -4004,7 +4004,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.314
+   "ms": 0.297
   },
   "optimization.explain.model_infeasibility_core": {
    "args": {
@@ -4168,7 +4168,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.313
+   "ms": 0.288
   },
   "optimization.explain.objective_contributions": {
    "args": {
@@ -4192,7 +4192,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.138
   },
   "optimization.explain.optimum_contributions": {
    "args": {
@@ -4251,7 +4251,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.154
   },
   "optimization.explain.optimum_contributions_default": {
    "args": {
@@ -4306,7 +4306,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.168
+   "ms": 0.137
   },
   "optimization.explain.slackness_check": {
    "args": {
@@ -4336,7 +4336,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.097
   },
   "optimization.flow.cut_capacity_of": {
    "args": {
@@ -4373,7 +4373,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.117
   },
   "optimization.flow.edge_residuals": {
    "args": {
@@ -4395,7 +4395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.091
   },
   "optimization.flow.flow_audit_flat": {
    "args": {
@@ -4441,7 +4441,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.162
+   "ms": 0.125
   },
   "optimization.flow.flow_network_check": {
    "args": {
@@ -4471,7 +4471,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.103
   },
   "optimization.flow.flow_status_name": {
    "args": {
@@ -4480,7 +4480,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.065
   },
   "optimization.flow.is_saturated": {
    "args": {
@@ -4491,7 +4491,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.065
   },
   "optimization.flow.max_flow_dinic": {
    "args": {
@@ -4523,7 +4523,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.259
+   "ms": 0.118
   },
   "optimization.flow.min_cost_flow": {
    "args": {
@@ -4563,7 +4563,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.139
   },
   "optimization.flow.min_cost_max_flow": {
    "args": {
@@ -4602,7 +4602,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.134
   },
   "optimization.flow.path_bottleneck": {
    "args": {
@@ -4631,7 +4631,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.108
   },
   "optimization.integer.branch_choice": {
    "args": {
@@ -4654,7 +4654,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.117
   },
   "optimization.integer.milp_from_arenas": {
    "args": {
@@ -4806,7 +4806,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.265
+   "ms": 0.264
   },
   "optimization.integer.milp_knapsack": {
    "args": {
@@ -4830,7 +4830,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.176
+   "ms": 0.147
   },
   "optimization.integer.milp_solve": {
    "args": {
@@ -4902,7 +4902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.176
+   "ms": 0.173
   },
   "optimization.integer.milp_solve_default": {
    "args": {
@@ -4969,7 +4969,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.187
+   "ms": 0.147
   },
   "optimization.integer.milp_status_name": {
    "args": {
@@ -4978,7 +4978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.068
   },
   "optimization.linear.lin_status_name": {
    "args": {
@@ -4987,7 +4987,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.081
   },
   "optimization.linear.linear_extract_flat": {
    "args": {
@@ -5039,7 +5039,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.163
+   "ms": 0.154
   },
   "optimization.linear.linear_form_value": {
    "args": {
@@ -5060,7 +5060,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.145
+   "ms": 0.111
   },
   "optimization.linear.lp_dual_objective": {
    "args": {
@@ -5082,7 +5082,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.091
   },
   "optimization.linear.lp_from_arenas": {
    "args": {
@@ -5263,7 +5263,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.176
+   "ms": 0.157
   },
   "optimization.linear.lp_solve": {
    "args": {
@@ -5322,7 +5322,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.175
+   "ms": 0.159
   },
   "optimization.linear.lp_solve_default": {
    "args": {
@@ -5377,7 +5377,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.176
+   "ms": 0.148
   },
   "optimization.linear.lp_status_name": {
    "args": {
@@ -5386,7 +5386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.062
   },
   "optimization.model.arena_flat_defect": {
    "args": {
@@ -5436,7 +5436,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.162
+   "ms": 0.139
   },
   "optimization.model.arena_roundtrip": {
    "args": {
@@ -5487,7 +5487,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.21
+   "ms": 0.177
   },
   "optimization.model.check_variables": {
    "args": {
@@ -5504,23 +5504,23 @@
      },
      {
       "name": "alpha",
-      "lower": 0.0,
-      "upper": 1.0,
-      "kind": 5,
+      "lower": 0.5,
+      "upper": 1.5,
+      "kind": 6,
       "has_lower": true,
       "has_upper": true,
       "has_start": true,
-      "start": 0.0
+      "start": 0.5
      },
      {
       "name": "alpha",
-      "lower": 0.0,
-      "upper": 1.0,
-      "kind": 5,
+      "lower": -1.0,
+      "upper": 2.0,
+      "kind": 3,
       "has_lower": true,
       "has_upper": true,
       "has_start": true,
-      "start": 0.0
+      "start": -1.0
      }
     ],
     "integrality_tol": 1e-06
@@ -5528,7 +5528,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.153
   },
   "optimization.model.constraint_sense_name": {
    "args": {
@@ -5537,14 +5537,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.073
   },
   "optimization.model.default_policy": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.077
   },
   "optimization.model.expr_evaluate_flat": {
    "args": {
@@ -5602,7 +5602,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.157
+   "ms": 0.148
   },
   "optimization.model.expr_validate_flat": {
    "args": {
@@ -5654,7 +5654,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.17
+   "ms": 0.142
   },
   "optimization.model.flat_defect": {
    "args": {
@@ -5818,7 +5818,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.305
+   "ms": 0.27
   },
   "optimization.model.has_lower_bound": {
    "args": {
@@ -5827,7 +5827,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.074
   },
   "optimization.model.has_upper_bound": {
    "args": {
@@ -5836,7 +5836,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.085
   },
   "optimization.model.has_warm_start": {
    "args": {
@@ -5845,7 +5845,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.069
   },
   "optimization.model.integer_in_interval": {
    "args": {
@@ -5855,7 +5855,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.061
   },
   "optimization.model.is_model_op": {
    "args": {
@@ -5864,7 +5864,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.173
+   "ms": 0.063
   },
   "optimization.model.linear_arena": {
    "args": {
@@ -5878,7 +5878,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.112
   },
   "optimization.model.linear_model_flat": {
    "args": {
@@ -5977,7 +5977,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.288
+   "ms": 0.203
   },
   "optimization.model.minimization_value": {
    "args": {
@@ -5987,7 +5987,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.076
   },
   "optimization.model.model_evaluate": {
    "args": {
@@ -6158,7 +6158,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.381
+   "ms": 0.292
   },
   "optimization.model.model_finite": {
    "args": {
@@ -6167,7 +6167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.067
   },
   "optimization.model.model_objective": {
    "args": {
@@ -6338,7 +6338,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.384
+   "ms": 0.279
   },
   "optimization.model.model_op_arity": {
    "args": {
@@ -6347,7 +6347,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.079
   },
   "optimization.model.model_status_name": {
    "args": {
@@ -6356,7 +6356,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.075
   },
   "optimization.model.model_validate": {
    "args": {
@@ -6520,7 +6520,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.328
+   "ms": 0.269
   },
   "optimization.model.opt_policy_new": {
    "args": {
@@ -6533,7 +6533,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.084
   },
   "optimization.model.opt_var": {
    "args": {
@@ -6545,7 +6545,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.099
   },
   "optimization.model.opt_var_binary": {
    "args": {
@@ -6554,7 +6554,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.07
   },
   "optimization.model.opt_var_free": {
    "args": {
@@ -6564,7 +6564,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.077
   },
   "optimization.model.opt_var_lower_bounded": {
    "args": {
@@ -6575,7 +6575,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.076
   },
   "optimization.model.opt_var_warm": {
    "args": {
@@ -6588,7 +6588,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.076
   },
   "optimization.model.policy_defect": {
    "args": {
@@ -6603,7 +6603,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.294
+   "ms": 0.077
   },
   "optimization.model.project_point": {
    "args": {
@@ -6627,23 +6627,23 @@
      },
      {
       "name": "alpha",
-      "lower": 0.0,
-      "upper": 1.0,
-      "kind": 5,
+      "lower": 0.5,
+      "upper": 1.5,
+      "kind": 6,
       "has_lower": true,
       "has_upper": true,
       "has_start": true,
-      "start": 0.0
+      "start": 0.5
      },
      {
       "name": "alpha",
-      "lower": 0.0,
-      "upper": 1.0,
-      "kind": 5,
+      "lower": -1.0,
+      "upper": 2.0,
+      "kind": 3,
       "has_lower": true,
       "has_upper": true,
       "has_start": true,
-      "start": 0.0
+      "start": -1.0
      }
     ],
     "integrality_tol": 1e-06
@@ -6651,7 +6651,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.256
+   "ms": 0.14
   },
   "optimization.model.project_point_flat": {
    "args": {
@@ -6702,7 +6702,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.258
+   "ms": 0.132
   },
   "optimization.model.sense_violation": {
    "args": {
@@ -6714,7 +6714,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.295
+   "ms": 0.072
   },
   "optimization.model.var_flags_valid": {
    "args": {
@@ -6723,7 +6723,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.159
+   "ms": 0.075
   },
   "optimization.model.var_kind_name": {
    "args": {
@@ -6732,7 +6732,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.075
   },
   "optimization.model.variables_defect_flat": {
    "args": {
@@ -6768,7 +6768,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.119
   },
   "optimization.model.variables_validate_flat": {
    "args": {
@@ -6812,7 +6812,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.179
+   "ms": 0.122
   },
   "optimization.model.warm_start_point": {
    "args": {
@@ -6829,23 +6829,23 @@
      },
      {
       "name": "alpha",
-      "lower": 0.0,
-      "upper": 1.0,
-      "kind": 5,
+      "lower": 0.5,
+      "upper": 1.5,
+      "kind": 6,
       "has_lower": true,
       "has_upper": true,
       "has_start": true,
-      "start": 0.0
+      "start": 0.5
      },
      {
       "name": "alpha",
-      "lower": 0.0,
-      "upper": 1.0,
-      "kind": 5,
+      "lower": -1.0,
+      "upper": 2.0,
+      "kind": 3,
       "has_lower": true,
       "has_upper": true,
       "has_start": true,
-      "start": 0.0
+      "start": -1.0
      }
     ],
     "integrality_tol": 1e-06
@@ -6853,7 +6853,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.281
+   "ms": 0.143
   },
   "optimization.multiobjective.crowding_distance": {
    "args": {
@@ -6870,7 +6870,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.108
   },
   "optimization.multiobjective.hypervolume": {
    "args": {
@@ -6896,7 +6896,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.117
   },
   "optimization.multiobjective.hypervolume_default": {
    "args": {
@@ -6920,7 +6920,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.201
+   "ms": 0.09
   },
   "optimization.multiobjective.lexicographic_linear": {
    "args": {
@@ -6963,7 +6963,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.192
+   "ms": 0.127
   },
   "optimization.multiobjective.lexicographic_linear_default": {
    "args": {
@@ -7003,7 +7003,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.227
+   "ms": 0.116
   },
   "optimization.multiobjective.mo_dominance": {
    "args": {
@@ -7026,7 +7026,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.19
+   "ms": 0.099
   },
   "optimization.multiobjective.mo_matrix_defect": {
    "args": {
@@ -7043,7 +7043,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.14
   },
   "optimization.multiobjective.mo_reference_point": {
    "args": {
@@ -7061,7 +7061,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.08
   },
   "optimization.multiobjective.mo_status_name": {
    "args": {
@@ -7070,7 +7070,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.063
   },
   "optimization.multiobjective.nondominated_sort": {
    "args": {
@@ -7087,7 +7087,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.083
   },
   "optimization.multiobjective.nsga2_linear": {
    "args": {
@@ -7146,7 +7146,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.225
+   "ms": 0.143
   },
   "optimization.multiobjective.nsga2_linear_default": {
    "args": {
@@ -7201,7 +7201,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.18
+   "ms": 0.135
   },
   "optimization.multiobjective.nsga2_select": {
    "args": {
@@ -7219,7 +7219,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.084
   },
   "optimization.multiobjective.pareto_certify": {
    "args": {
@@ -7243,7 +7243,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.203
+   "ms": 0.103
   },
   "optimization.quadratic.qp_convexity_flat": {
    "args": {
@@ -7259,7 +7259,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.12
   },
   "optimization.quadratic.qp_gap_flat": {
    "args": {
@@ -7335,7 +7335,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.217
+   "ms": 0.183
   },
   "optimization.quadratic.qp_gradient_flat": {
    "args": {
@@ -7365,7 +7365,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.118
   },
   "optimization.quadratic.qp_kkt_check": {
    "args": {
@@ -7461,7 +7461,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.238
+   "ms": 0.211
   },
   "optimization.quadratic.qp_objective_flat": {
    "args": {
@@ -7491,7 +7491,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.174
+   "ms": 0.1
   },
   "optimization.quadratic.qp_solve": {
    "args": {
@@ -7561,7 +7561,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.235
+   "ms": 0.182
   },
   "optimization.quadratic.qp_solve_default": {
    "args": {
@@ -7628,7 +7628,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.186
+   "ms": 0.193
   },
   "optimization.quadratic.qp_status_name": {
    "args": {
@@ -7637,7 +7637,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.066
   },
   "optimization.robust.robust_chance_normal": {
    "args": {
@@ -7707,7 +7707,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.283
+   "ms": 0.256
   },
   "optimization.robust.robust_chance_rates": {
    "args": {
@@ -7764,7 +7764,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.249
+   "ms": 0.166
   },
   "optimization.robust.robust_min_max_rhs": {
    "args": {
@@ -7835,7 +7835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.205
+   "ms": 0.207
   },
   "optimization.robust.robust_min_max_rhs_default": {
    "args": {
@@ -7902,7 +7902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.201
+   "ms": 0.181
   },
   "optimization.robust.robust_scenario_solve": {
    "args": {
@@ -7985,7 +7985,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.228
+   "ms": 0.213
   },
   "optimization.robust.robust_scenario_solve_default": {
    "args": {
@@ -8053,7 +8053,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.207
+   "ms": 0.175
   },
   "optimization.robust.robust_status_name": {
    "args": {
@@ -8062,7 +8062,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.063
   },
   "optimization.robust.scenario_rhs_normal": {
    "args": {
@@ -8087,7 +8087,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.132
   },
   "optimization.robust.scenario_rhs_uniform": {
    "args": {
@@ -8112,7 +8112,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.127
   },
   "optimization.routing.distance_matrix_check": {
    "args": {
@@ -8128,14 +8128,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.084
   },
   "optimization.routing.route_node_ceiling": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.066
   },
   "optimization.routing.route_status_name": {
    "args": {
@@ -8144,7 +8144,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.065
   },
   "optimization.routing.tour_check": {
    "args": {
@@ -8160,7 +8160,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.111
   },
   "optimization.routing.tour_length_flat": {
    "args": {
@@ -8183,7 +8183,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.119
   },
   "optimization.routing.tsp_greedy_flat": {
    "args": {
@@ -8199,7 +8199,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.1
   },
   "optimization.routing.tsp_iterated_local_search": {
    "args": {
@@ -8219,7 +8219,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.097
   },
   "optimization.routing.tsp_local_search": {
    "args": {
@@ -8239,7 +8239,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.096
   },
   "optimization.routing.tsp_or_opt": {
    "args": {
@@ -8257,7 +8257,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.112
   },
   "optimization.routing.tsp_perturb_double_bridge": {
    "args": {
@@ -8282,7 +8282,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.167
+   "ms": 0.125
   },
   "optimization.routing.tsp_two_opt": {
    "args": {
@@ -8299,7 +8299,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.096
   },
   "optimization.routing.vrp_capacity_solve": {
    "args": {
@@ -8327,7 +8327,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.101
   },
   "optimization.routing.vrp_check": {
    "args": {
@@ -8386,7 +8386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.169
+   "ms": 0.158
   },
   "optimization.routing.vrp_time_window_solve": {
    "args": {
@@ -8435,7 +8435,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.191
+   "ms": 0.188
   },
   "optimization.routing.vrp_vehicle_bound": {
    "args": {
@@ -8451,7 +8451,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.12
   },
   "optimization.scheduling.jobshop_bound_flat": {
    "args": {
@@ -8476,7 +8476,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.147
   },
   "optimization.scheduling.jobshop_schedule_from_ranks_flat": {
    "args": {
@@ -8508,7 +8508,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.142
   },
   "optimization.scheduling.jobshop_tabu_solve_flat": {
    "args": {
@@ -8537,7 +8537,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.15
+   "ms": 0.135
   },
   "optimization.scheduling.jobshop_verify_flat": {
    "args": {
@@ -8569,7 +8569,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.177
+   "ms": 0.12
   },
   "optimization.scheduling.rcpsp_bound_flat": {
    "args": {
@@ -8614,7 +8614,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.169
   },
   "optimization.scheduling.rcpsp_peak_usage_flat": {
    "args": {
@@ -8652,7 +8652,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.138
+   "ms": 0.145
   },
   "optimization.scheduling.rcpsp_sgs_solve_flat": {
    "args": {
@@ -8699,7 +8699,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.199
+   "ms": 0.168
   },
   "optimization.scheduling.rcpsp_verify_flat": {
    "args": {
@@ -8751,7 +8751,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.216
+   "ms": 0.128
   },
   "optimization.scheduling.sched_status_name": {
    "args": {
@@ -8760,7 +8760,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.071
   },
   "optimization.scheduling.sched_violation_name": {
    "args": {
@@ -8769,7 +8769,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.087
   },
   "optimization_meta.acceptance_probability": {
    "args": {
@@ -8780,7 +8780,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.097
   },
   "optimization_meta.eval_objective": {
    "args": {
@@ -8796,7 +8796,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.077
   },
   "optimization_meta.hill_climbing": {
    "args": {
@@ -8814,7 +8814,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.185
+   "ms": 0.15
   },
   "optimization_meta.neighbor": {
    "args": {
@@ -8830,7 +8830,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.094
   },
   "optimization_meta.particle_swarm": {
    "args": {
@@ -8844,7 +8844,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 8.961
+   "ms": 7.896
   },
   "optimization_meta.random_search": {
    "args": {
@@ -8857,7 +8857,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.225
+   "ms": 0.17
   },
   "optimization_meta.simulated_annealing": {
    "args": {
@@ -8876,7 +8876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.201
+   "ms": 0.157
   },
   "optimize.eval_poly": {
    "args": {
@@ -8890,7 +8890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.088
   },
   "optimize.eval_poly_deriv": {
    "args": {
@@ -8904,7 +8904,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.083
   },
   "optimize.gradient_descent_1d": {
    "args": {
@@ -8921,7 +8921,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.104
   },
   "optimize.linear_regression": {
    "args": {
@@ -8943,7 +8943,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.089
   },
   "optimize.minimize_brent": {
    "args": {
@@ -8960,7 +8960,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.081
   },
   "optimize.minimize_scalar_golden": {
    "args": {
@@ -8977,7 +8977,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.205
+   "ms": 0.081
   },
   "optimize.root_bisection": {
    "args": {
@@ -8994,7 +8994,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.077
   },
   "optimize.root_newton": {
    "args": {
@@ -9010,7 +9010,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.096
   },
   "optmodel.formulation.formulation_check_flat": {
    "args": {
@@ -9077,7 +9077,7 @@
    "verified": false,
    "outcome": "dense_shape_invalid",
    "source": "rules",
-   "ms": 0.215
+   "ms": 0.176
   },
   "optmodel.formulation.formulation_lower_flat": {
    "args": {
@@ -9144,7 +9144,7 @@
    "verified": false,
    "outcome": "dense_shape_invalid",
    "source": "rules",
-   "ms": 0.208
+   "ms": 0.161
   },
   "optmodel.formulation.formulation_point_audit_flat": {
    "args": {
@@ -9220,7 +9220,7 @@
    "verified": false,
    "outcome": "dense_shape_invalid",
    "source": "rules",
-   "ms": 0.249
+   "ms": 0.16
   },
   "optmodel.formulation.optm_status_name": {
    "args": {
@@ -9229,7 +9229,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.06
   },
   "optmodel.formulation.optm_verdict_name": {
    "args": {
@@ -9238,7 +9238,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.064
   },
   "optmodel.judge.formulation_verdict_default": {
    "args": {
@@ -9308,7 +9308,7 @@
    "verified": false,
    "outcome": "dense_shape_invalid",
    "source": "rules",
-   "ms": 0.209
+   "ms": 0.166
   },
   "optmodel.judge.formulation_verdict_flat": {
    "args": {
@@ -9384,7 +9384,7 @@
    "verified": false,
    "outcome": "dense_shape_invalid",
    "source": "rules",
-   "ms": 0.217
+   "ms": 0.164
   },
   "optmodel.judge.judge_objective": {
    "args": {
@@ -9396,7 +9396,7 @@
    "verified": false,
    "outcome": "optimal",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.085
   },
   "optmodel.solve.formulation_solve_default": {
    "args": {
@@ -9465,7 +9465,7 @@
    "verified": false,
    "outcome": "dense_shape_invalid",
    "source": "rules",
-   "ms": 0.201
+   "ms": 0.164
   },
   "optmodel.solve.formulation_solve_flat": {
    "args": {
@@ -9538,7 +9538,7 @@
    "verified": false,
    "outcome": "dense_shape_invalid",
    "source": "rules",
-   "ms": 0.203
+   "ms": 0.18
   },
   "orthodontics.anchorage_loss_estimate": {
    "args": {
@@ -9548,7 +9548,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.114
   },
   "orthodontics.arch_perimeter_estimate": {
    "args": {
@@ -9558,7 +9558,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.087
   },
   "orthodontics.arch_wire_force": {
    "args": {
@@ -9570,7 +9570,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.098
   },
   "orthodontics.bolton_ratio": {
    "args": {
@@ -9580,7 +9580,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.089
   },
   "orthodontics.growth_prediction_cephalometric": {
    "args": {
@@ -9591,7 +9591,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.079
   },
   "orthodontics.levelling_torque": {
    "args": {
@@ -9603,7 +9603,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.094
   },
   "orthodontics.moment_to_force_ratio": {
    "args": {
@@ -9613,7 +9613,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.08
   },
   "orthodontics.pont_index": {
    "args": {
@@ -9623,7 +9623,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.095
   },
   "orthodontics.retainer_force_decay": {
    "args": {
@@ -9634,7 +9634,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.074
   },
   "orthodontics.tooth_movement_rate": {
    "args": {
@@ -9644,7 +9644,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.065
   },
   "packaging.box_surface_area": {
    "args": {
@@ -9655,7 +9655,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.157
+   "ms": 0.074
   },
   "packaging.box_volume": {
    "args": {
@@ -9666,7 +9666,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.068
   },
   "packaging.compression_strength_mckee": {
    "args": {
@@ -9677,7 +9677,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.088
   },
   "packaging.cushion_curve_g": {
    "args": {
@@ -9688,7 +9688,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.185
+   "ms": 0.069
   },
   "packaging.cylinder_surface_area": {
    "args": {
@@ -9698,7 +9698,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.06
   },
   "packaging.cylinder_volume": {
    "args": {
@@ -9708,7 +9708,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.064
   },
   "packaging.dimensional_weight": {
    "args": {
@@ -9720,7 +9720,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.104
   },
   "packaging.fill_percentage": {
    "args": {
@@ -9730,7 +9730,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.206
+   "ms": 0.086
   },
   "packaging.material_utilization": {
    "args": {
@@ -9740,7 +9740,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.084
   },
   "packaging.pallet_efficiency": {
    "args": {
@@ -9751,7 +9751,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.156
+   "ms": 0.071
   },
   "packaging.shelf_life_arrhenius": {
    "args": {
@@ -9763,7 +9763,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.079
   },
   "packaging.stacking_load": {
    "args": {
@@ -9773,7 +9773,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.087
   },
   "paleontology.body_mass_estimate_mammal": {
    "args": {
@@ -9782,7 +9782,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.087
   },
   "paleontology.completeness_metric": {
    "args": {
@@ -9792,7 +9792,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.076
   },
   "paleontology.extinction_rate": {
    "args": {
@@ -9803,7 +9803,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.1
   },
   "paleontology.fossil_diversity_index": {
    "args": {
@@ -9813,7 +9813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.075
   },
   "paleontology.origination_rate": {
    "args": {
@@ -9824,7 +9824,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.065
   },
   "paleontology.phylogenetic_distance": {
    "args": {
@@ -9834,7 +9834,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.157
+   "ms": 0.068
   },
   "paleontology.potassium_argon_age": {
    "args": {
@@ -9844,7 +9844,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.07
   },
   "paleontology.radiocarbon_age": {
    "args": {
@@ -9854,7 +9854,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.086
   },
   "paleontology.sedimentation_rate": {
    "args": {
@@ -9864,7 +9864,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.068
   },
   "paleontology.stratigraphic_completeness": {
    "args": {
@@ -9874,7 +9874,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.059
   },
   "paleontology.turnover_rate": {
    "args": {
@@ -9884,7 +9884,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.056
   },
   "paleontology.uranium_lead_age": {
    "args": {
@@ -9894,7 +9894,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.063
   },
   "palynology.arboreal_non_arboreal_ratio": {
    "args": {
@@ -9904,7 +9904,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.061
   },
   "palynology.pollen_accumulation_rate": {
    "args": {
@@ -9914,7 +9914,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.061
   },
   "palynology.pollen_concentration": {
    "args": {
@@ -9926,7 +9926,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.063
   },
   "palynology.pollen_influx": {
    "args": {
@@ -9936,7 +9936,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.07
   },
   "palynology.pollen_productivity_estimate": {
    "args": {
@@ -9947,7 +9947,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.064
   },
   "palynology.pollen_transport_distance": {
    "args": {
@@ -9958,7 +9958,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.069
+   "ms": 0.06
   },
   "palynology.r_value_correction": {
    "args": {
@@ -9968,7 +9968,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.06
   },
   "palynology.relative_pollen_percentage": {
    "args": {
@@ -9978,7 +9978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.077
   },
   "palynology.spore_germination_index": {
    "args": {
@@ -9988,7 +9988,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.062
   },
   "palynology.taxa_diversity_index": {
    "args": {
@@ -9998,7 +9998,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.072
   },
   "pandas_groupby.group_count_update": {
    "args": {
@@ -10007,7 +10007,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.071
   },
   "pandas_groupby.group_max_update": {
    "args": {
@@ -10017,7 +10017,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.084
   },
   "pandas_groupby.group_mean_update": {
    "args": {
@@ -10028,7 +10028,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.066
+   "ms": 0.068
   },
   "pandas_groupby.group_median_approx": {
    "args": {
@@ -10039,7 +10039,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.06
   },
   "pandas_groupby.group_min_update": {
    "args": {
@@ -10049,7 +10049,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.056
   },
   "pandas_groupby.group_skewness_term": {
    "args": {
@@ -10060,7 +10060,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.061
   },
   "pandas_groupby.group_std_from_variance": {
    "args": {
@@ -10071,7 +10071,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.066
   },
   "pandas_groupby.group_sum_update": {
    "args": {
@@ -10081,7 +10081,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.081
   },
   "pandas_groupby.group_variance_update": {
    "args": {
@@ -10093,7 +10093,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.07
   },
   "pandas_groupby.weighted_group_mean": {
    "args": {
@@ -10103,7 +10103,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.061
   },
   "paper_science.basis_weight": {
    "args": {
@@ -10113,7 +10113,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.069
   },
   "paper_science.bulk": {
    "args": {
@@ -10123,7 +10123,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.064
   },
   "paper_science.burst_index": {
    "args": {
@@ -10133,7 +10133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.06
   },
   "paper_science.caliper_to_density": {
    "args": {
@@ -10143,7 +10143,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.062
   },
   "paper_science.freeness_csf": {
    "args": {
@@ -10152,7 +10152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.065
   },
   "paper_science.kappa_number_to_lignin": {
    "args": {
@@ -10161,7 +10161,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.062
   },
   "paper_science.moisture_content_paper": {
    "args": {
@@ -10171,7 +10171,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.076
   },
   "paper_science.pulp_yield": {
    "args": {
@@ -10181,7 +10181,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.087
   },
   "paper_science.recycled_fiber_content": {
    "args": {
@@ -10191,7 +10191,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.082
   },
   "paper_science.stiffness_index": {
    "args": {
@@ -10201,7 +10201,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.083
   },
   "paper_science.tearing_resistance_index": {
    "args": {
@@ -10211,7 +10211,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.065
   },
   "paper_science.tensile_index": {
    "args": {
@@ -10221,7 +10221,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.063
   },
   "pattern.contains": {
    "args": {
@@ -10231,7 +10231,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.066
   },
   "pattern.count_occurrences": {
    "args": {
@@ -10241,7 +10241,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.074
   },
   "pattern.ends_with": {
    "args": {
@@ -10251,7 +10251,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.085
   },
   "pattern.glob_match": {
    "args": {
@@ -10261,7 +10261,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.074
   },
   "pattern.join_strings": {
    "args": {
@@ -10277,7 +10277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.09
   },
   "pattern.pad_left": {
    "args": {
@@ -10288,7 +10288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.094
   },
   "pattern.pad_right": {
    "args": {
@@ -10299,7 +10299,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.089
   },
   "pattern.replace_all": {
    "args": {
@@ -10310,7 +10310,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.089
   },
   "pattern.split_string": {
    "args": {
@@ -10320,7 +10320,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.073
   },
   "pattern.starts_with": {
    "args": {
@@ -10330,7 +10330,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.061
   },
   "pattern.template_substitute": {
    "args": {
@@ -10353,7 +10353,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.089
   },
   "pattern.trim": {
    "args": {
@@ -10362,7 +10362,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.063
   },
   "pde.diffusion_cfl": {
    "args": {
@@ -10372,7 +10372,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.095
   },
   "pde.energy": {
    "args": {
@@ -10386,7 +10386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.072
   },
   "pde.finite_difference_second": {
    "args": {
@@ -10400,7 +10400,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.075
   },
   "pde.gaussian_initial": {
    "args": {
@@ -10411,7 +10411,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.162
+   "ms": 0.141
   },
   "pde.heat_equation_1d": {
    "args": {
@@ -10428,7 +10428,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.105
   },
   "pde.is_stable_heat": {
    "args": {
@@ -10439,7 +10439,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.072
   },
   "pde.laplace_2d": {
    "args": {
@@ -10465,7 +10465,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.166
+   "ms": 0.108
   },
   "pde.max_norm": {
    "args": {
@@ -10478,7 +10478,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.081
   },
   "pde.wave_cfl": {
    "args": {
@@ -10488,7 +10488,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.068
   },
   "pde.wave_equation_1d": {
    "args": {
@@ -10510,7 +10510,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.089
   },
   "pedology.base_saturation_percent": {
    "args": {
@@ -10520,7 +10520,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.066
   },
   "pedology.biological_weathering_index": {
    "args": {
@@ -10530,7 +10530,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.061
   },
   "pedology.clay_illuviation_ratio": {
    "args": {
@@ -10540,7 +10540,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.073
   },
   "pedology.organic_horizon_depth": {
    "args": {
@@ -10550,7 +10550,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.077
   },
   "pedology.profile_development_index": {
    "args": {
@@ -10561,7 +10561,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.061
   },
   "pedology.rubification_index": {
    "args": {
@@ -10572,7 +10572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.076
   },
   "pedology.soil_age_from_pedogenesis": {
    "args": {
@@ -10582,7 +10582,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.098
   },
   "pedology.soil_development_index": {
    "args": {
@@ -10593,7 +10593,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.139
   },
   "pedology.solum_thickness_estimate": {
    "args": {
@@ -10604,7 +10604,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.101
   },
   "pedology.translocation_coefficient": {
    "args": {
@@ -10614,7 +10614,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.082
   },
   "pension.annuity_factor": {
    "args": {
@@ -10624,7 +10624,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.089
   },
   "pension.contribution_rate_required": {
    "args": {
@@ -10636,7 +10636,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.094
   },
   "pension.defined_benefit_pension": {
    "args": {
@@ -10647,7 +10647,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.099
   },
   "pension.defined_contribution_value": {
    "args": {
@@ -10658,7 +10658,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.073
   },
   "pension.funding_ratio": {
    "args": {
@@ -10668,7 +10668,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.07
   },
   "pension.inflation_adjusted_pension": {
    "args": {
@@ -10679,7 +10679,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.094
   },
   "pension.pension_gap": {
    "args": {
@@ -10689,7 +10689,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.085
   },
   "pension.pension_lump_sum_from_annuity": {
    "args": {
@@ -10699,7 +10699,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.081
   },
   "pension.replacement_ratio": {
    "args": {
@@ -10709,7 +10709,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.089
   },
   "pension.social_security_bend_points": {
    "args": {
@@ -10720,7 +10720,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.246
   },
   "pension.withdrawal_rate": {
    "args": {
@@ -10730,7 +10730,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.099
   },
   "pension.years_to_full_vesting": {
    "args": {
@@ -10740,14 +10740,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.1
   },
   "perfumery.base_note_duration": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.114
   },
   "perfumery.concentration_parfum": {
    "args": {
@@ -10767,7 +10767,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.067
   },
   "perfumery.dilution_ratio": {
    "args": {
@@ -10777,7 +10777,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.067
   },
   "perfumery.evaporation_rate_relative": {
    "args": {
@@ -10787,7 +10787,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.087
   },
   "perfumery.fragrance_strength_scale": {
    "args": {
@@ -10796,7 +10796,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.077
   },
   "perfumery.ingredient_proportion": {
    "args": {
@@ -10806,14 +10806,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.073
   },
   "perfumery.middle_note_duration": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.077
   },
   "perfumery.sillage_distance": {
    "args": {
@@ -10823,7 +10823,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.071
   },
   "perfumery.tenacity_hours": {
    "args": {
@@ -10834,14 +10834,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.063
   },
   "perfumery.top_note_duration": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.055
   },
   "perfumery.triangle_accord_balance": {
    "args": {
@@ -10852,7 +10852,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.067
   },
   "persistence.kv_clear": {
    "args": {
@@ -10877,7 +10877,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.098
   },
   "persistence.kv_contains": {
    "args": {
@@ -10903,14 +10903,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.098
   },
   "persistence.kv_create": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.075
   },
   "persistence.kv_delete": {
    "args": {
@@ -10936,7 +10936,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.111
   },
   "persistence.kv_get": {
    "args": {
@@ -10962,7 +10962,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.1
   },
   "persistence.kv_keys": {
    "args": {
@@ -10987,7 +10987,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.124
   },
   "persistence.kv_put": {
    "args": {
@@ -11014,7 +11014,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.133
   },
   "persistence.kv_size": {
    "args": {
@@ -11039,7 +11039,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.104
   },
   "persistence.kv_values": {
    "args": {
@@ -11064,7 +11064,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.109
   },
   "persistence.restore": {
    "args": {
@@ -11089,7 +11089,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.118
   },
   "persistence.snapshot": {
    "args": {
@@ -11114,7 +11114,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.121
   },
   "pest_control.bait_station_density": {
    "args": {
@@ -11124,7 +11124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.076
   },
   "pest_control.biocontrol_release_rate": {
    "args": {
@@ -11135,7 +11135,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.076
   },
   "pest_control.dilution_rate": {
    "args": {
@@ -11145,7 +11145,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.075
   },
   "pest_control.economic_injury_level": {
    "args": {
@@ -11155,7 +11155,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.087
   },
   "pest_control.economic_threshold": {
    "args": {
@@ -11166,7 +11166,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.071
   },
   "pest_control.fumigation_ct": {
    "args": {
@@ -11176,7 +11176,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.063
   },
   "pest_control.pest_density": {
    "args": {
@@ -11186,7 +11186,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.073
   },
   "pest_control.population_reduction": {
    "args": {
@@ -11196,7 +11196,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.093
   },
   "pest_control.residual_effectiveness": {
    "args": {
@@ -11207,7 +11207,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.066
   },
   "pest_control.resistance_ratio": {
    "args": {
@@ -11217,7 +11217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.065
   },
   "pest_control.spray_coverage": {
    "args": {
@@ -11227,7 +11227,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.059
   },
   "pest_control.trap_catch_rate": {
    "args": {
@@ -11238,7 +11238,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.063
   },
   "pharmacology.clearance_from_halflife": {
    "args": {
@@ -11248,7 +11248,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.078
   },
   "pharmacology.drug_bioavailability": {
    "args": {
@@ -11260,7 +11260,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.066
   },
   "pharmacology.drug_interaction_index": {
    "args": {
@@ -11272,7 +11272,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.066
   },
   "pharmacology.drug_protein_binding": {
    "args": {
@@ -11281,7 +11281,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.056
   },
   "pharmacology.hill_equation": {
    "args": {
@@ -11293,7 +11293,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.06
   },
   "pharmacology.loading_dose": {
    "args": {
@@ -11303,7 +11303,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.066
   },
   "pharmacology.receptor_occupancy": {
    "args": {
@@ -11313,7 +11313,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.091
   },
   "pharmacology.steady_state_concentration": {
    "args": {
@@ -11325,7 +11325,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.07
   },
   "pharmacology.therapeutic_index": {
    "args": {
@@ -11335,7 +11335,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.07
   },
   "pharmacology.volume_of_distribution": {
    "args": {
@@ -11345,7 +11345,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.07
   },
   "photonics.beer_lambert_absorbance": {
    "args": {
@@ -11354,7 +11354,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.072
   },
   "photonics.beer_lambert_transmittance": {
    "args": {
@@ -11364,7 +11364,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.081
   },
   "photonics.brewster_angle": {
    "args": {
@@ -11374,7 +11374,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.062
   },
   "photonics.critical_angle": {
    "args": {
@@ -11384,7 +11384,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.059
   },
   "photonics.diffraction_grating_angle": {
    "args": {
@@ -11395,7 +11395,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.069
   },
   "photonics.frequency_to_wavelength": {
    "args": {
@@ -11404,7 +11404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.057
   },
   "photonics.fresnel_reflectance_normal": {
    "args": {
@@ -11414,7 +11414,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.067
   },
   "photonics.numerical_aperture": {
    "args": {
@@ -11424,7 +11424,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.067
   },
   "photonics.photon_energy": {
    "args": {
@@ -11433,7 +11433,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.073
   },
   "photonics.rayleigh_resolution": {
    "args": {
@@ -11443,7 +11443,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.075
   },
   "photonics.snells_law_angle": {
    "args": {
@@ -11454,7 +11454,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.073
   },
   "photonics.wavelength_to_frequency": {
    "args": {
@@ -11463,7 +11463,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.074
   },
   "photovoltaics.capacity_factor": {
    "args": {
@@ -11474,7 +11474,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.063
   },
   "photovoltaics.cell_efficiency": {
    "args": {
@@ -11485,7 +11485,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.08
   },
   "photovoltaics.energy_yield": {
    "args": {
@@ -11496,7 +11496,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.091
   },
   "photovoltaics.fill_factor": {
    "args": {
@@ -11507,7 +11507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.075
   },
   "photovoltaics.irradiance_on_tilted_plane": {
    "args": {
@@ -11518,7 +11518,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.065
   },
   "photovoltaics.lcoe_solar": {
    "args": {
@@ -11531,7 +11531,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.08
   },
   "photovoltaics.peak_sun_hours": {
    "args": {
@@ -11540,7 +11540,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.077
   },
   "photovoltaics.power_output": {
    "args": {
@@ -11551,7 +11551,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.071
   },
   "photovoltaics.system_pr": {
    "args": {
@@ -11561,7 +11561,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.079
   },
   "photovoltaics.temperature_coefficient": {
    "args": {
@@ -11572,7 +11572,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.08
   },
   "physics.elastic_collision_v1": {
    "args": {
@@ -11584,7 +11584,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.075
   },
   "physics.gravitational_force": {
    "args": {
@@ -11595,7 +11595,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.093
   },
   "physics.kinematic_distance": {
    "args": {
@@ -11606,7 +11606,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.084
   },
   "physics.kinematic_velocity": {
    "args": {
@@ -11617,7 +11617,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.071
   },
   "physics.kinetic_energy": {
    "args": {
@@ -11627,7 +11627,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.06
   },
   "physics.momentum": {
    "args": {
@@ -11637,7 +11637,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.062
   },
   "physics.potential_energy": {
    "args": {
@@ -11648,7 +11648,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.073
   },
   "physics.power": {
    "args": {
@@ -11658,7 +11658,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.089
   },
   "physics.projectile_max_height": {
    "args": {
@@ -11669,7 +11669,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.07
   },
   "physics.projectile_range": {
    "args": {
@@ -11680,7 +11680,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.063
   },
   "physics.projectile_time": {
    "args": {
@@ -11691,7 +11691,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.062
   },
   "physics.work": {
    "args": {
@@ -11702,7 +11702,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.062
   },
   "phytochemistry.alkaloid_gravimetric": {
    "args": {
@@ -11712,7 +11712,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.06
   },
   "phytochemistry.anthocyanin_concentration": {
    "args": {
@@ -11726,7 +11726,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.07
   },
   "phytochemistry.carotenoid_content": {
    "args": {
@@ -11737,7 +11737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.076
   },
   "phytochemistry.chlorophyll_a": {
    "args": {
@@ -11747,7 +11747,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.085
   },
   "phytochemistry.chlorophyll_b": {
    "args": {
@@ -11757,7 +11757,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.068
   },
   "phytochemistry.dpph_radical_scavenging": {
    "args": {
@@ -11767,7 +11767,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.075
   },
   "phytochemistry.essential_oil_yield": {
    "args": {
@@ -11777,7 +11777,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.071
   },
   "phytochemistry.flavonoid_content": {
    "args": {
@@ -11789,7 +11789,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.086
   },
   "phytochemistry.phenolic_content_folin": {
    "args": {
@@ -11801,7 +11801,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.074
   },
   "phytochemistry.tannin_content": {
    "args": {
@@ -11811,7 +11811,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.18
+   "ms": 0.058
   },
   "pipeline.batch": {
    "args": {
@@ -11827,7 +11827,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.082
   },
   "pipeline.chain_map_filter": {
    "args": {
@@ -11845,7 +11845,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.085
   },
   "pipeline.filter_list": {
    "args": {
@@ -11862,7 +11862,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.072
   },
   "pipeline.flatten": {
    "args": {
@@ -11887,7 +11887,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.092
   },
   "pipeline.map_list": {
    "args": {
@@ -11903,7 +11903,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.089
   },
   "pipeline.reduce_max": {
    "args": {
@@ -11918,7 +11918,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.082
   },
   "pipeline.reduce_min": {
    "args": {
@@ -11933,7 +11933,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.075
   },
   "pipeline.reduce_product": {
    "args": {
@@ -11948,7 +11948,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.077
   },
   "pipeline.reduce_sum": {
    "args": {
@@ -11963,7 +11963,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.063
   },
   "pipeline.unique_values": {
    "args": {
@@ -11978,7 +11978,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.07
   },
   "pipeline.window": {
    "args": {
@@ -11994,7 +11994,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.073
   },
   "pipeline.zip_lists": {
    "args": {
@@ -12016,7 +12016,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.187
+   "ms": 0.086
   },
   "pipelines.pipeline_fit": {
    "args": {
@@ -12059,7 +12059,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.154
+   "ms": 0.125
   },
   "pipelines.pipeline_inverse": {
    "args": {
@@ -12100,7 +12100,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.202
+   "ms": 0.124
   },
   "pipelines.pipeline_is_invertible": {
    "args": {
@@ -12133,7 +12133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.138
+   "ms": 0.112
   },
   "pipelines.pipeline_transform": {
    "args": {
@@ -12174,7 +12174,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.117
   },
   "pipelines.step_param_count": {
    "args": {
@@ -12184,7 +12184,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.078
   },
   "plasma_physics.alfven_speed": {
    "args": {
@@ -12194,7 +12194,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.064
   },
   "plasma_physics.bremsstrahlung_power": {
    "args": {
@@ -12206,7 +12206,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.09
   },
   "plasma_physics.coulomb_logarithm": {
    "args": {
@@ -12216,7 +12216,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.067
   },
   "plasma_physics.debye_length": {
    "args": {
@@ -12226,7 +12226,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.068
   },
   "plasma_physics.fusion_lawson_criterion": {
    "args": {
@@ -12236,7 +12236,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.064
   },
   "plasma_physics.larmor_radius": {
    "args": {
@@ -12248,7 +12248,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.069
   },
   "plasma_physics.mhd_beta": {
    "args": {
@@ -12259,7 +12259,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.081
   },
   "plasma_physics.plasma_frequency": {
    "args": {
@@ -12268,7 +12268,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.082
   },
   "plasma_physics.spitzer_resistivity": {
    "args": {
@@ -12278,7 +12278,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.069
   },
   "plasma_physics.thermal_velocity": {
    "args": {
@@ -12288,7 +12288,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.06
   },
   "pls.pls_fit": {
    "args": {
@@ -12323,7 +12323,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.134
   },
   "pls.pls_predict": {
    "args": {
@@ -12415,7 +12415,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.2
+   "ms": 0.214
   },
   "pls.pls_predict_rows": {
    "args": {
@@ -12508,7 +12508,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.198
+   "ms": 0.201
   },
   "pls.pls_r2": {
    "args": {
@@ -12608,7 +12608,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.222
+   "ms": 0.218
   },
   "plumbing.drainage_slope_minimum": {
    "args": {
@@ -12617,7 +12617,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.078
   },
   "plumbing.friction_factor_laminar": {
    "args": {
@@ -12626,7 +12626,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.065
   },
   "plumbing.head_loss_darcy": {
    "args": {
@@ -12639,7 +12639,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.07
   },
   "plumbing.head_loss_minor": {
    "args": {
@@ -12650,7 +12650,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.076
   },
   "plumbing.pipe_flow_velocity": {
    "args": {
@@ -12660,7 +12660,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.068
   },
   "plumbing.pipe_sizing_velocity_method": {
    "args": {
@@ -12670,7 +12670,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.065
   },
   "plumbing.pump_power": {
    "args": {
@@ -12683,7 +12683,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.072
   },
   "plumbing.reynolds_number": {
    "args": {
@@ -12694,7 +12694,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.061
   },
   "plumbing.thermal_expansion_pipe": {
    "args": {
@@ -12705,7 +12705,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.071
   },
   "plumbing.total_dynamic_head": {
    "args": {
@@ -12716,7 +12716,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.056
   },
   "plumbing.water_demand_fixture_units": {
    "args": {
@@ -12726,7 +12726,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.078
+   "ms": 0.063
   },
   "plumbing.water_hammer_pressure": {
    "args": {
@@ -12737,7 +12737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.064
   },
   "pneumatics.air_consumption": {
    "args": {
@@ -12749,7 +12749,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.063
   },
   "pneumatics.bore_area": {
    "args": {
@@ -12758,7 +12758,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.087
   },
   "pneumatics.compressor_power": {
    "args": {
@@ -12770,7 +12770,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.087
   },
   "pneumatics.cylinder_force": {
    "args": {
@@ -12780,7 +12780,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.073
   },
   "pneumatics.dew_point_pressure": {
    "args": {
@@ -12790,7 +12790,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.073
   },
   "pneumatics.flow_rate_orifice": {
    "args": {
@@ -12813,7 +12813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.073
   },
   "pneumatics.ideal_gas_volume": {
    "args": {
@@ -12824,7 +12824,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.08
   },
   "pneumatics.piston_speed": {
    "args": {
@@ -12834,7 +12834,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.065
   },
   "pneumatics.pressure_drop_pipe": {
    "args": {
@@ -12847,7 +12847,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.085
   },
   "pneumatics.receiver_volume": {
    "args": {
@@ -12859,7 +12859,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.091
   },
   "pneumatics.specific_power": {
    "args": {
@@ -12869,7 +12869,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.075
   },
   "polymer.carothers_conversion": {
    "args": {
@@ -12878,7 +12878,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.063
   },
   "polymer.degree_of_polymerization": {
    "args": {
@@ -12888,7 +12888,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.066
   },
   "polymer.end_to_end_distance": {
    "args": {
@@ -12898,7 +12898,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.063
   },
   "polymer.flory_huggins_free_energy": {
    "args": {
@@ -12909,7 +12909,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.061
   },
   "polymer.glass_transition_fox": {
    "args": {
@@ -12921,7 +12921,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.066
   },
   "polymer.mark_houwink": {
    "args": {
@@ -12932,7 +12932,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.061
   },
   "polymer.melt_flow_index_approx": {
    "args": {
@@ -12942,7 +12942,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.058
   },
   "polymer.number_average_mw": {
    "args": {
@@ -12952,7 +12952,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.057
   },
   "polymer.polydispersity_index": {
    "args": {
@@ -12962,7 +12962,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.055
   },
   "polymer.radius_of_gyration": {
    "args": {
@@ -12971,7 +12971,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.056
   },
   "polymer.tensile_modulus_rule_of_mixtures": {
    "args": {
@@ -12982,7 +12982,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.066
   },
   "polymer.weight_average_mw": {
    "args": {
@@ -12992,7 +12992,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.066
   },
   "polynomial.poly_add": {
    "args": {
@@ -13014,7 +13014,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.091
   },
   "polynomial.poly_compose": {
    "args": {
@@ -13036,7 +13036,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.109
   },
   "polynomial.poly_degree": {
    "args": {
@@ -13049,7 +13049,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.064
   },
   "polynomial.poly_derivative": {
    "args": {
@@ -13062,7 +13062,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.087
   },
   "polynomial.poly_eval": {
    "args": {
@@ -13076,7 +13076,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.09
   },
   "polynomial.poly_from_roots": {
    "args": {
@@ -13091,7 +13091,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.073
   },
   "polynomial.poly_integral": {
    "args": {
@@ -13105,7 +13105,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.072
   },
   "polynomial.poly_multiply": {
    "args": {
@@ -13127,7 +13127,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.09
   },
   "polynomial.poly_scale": {
    "args": {
@@ -13141,7 +13141,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.065
   },
   "polynomial.quadratic_roots": {
    "args": {
@@ -13152,7 +13152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.06
   },
   "population.carrying_capacity_estimate": {
    "args": {
@@ -13167,7 +13167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.073
   },
   "population.competition_model": {
    "args": {
@@ -13183,7 +13183,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.073
   },
   "population.exponential_growth": {
    "args": {
@@ -13194,7 +13194,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.072
   },
   "population.extinction_risk": {
    "args": {
@@ -13204,7 +13204,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.06
   },
   "population.growth_rate_estimate": {
    "args": {
@@ -13215,7 +13215,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.083
   },
   "population.logistic_growth": {
    "args": {
@@ -13226,7 +13226,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.059
   },
   "population.logistic_simulate": {
    "args": {
@@ -13238,7 +13238,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.076
   },
   "population.lotka_volterra_simulate": {
    "args": {
@@ -13254,7 +13254,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.093
   },
   "population.lotka_volterra_step": {
    "args": {
@@ -13269,7 +13269,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.063
   },
   "population.population_doubling_time": {
    "args": {
@@ -13278,7 +13278,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.069
   },
   "positional_encoding.alibi_bias": {
    "args": {
@@ -13289,7 +13289,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.081
   },
   "positional_encoding.alibi_slope": {
    "args": {
@@ -13299,7 +13299,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.063
   },
   "positional_encoding.learned_pe_init": {
    "args": {
@@ -13308,7 +13308,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.06
   },
   "positional_encoding.relative_pe_bucket": {
    "args": {
@@ -13319,7 +13319,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.066
   },
   "positional_encoding.rope_apply_cos": {
    "args": {
@@ -13329,7 +13329,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.056
   },
   "positional_encoding.rope_apply_sin": {
    "args": {
@@ -13341,7 +13341,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.065
   },
   "positional_encoding.rope_cos_component": {
    "args": {
@@ -13352,7 +13352,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.064
   },
   "positional_encoding.rope_sin_component": {
    "args": {
@@ -13363,7 +13363,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.074
   },
   "positional_encoding.sinusoidal_pe": {
    "args": {
@@ -13374,7 +13374,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.081
   },
   "positional_encoding.xpos_scale": {
    "args": {
@@ -13386,7 +13386,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.081
   },
   "power_systems.active_power": {
    "args": {
@@ -13397,7 +13397,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.082
   },
   "power_systems.apparent_power": {
    "args": {
@@ -13407,7 +13407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.074
   },
   "power_systems.capacitor_reactive_power": {
    "args": {
@@ -13418,7 +13418,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.067
   },
   "power_systems.line_loss": {
    "args": {
@@ -13428,7 +13428,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.071
   },
   "power_systems.load_factor": {
    "args": {
@@ -13438,7 +13438,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.08
   },
   "power_systems.power_efficiency": {
    "args": {
@@ -13448,7 +13448,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.088
   },
   "power_systems.power_factor_from_pq": {
    "args": {
@@ -13458,7 +13458,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.075
   },
   "power_systems.reactive_power": {
    "args": {
@@ -13469,7 +13469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.088
+   "ms": 0.068
   },
   "power_systems.three_phase_power": {
    "args": {
@@ -13480,7 +13480,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.075
   },
   "power_systems.transformer_secondary_voltage": {
    "args": {
@@ -13490,7 +13490,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.087
   },
   "power_systems.transformer_turns_ratio": {
    "args": {
@@ -13500,7 +13500,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.077
   },
   "power_systems.voltage_drop": {
    "args": {
@@ -13511,7 +13511,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.088
   },
   "printing.bleed_area": {
    "args": {
@@ -13522,7 +13522,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.065
   },
   "printing.color_delta_e": {
    "args": {
@@ -13536,7 +13536,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.08
   },
   "printing.cost_per_page": {
    "args": {
@@ -13546,7 +13546,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.063
   },
   "printing.dot_gain_apparent": {
    "args": {
@@ -13556,7 +13556,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.07
   },
   "printing.dpi_to_lpi": {
    "args": {
@@ -13566,7 +13566,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.088
   },
   "printing.file_size_uncompressed": {
    "args": {
@@ -13578,7 +13578,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.079
   },
   "printing.imposition_pages": {
    "args": {
@@ -13588,7 +13588,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.103
   },
   "printing.ink_coverage": {
    "args": {
@@ -13600,7 +13600,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.066
   },
   "printing.paper_weight_gsm_to_lb": {
    "args": {
@@ -13609,7 +13609,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.062
   },
   "printing.pixel_count": {
    "args": {
@@ -13620,14 +13620,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.065
   },
   "printing.sheets_per_ream": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.072
   },
   "printing.spine_width": {
    "args": {
@@ -13637,7 +13637,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.076
   },
   "privacy.advanced_composition": {
    "args": {
@@ -13663,7 +13663,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.254
+   "ms": 0.112
   },
   "privacy.dp_count": {
    "args": {
@@ -13673,7 +13673,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.089
   },
   "privacy.dp_mean": {
    "args": {
@@ -13691,7 +13691,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.103
   },
   "privacy.exponential_mechanism_scores": {
    "args": {
@@ -13708,7 +13708,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.095
   },
   "privacy.gaussian_mechanism": {
    "args": {
@@ -13720,7 +13720,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.066
   },
   "privacy.laplace_mechanism": {
    "args": {
@@ -13731,7 +13731,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.114
   },
   "privacy.randomized_response": {
    "args": {
@@ -13741,7 +13741,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.098
   },
   "privacy.sensitivity_l1": {
    "args": {
@@ -13756,7 +13756,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.096
   },
   "privacy.sensitivity_l2": {
    "args": {
@@ -13771,7 +13771,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.118
   },
   "procurement.days_inventory_outstanding": {
    "args": {
@@ -13780,7 +13780,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.097
   },
   "procurement.economic_order_quantity": {
    "args": {
@@ -13791,7 +13791,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.086
   },
   "procurement.inventory_turnover": {
    "args": {
@@ -13801,7 +13801,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.079
   },
   "procurement.maverick_spend_ratio": {
    "args": {
@@ -13822,7 +13822,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.092
   },
   "procurement.price_variance": {
    "args": {
@@ -13833,7 +13833,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.07
   },
   "procurement.purchase_price_variance_pct": {
    "args": {
@@ -13843,7 +13843,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.072
   },
   "procurement.reorder_point": {
    "args": {
@@ -13854,7 +13854,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.065
   },
   "procurement.safety_stock": {
    "args": {
@@ -13865,7 +13865,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.063
   },
   "procurement.savings_percentage": {
    "args": {
@@ -13875,7 +13875,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.055
   },
   "procurement.supplier_score_weighted": {
    "args": {
@@ -13885,7 +13885,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.063
   },
   "procurement.total_cost_of_ownership": {
    "args": {
@@ -13897,7 +13897,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.063
   },
   "progexec.contract.progexec_status_name": {
    "args": {
@@ -13906,7 +13906,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.056
   },
   "progexec.exec.progexec_run_flat": {
    "args": {
@@ -13971,7 +13971,7 @@
    "verified": false,
    "outcome": "bad_ref",
    "source": "rules",
-   "ms": 0.188
+   "ms": 0.167
   },
   "progexec.roundexact.round_half_even_scaled": {
    "args": {
@@ -13981,7 +13981,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.074
   },
   "project_management.cost_performance_index": {
    "args": {
@@ -13991,7 +13991,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.082
   },
   "project_management.cost_variance": {
    "args": {
@@ -14001,7 +14001,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.073
   },
   "project_management.critical_path_duration": {
    "args": {
@@ -14010,7 +14010,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.082
   },
   "project_management.earned_value": {
    "args": {
@@ -14020,7 +14020,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.072
   },
   "project_management.estimate_at_completion": {
    "args": {
@@ -14030,7 +14030,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.073
   },
   "project_management.estimate_to_complete": {
    "args": {
@@ -14040,7 +14040,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.075
   },
   "project_management.float_time": {
    "args": {
@@ -14050,7 +14050,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.126
+   "ms": 0.071
   },
   "project_management.pert_estimate": {
    "args": {
@@ -14061,7 +14061,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.067
   },
   "project_management.schedule_performance_index": {
    "args": {
@@ -14071,7 +14071,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.063
   },
   "project_management.schedule_variance": {
    "args": {
@@ -14081,7 +14081,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.057
   },
   "project_management.to_complete_performance_index": {
    "args": {
@@ -14092,7 +14092,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.073
+   "ms": 0.061
   },
   "project_management.variance_at_completion": {
    "args": {
@@ -14102,7 +14102,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.063
+   "ms": 0.079
   },
   "proteomics.empa_score": {
    "args": {
@@ -14111,7 +14111,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.071
+   "ms": 0.077
   },
   "proteomics.extinction_coefficient": {
    "args": {
@@ -14122,7 +14122,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.079
+   "ms": 0.069
   },
   "proteomics.fdr_target_decoy": {
    "args": {
@@ -14132,7 +14132,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.072
+   "ms": 0.059
   },
   "proteomics.isoelectric_point_approx": {
    "args": {
@@ -14142,7 +14142,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.068
   },
   "proteomics.molecular_weight_da": {
    "args": {
@@ -14152,7 +14152,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.064
   },
   "proteomics.peak_area_ratio": {
    "args": {
@@ -14162,7 +14162,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.058
   },
   "proteomics.peptide_mass_monoisotopic": {
    "args": {
@@ -14172,7 +14172,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.055
   },
   "proteomics.protein_abundance_index": {
    "args": {
@@ -14182,7 +14182,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.066
   },
   "proteomics.protein_concentration_a280": {
    "args": {
@@ -14193,7 +14193,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.072
   },
   "proteomics.sequence_coverage": {
    "args": {
@@ -14203,7 +14203,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.073
   },
   "protocol.decode_field": {
    "args": {
@@ -14219,7 +14219,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.083
   },
   "protocol.decode_message": {
    "args": {
@@ -14234,7 +14234,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.095
   },
   "protocol.decode_string_field": {
    "args": {
@@ -14250,7 +14250,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.072
   },
   "protocol.decode_varint": {
    "args": {
@@ -14266,7 +14266,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.067
   },
   "protocol.encode_field": {
    "args": {
@@ -14277,7 +14277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.232
+   "ms": 0.068
   },
   "protocol.encode_message": {
    "args": {
@@ -14302,7 +14302,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.09
   },
   "protocol.encode_string_field": {
    "args": {
@@ -14312,7 +14312,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.102
   },
   "protocol.encode_varint": {
    "args": {
@@ -14330,7 +14330,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.082
   },
   "protocol.zigzag_encode": {
    "args": {
@@ -14339,7 +14339,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.07
   },
   "psychometrics.cronbach_alpha": {
    "args": {
@@ -14350,7 +14350,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.061
   },
   "psychometrics.irt_1pl_probability": {
    "args": {
@@ -14360,7 +14360,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.058
   },
   "psychometrics.irt_2pl_probability": {
    "args": {
@@ -14371,7 +14371,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.07
   },
   "psychometrics.item_difficulty": {
    "args": {
@@ -14381,7 +14381,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.063
   },
   "psychometrics.item_discrimination": {
    "args": {
@@ -14393,7 +14393,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.083
   },
   "psychometrics.kuder_richardson_20": {
    "args": {
@@ -14404,7 +14404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.06
   },
   "psychometrics.point_biserial": {
    "args": {
@@ -14416,7 +14416,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.06
   },
   "psychometrics.spearman_brown_prophecy": {
    "args": {
@@ -14426,7 +14426,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.075
   },
   "psychometrics.standard_error_of_measurement": {
    "args": {
@@ -14436,7 +14436,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.083
   },
   "psychometrics.stanine": {
    "args": {
@@ -14445,7 +14445,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.075
   },
   "psychometrics.t_score": {
    "args": {
@@ -14454,7 +14454,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.069
   },
   "psychometrics.z_score": {
    "args": {
@@ -14465,7 +14465,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.062
   },
   "pulmonology.a_a_gradient": {
    "args": {
@@ -14475,7 +14475,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.06
   },
   "pulmonology.airway_resistance": {
    "args": {
@@ -14485,7 +14485,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.068
   },
   "pulmonology.alveolar_oxygen": {
    "args": {
@@ -14496,7 +14496,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.059
   },
   "pulmonology.alveolar_ventilation": {
    "args": {
@@ -14507,7 +14507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.063
   },
   "pulmonology.compliance_static": {
    "args": {
@@ -14517,7 +14517,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.165
+   "ms": 0.061
   },
   "pulmonology.fev1_fvc_ratio": {
    "args": {
@@ -14527,7 +14527,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.055
   },
   "pulmonology.minute_ventilation": {
    "args": {
@@ -14537,7 +14537,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.058
   },
   "pulmonology.peak_expiratory_flow": {
    "args": {
@@ -14547,7 +14547,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.068
   },
   "pulmonology.respiratory_quotient": {
    "args": {
@@ -14557,7 +14557,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.065
   },
   "pulmonology.tidal_volume_predicted": {
    "args": {
@@ -14566,14 +14566,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.063
   },
   "quantum.bell_state": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.063
   },
   "quantum.bloch_coords": {
    "args": {
@@ -14588,7 +14588,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.071
   },
   "quantum.expectation_z": {
    "args": {
@@ -14603,7 +14603,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.074
   },
   "quantum.hadamard": {
    "args": {
@@ -14618,7 +14618,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.151
+   "ms": 0.085
   },
   "quantum.measure_probability": {
    "args": {
@@ -14633,7 +14633,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.068
   },
   "quantum.pauli_x": {
    "args": {
@@ -14648,7 +14648,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.072
   },
   "quantum.pauli_z": {
    "args": {
@@ -14663,7 +14663,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.079
   },
   "quantum.phase_gate": {
    "args": {
@@ -14679,7 +14679,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.099
   },
   "quantum.qubit_norm": {
    "args": {
@@ -14694,21 +14694,21 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.075
   },
   "quantum.qubit_one": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.061
   },
   "quantum.qubit_zero": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.058
   },
   "quantum_computing.bell_state_fidelity": {
    "args": {
@@ -14717,7 +14717,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.059
   },
   "quantum_computing.circuit_depth_error": {
    "args": {
@@ -14727,7 +14727,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.066
   },
   "quantum_computing.decoherence_time_ratio": {
    "args": {
@@ -14737,7 +14737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.162
+   "ms": 0.062
   },
   "quantum_computing.error_correction_threshold": {
    "args": {
@@ -14747,7 +14747,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.082
   },
   "quantum_computing.gate_error_rate": {
    "args": {
@@ -14756,7 +14756,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.063
   },
   "quantum_computing.grover_iterations": {
    "args": {
@@ -14765,7 +14765,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.097
+   "ms": 0.061
   },
   "quantum_computing.logical_qubit_overhead": {
    "args": {
@@ -14774,7 +14774,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.092
+   "ms": 0.058
   },
   "quantum_computing.measurement_probability_0": {
    "args": {
@@ -14783,7 +14783,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.07
   },
   "quantum_computing.measurement_probability_1": {
    "args": {
@@ -14792,7 +14792,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.084
   },
   "quantum_computing.quantum_volume": {
    "args": {
@@ -14802,7 +14802,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.07
   },
   "quantum_computing.qubit_state_probability": {
    "args": {
@@ -14811,7 +14811,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.064
   },
   "quantum_computing.shor_qubits_needed": {
    "args": {
@@ -14820,7 +14820,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.074
   },
   "queue_ds.cb_create": {
    "args": {
@@ -14829,7 +14829,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.076
   },
   "queue_ds.cb_is_full": {
    "args": {
@@ -14849,7 +14849,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.101
   },
   "queue_ds.cb_peek": {
    "args": {
@@ -14868,7 +14868,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 14.887
+   "ms": 14.766
   },
   "queue_ds.cb_pop": {
    "args": {
@@ -14887,7 +14887,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 21.704
+   "ms": 12.666
   },
   "queue_ds.cb_push": {
    "args": {
@@ -14907,7 +14907,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 20.008
+   "ms": 14.509
   },
   "queue_ds.cb_size": {
    "args": {
@@ -14927,14 +14927,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.259
+   "ms": 0.164
   },
   "queue_ds.pq_create": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.093
   },
   "queue_ds.pq_is_empty": {
    "args": {
@@ -14958,7 +14958,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.18
+   "ms": 0.1
   },
   "queue_ds.pq_peek": {
    "args": {
@@ -14982,7 +14982,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.211
+   "ms": 0.11
   },
   "queue_ds.pq_pop": {
    "args": {
@@ -15006,7 +15006,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.196
+   "ms": 0.104
   },
   "queue_ds.pq_push": {
    "args": {
@@ -15032,7 +15032,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.387
+   "ms": 0.091
   },
   "queue_ds.pq_size": {
    "args": {
@@ -15056,7 +15056,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.254
+   "ms": 0.221
   },
   "queueing.erlang_b": {
    "args": {
@@ -15066,7 +15066,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.245
+   "ms": 0.102
   },
   "queueing.factorial": {
    "args": {
@@ -15075,7 +15075,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.251
+   "ms": 0.06
   },
   "queueing.littles_law_L": {
    "args": {
@@ -15085,7 +15085,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.224
+   "ms": 0.062
   },
   "queueing.littles_law_W": {
    "args": {
@@ -15095,7 +15095,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.172
+   "ms": 0.06
   },
   "queueing.mm1_avg_queue_length": {
    "args": {
@@ -15105,7 +15105,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.2
+   "ms": 0.145
   },
   "queueing.mm1_avg_system_size": {
    "args": {
@@ -15115,7 +15115,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.185
+   "ms": 0.06
   },
   "queueing.mm1_avg_system_time": {
    "args": {
@@ -15125,7 +15125,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.515
+   "ms": 0.068
   },
   "queueing.mm1_avg_wait_time": {
    "args": {
@@ -15135,7 +15135,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.211
+   "ms": 0.055
   },
   "queueing.mm1_utilization": {
    "args": {
@@ -15145,7 +15145,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.05
   },
   "queueing.mmc_avg_wait_time": {
    "args": {
@@ -15156,7 +15156,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.058
   },
   "queueing.mmc_erlang_c": {
    "args": {
@@ -15167,7 +15167,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.384
+   "ms": 0.065
   },
   "radar.antenna_gain_from_area": {
    "args": {
@@ -15177,7 +15177,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.338
+   "ms": 0.056
   },
   "radar.doppler_frequency": {
    "args": {
@@ -15187,7 +15187,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.155
+   "ms": 0.037
   },
   "radar.doppler_velocity": {
    "args": {
@@ -15197,7 +15197,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.173
+   "ms": 0.039
   },
   "radar.max_unambiguous_range": {
    "args": {
@@ -15207,7 +15207,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.23
+   "ms": 0.034
   },
   "radar.max_unambiguous_velocity": {
    "args": {
@@ -15217,7 +15217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.404
+   "ms": 0.031
   },
   "radar.noise_power": {
    "args": {
@@ -15228,7 +15228,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.26
+   "ms": 0.038
   },
   "radar.pulse_repetition_interval": {
    "args": {
@@ -15237,7 +15237,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.18
+   "ms": 0.054
   },
   "radar.radar_cross_section_sphere": {
    "args": {
@@ -15246,7 +15246,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.233
+   "ms": 0.074
   },
   "radar.radar_range_equation": {
    "args": {
@@ -15262,7 +15262,7 @@
    "verified": true,
    "outcome": "result",
    "source": "plain",
-   "ms": 0.147
+   "ms": 0.046
   },
   "radar.range_from_time": {
    "args": {
@@ -15272,7 +15272,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.175
+   "ms": 0.048
   },
   "radar.range_resolution": {
    "args": {
@@ -15281,7 +15281,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.162
+   "ms": 0.037
   },
   "radar.signal_to_clutter": {
    "args": {
@@ -15291,7 +15291,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.053
   },
   "radiometry.absorptance_from_reflectance": {
    "args": {
@@ -15301,7 +15301,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.065
   },
   "radiometry.lambertian_irradiance": {
    "args": {
@@ -15311,7 +15311,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.165
+   "ms": 0.052
   },
   "radiometry.luminous_efficacy": {
    "args": {
@@ -15321,7 +15321,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.038
   },
   "radiometry.noise_equivalent_power": {
    "args": {
@@ -15331,7 +15331,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.147
+   "ms": 0.032
   },
   "radiometry.photon_energy": {
    "args": {
@@ -15340,7 +15340,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.034
   },
   "radiometry.photon_flux": {
    "args": {
@@ -15350,7 +15350,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.029
   },
   "radiometry.planck_spectral_radiance": {
    "args": {
@@ -15360,7 +15360,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.028
   },
   "radiometry.radiant_exitance_blackbody": {
    "args": {
@@ -15369,7 +15369,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.411
+   "ms": 0.038
   },
   "radiometry.solid_angle_cone": {
    "args": {
@@ -15378,7 +15378,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.041
   },
   "radiometry.stefan_boltzmann_radiance": {
    "args": {
@@ -15388,7 +15388,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.164
+   "ms": 0.037
   },
   "random_utils.random_bootstrap": {
    "args": {
@@ -15404,7 +15404,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.303
+   "ms": 0.063
   },
   "random_utils.random_choice": {
    "args": {
@@ -15419,7 +15419,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.176
+   "ms": 0.042
   },
   "random_utils.random_permutation": {
    "args": {
@@ -15428,7 +15428,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.169
+   "ms": 0.072
   },
   "random_utils.random_sample": {
    "args": {
@@ -15444,7 +15444,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.049
   },
   "random_utils.random_shuffle": {
    "args": {
@@ -15459,7 +15459,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.346
+   "ms": 0.051
   },
   "random_utils.random_uniform_int": {
    "args": {
@@ -15469,7 +15469,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.308
+   "ms": 0.035
   },
   "random_utils.stratified_sample": {
    "args": {
@@ -15485,7 +15485,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.518
+   "ms": 0.043
   },
   "real_estate.appreciation_value": {
    "args": {
@@ -15496,7 +15496,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.288
+   "ms": 0.039
   },
   "real_estate.break_even_ratio": {
    "args": {
@@ -15507,7 +15507,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.153
+   "ms": 0.039
   },
   "real_estate.cap_rate": {
    "args": {
@@ -15517,7 +15517,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.029
   },
   "real_estate.cash_on_cash_return": {
    "args": {
@@ -15527,7 +15527,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.652
+   "ms": 0.026
   },
   "real_estate.debt_service_coverage": {
    "args": {
@@ -15537,7 +15537,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.302
+   "ms": 0.032
   },
   "real_estate.equity_buildup": {
    "args": {
@@ -15547,7 +15547,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.227
+   "ms": 0.058
   },
   "real_estate.gross_rent_multiplier": {
    "args": {
@@ -15557,7 +15557,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.245
+   "ms": 0.068
   },
   "real_estate.internal_rate_of_return_approx": {
    "args": {
@@ -15568,7 +15568,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.257
+   "ms": 0.067
   },
   "real_estate.loan_to_value": {
    "args": {
@@ -15578,7 +15578,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.156
+   "ms": 0.046
   },
   "real_estate.mortgage_payment": {
    "args": {
@@ -15589,7 +15589,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.04
   },
   "real_estate.net_operating_income": {
    "args": {
@@ -15600,7 +15600,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.244
+   "ms": 0.04
   },
   "real_estate.price_per_sqft": {
    "args": {
@@ -15610,7 +15610,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.218
+   "ms": 0.031
   },
   "recommender.cold_start_recommend": {
    "args": {
@@ -15636,7 +15636,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.226
+   "ms": 0.07
   },
   "recommender.cosine_sim_users": {
    "args": {
@@ -15663,7 +15663,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.228
+   "ms": 0.084
   },
   "recommender.item_overlap": {
    "args": {
@@ -15690,7 +15690,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.305
+   "ms": 0.073
   },
   "recommender.mean_rating_per_item": {
    "args": {
@@ -15715,7 +15715,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.064
   },
   "recommender.mean_rating_per_user": {
    "args": {
@@ -15740,7 +15740,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.173
+   "ms": 0.051
   },
   "recommender.popularity_ranking": {
    "args": {
@@ -15765,7 +15765,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.184
+   "ms": 0.049
   },
   "recommender.predict_rating": {
    "args": {
@@ -15793,7 +15793,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.321
+   "ms": 0.053
   },
   "recommender.rmse_ratings": {
    "args": {
@@ -15815,7 +15815,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.176
+   "ms": 0.048
   },
   "recommender.top_n_items": {
    "args": {
@@ -15831,7 +15831,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.224
+   "ms": 0.049
   },
   "refrigeration.carnot_cop_heat_pump": {
    "args": {
@@ -15841,7 +15841,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.035
   },
   "refrigeration.carnot_cop_refrigeration": {
    "args": {
@@ -15851,7 +15851,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.028
   },
   "refrigeration.compressor_work": {
    "args": {
@@ -15862,7 +15862,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.036
   },
   "refrigeration.cop_heat_pump": {
    "args": {
@@ -15872,7 +15872,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.152
+   "ms": 0.04
   },
   "refrigeration.cop_refrigeration": {
    "args": {
@@ -15882,7 +15882,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.209
+   "ms": 0.044
   },
   "refrigeration.energy_efficiency_ratio": {
    "args": {
@@ -15892,7 +15892,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.041
   },
   "refrigeration.mass_flow_rate": {
    "args": {
@@ -15902,7 +15902,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.168
+   "ms": 0.052
   },
   "refrigeration.refrigerant_charge_estimate": {
    "args": {
@@ -15912,7 +15912,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.112
+   "ms": 0.037
   },
   "refrigeration.refrigeration_capacity_tons": {
    "args": {
@@ -15921,7 +15921,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.125
+   "ms": 0.037
   },
   "refrigeration.seer_to_cop": {
    "args": {
@@ -15930,7 +15930,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.13
+   "ms": 0.026
   },
   "refrigeration.subcooling": {
    "args": {
@@ -15940,7 +15940,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.03
   },
   "refrigeration.superheat": {
    "args": {
@@ -15950,7 +15950,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.032
   },
   "regex_engine.count_matches": {
    "args": {
@@ -15960,7 +15960,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.184
+   "ms": 0.031
   },
   "regex_engine.is_valid_pattern": {
    "args": {
@@ -15969,7 +15969,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.04
   },
   "regex_engine.match_char_class": {
    "args": {
@@ -15979,7 +15979,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.049
   },
   "regex_engine.match_dot_star": {
    "args": {
@@ -15990,7 +15990,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.119
+   "ms": 0.04
   },
   "regex_engine.match_literal": {
    "args": {
@@ -16000,7 +16000,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.17
+   "ms": 0.057
   },
   "regex_engine.regex_find_first": {
    "args": {
@@ -16010,7 +16010,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.05
   },
   "regex_engine.regex_match": {
    "args": {
@@ -16020,7 +16020,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.034
   },
   "regex_engine.regex_search": {
    "args": {
@@ -16030,7 +16030,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.032
   },
   "regex_engine.split_by_literal": {
    "args": {
@@ -16040,7 +16040,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.035
   },
   "reinforcement.discounted_return": {
    "args": {
@@ -16056,7 +16056,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.502
+   "ms": 0.047
   },
   "reinforcement.epsilon_greedy_action": {
    "args": {
@@ -16072,7 +16072,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.334
+   "ms": 0.043
   },
   "reinforcement.policy_evaluation": {
    "args": {
@@ -16144,7 +16144,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.34
+   "ms": 0.13
   },
   "reinforcement.policy_from_q": {
    "args": {
@@ -16169,7 +16169,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.199
+   "ms": 0.054
   },
   "reinforcement.q_learning": {
    "args": {
@@ -16217,7 +16217,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.206
+   "ms": 0.083
   },
   "reinforcement.sarsa": {
    "args": {
@@ -16265,7 +16265,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.197
+   "ms": 0.078
   },
   "reinforcement.td_error": {
    "args": {
@@ -16277,7 +16277,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.16
+   "ms": 0.036
   },
   "reinforcement.value_iteration": {
    "args": {
@@ -16363,7 +16363,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.319
+   "ms": 0.161
   },
   "reliability.availability": {
    "args": {
@@ -16373,7 +16373,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.036
   },
   "reliability.bathtub_rate": {
    "args": {
@@ -16387,7 +16387,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.076
   },
   "reliability.exponential_failure_rate": {
    "args": {
@@ -16396,7 +16396,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.131
+   "ms": 0.046
   },
   "reliability.exponential_reliability": {
    "args": {
@@ -16406,7 +16406,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.179
+   "ms": 0.034
   },
   "reliability.k_of_n_reliability": {
    "args": {
@@ -16417,7 +16417,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.043
   },
   "reliability.mission_reliability": {
    "args": {
@@ -16427,7 +16427,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.178
+   "ms": 0.034
   },
   "reliability.mtbf": {
    "args": {
@@ -16436,7 +16436,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.036
   },
   "reliability.parallel_reliability": {
    "args": {
@@ -16451,7 +16451,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.214
+   "ms": 0.052
   },
   "reliability.series_reliability": {
    "args": {
@@ -16466,7 +16466,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.179
+   "ms": 0.053
   },
   "reliability.weibull_failure_rate": {
    "args": {
@@ -16477,7 +16477,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.203
+   "ms": 0.047
   },
   "reliability.weibull_reliability": {
    "args": {
@@ -16488,7 +16488,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.168
+   "ms": 0.033
   },
   "rerank_eval.hit_rate_at_k": {
    "args": {
@@ -16504,7 +16504,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.046
   },
   "rerank_eval.latency_weighted_quality": {
    "args": {
@@ -16515,7 +16515,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.239
+   "ms": 0.035
   },
   "rerank_eval.map_at_k": {
    "args": {
@@ -16531,7 +16531,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.247
+   "ms": 0.041
   },
   "rerank_eval.mrr_at_k": {
    "args": {
@@ -16547,7 +16547,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.367
+   "ms": 0.051
   },
   "rerank_eval.ndcg_at_k": {
    "args": {
@@ -16570,7 +16570,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.181
+   "ms": 0.056
   },
   "rerank_eval.pairwise_margin_accuracy": {
    "args": {
@@ -16593,7 +16593,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.211
+   "ms": 0.052
   },
   "rerank_eval.precision_at_k": {
    "args": {
@@ -16609,7 +16609,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.177
+   "ms": 0.047
   },
   "rerank_eval.recall_at_k": {
    "args": {
@@ -16626,7 +16626,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.244
+   "ms": 0.051
   },
   "rerank_eval.score_separation": {
    "args": {
@@ -16648,7 +16648,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.175
+   "ms": 0.05
   },
   "reservoir.bootstrap_sample": {
    "args": {
@@ -16663,7 +16663,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.183
+   "ms": 0.042
   },
   "reservoir.reservoir_sample": {
    "args": {
@@ -16679,7 +16679,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.243
+   "ms": 0.045
   },
   "reservoir.reservoir_sample_indices": {
    "args": {
@@ -16689,7 +16689,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.208
+   "ms": 0.034
   },
   "reservoir.sample_with_replacement": {
    "args": {
@@ -16705,7 +16705,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.268
+   "ms": 0.05
   },
   "reservoir.sample_without_replacement": {
    "args": {
@@ -16721,7 +16721,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.257
+   "ms": 0.064
   },
   "reservoir.systematic_sample": {
    "args": {
@@ -16737,7 +16737,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.245
+   "ms": 0.043
   },
   "reservoir.weighted_reservoir_sample": {
    "args": {
@@ -16760,7 +16760,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.194
+   "ms": 0.056
   },
   "rheology.bingham_yield_stress": {
    "args": {
@@ -16771,7 +16771,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.252
+   "ms": 0.037
   },
   "rheology.creep_compliance": {
    "args": {
@@ -16782,7 +16782,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.038
   },
   "rheology.dynamic_viscosity": {
    "args": {
@@ -16792,7 +16792,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.135
+   "ms": 0.033
   },
   "rheology.power_law_viscosity": {
    "args": {
@@ -16803,7 +16803,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.035
   },
   "rheology.reynolds_number_non_newton": {
    "args": {
@@ -16816,7 +16816,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.043
   },
   "rheology.shear_rate": {
    "args": {
@@ -16826,7 +16826,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.14
+   "ms": 0.04
   },
   "rheology.shear_stress": {
    "args": {
@@ -16836,7 +16836,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.05
   },
   "rheology.stress_relaxation_modulus": {
    "args": {
@@ -16847,7 +16847,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.141
+   "ms": 0.038
   },
   "rheology.thixotropy_index": {
    "args": {
@@ -16857,7 +16857,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.033
   },
   "rheology.viscosity_arrhenius": {
    "args": {
@@ -16868,7 +16868,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.137
+   "ms": 0.037
   },
   "risk.alpha": {
    "args": {
@@ -16891,7 +16891,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.196
+   "ms": 0.053
   },
   "risk.beta": {
    "args": {
@@ -16913,7 +16913,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.155
+   "ms": 0.054
   },
   "risk.calmar_ratio": {
    "args": {
@@ -16935,7 +16935,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.048
   },
   "risk.conditional_var": {
    "args": {
@@ -16951,7 +16951,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.19
+   "ms": 0.04
   },
   "risk.downside_deviation": {
    "args": {
@@ -16967,7 +16967,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.156
+   "ms": 0.041
   },
   "risk.drawdown_series": {
    "args": {
@@ -16982,7 +16982,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.041
   },
   "risk.information_ratio": {
    "args": {
@@ -17004,7 +17004,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.045
   },
   "risk.max_drawdown": {
    "args": {
@@ -17019,7 +17019,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.114
+   "ms": 0.038
   },
   "risk.sharpe_ratio": {
    "args": {
@@ -17035,7 +17035,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.037
   },
   "risk.sortino_ratio": {
    "args": {
@@ -17051,7 +17051,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.046
   },
   "risk.value_at_risk": {
    "args": {
@@ -17067,7 +17067,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.038
   }
  }
 }

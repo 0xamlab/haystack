@@ -258,8 +258,9 @@ def test_chrome_sheet_sizes_every_control_to_the_target():
     box = _line(sheet, f"{ROOT} div:has(> {css.SLIDER_VALUE_INPUT}) {{")
     assert "overflow: visible" in box and "height: auto" in box
     assert "min-height: var(--alg-target)" in box
+    assert "box-sizing: border-box" in box  # the bordered box is the target (round 10)
     value = _line(sheet, f"{ROOT} {css.SLIDER_VALUE_INPUT} {{")
-    assert "min-height: var(--alg-target)" in value
+    assert "min-height: calc(var(--alg-target) - 2px)" in value and "padding: 0 12px" in value
     assert "font-family: var(--alg-font-mono)" in value and "tabular-nums" in value
     assert "text-align: right" in value
     assert f"{ROOT} {css.SLIDER_RESET_BUTTON} {{ display: none; }}" in sheet

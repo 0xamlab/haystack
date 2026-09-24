@@ -212,7 +212,7 @@ SPLIT_PYTHON = "JSON marshalling on the Python side"
 SPLIT_LIBRARY = "Inside the library, including its own JSON"
 SPLIT_NOTE = "measured on the same payload"
 LOADING_TEXT = "Measuring the Hub kernel and torch on this machine."
-EMPTY_TEXT = "Pick a shape and press {run}; both lanes are measured on this machine."
+EMPTY_TEXT = "Pick a shape and press {run}; the kernel is checked against torch on this machine."
 HOW_TEXT = (
     f"Seed {SEED}, {WARMUPS} warm-up, {REPEATS} timed calls per lane, medians on the card. "
     "The kernel lane is one native call at a time and its time includes JSON marshalling "
@@ -1240,7 +1240,10 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
         }
 
         def slider(spec: tuple, label: str) -> Any:
-            return gr.Slider(*spec[:2], step=spec[2], value=spec[3], label=label, buttons=[])
+            # a number box, not a slider: a typed value above the range must be refused with a
+            # field message, never clamped in silence (round 9: Rows 50 kept '50' in the box while
+            # the slider and the run used 32); the handlers' range checks answer
+            return gr.Number(value=spec[3], label=label, step=spec[2], precision=None)
 
         def pair(*builders: Callable[[], Any]) -> list[Any]:
             """Two controls side by side, one column each, one under the other on a phone; the

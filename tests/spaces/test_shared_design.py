@@ -143,10 +143,20 @@ def test_primary_button_gradient_holds_aa_contrast_with_white_text(mode):
     key = "button_primary_background_fill" + ("_dark" if mode else "")
     assert settings[key] == fill
     assert settings["button_primary_text_color" + ("_dark" if mode else "")] == design.BUTTON_TEXT
-    # the brand gradient keeps the accent for the lane bar; it never carries text
+    # the brand gradient keeps the accent for the lane bar and carries text in ONE place: the
+    # header's count numeral (64 px, 48 on the phone — WCAG large text, 3:1), owner round 11.
+    # Both stops clear 3:1 on both page backgrounds; nothing at body size is clipped to it.
     assert design.COLOR_TOKENS["accent-from"][mode] == "#7C5CFA"
     assert design.COLOR_TOKENS["accent-to"][mode] == "#3B82F6"
+    # no sheet clips a background to text; the count's inline style does (shell.COUNT_STYLE)
     assert "background-clip: text" not in fleet_css()
+    from algenta_spaces import shell  # noqa: PLC0415
+
+    assert "background-clip: text" in shell.COUNT_STYLE and "#" not in shell.COUNT_STYLE
+    bg = design.COLOR_TOKENS["bg"][mode]
+    for stop in (design.COLOR_TOKENS["accent-from"][mode], design.COLOR_TOKENS["accent-to"][mode]):
+        assert _contrast(stop, bg) >= 3.0, (stop, bg, _contrast(stop, bg))
+    assert design.TYPE_SCALE["count"][0] >= 48 and design.TYPE_SCALE_PHONE["count"][0] >= 48
 
 
 @pytest.mark.parametrize("mode", [0, 1], ids=["light", "dark"])
@@ -370,7 +380,7 @@ def test_phone_type_steps_and_fallback_font_faces_are_declared():
     css_text = design.TOKENS_CSS
     assert design.PHONE_MAX_WIDTH == 767
     assert f"@media (width <= {design.PHONE_MAX_WIDTH}px) {{\n  .{design.PAGE_CLASS} {{" in css_text
-    assert design.TYPE_SCALE_PHONE == {"display": (28, 34), "title": (22, 28)}
+    assert design.TYPE_SCALE_PHONE == {"count": (48, 48), "display": (28, 34), "title": (22, 28)}
     for decl in (
         "--alg-display-size: 28px;",
         "--alg-display-line: 34px;",

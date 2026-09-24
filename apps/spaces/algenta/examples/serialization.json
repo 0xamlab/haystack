@@ -1,6 +1,6 @@
 {
  "family": "serialization",
- "generated_utc": "2026-09-24T03:20:03Z",
+ "generated_utc": "2026-09-24T04:31:40Z",
  "harness": "apps/spaces/tools/build_examples.py",
  "rule": "arguments from algenta_spaces.examples rules, each executed through the compiled kernel; verified = the kernel returned a result; timeout = no answer in 10 s",
  "counts": {
@@ -19,7 +19,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 11.507
+   "ms": 11.504
   },
   "compression.delta.delta_decode": {
    "args": {
@@ -34,7 +34,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.228
+   "ms": 0.169
   },
   "compression.delta.delta_decode_float": {
    "args": {
@@ -50,7 +50,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.175
+   "ms": 0.108
   },
   "compression.delta.delta_encode": {
    "args": {
@@ -65,7 +65,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.158
+   "ms": 0.088
   },
   "compression.delta.delta_encode_float": {
    "args": {
@@ -81,7 +81,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.182
+   "ms": 0.11
   },
   "compression.delta.double_delta_decode": {
    "args": {
@@ -96,7 +96,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.107
+   "ms": 0.104
   },
   "compression.delta.double_delta_encode": {
    "args": {
@@ -111,7 +111,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.112
   },
   "compression.delta.xor_delta_decode": {
    "args": {
@@ -126,7 +126,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.091
   },
   "compression.delta.xor_delta_encode": {
    "args": {
@@ -141,7 +141,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.091
   },
   "compression.delta.zigzag_delta_decode": {
    "args": {
@@ -156,7 +156,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.109
   },
   "compression.delta.zigzag_delta_encode": {
    "args": {
@@ -171,7 +171,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.116
+   "ms": 0.095
   },
   "compression.huffman.avg_code_length": {
    "args": {
@@ -213,7 +213,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.155
+   "ms": 0.137
   },
   "compression.huffman.build_huffman_tree": {
    "args": {
@@ -238,7 +238,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.141
   },
   "compression.huffman.compression_ratio_huffman": {
    "args": {
@@ -248,7 +248,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.077
   },
   "compression.huffman.frequency_count": {
    "args": {
@@ -263,7 +263,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.083
   },
   "compression.huffman.huffman_decode": {
    "args": {
@@ -282,23 +282,23 @@
       "right": 5
      },
      {
-      "symbol": 5,
-      "freq": 5,
-      "left": 0,
-      "right": 5
+      "symbol": 6,
+      "freq": 6,
+      "left": 1,
+      "right": 6
      },
      {
-      "symbol": 5,
-      "freq": 5,
-      "left": 0,
-      "right": 5
+      "symbol": 7,
+      "freq": 3,
+      "left": 2,
+      "right": 3
      }
     ]
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.147
+   "ms": 0.153
   },
   "compression.huffman.huffman_encode": {
    "args": {
@@ -313,7 +313,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.126
   },
   "compression.lz77.bytes_to_ints": {
    "args": {
@@ -322,7 +322,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.113
   },
   "compression.lz77.compression_ratio": {
    "args": {
@@ -332,7 +332,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.082
   },
   "compression.lz77.find_longest_match": {
    "args": {
@@ -350,7 +350,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.072
   },
   "compression.lz77.ints_to_string": {
    "args": {
@@ -365,7 +365,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.083
   },
   "compression.lz77.lz77_decode": {
    "args": {
@@ -376,21 +376,21 @@
       "next_char": 5
      },
      {
-      "offset": 0,
-      "length": 5,
-      "next_char": 5
+      "offset": 1,
+      "length": 6,
+      "next_char": 6
      },
      {
-      "offset": 0,
-      "length": 5,
-      "next_char": 5
+      "offset": 2,
+      "length": 3,
+      "next_char": 7
      }
     ]
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.121
+   "ms": 0.123
   },
   "compression.lz77.lz77_encode": {
    "args": {
@@ -407,7 +407,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.09
   },
   "compression.rle.compression_ratio": {
    "args": {
@@ -417,7 +417,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.07
   },
   "compression.rle.rle_decode": {
    "args": {
@@ -432,7 +432,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.084
   },
   "compression.rle.rle_decode_string": {
    "args": {
@@ -441,7 +441,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.068
+   "ms": 0.072
   },
   "compression.rle.rle_encode": {
    "args": {
@@ -456,7 +456,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.095
   },
   "compression.rle.rle_encode_string": {
    "args": {
@@ -465,7 +465,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.073
   },
   "data.csv_parser.csv_get_field": {
    "args": {
@@ -484,7 +484,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.134
+   "ms": 0.108
   },
   "data.csv_parser.csv_get_float": {
    "args": {
@@ -504,7 +504,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.09
   },
   "data.csv_parser.csv_get_int": {
    "args": {
@@ -524,7 +524,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.149
+   "ms": 0.086
   },
   "data.csv_parser.csv_to_json_array": {
    "args": {
@@ -554,7 +554,7 @@
        "delta",
        "epsilon"
       ],
-      "n_fields": 100
+      "n_fields": 101
      },
      {
       "fields": [
@@ -564,14 +564,14 @@
        "delta",
        "epsilon"
       ],
-      "n_fields": 100
+      "n_fields": 98
      }
     ]
    },
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.215
+   "ms": 0.144
   },
   "data_feedback_loop.annotation_effort_estimate": {
    "args": {
@@ -582,7 +582,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.124
+   "ms": 0.071
   },
   "data_feedback_loop.auto_label_confidence": {
    "args": {
@@ -593,7 +593,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.082
   },
   "data_feedback_loop.continuous_learning_rate": {
    "args": {
@@ -604,7 +604,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.077
   },
   "data_feedback_loop.data_drift_detection_score": {
    "args": {
@@ -615,7 +615,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.065
   },
   "data_feedback_loop.dataset_freshness_score": {
    "args": {
@@ -625,7 +625,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.08
   },
   "data_feedback_loop.deployment_readiness_score": {
    "args": {
@@ -638,7 +638,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.086
   },
   "data_feedback_loop.feedback_signal_quality": {
    "args": {
@@ -661,7 +661,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.078
   },
   "data_feedback_loop.retraining_trigger_score": {
    "args": {
@@ -673,7 +673,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.089
   },
   "data_feedback_loop.sample_informativeness": {
    "args": {
@@ -684,7 +684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.1
   },
   "data_pipeline.curriculum_difficulty_score": {
    "args": {
@@ -695,7 +695,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.143
+   "ms": 0.082
   },
   "data_pipeline.data_augmentation_weight": {
    "args": {
@@ -705,7 +705,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.066
   },
   "data_pipeline.dataset_mixing_weight": {
    "args": {
@@ -716,7 +716,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.104
+   "ms": 0.06
   },
   "data_pipeline.deduplication_minhash_band": {
    "args": {
@@ -726,7 +726,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.057
   },
   "data_pipeline.epoch_sample_index": {
    "args": {
@@ -738,7 +738,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.09
   },
   "data_pipeline.quality_filter_score": {
    "args": {
@@ -750,7 +750,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.066
   },
   "data_pipeline.sequence_packing_efficiency": {
    "args": {
@@ -760,7 +760,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.066
   },
   "data_pipeline.shard_balance_score": {
    "args": {
@@ -770,7 +770,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.087
   },
   "data_pipeline.streaming_buffer_fullness": {
    "args": {
@@ -780,7 +780,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.116
   },
   "data_pipeline.token_accounting_cost": {
    "args": {
@@ -791,7 +791,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.07
   },
   "data_quality.contract.dq_column": {
    "args": {
@@ -813,7 +813,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.128
+   "ms": 0.104
   },
   "data_quality.contract.dq_column_mask": {
    "args": {
@@ -835,7 +835,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.109
   },
   "data_quality.contract.dq_column_mask_prefix": {
    "args": {
@@ -858,7 +858,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.117
+   "ms": 0.084
   },
   "data_quality.contract.dq_column_prefix": {
    "args": {
@@ -881,7 +881,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.139
+   "ms": 0.086
   },
   "data_quality.contract.dq_decimal_scale": {
    "args": {
@@ -890,7 +890,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.062
   },
   "data_quality.contract.dq_is_finite": {
    "args": {
@@ -899,7 +899,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.062
   },
   "data_quality.contract.dq_live_and_finite": {
    "args": {
@@ -921,7 +921,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.115
+   "ms": 0.086
   },
   "data_quality.contract.dq_mask_all_valid": {
    "args": {
@@ -930,7 +930,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.057
   },
   "data_quality.contract.dq_mask_defect": {
    "args": {
@@ -946,7 +946,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.123
+   "ms": 0.081
   },
   "data_quality.contract.dq_quantize": {
    "args": {
@@ -956,7 +956,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.136
+   "ms": 0.077
   },
   "data_quality.contract.dq_quantize_exact": {
    "args": {
@@ -966,7 +966,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.148
+   "ms": 0.084
   },
   "data_quality.contract.dq_relative_tolerance": {
    "args": {
@@ -976,7 +976,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.108
+   "ms": 0.066
   },
   "data_quality.contract.dq_rows_within_budget": {
    "args": {
@@ -986,7 +986,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.061
   },
   "data_quality.contract.dq_status_name": {
    "args": {
@@ -995,7 +995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.077
   },
   "data_quality.contract.dq_table_defect": {
    "args": {
@@ -1016,7 +1016,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.111
+   "ms": 0.078
   },
   "data_quality.contract.dq_ulp_tolerance": {
    "args": {
@@ -1026,7 +1026,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.064
   },
   "data_quality.contract.dq_values_equal": {
    "args": {
@@ -1036,7 +1036,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.069
   },
   "data_quality.contract.dq_work_fits": {
    "args": {
@@ -1046,7 +1046,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.055
   },
   "data_quality.duplicates.duplicate_key_defect": {
    "args": {
@@ -1062,7 +1062,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.127
+   "ms": 0.074
   },
   "data_quality.duplicates.duplicate_rows_of_group": {
    "args": {
@@ -1079,7 +1079,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.109
+   "ms": 0.069
   },
   "data_quality.duplicates.duplicate_scan_flat": {
    "args": {
@@ -1124,7 +1124,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.163
+   "ms": 0.122
   },
   "data_quality.duplicates.duplicate_status_name": {
    "args": {
@@ -1133,7 +1133,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.085
+   "ms": 0.069
   },
   "data_quality.expect.expect_column_flat": {
    "args": {
@@ -1170,7 +1170,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.146
+   "ms": 0.149
   },
   "data_quality.expect.expect_failure_line": {
    "args": {
@@ -1185,7 +1185,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.116
   },
   "data_quality.expect.expect_op_name": {
    "args": {
@@ -1194,7 +1194,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.07
+   "ms": 0.077
   },
   "data_quality.expect.expect_plan_flat": {
    "args": {
@@ -1251,7 +1251,7 @@
    "verified": false,
    "outcome": "plan_node_arrays_disagree",
    "source": "rules",
-   "ms": 0.179
+   "ms": 0.164
   },
   "data_quality.expect.expect_status_name": {
    "args": {
@@ -1260,7 +1260,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.096
+   "ms": 0.066
   },
   "data_quality.expect.expect_suite_flat": {
    "args": {
@@ -1337,7 +1337,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.203
+   "ms": 0.162
   },
   "data_quality.leakage.leakage_scan_flat": {
    "args": {
@@ -1376,7 +1376,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.15
+   "ms": 0.118
   },
   "data_quality.leakage.leakage_status_name": {
    "args": {
@@ -1385,7 +1385,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.068
   },
   "data_quality.leakage.leakage_timing_flat": {
    "args": {
@@ -1415,7 +1415,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.128
   },
   "data_quality.profile.profile_column": {
    "args": {
@@ -1438,7 +1438,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.133
+   "ms": 0.13
   },
   "data_quality.profile.profile_column_at": {
    "args": {
@@ -1471,7 +1471,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.142
+   "ms": 0.137
   },
   "data_quality.profile.profile_is_constant": {
    "args": {
@@ -1494,7 +1494,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.108
   },
   "data_quality.profile.profile_status_name": {
    "args": {
@@ -1503,7 +1503,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.087
   },
   "data_quality.profile.profile_table": {
    "args": {
@@ -1535,7 +1535,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.138
+   "ms": 0.123
   },
   "json.parser.find_key": {
    "args": {
@@ -1545,7 +1545,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.084
+   "ms": 0.063
   },
   "json.parser.json_array_get": {
    "args": {
@@ -1555,7 +1555,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.074
   },
   "json.parser.json_array_len": {
    "args": {
@@ -1564,7 +1564,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.062
   },
   "json.parser.json_array_tokens": {
    "args": {
@@ -1573,7 +1573,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.074
+   "ms": 0.076
   },
   "json.parser.json_decode_base64_bytes": {
    "args": {
@@ -1582,7 +1582,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.092
   },
   "json.parser.json_get_array": {
    "args": {
@@ -1592,7 +1592,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.087
   },
   "json.parser.json_get_bool": {
    "args": {
@@ -1603,7 +1603,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.063
   },
   "json.parser.json_get_float": {
    "args": {
@@ -1614,7 +1614,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.06
   },
   "json.parser.json_get_int": {
    "args": {
@@ -1625,7 +1625,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.062
   },
   "json.parser.json_get_object": {
    "args": {
@@ -1635,7 +1635,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.075
+   "ms": 0.053
   },
   "json.parser.json_get_string": {
    "args": {
@@ -1645,7 +1645,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.082
+   "ms": 0.057
   },
   "json.parser.json_is_null": {
    "args": {
@@ -1655,7 +1655,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.063
   },
   "json.parser.json_parse_float64_list": {
    "args": {
@@ -1664,7 +1664,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.089
+   "ms": 0.088
   },
   "json.parser.skip_json_value": {
    "args": {
@@ -1674,7 +1674,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.084
   },
   "json.parser.skip_whitespace": {
    "args": {
@@ -1684,7 +1684,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.103
+   "ms": 0.074
   },
   "json.writer.json_add_array_float": {
    "args": {
@@ -1701,7 +1701,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.122
+   "ms": 0.089
   },
   "json.writer.json_add_array_string": {
    "args": {
@@ -1718,7 +1718,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.118
+   "ms": 0.101
   },
   "json.writer.json_add_bool": {
    "args": {
@@ -1729,7 +1729,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.071
   },
   "json.writer.json_add_float": {
    "args": {
@@ -1740,7 +1740,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.098
+   "ms": 0.122
   },
   "json.writer.json_add_int": {
    "args": {
@@ -1751,7 +1751,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.083
+   "ms": 0.08
   },
   "json.writer.json_add_null": {
    "args": {
@@ -1761,7 +1761,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.09
+   "ms": 0.073
   },
   "json.writer.json_add_raw": {
    "args": {
@@ -1772,7 +1772,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.086
+   "ms": 0.072
   },
   "json.writer.json_add_string": {
    "args": {
@@ -1783,7 +1783,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.085
   },
   "json.writer.json_build_object": {
    "args": {
@@ -1808,7 +1808,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.112
   },
   "json.writer.json_escape_string": {
    "args": {
@@ -1817,7 +1817,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.08
+   "ms": 0.083
   },
   "json.writer.json_object_end": {
    "args": {
@@ -1826,14 +1826,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.081
   },
   "json.writer.json_object_start": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.088
+   "ms": 0.072
   },
   "model_serialization.checkpoint_size_estimate": {
    "args": {
@@ -1844,7 +1844,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.084
   },
   "model_serialization.delta_compression_ratio": {
    "args": {
@@ -1854,7 +1854,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.07
   },
   "model_serialization.lora_parameter_count": {
    "args": {
@@ -1865,7 +1865,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.062
   },
   "model_serialization.model_flops_estimate": {
    "args": {
@@ -1876,7 +1876,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.099
+   "ms": 0.069
   },
   "model_serialization.onnx_op_count_estimate": {
    "args": {
@@ -1887,7 +1887,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.11
+   "ms": 0.067
   },
   "model_serialization.pruning_sparsity_speedup": {
    "args": {
@@ -1897,7 +1897,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.144
+   "ms": 0.086
   },
   "model_serialization.version_hash_component": {
    "args": {
@@ -1908,7 +1908,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.094
+   "ms": 0.077
   },
   "model_serialization.weight_quantization_bits": {
    "args": {
@@ -1917,7 +1917,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.093
+   "ms": 0.057
   },
   "model_serialization.weight_sharing_ratio": {
    "args": {
@@ -1927,7 +1927,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.077
+   "ms": 0.083
   },
   "model_serialization.weight_sparsity_ratio": {
    "args": {
@@ -1938,7 +1938,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.082
   },
   "serialization.msgpack.msgpack_decode_float": {
    "args": {
@@ -1954,7 +1954,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.102
+   "ms": 0.101
   },
   "serialization.msgpack.msgpack_decode_int": {
    "args": {
@@ -1970,7 +1970,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.091
+   "ms": 0.089
   },
   "serialization.msgpack.msgpack_decode_string": {
    "args": {
@@ -1986,7 +1986,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.12
+   "ms": 0.079
   },
   "serialization.msgpack.msgpack_encode_array_header": {
    "args": {
@@ -1995,7 +1995,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.113
+   "ms": 0.076
   },
   "serialization.msgpack.msgpack_encode_bool": {
    "args": {
@@ -2004,7 +2004,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.106
+   "ms": 0.072
   },
   "serialization.msgpack.msgpack_encode_float": {
    "args": {
@@ -2013,7 +2013,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.105
+   "ms": 0.099
   },
   "serialization.msgpack.msgpack_encode_int": {
    "args": {
@@ -2022,7 +2022,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.081
+   "ms": 0.074
   },
   "serialization.msgpack.msgpack_encode_map_header": {
    "args": {
@@ -2031,14 +2031,14 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.087
+   "ms": 0.089
   },
   "serialization.msgpack.msgpack_encode_nil": {
    "args": {},
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.076
+   "ms": 0.071
   },
   "serialization.msgpack.msgpack_encode_string": {
    "args": {
@@ -2047,7 +2047,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.101
+   "ms": 0.071
   },
   "serialization_io.string_checksum": {
    "args": {
@@ -2056,7 +2056,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.1
+   "ms": 0.06
   },
   "serialization_io.weights_from_string": {
    "args": {
@@ -2065,7 +2065,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.095
+   "ms": 0.071
   },
   "serialization_io.weights_to_string": {
    "args": {
@@ -2097,7 +2097,7 @@
    "verified": true,
    "outcome": "result",
    "source": "rules",
-   "ms": 0.129
+   "ms": 0.097
   }
  }
 }

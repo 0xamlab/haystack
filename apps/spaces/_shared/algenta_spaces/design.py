@@ -32,7 +32,9 @@ secondary-button, option and tab hover fill. Both are declared on `.alg-page`
 and `.dark .alg-page` rather than on `:root`: the redirect stubs freeze the
 `:root` token set and are compared against it in the test suite, so extensions
 live on the page root every Space already wraps its content in
-(`css.PAGE_CLASS`); `alg-accent-text` falls back to `button-from` (the same
+(`css.PAGE_CLASS`); the accent gradient carries text in one place only, the header's
+count numeral (`shell` `alg-shell-count`, 64 px / 48 px on the phone: WCAG large text, both
+stops ≥ 3:1 on both page backgrounds); `alg-accent-text` falls back to `button-from` (the same
 #5B3FE0) outside the page root. The same block re-declares `--alg-font` and
 `--alg-font-mono` with the metric-matched fallback faces (`FONT_FALLBACKS`,
 emitted as `@font-face`), so the web-font swap moves nothing: the fallback is
@@ -97,8 +99,18 @@ BUTTON_HOVER_STOPS: Mapping[int, tuple[str, str]] = {
 SPACING: tuple[int, ...] = (4, 8, 12, 16, 24, 32, 48, 64)
 RADII: Mapping[str, str] = {"card": "12px", "input": "8px", "pill": "999px"}
 
+#: The brand gradient, one token (`--alg-accent-gradient`) the rules reference by name: Gradio's
+#: scoper drops a declaration whose function holds `var()` (measured: `background:
+#: linear-gradient(90deg, var(--alg-accent-from), var(--alg-accent-to))` never reached the
+#: browser) and the sheets carry no literal colours, so the literal stops live here, in the
+#: tokens block, the same in both modes.
+ACCENT_GRADIENT = (
+    f"linear-gradient(90deg, {COLOR_TOKENS['accent-from'][0]}, {COLOR_TOKENS['accent-to'][0]})"
+)
+
 # role -> (size px, line px, tracking, weight)
 TYPE_SCALE: Mapping[str, tuple[int, int, str, int]] = {
+    "count": (64, 64, "-0.03em", 600),  # the header's one number (round 11: "6,040 is huge")
     "display": (40, 48, "-0.02em", 600),
     "title": (28, 34, "-0.01em", 600),
     "body": (15, 22, "0", 400),
@@ -106,7 +118,11 @@ TYPE_SCALE: Mapping[str, tuple[int, int, str, int]] = {
     "mono": (13, 20, "0", 400),
 }
 # role -> (size px, line px) below PHONE_MAX_WIDTH (767, shared with css.py)
-TYPE_SCALE_PHONE: Mapping[str, tuple[int, int]] = {"display": (28, 34), "title": (22, 28)}
+TYPE_SCALE_PHONE: Mapping[str, tuple[int, int]] = {
+    "count": (48, 48),
+    "display": (28, 34),
+    "title": (22, 28),
+}
 #: Every bordered Gradio block's padding, on the 8-pt grid (Gradio's own is 10px 12px).
 BLOCK_PADDING = "12px 16px"
 
@@ -248,6 +264,7 @@ def _scale_block() -> str:
         lines.append(f"  --alg-{role}-tracking: {tracking};")
         lines.append(f"  --alg-{role}-weight: {weight};")
     lines.append(f"  --alg-shadow: {SHADOW};")
+    lines.append(f"  --alg-accent-gradient: {ACCENT_GRADIENT};")
     lines.append(f"  --alg-content-max: {MAX_CONTENT_WIDTH}px;")
     lines.append(f"  --alg-target: {TARGET_PX}px;")
     lines.append(f"  --alg-motion: {MOTION_MS}ms ease-out;")
