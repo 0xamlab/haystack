@@ -264,7 +264,11 @@ def test_batching_removes_timer_jitter_that_fails_the_gate_one_call_at_a_time():
         quota=8,
         sample_min_ms=0,
     )
-    assert one_call.status == bench.STATUS_NOISY and "spread above 15 percent" in one_call.reason
+    # the alternation has MAD 0: the mean/median guard is the gate that fails, and the reason says
+    # so (Codna review on #1150: it used to say "spread" whatever had failed)
+    assert one_call.status == bench.STATUS_NOISY
+    assert "mean more than 15 percent off the median on j" in one_call.reason
+    assert "spread above" not in one_call.reason
     assert one_call.lane(bench.SIDE_ALGENTA).cv > 0.4
     lanes = [bench.LaneSpec("j", bench.SIDE_ALGENTA, FakeLane(clock, "j", jitter, []))]
     batched = bench.run_cell(
@@ -304,7 +308,10 @@ def test_run_cell_noisy_on_high_cv_is_not_recorded():
     )
     assert cell.status == bench.STATUS_NOISY
     assert cell.reason.startswith("noisy — not recorded")
-    assert "spread above 15 percent on ours" in cell.reason
+    assert "mean more than 15 percent off the median on ours" in cell.reason, (
+        "the 50 / 250 alternation has MAD 0: the mean/median guard failed, not the spread"
+    )
+    assert "spread above" not in cell.reason and "theirs" not in cell.reason
     assert cell.ratio is None
     assert not cell.lane(bench.SIDE_ALGENTA).stable
 
@@ -523,3 +530,43 @@ def test_v05_gate_reads_the_robust_spread_and_the_mean_median_agreement():
     lane = bench.summarise(bench.LaneSpec("b", bench.SIDE_ALGENTA, lambda: None), bimodal)
     assert lane.spread == 0.0 and lane.skew > 0.15 and not lane.stable
     assert bench.robust_cv([0.0, 0.0]) == 0.0
+
+
+def test_noisy_reason_names_the_gate_that_failed_per_lane():
+    """Codna review on #1150: `run_cell` worded every noisy verdict "spread above 15 percent",
+    the 50/50 alternation the skew guard exists for included. The reason names the gate that
+    failed on each lane — the spread, or the mean off its median when the spread cleared — and
+    a lane over on both is a spread lane, as the card's chip has it."""
+    ours = bench.LaneSpec("s", bench.SIDE_ALGENTA, lambda: None)
+    theirs = bench.LaneSpec("k", bench.SIDE_INCUMBENT, lambda: None)
+    spread = bench.summarise(ours, [1.0, 1.4, 0.6, 1.0, 1.5, 0.5, 1.0])  # MAD 0.4, mean = median
+    skew = bench.summarise(theirs, [0.05, 0.15] * 10 + [0.05])  # MAD 0, mean 95 % off
+    steady = bench.summarise(bench.LaneSpec("t", bench.SIDE_INCUMBENT, lambda: None), [2.0] * 21)
+    both = bench.summarise(
+        bench.LaneSpec("b", bench.SIDE_ALGENTA, lambda: None), [1.0, 1.5, 0.5, 1.0, 5.0, 5.0, 5.0]
+    )
+    assert spread.spread > bench.CV_MAX and spread.skew == 0.0
+    assert skew.spread == 0.0 and skew.skew > bench.CV_MAX
+    assert both.spread > bench.CV_MAX and both.skew > bench.CV_MAX and steady.stable
+    assert bench.gate_percent() == "15 percent" and bench.gate_percent(0.2) == "20 percent"
+    assert bench.noisy_reason([spread, steady]) == (
+        "noisy — not recorded — spread above 15 percent on s"
+    )
+    assert bench.noisy_reason([steady, skew]) == (
+        "noisy — not recorded — mean more than 15 percent off the median on k"
+    )
+    assert bench.noisy_reason([skew, spread, steady]) == (
+        "noisy — not recorded — spread above 15 percent on s; "
+        "mean more than 15 percent off the median on k"
+    )
+    assert bench.noisy_reason([both, skew]) == (
+        "noisy — not recorded — spread above 15 percent on b; "
+        "mean more than 15 percent off the median on k"
+    )
+    assert bench.noisy_reason(iter([spread]), cv_max=0.5) == (
+        "noisy — not recorded — spread above 50 percent on s"
+    )
+    with pytest.raises(ValueError):
+        bench.noisy_reason([steady])
+    with pytest.raises(ValueError):
+        bench.noisy_reason([spread], cv_max=0.6)  # the spread is 59 %, the mean on the median

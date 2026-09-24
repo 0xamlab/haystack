@@ -180,7 +180,7 @@ def build_state(
     board: races.Board | None = None,
 ) -> RaceState:
     hardware = common.hardware_line(deps)
-    hw_id = common.hardware_id(deps.env)
+    hw_id = common.hardware_id()
     labels = {}
     for cand in races.CANDIDATES:
         loaded = deps.kernel(cand.family)

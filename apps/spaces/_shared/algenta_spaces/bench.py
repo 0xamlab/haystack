@@ -100,6 +100,10 @@ STATUS_ERROR = "error"
 
 NOISY_TEXT = "noisy — not recorded"
 OVER_BUDGET_TEXT = "not measurable here"
+#: The stability gate's two causes as a noisy reason names them (`noisy_reason`): the robust
+#: spread over the gate, or the mean too far from the median while the spread cleared it.
+SPREAD_CAUSE = "spread above {gate} on {lanes}"
+SKEW_CAUSE = "mean more than {gate} off the median on {lanes}"
 
 THREAD_ENV_KEYS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 #: The library each thread-count variable pins, as people write it (for the footer when the
@@ -464,6 +468,33 @@ def _calls_note(calls: Mapping[str, int]) -> str:
     return " × " + "/".join(str(k) for k in distinct) + " calls"
 
 
+def gate_percent(cv_max: float = CV_MAX) -> str:
+    """The gate in a reason's words: `15 percent` (the card's chip prints `15%`)."""
+    return f"{cv_max * 100:.0f} percent"
+
+
+def noisy_reason(lanes: Iterable[LaneResult], cv_max: float = CV_MAX) -> str:
+    """`noisy — not recorded — spread above 15 percent on ours`: the gate that failed, named per
+    lane, never a stand-in — a lane whose spread cleared the gate while its mean sat too far from
+    its median reads `mean more than 15 percent off the median on ours` (a 50/50 alternation has
+    MAD 0). The card's chip names the same gate (`cards.stability_chip`: the spread when any lane's
+    spread is over, else the mean), so the two never disagree; lanes failing different gates are
+    listed cause by cause, the spread first (Codna review on #1150: every noisy verdict said
+    "spread"). ValueError when every lane is stable."""
+    lanes = list(lanes)
+    spread = [lane.name for lane in lanes if lane.spread > cv_max]
+    skew = [lane.name for lane in lanes if lane.spread <= cv_max and lane.skew > cv_max]
+    gate = gate_percent(cv_max)
+    causes = []
+    if spread:
+        causes.append(SPREAD_CAUSE.format(gate=gate, lanes=", ".join(spread)))
+    if skew:
+        causes.append(SKEW_CAUSE.format(gate=gate, lanes=", ".join(skew)))
+    if not causes:
+        raise ValueError("every lane is stable: nothing to report as noisy")
+    return f"{NOISY_TEXT} — " + "; ".join(causes)
+
+
 def run_cell(
     lanes: Sequence[LaneSpec],
     *,
@@ -564,10 +595,9 @@ def run_cell(
         # never a gate — inside a Space the container reads the host's /proc/loadavg, not its
         # own, and the spread + mean/median guard already measure what the load only predicts
         result.load_1m = float(loadavg())
-        unstable = [lane.name for lane in result.lanes if not lane.stable]
-        if unstable:
+        if not all(lane.stable for lane in result.lanes):
             result.status = STATUS_NOISY
-            result.reason = f"{NOISY_TEXT} — spread above 15 percent on " + ", ".join(unstable)
+            result.reason = noisy_reason(result.lanes)
             say(result.reason)
             return result
 

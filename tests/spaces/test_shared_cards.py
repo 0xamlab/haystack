@@ -387,6 +387,38 @@ def test_stability_chip_reads_the_worst_lane_against_the_gate():
     _assert_clean_copy(skewed)
 
 
+def test_stability_chip_and_the_noisy_reason_name_the_same_gate():
+    """Codna review on #1150: `bench.run_cell` worded every noisy verdict "spread above 15
+    percent" while the chip could name the mean. The reason names the gate that failed
+    (`bench.noisy_reason`) and the two never disagree: a chip that says `spread` comes with a
+    reason that says spread; a chip that says `mean` with one that says the mean, never the
+    spread."""
+    lanes = [_lane("a", bench.SIDE_ALGENTA, 1.0), _lane("b", bench.SIDE_INCUMBENT, 2.0)]
+    lanes[1].mad_ms = lanes[1].median_ms * 0.18 / bench.ROBUST_SCALE  # spread 18%
+    assert "spread 18% above 15%" in cards.stability_chip(lanes)
+    assert bench.noisy_reason(lanes) == "noisy — not recorded — spread above 15 percent on b"
+    lanes[1].mad_ms = 0.0
+    lanes[1].samples_ms = [2.0, 6.0] * 10 + [
+        2.0
+    ]  # median 2.0, mean 3.905: the mean, not the spread
+    assert "mean 95% off the median, above 15%" in cards.stability_chip(lanes)
+    reason = bench.noisy_reason(lanes)
+    assert reason == "noisy — not recorded — mean more than 15 percent off the median on b"
+    assert "spread above" not in reason
+    # both lanes noisy on different gates: the chip names the spread, the reason lists it first
+    lanes[0].mad_ms = lanes[0].median_ms * 0.2 / bench.ROBUST_SCALE
+    assert "spread 20% above 15%" in cards.stability_chip(lanes)
+    assert bench.noisy_reason(lanes) == (
+        "noisy — not recorded — spread above 15 percent on a; "
+        "mean more than 15 percent off the median on b"
+    )
+    for lane in lanes:
+        lane.mad_ms, lane.samples_ms = 0.0, []
+    assert cards.STABLE_TEXT in cards.stability_chip(lanes)
+    with pytest.raises(ValueError):
+        bench.noisy_reason(lanes)
+
+
 def test_spread_chips_carry_p95_mad_and_cv_with_units():
     lane = _lane("algenta-stats", bench.SIDE_ALGENTA, 0.13)
     chips = cards.spread_chips(lane)
@@ -780,6 +812,31 @@ def test_time_stamp_is_the_one_way_a_card_prints_a_utc_stamp():
         "",
     )
     _assert_clean_copy(chip)
+
+
+def test_text_with_times_escapes_everything_but_the_stamp_it_renders():
+    """Codna review on #1150: the helper ran a pattern over escaped text and spliced raw markup
+    into it. It now cuts the raw text at its stamps and escapes every other piece: a caller's
+    markup never reaches the page, the `<time>` carries only the stamp's digits, and a stamp is
+    one whole token — a version's or an id's digits beside it stay text."""
+    stamp = cards.time_stamp(TS)
+    assert cards._text_with_times(f"measured {TS}") == f"measured {stamp}"
+    assert cards._text_with_times(f"live · hosted API · {TS}") == f"live · hosted API · {stamp}"
+    assert cards._text_with_times(f"({TS})") == f"({stamp})"
+    hostile = f'<b onmouseover="x()">{TS}</b> & "{TS}"'
+    rendered = cards._text_with_times(hostile)
+    assert rendered == (
+        f"&lt;b onmouseover=&quot;x()&quot;&gt;{stamp}&lt;/b&gt; &amp; &quot;{stamp}&quot;"
+    )
+    assert rendered.count("<") == 4 == rendered.count(">"), "two <time> elements, nothing else"
+    assert cards._text_with_times("") == ""
+    assert cards._text_with_times("no stamp <i>") == "no stamp &lt;i&gt;"
+    for glued in (f"v{TS}", f"{TS}z", f"build-{TS}", f"{TS}-1", f"1{TS}"):
+        assert "<time" not in cards._text_with_times(glued), glued
+        assert cards._text_with_times(glued) == cards._esc(glued)
+    assert cards._chip(f"measured {TS}") == (
+        f'<span class="alg-chip alg-chip-neutral">measured {stamp}</span>'
+    )
 
 
 def test_feet_carry_the_stamp_as_time_and_never_rewrite_the_hardware_line():

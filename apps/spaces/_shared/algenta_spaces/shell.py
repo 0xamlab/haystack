@@ -902,7 +902,9 @@ TABSTRIP_SCRIPT = (
 #: by the shortfall first (a phone at its landing position has ~135 px under the Race box),
 #: then the list opens below capped to the room, never over the header and the tab strip.
 #: Gradio re-positions the panel on every scroll (`bottom` comes back); the placed panel is
-#: watched for style changes and placed again, at most eight times per opening.
+#: watched for style changes by its own observer (that one node, `panelWatch` — Codna review
+#: on #1150: the page-wide observer read every style change on the page) and placed again, at
+#: most eight times per opening.
 MIN_LIST_PX = 176
 #: The least room a list is placed below the field with (two 44 px rows and a pad); with less,
 #: the page is scrolled first so `MIN_LIST_PX` fit, and the list opens below capped to the room.
@@ -973,21 +975,27 @@ DROPDOWN_CLOSE_SCRIPT = (
     " var placed = null;"
     " var placedBox = null;"
     " var placements = 0;"
+    " var keepPlaced = function () {"
+    "  if (placed === null) { return; }"
+    "  if (placed.isConnected === false) {"
+    "   panelWatch.disconnect(); placed = null; placedBox = null; return; }"
+    "  if (placed.style.bottom !== '' && placements < 8) { placeBelow(placed, placedBox); }"
+    " };"
+    " var panelWatch = new MutationObserver(keepPlaced);"
     " var placeBelow = function (panel, box) {"
     "  var rect = box.getBoundingClientRect();"
     "  var room = window.innerHeight - rect.bottom - 16;"
     "  if (room < MIN_ROWS_PX) { return false; }"
-    "  if (placed !== panel) { placed = panel; placedBox = box; placements = 0; }"
+    "  if (placed !== panel) {"
+    "   placed = panel; placedBox = box; placements = 0;"
+    "   panelWatch.disconnect();"
+    "   panelWatch.observe(panel, {attributes: true, attributeFilter: ['style']});"
+    "  }"
     "  placements += 1;"
     "  panel.style.bottom = '';"
     "  panel.style.top = rect.bottom + 'px';"
     "  panel.style.maxHeight = Math.min(room, 400) + 'px';"
     "  return true;"
-    " };"
-    " var keepPlaced = function (record) {"
-    "  if (placed === null || record.target !== placed) { return; }"
-    "  if (placed.isConnected === false) { placed = null; placedBox = null; return; }"
-    "  if (placed.style.bottom !== '' && placements < 8) { placeBelow(placed, placedBox); }"
     " };"
     " var reposition = function (panel) {"
     "  var box = document.querySelector(OPEN);"
@@ -1051,7 +1059,6 @@ DROPDOWN_CLOSE_SCRIPT = (
     "    var record = records[i];"
     "    if (record.type === 'childList') {"
     " added = added || record.addedNodes.length > 0; repositionAdded(record); continue; }"
-    "    if (record.attributeName === 'style') { keepPlaced(record); continue; }"
     "    var box = record.target;"
     "    if (isBox(box) && box.getAttribute('aria-expanded') === 'true'"
     "     && box !== document.activeElement) { markPanelOf(box); schedule(); }"
@@ -1059,7 +1066,7 @@ DROPDOWN_CLOSE_SCRIPT = (
     "   if (added) { unfocusable(); }"
     "  }).observe(document.documentElement,"
     "   {childList: true, subtree: true, attributes: true,"
-    "    attributeFilter: ['aria-expanded', 'style']});"
+    "    attributeFilter: ['aria-expanded']});"
     " };"
     " if (document.readyState === 'loading') {"
     "  document.addEventListener('DOMContentLoaded', start);"

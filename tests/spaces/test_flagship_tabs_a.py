@@ -271,13 +271,16 @@ def test_permalink_hardware_id_and_visitor_key():
     link = common.permalink("play", fn="ab_testing.z_test_proportions", args={"n_a": 1000})
     assert link.startswith("?tab=play&fn=ab_testing.z_test_proportions&args=")
     assert common.permalink("race") == "?tab=race"
-    hw = common.hardware_id({"SPACE_HARDWARE": "cpu-upgrade"})
+    hw = common.hardware_id()
     assert re.fullmatch(r"[0-9a-f]{12}", hw)
     # the machine class is the CPU quota and the architecture — what a tier fixes — and nothing
     # from the environment: a boot whose tier lookup failed and a host migration keep the same id,
     # so `qualified.json` and the board rows stay attributed (the first qualification file was
-    # stamped without the tier and qualified nothing after a restart)
-    assert hw == common.hardware_id({}) == common.hardware_id({"SPACE_HARDWARE": "cpu-basic"})
+    # stamped without the tier and qualified nothing after a restart). Codna review on #1150: the
+    # `env` every caller passed was discarded, so the function takes none
+    assert hw == common.hardware_id()
+    with pytest.raises(TypeError):
+        common.hardware_id({"SPACE_HARDWARE": "cpu-upgrade"})  # type: ignore[call-arg]
     import hashlib as _hashlib
     import platform as _platform
 

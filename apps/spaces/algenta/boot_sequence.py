@@ -418,12 +418,12 @@ def _mcp_tool_count() -> int | None:
         return None
 
 
-def _hardware_id(env: Mapping[str, str]) -> str:
-    """The twelve-hex machine class (`tabs.common.hardware_id`): CPU model, quota, tier — the
-    id `qualified.json` and the board rows are attributed by."""
+def _hardware_id() -> str:
+    """The twelve-hex machine class (`tabs.common.hardware_id`): CPU quota and architecture —
+    the id `qualified.json` and the board rows are attributed by."""
     from tabs import common
 
-    return common.hardware_id(env)
+    return common.hardware_id()
 
 
 def compute_facts(state: BootState, *, root: Path | str | None = None) -> dict[str, Any]:
@@ -490,7 +490,7 @@ def compute_facts(state: BootState, *, root: Path | str | None = None) -> dict[s
             "mcp_tools": _mcp_tool_count(),
             "hero": state.hero_summary(),
             "hardware": state.hardware,
-            "hardware_id": _hardware_id(state.env),
+            "hardware_id": _hardware_id(),
             "host_floor": {"ok": state.floor_ok, "reason": state.floor_reason},
             "rulebook": bench.RULEBOOK_VERSION,
             "killswitch_url": state.killswitch.url,
@@ -874,8 +874,8 @@ def run_boot(
     if tier:
         env["SPACE_HARDWARE"] = tier
         if from_process:
-            # every later reader of the process environment (the rulebook footer's default,
-            # `hardware_id`) sees the same tier the boot state carries
+            # every later reader of the process environment (the rulebook footer's default)
+            # sees the same tier the boot state carries
             os.environ["SPACE_HARDWARE"] = tier
     # the machine line every card prints, after the tier is known
     state.hardware = bench.hardware_footer(env) if hardware is None else hardware

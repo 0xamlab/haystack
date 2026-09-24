@@ -202,9 +202,10 @@ TILE_STATES: tuple[str, ...] = ("ok", "warn", "unavailable")
 STAMP_KINDS: tuple[str, ...] = ("measured", "counted", "fetched", "computed")
 #: The fleet's stamp shape (`runtime.utc_stamp`): `2026-09-22 14:02 UTC`.
 UTC_STAMP_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) UTC$")
-#: The same shape anywhere inside a chip's text, so `measured 2026-09-22 14:02 UTC` renders
-#: its stamp as a `<time>` element.
-_UTC_STAMP_IN_TEXT_RE = re.compile(r"(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) UTC")
+#: The same shape as one whole token inside a chip's text (bounded by the fleet's ` · `, a space
+#: or the text's ends — the digits of a version or an id beside it never make one), so
+#: `measured 2026-09-22 14:02 UTC` renders its stamp as a `<time>` element.
+_UTC_STAMP_IN_TEXT_RE = re.compile(r"(?<![\w-])(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) UTC(?![\w-])")
 #: The class every `<time>` element a card prints carries (the tiles' stamp keeps its own).
 TIME_CLASS = "alg-time"
 #: Set by `shell.CHIP_WRAP_SCRIPT` on a chip whose text takes more than one line.
@@ -299,11 +300,21 @@ def _time_or_text(value: object) -> str:
 
 
 def _text_with_times(text: object) -> str:
-    """Escaped text with every embedded fleet stamp rendered as a `<time>` element."""
-    escaped = _esc(text)
-    return _UTC_STAMP_IN_TEXT_RE.sub(
-        lambda m: time_stamp(f"{m.group(1)} {m.group(2)} UTC"), escaped
-    )
+    """Escaped text with every embedded fleet stamp rendered as a `<time>` element.
+
+    The raw text is cut at its stamps first and every other piece is escaped, so no pattern
+    runs over escaped markup and nothing a caller wrote reaches the page unescaped: the `<time>`
+    element carries only the stamp's own digits (`time_stamp`), and a stamp is one whole token —
+    the digits of a version or an id beside it stay text (Codna review on #1150)."""
+    raw = str(text)
+    parts: list[str] = []
+    last = 0
+    for match in _UTC_STAMP_IN_TEXT_RE.finditer(raw):
+        parts.append(_esc(raw[last : match.start()]))
+        parts.append(time_stamp(match.group(0)))
+        last = match.end()
+    parts.append(_esc(raw[last:]))
+    return "".join(parts)
 
 
 def split_trailing_stamp(text: str) -> tuple[str, str]:

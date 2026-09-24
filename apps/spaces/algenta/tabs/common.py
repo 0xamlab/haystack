@@ -132,15 +132,15 @@ def hardware_line(deps: Deps, *, packages: tuple[str, ...] = ()) -> str:
     return bench.hardware_footer(deps.env, packages=packages)
 
 
-def hardware_id(env: Mapping[str, str] | None = None) -> str:
+def hardware_id() -> str:
     """Twelve hex characters naming this machine class — the CPU quota and the architecture,
     which is what a Hub tier fixes (cpu-upgrade: 8 vCPU x86-64). The qualification file and the
     board rows are attributed by it, so it must not move between boots of one Space: the CPU
     model changes with a host migration and the tier lookup can fail on a private boot (the
     first `qualified.json` was stamped without the tier and qualified nothing after a restart).
     The card foot still discloses the tier and the CPU model; a qualified race the incumbent
-    wins live on another host is held and disclosed, never recorded."""
-    del env  # kept for the callers' signature; nothing about the id comes from the environment
+    wins live on another host is held and disclosed, never recorded. Nothing about the id comes
+    from the environment, so it takes none (Codna review on #1150)."""
     text = f"{bench.cpu_quota()} vCPU|{bench.arch_name(platform.machine())}"
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 

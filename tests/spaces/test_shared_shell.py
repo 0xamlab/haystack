@@ -491,7 +491,13 @@ def test_dropdown_close_script_closes_what_gradio_leaves_open_without_touching_t
         "a list open under the focused input is Gradio's to close"
     )
     assert "addEventListener('focusout'" in script, "focus leaving a combobox"
-    assert "attributeFilter: ['aria-expanded', 'style']" in script, "the reopen after Tab"
+    assert "attributeFilter: ['aria-expanded']});" in script, "the reopen after Tab"
+    # Codna review on #1150: style changes are read on the placed panel alone — its own observer,
+    # never the page-wide one — and a panel is placed again at most eight times per opening
+    assert "attributeFilter: ['aria-expanded', 'style']" not in script
+    assert "var panelWatch = new MutationObserver(keepPlaced);" in script
+    assert "panelWatch.observe(panel, {attributes: true, attributeFilter: ['style']});" in script
+    assert "placements < 8" in script and "panelWatch.disconnect();" in script
     assert "event.key === 'Escape' && event.isTrusted" in script, "Escape from anywhere"
     # Tab out of the input landed on the listbox itself (a keyboard-focusable scroller) and fell
     # to <body> when the list closed: every listbox is taken out of the tab order as it appears

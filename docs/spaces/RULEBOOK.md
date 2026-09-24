@@ -35,11 +35,12 @@ in its How-measured disclosure: a rule that is not on the card is not a rule.
    lane (`CV_MAX`, `ROBUST_SCALE`; `LaneResult.spread`) and the mean within 15 % of the median
    (`LaneResult.skew` — a 50/50 alternation of two timings has MAD 0 but a median that is not the
    cost; the CV would have caught it, the spread alone would not). Otherwise the cell is **noisy —
-   not recorded** and no timing number is printed; the card names the cause (`spread above 15
-   percent on <lane>`). The 1-minute load average is read when the cell ends and **disclosed in
-   the card's foot** (`host load 14.1`), never a gate: inside a Space the container reads the
-   host's `/proc/loadavg`, not its own, and the spread and the mean/median guard measure what
-   the load only predicts (v0.6 — see the change log).
+   not recorded** and no timing number is printed; the card names the gate that failed (`spread
+   above 15 percent on <lane>`, or `mean more than 15 percent off the median on <lane>` when the
+   spread cleared the gate). The 1-minute load average is read when the cell ends and
+   **disclosed in the card's foot** (`host load 14.1`), never a gate: inside a Space the
+   container reads the host's `/proc/loadavg`, not its own, and the spread and the mean/median
+   guard measure what the load only predicts (v0.6 — see the change log).
 8. **Budget:** 60 s per cell (`BUDGET_S`). Over it the cell is **not measurable here**.
 9. **The machine is disclosed on every card:** the Space id and tier (`SPACE_ID`; the tier is
    the Hub's own answer for this Space, read once at boot from the Space runtime endpoint —
