@@ -12,7 +12,7 @@
 # nltk, sympy) are the reference libraries the races and parity chips compare against.
 --extra-index-url https://download.pytorch.org/whl/cpu
 gradio[mcp]==6.28.0
-torch==2.9.1+cpu
+torch==2.12.1+cpu
 kernels==0.17.1
 huggingface_hub==1.26.1
 algenta==1.0.24
