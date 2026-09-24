@@ -130,6 +130,11 @@ MCP_DIST = "algenta-mcp"
 CODE_MCP_UNREACHABLE = "mcp_tools_unreachable"
 #: The caption prefix when the hosted API is unreachable now but this container read it before.
 LAST_READ = "MCP tools read"
+#: Why a hosted read failed, as the one code word the page prints (`reason_code`); the
+#: exception's own text goes to the log (round 10: the SDK card read `URLError: <urlopen …>`).
+REASON_TIMEOUT = "timeout"
+REASON_CONNECTION_REFUSED = "connection_refused"
+REASON_UNREACHABLE = "unreachable"
 #: `[count, stamp]` of the last successful live read in this process (empty until one succeeds).
 _LAST_LIVE: list[Any] = []
 
@@ -823,10 +828,25 @@ def hub_tile(deps: Deps) -> str:
     )
 
 
+def reason_code(fetched: common.Fetched) -> str:
+    """`http_<status>`, `timeout`, `connection_refused` or `unreachable`: the one word the Try
+    tile and the Ecosystem SDK card print for a hosted read that brought no tools list — never
+    the exception class and its text (`common.fetch_json` keeps those in `error` for the log)."""
+    if fetched.status >= 400:
+        return f"http_{fetched.status}"
+    text = fetched.error.lower()
+    if "timed out" in text or "timeout" in text:
+        return REASON_TIMEOUT
+    if "connection refused" in text or "econnrefused" in text:
+        return REASON_CONNECTION_REFUSED
+    return REASON_UNREACHABLE
+
+
 def mcp_tool_count(
     fetch_json: Callable[[str], common.Fetched] = common.fetch_json,
 ) -> tuple[int | None, str, str]:
-    """``(count, caption, kind)``: the registry when installed, else the live endpoint."""
+    """``(count, caption, kind)``: the registry when installed, else the live endpoint. A read
+    that failed names its reason as a code word (`reason_code`), the same on both tabs."""
     try:
         from algenta_mcp.registry import TOOLS
     except ImportError:
@@ -846,7 +866,10 @@ def mcp_tool_count(
     if isinstance(tools, list):
         _LAST_LIVE[:] = [len(tools), utc_stamp()]
         return len(tools), f"{LIVE_HOSTED} · {utc_stamp()}", "live"
-    reason = fetched.error or "no tools list in the response"
+    reason = reason_code(fetched)
+    log.info(
+        "hosted tools list not read: %s (%s)", reason, fetched.error or "no tools list in the body"
+    )
     if _LAST_LIVE:
         # the last count this container read, with its time — never a stored number passed
         # off as live, never "not installed" (round 9: the SDK card said so while the Try tile

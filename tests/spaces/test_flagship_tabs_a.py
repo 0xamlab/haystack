@@ -457,6 +457,18 @@ def test_parse_qualified_accepts_the_three_shapes_and_drops_foreign_hardware():
         {"hardware_id": "bbb", "qualified": ["ngrams"]}, hardware_id="aaa"
     )
     assert foreign.empty
+    # round 10: the file names the Space that wrote it (`requalify.py` stamps `space_id`)
+    staged = races.parse_qualified(
+        {"hardware_id": "aaa", "space_id": "thyn-ai/algenta-staging", "qualified": ["ngrams"]},
+        hardware_id="aaa",
+    )
+    assert staged.file_space_id == "thyn-ai/algenta-staging" and not staged.empty
+    assert q.file_space_id == "" and races.parse_qualified(["x"]).file_space_id == ""
+    loaded = races.load_qualified(
+        lambda url: common.Fetched(url, 200, {"space_id": "a/b", "qualified": ["levenshtein"]}),
+        env={},
+    )
+    assert loaded.file_space_id == "a/b" and loaded.is_qualified("levenshtein", "S")
     with pytest.raises(ValueError):
         races.parse_qualified("nope")
     with pytest.raises(ValueError):
@@ -1338,10 +1350,69 @@ def test_mcp_tool_count_from_the_live_endpoint_or_unavailable(monkeypatch):
     monkeypatch.setattr(try_tab, "_LAST_LIVE", [])
     down = try_tab.hosted_tile(lambda url: common.Fetched(url, 0, error="URLError: down"))
     assert "alg-stat-unavailable" in down and "mcp_tools_unreachable" in down
-    assert "URLError: down" in down
+    # round 10: the reason is one code word, never the exception class and its text
+    assert try_tab.REASON_UNREACHABLE in down and "URLError" not in down
     import re
 
     assert re.sub(r"<[^>]+>", " ", down).count("mcp_tools_unreachable") == 1, "the code once"
+
+
+def test_hosted_read_reasons_are_code_words_the_try_tile_and_the_sdk_card_share(monkeypatch):
+    """Round 10: the Ecosystem SDK card's unreachable state leaked `URLError: <urlopen error …>`
+    from the Try tile's caption. The reason is coded at the source (`try_tab.reason_code`):
+    `timeout`, `connection_refused`, `http_<status>` or `unreachable` — the same word on both
+    tabs, the exception's text in the log alone."""
+    import functools
+    import re
+
+    from tabs import eco_tab  # noqa: PLC0415
+
+    fetched = common.Fetched
+    refused = "URLError: <urlopen error [Errno 61] Connection refused>"
+    assert try_tab.reason_code(fetched("u", 0, error="URLError: <urlopen error timed out>")) == (
+        try_tab.REASON_TIMEOUT
+    )
+    assert try_tab.reason_code(fetched("u", 0, error="TimeoutError: timed out")) == "timeout"
+    assert try_tab.reason_code(fetched("u", 0, error=refused)) == "connection_refused"
+    assert try_tab.reason_code(fetched("u", 503, error="HTTP 503")) == "http_503"
+    assert try_tab.reason_code(fetched("u", 401, error="HTTP 401")) == "http_401"
+    assert try_tab.reason_code(fetched("u", 0, error="URLError: <urlopen error [Errno 8]>")) == (
+        try_tab.REASON_UNREACHABLE
+    )
+    assert try_tab.reason_code(fetched("u", 200, {"no": "tools"})) == "unreachable"
+    assert (
+        try_tab.reason_code(fetched("u", 0, error="only https sources are read")) == "unreachable"
+    )
+    monkeypatch.setitem(sys.modules, "algenta_mcp", None)
+    monkeypatch.setitem(sys.modules, "algenta_mcp.registry", None)
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [])
+    count, caption, kind = try_tab.mcp_tool_count(lambda url: fetched(url, 0, error=refused))
+    assert (count, kind) == (None, "unavailable")
+    assert caption == f"unavailable · {try_tab.CODE_MCP_UNREACHABLE} · connection_refused"
+    tile = try_tab.hosted_tile(lambda url: fetched(url, 0, error=refused))
+    assert "connection_refused" in tile and "URLError" not in tile and "Errno" not in tile
+    assert "urlopen" not in tile
+    # the SDK card reads the same source, so the two tabs agree word for word
+    down = functools.partial(
+        try_tab.mcp_tool_count, lambda url: fetched(url, 503, error="HTTP 503")
+    )
+    monkeypatch.setattr(try_tab, "mcp_tool_count", down)
+    tools, card_caption, card_kind = eco_tab.mcp_tool_count_with_caption()
+    assert (tools, card_kind) == (None, "unavailable") and card_caption.endswith("· http_503")
+    card = eco_tab.render_sdk_card({"versions": {}})
+    assert "HTTP 503" not in card and eco_tab.MCP_NOT_INSTALLED_TEXT in card
+    assert f"unavailable · {try_tab.CODE_MCP_UNREACHABLE}" in card
+    # with an earlier live read the card keeps the count; the reason stays one word
+    monkeypatch.setattr(try_tab, "_LAST_LIVE", [140, "2026-09-24 03:13 UTC"])
+    tools, card_caption, card_kind = eco_tab.mcp_tool_count_with_caption()
+    assert (tools, card_kind) == (140, "measured")
+    assert card_caption == (
+        f"{try_tab.LAST_READ} 2026-09-24 03:13 UTC · {try_tab.CODE_MCP_UNREACHABLE} now · http_503"
+    )
+    stale = eco_tab.render_sdk_card({"versions": {}})
+    assert ">140<" in stale and "http_503" in stale and "HTTP 503" not in stale
+    for text in (caption, card_caption):
+        assert re.search(r"[A-Z][a-zA-Z]+Error", text) is None, text
 
 
 def test_mcp_tool_count_prefers_the_installed_registry(monkeypatch):
@@ -1959,6 +2030,31 @@ def test_build_state_notes_say_what_is_qualified_and_what_is_not_offered(deps, t
     assert "Qualified on this hardware: Levenshtein distance" in race_tab.qualified_note(qualified)
     board = race_tab.board_html(qualified)
     assert race_tab.NOTHING_MEASURED in board and race_tab.NO_QUALIFIED_BOARD not in board
+    # round 10: a file another Space of this hardware class wrote names its writer; this
+    # Space's own file (or one that names no writer) reads as before
+    file = {
+        "space_id": "thyn-ai/algenta-staging",
+        "qualified": ["levenshtein"],
+        "rule": "a cell qualifies when 3 of 3 runs were recorded and won",
+        "generated_utc": "2026-09-23 16:27 UTC",
+    }
+    written = _state(deps, tmp_path, qualified=file)
+    written.space_id = "thyn-ai/algenta"
+    note = race_tab.qualified_note(written)
+    assert (
+        "Qualified on this hardware class by thyn-ai/algenta-staging: Levenshtein distance" in note
+    )
+    assert "Qualified on this hardware:" not in note and "written 2026-09-23 16:27 UTC" in note
+    _assert_clean_copy(note)
+    assert race_tab.qualified_lead(written.qualified, "") == race_tab.QUALIFIED_BY.format(
+        writer="thyn-ai/algenta-staging"
+    )
+    written.space_id = "thyn-ai/algenta-staging"
+    own = race_tab.qualified_note(written)
+    assert "Qualified on this hardware: Levenshtein distance" in own and "by thyn-ai" not in own
+    assert race_tab.qualified_lead(qualified.qualified, "thyn-ai/algenta") == (
+        race_tab.QUALIFIED_HERE
+    ), "a file that names no writer"
 
 
 def _patch_fast_cells(monkeypatch):

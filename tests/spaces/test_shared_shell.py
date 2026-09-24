@@ -389,8 +389,10 @@ def test_footer_stamp_is_twelve_hex_on_one_line_with_the_full_sha_as_title():
 
 def test_footer_names_the_deploy_commit_beside_the_shared_stamp(tmp_path):
     """Round 5: both reviewers read `build 0dfc70f1ed86` as the git build and could not correlate
-    the page with a release. The deploy's commit precedes the shared-package stamp — seven
-    characters, the full sha in `title` — and is left out when no sha is known (`dev`); the
+    the page with a release. The deploy's commit precedes the shared-package stamp — nine
+    characters, this repository's own abbreviation (round 10: seven read short beside the
+    twelve of the build), the full sha in `title` — and is left out when no sha is known
+    (`dev`); the
     verifiers' stamp contract (`alg-shell-stamp">build <hex><`) is untouched."""
     import verify_remote as vr
 
@@ -400,11 +402,13 @@ def test_footer_names_the_deploy_commit_beside_the_shared_stamp(tmp_path):
     # round 6: the pair is one flex item with a middle dot, so a wrap moves both together
     assert (
         f'<span class="{shell.STAMPS_CLASS}">'
-        f'<span title="commit {commit}" class="alg-shell-commit">commit f1feb71</span>'
+        f'<span title="commit {commit}" class="alg-shell-commit">commit f1feb7170</span>'
         '<span class="alg-shell-stamp-sep" aria-hidden="true"> · </span>'
         f'<span title="build {full}" class="alg-shell-stamp">build bc8e7c68957e</span></span>'
     ) in html
-    assert shell.COMMIT_CHARS == 7
+    assert (
+        shell.COMMIT_CHARS == 9 and ">commit f1feb7170<" in html and ">commit f1feb71<" not in html
+    )
     assert vr.footer_stamp_of(html) == "bc8e7c68957e", "the stamp contract still reads the build"
     assert html.count('class="alg-shell-stamp"') == 1
     assert "alg-shell-commit" not in shell.render_footer(stamp=full, commit="dev")

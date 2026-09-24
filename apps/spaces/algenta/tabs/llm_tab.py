@@ -23,7 +23,14 @@ relations (`x` holds `n_rows × n_cols`, `pos` holds `n_tok`, `logits` holds
 Each panel is one stack: its controls two to a row, the Run button under them (its own
 width, left), then the result card across the panel's full width and the Reproduce
 disclosure — so a tall result never leaves a void beside a short set of sliders,
-in any state (round 3 measured 469 px under the RMSNorm controls after a run). The
+in any state (round 3 measured 469 px under the RMSNorm controls after a run). Every
+number box follows the fleet's refusal convention (Try, the Playground): it stands in its
+own column with one reserved caption line under it (the message slot), a shape the form
+refuses puts its sentence there — naming the box and its range, `Rows: 1 to 32` — the
+status row under Run reads `Not run · fix the marked field`, the quiet card says the same
+with its code, and nothing else on the panel moves (round 10: Rows 50 was told by the
+quiet card alone while the box that caused it carried no word). Editing a box clears the
+slots and the echo. The
 two-column tabs (Governed, Ecosystem) share `STRETCH_CLASS` from this module's
 `STATE_CSS` instead: the row is `equal_height`, the block grows to the column and
 the card's footer sits on the bottom edge.
@@ -180,7 +187,16 @@ SHAPE_LABELS: Mapping[str, str] = {
     "top_k": "Top-k",
     "top_p": "Top-p",
 }
-HINT_HEAD_DIM_ODD = "Head dimension must be even: RoPE rotates pairs of dimensions"
+#: The fields of each panel, in the order their boxes stand (the message slots follow it).
+PANEL_FIELDS: Mapping[str, tuple[str, ...]] = {
+    "rmsnorm": ("rows", "cols"),
+    "rope": ("tokens", "heads", "head_dim"),
+    "sampling": ("vocab", "temperature", "top_k", "top_p"),
+}
+HINT_HEAD_DIM_ODD = (
+    f"Head dimension: an even number, {HEAD_DIM[0]} to {HEAD_DIM[1]} —"
+    " RoPE rotates pairs of dimensions"
+)
 #: The frozen kernel answers one status for three conditions; the card says all three.
 STATUS_HINTS: Mapping[tuple[str, str], str] = {
     (MODULE_ROPE, "dimension_too_large"): (
@@ -214,14 +230,14 @@ SPLIT_NOTE = "measured on the same payload"
 LOADING_TEXT = "Measuring the Hub kernel and torch on this machine."
 EMPTY_TEXT = "Pick a shape and press {run}; the kernel is checked against torch on this machine."
 HOW_TEXT = (
-    f"Seed {SEED}, {WARMUPS} warm-up, {REPEATS} timed calls per lane, medians on the card. "
-    "The kernel lane is one native call at a time and its time includes JSON marshalling "
-    "across the C ABI; the Python side of that marshalling is measured on the same payload "
-    "and shown beside the remainder. The torch lane is float64 on the CPU. Parity is the "
-    "largest absolute difference between the two outputs against the tolerance printed on "
-    "the chip. torch is C-backed and at these shapes a kernel call is JSON transport around "
-    "a microsecond of compute, so the card shows the parity check and no latency pair "
-    "(rulebook rule 6: no comparison where transport dominates)."
+    f"Seed {SEED}, {WARMUPS} warm-up, {REPEATS} timed calls per lane, so the cell clears the "
+    "rulebook; the card is a parity check and prints no time. The kernel lane is one native "
+    "call at a time through the C ABI, JSON in and out; the torch lane is float64 on the CPU. "
+    "Parity is the largest absolute difference between the two outputs against the tolerance "
+    "printed on the chip, with the kernel's and torch's provenance beside it. torch is "
+    "C-backed and at these shapes a kernel call is JSON transport around a microsecond of "
+    "compute, so no latency pair is shown (rulebook rule 6: no comparison where transport "
+    "dominates)."
 )
 
 
@@ -245,6 +261,36 @@ class KernelCall:
     function: str
     args: list[Any]
     result: Any
+
+
+class ShapeError(ValueError):
+    """A shape the form refused before any call: `field` is the box that caused it (a
+    `SHAPE_LABELS` key), `str(exc)` the one sentence that goes under that box and on the
+    quiet card — the box's label and its range (`Rows: 1 to 32`)."""
+
+    def __init__(self, field: str, message: str) -> None:
+        super().__init__(message)
+        self.field = field
+
+
+@dataclass(frozen=True)
+class Outcome:
+    """What a run answers: the card, the Reproduce snippet ("" when nothing ran) and, for a
+    shape the form refused, the box it names (`field`) and the sentence under it (`message`).
+    Iterates as the `(card, snippet)` pair, which is what the tab's API endpoints answer."""
+
+    card: str
+    snippet: str
+    field: str = ""
+    message: str = ""
+
+    @property
+    def refused(self) -> bool:
+        return bool(self.message)
+
+    def __iter__(self) -> Iterator[str]:
+        yield self.card
+        yield self.snippet
 
 
 # ---------------------------------------------------------------------------
@@ -347,18 +393,19 @@ def logits_inputs(vocab: int, seed: int = SEED) -> list[float]:
 
 
 def _check_range(name: str, value: Any, spec: tuple) -> int:
-    """The value as the kernel takes it, or a `ValueError` said with the field's label: a
-    decimal for a whole-number field is refused here, never floored (round 5: 8.5 rows ran
-    as 8 without a word)."""
+    """The value as the kernel takes it, or a `ShapeError` naming the field and its range
+    (`Rows: 1 to 32`, `Rows: a whole number, 1 to 32`): a decimal for a whole-number field is
+    refused here, never floored (round 5: 8.5 rows ran as 8 without a word)."""
     label = SHAPE_LABELS.get(name, name)
     lo, hi, step, _ = spec
+    span = f"{lo:g} to {hi:g}"
     if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
-        raise ValueError(f"{label} must be a number")
+        raise ShapeError(name, f"{label}: a number, {span}")
     number = float(value)
     if not lo <= number <= hi:
-        raise ValueError(f"{label} must be between {lo:g} and {hi:g}")
+        raise ShapeError(name, f"{label}: {span}")
     if isinstance(step, int) and abs(number - round(number)) > 1e-9:
-        raise ValueError(f"{label} must be a whole number")
+        raise ShapeError(name, f"{label}: a whole number, {span}")
     return int(round(number)) if isinstance(step, int) else number  # type: ignore[return-value]
 
 
@@ -679,7 +726,7 @@ def measure_rope(deps: Deps, n_tok: int, n_heads: int, head_dim: int, interleave
     n_heads = _check_range("heads", n_heads, HEADS)
     head_dim = _check_range("head_dim", head_dim, HEAD_DIM)
     if head_dim % 2:
-        raise ValueError(HINT_HEAD_DIM_ODD)
+        raise ShapeError("head_dim", HINT_HEAD_DIM_ODD)
     interleaved = bool(interleaved)
     loaded = _kernel(deps)
     x = rope_inputs(n_tok, n_heads, head_dim)
@@ -932,26 +979,50 @@ def visitor_key(request: Any) -> str:
     return key_from_request(dict(headers), client_host=host, session_hash=session)
 
 
-def _run(deps: Deps, title: str, measure: Callable[[], Panel], request: Any) -> tuple[str, str]:
+def _run(deps: Deps, title: str, measure: Callable[[], Panel], request: Any) -> Outcome:
     reason = _limited(deps, request)
     if reason:
         # A refusal by the visitor allowance is a documented state, not a failure: quiet.
-        return render_quiet_card(title, CODE_LIMITED, reason, hardware=deps.hardware), ""
+        return Outcome(render_quiet_card(title, CODE_LIMITED, reason, hardware=deps.hardware), "")
     try:
         panel = measure()
+    except ShapeError as exc:
+        # the quiet card with the code, and the sentence for the slot under the box it names
+        return Outcome(_error_card(title, exc, deps.hardware), "", exc.field, str(exc))
     except (LaneError, HubKernelError, ValueError) as exc:
-        return _error_card(title, exc, deps.hardware), ""
-    return render_panel(panel, deps.hardware), panel.snippet
+        return Outcome(_error_card(title, exc, deps.hardware), "")
+    return Outcome(render_panel(panel, deps.hardware), panel.snippet)
 
 
-def run_rmsnorm(deps: Deps, rows: int, cols: int, request: Any = None) -> tuple[str, str]:
-    """(card html, snippet) — the handler behind `llm_run`."""
+def field_messages(outcome: Outcome, fields: Sequence[str]) -> tuple[str, ...]:
+    """One message slot per field, in `fields` order: the refusal's sentence (as the alert,
+    `common.render_field_message`) under the box it names — the first box when the sentence
+    names none of them — and nothing under the others; every slot empty when nothing was
+    refused, so a run that went through clears an earlier refusal."""
+    if not fields:
+        raise ValueError("a panel has at least one field")
+    if not outcome.refused:
+        return tuple("" for _ in fields)
+    field = outcome.field if outcome.field in fields else fields[0]
+    return tuple(common.render_field_message(outcome.message) if f == field else "" for f in fields)
+
+
+def status_row(outcome: Outcome) -> str:
+    """The status row under Run: `STATUS_NOT_RUN` after a refusal (the sentence itself is
+    under the box, never said twice), else the empty live region that takes no space."""
+    if outcome.refused:
+        return common.render_status(echo=common.STATUS_NOT_RUN)
+    return common.render_status()
+
+
+def run_rmsnorm(deps: Deps, rows: int, cols: int, request: Any = None) -> Outcome:
+    """The card and snippet (and the refused field, if any) — the handler behind `llm_run`."""
     return _run(deps, TITLE_RMSNORM, lambda: measure_rmsnorm(deps, rows, cols), request)
 
 
 def run_rope(
     deps: Deps, n_tok: int, n_heads: int, head_dim: int, interleaved: bool, request: Any = None
-) -> tuple[str, str]:
+) -> Outcome:
     return _run(
         deps, TITLE_ROPE, lambda: measure_rope(deps, n_tok, n_heads, head_dim, interleaved), request
     )
@@ -959,7 +1030,7 @@ def run_rope(
 
 def run_sampling(
     deps: Deps, vocab: int, temperature: float, top_k: int, top_p: float, request: Any = None
-) -> tuple[str, str]:
+) -> Outcome:
     return _run(
         deps,
         TITLE_SAMPLING,
@@ -972,10 +1043,21 @@ def run_sampling(
 KEEP = object()
 
 
-def staged(title: str, run: Callable[[], tuple[str, str]]) -> Iterator[tuple[str, Any]]:
+def staged(title: str, run: Callable[[], Any]) -> Iterator[Any]:
     """The loading card at once (snippet untouched), then the result and its snippet."""
     yield render_loading(title), KEEP
     yield run()
+
+
+def panel_updates(
+    title: str, fields: Sequence[str], run: Callable[[], Outcome], keep: Any
+) -> Iterator[tuple[Any, ...]]:
+    """What a panel's handler yields into `[card, snippet, status, *slots]`: the loading card
+    at once with everything else as it is (`keep`), then the outcome — its card and snippet,
+    the status row and one message per field (`field_messages`)."""
+    yield render_loading(title), keep, keep, *(keep for _ in fields)
+    outcome = run()
+    yield outcome.card, outcome.snippet, status_row(outcome), *field_messages(outcome, fields)
 
 
 # ---------------------------------------------------------------------------
@@ -1245,26 +1327,40 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
             # the slider and the run used 32); the handlers' range checks answer
             return gr.Number(value=spec[3], label=label, step=spec[2], precision=None)
 
-        def pair(*builders: Callable[[], Any]) -> list[Any]:
-            """Two controls side by side, one column each, one under the other on a phone; the
-            row aligns them on the control line, so a checkbox sits level with a slider's
-            track instead of its label."""
+        def pair(slots_out: list[Any], *builders: Callable[[], Any]) -> list[Any]:
+            """Two controls side by side, one field column each, one under the other on a
+            phone (`alg-form-row` top-aligns them, so a filled slot grows its own column
+            alone). Every number box gets a message slot right under it, appended to
+            `slots_out` in box order — the fleet's one reserved caption line, empty until a
+            refusal, so the sentence fills the line and moves nothing (Try, the Playground);
+            a checkbox has nothing to refuse and gets none."""
             made = []
             with gr.Row(elem_classes=["alg-form-row"]):
                 for build_control in builders:
-                    with gr.Column(min_width=CONTROL_MIN_WIDTH):
-                        made.append(build_control())
+                    with gr.Column(elem_classes=["alg-field"], min_width=CONTROL_MIN_WIDTH):
+                        control = build_control()
+                        made.append(control)
+                        if isinstance(control, gr.Number):
+                            slots_out.append(
+                                gr.HTML("", elem_classes=["alg-status-row", "alg-field-slot"])
+                            )
             return made
 
         def panel(
+            key: str,
             run_label: str,
             title: str,
-            controls: Callable[[], list[Any]],
+            controls: Callable[[list[Any]], list[Any]],
             snippet_text: str,
         ):
-            """One stack: the controls, Run under them at its own width, the card across the
-            full width, then Reproduce — the result never sits beside a shorter column."""
-            inputs = controls()
+            """One stack: the controls (each number box over its message slot), Run under them
+            with the status row, the card across the full width, then Reproduce — the result
+            never sits beside a shorter column. Returns the inputs, the slots (one per
+            `PANEL_FIELDS[key]` entry, in order), Run, the status row, the card, the editor."""
+            slots: list[Any] = []
+            inputs = controls(slots)
+            if len(slots) != len(PANEL_FIELDS[key]):
+                raise ValueError(f"{key}: {len(slots)} slots for {len(PANEL_FIELDS[key])} fields")
             with gr.Row():
                 run = gr.Button(
                     run_label,
@@ -1274,6 +1370,8 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
                     min_width=RUN_MIN_WIDTH,
                     elem_classes=["alg-run"],
                 )
+            # the refusal's echo lands here (`STATUS_NOT_RUN`); empty, the row takes no space
+            status = gr.HTML(common.render_status(), elem_classes=["alg-status-row"])
             card = gr.HTML(opening_card(deps, title, run_label), elem_classes=[common.BLOCK_CLASS])
             with gr.Accordion(REPRODUCE_TITLE, open=False, elem_classes=["alg-disclosure"]):
                 snippet = gr.Code(
@@ -1285,35 +1383,40 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
                     interactive=False,
                 )
                 copy_chip(gr, snippet)
-            return inputs, run, card, snippet
+            return inputs, slots, run, status, card, snippet
 
-        (rows, cols), run1, card1, snip1 = panel(
+        (rows, cols), slots1, run1, status1, card1, snip1 = panel(
+            "rmsnorm",
             RUN_RMSNORM,
             TITLE_RMSNORM,
-            lambda: pair(lambda: slider(ROWS, "Rows"), lambda: slider(COLS, "Columns")),
+            lambda s: pair(s, lambda: slider(ROWS, "Rows"), lambda: slider(COLS, "Columns")),
             snippet_rmsnorm(ROWS[3], COLS[3]),
         )
-        (tokens, heads, head_dim, interleaved), run2, card2, snip2 = panel(
+        (tokens, heads, head_dim, interleaved), slots2, run2, status2, card2, snip2 = panel(
+            "rope",
             RUN_ROPE,
             TITLE_ROPE,
-            lambda: [
-                *pair(lambda: slider(TOKENS, "Tokens"), lambda: slider(HEADS, "Heads")),
+            lambda s: [
+                *pair(s, lambda: slider(TOKENS, "Tokens"), lambda: slider(HEADS, "Heads")),
                 *pair(
+                    s,
                     lambda: slider(HEAD_DIM, "Head dimension"),
                     lambda: gr.Checkbox(value=False, label="Interleaved pairs"),
                 ),
             ],
             snippet_rope(TOKENS[3], HEADS[3], HEAD_DIM[3], False),
         )
-        (vocab, temperature, top_k, top_p), run3, card3, snip3 = panel(
+        (vocab, temperature, top_k, top_p), slots3, run3, status3, card3, snip3 = panel(
+            "sampling",
             RUN_SAMPLING,
             TITLE_SAMPLING,
-            lambda: [
+            lambda s: [
                 *pair(
+                    s,
                     lambda: slider(VOCAB, "Vocabulary"),
                     lambda: slider(TEMPERATURE, "Temperature"),
                 ),
-                *pair(lambda: slider(TOP_K, "Top-k"), lambda: slider(TOP_P, "Top-p")),
+                *pair(s, lambda: slider(TOP_K, "Top-k"), lambda: slider(TOP_P, "Top-p")),
             ],
             snippet_sampling(VOCAB[3], TEMPERATURE[3], TOP_K[3], TOP_P[3]),
         )
@@ -1336,43 +1439,58 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
         with gr.Accordion(HOW_TITLE, open=False, elem_classes=["alg-disclosure"]):
             gr.HTML(common.render_note(HOW_TEXT))
 
-        def _emit(stage: Iterator[tuple[str, Any]]):
-            for card, snippet in stage:
-                yield card, (gr.update() if snippet is KEEP else snippet)
+        def _emit(key: str, title: str, run: Callable[[], Outcome]):
+            yield from panel_updates(title, PANEL_FIELDS[key], run, gr.update())
 
         # the values reach `_check_range` as typed: a decimal in a whole-number field is
         # refused with a sentence, never floored on the way in (round 5)
         def on_rmsnorm(r: float, c: float, request=None):
-            yield from _emit(staged(TITLE_RMSNORM, lambda: run_rmsnorm(deps, r, c, request)))
+            yield from _emit("rmsnorm", TITLE_RMSNORM, lambda: run_rmsnorm(deps, r, c, request))
 
         def on_rope(t: float, h: float, d: float, inter: bool, request=None):
             yield from _emit(
-                staged(TITLE_ROPE, lambda: run_rope(deps, t, h, d, bool(inter), request))
+                "rope", TITLE_ROPE, lambda: run_rope(deps, t, h, d, bool(inter), request)
             )
 
         def on_sampling(v: float, temp: float, k: float, p: float, request=None):
             yield from _emit(
-                staged(
-                    TITLE_SAMPLING,
-                    lambda: run_sampling(deps, v, float(temp), k, float(p), request),
-                )
+                "sampling",
+                TITLE_SAMPLING,
+                lambda: run_sampling(deps, v, float(temp), k, float(p), request),
             )
 
         for handler in (on_rmsnorm, on_rope, on_sampling):
             request_hint(handler, gr)
 
-        run1.click(on_rmsnorm, [rows, cols], [card1, snip1], api_name=API_RMSNORM, **native)
+        quiet = {"api_name": False, "show_progress": "hidden"}
+        # editing a box clears the refusal: the sentence under it and the echo beside Run
+        for status, slots, boxes in (
+            (status1, slots1, (rows, cols)),
+            (status2, slots2, (tokens, heads, head_dim)),
+            (status3, slots3, (vocab, temperature, top_k, top_p)),
+        ):
+            cleared = (common.render_status(), *("" for _ in slots))
+            for box in boxes:
+                box.input(lambda cleared=cleared: cleared, None, [status, *slots], **quiet)
+
+        run1.click(
+            on_rmsnorm,
+            [rows, cols],
+            [card1, snip1, status1, *slots1],
+            api_name=API_RMSNORM,
+            **native,
+        )
         run2.click(
             on_rope,
             [tokens, heads, head_dim, interleaved],
-            [card2, snip2],
+            [card2, snip2, status2, *slots2],
             api_name=API_ROPE,
             **native,
         )
         run3.click(
             on_sampling,
             [vocab, temperature, top_k, top_p],
-            [card3, snip3],
+            [card3, snip3, status3, *slots3],
             api_name=API_SAMPLING,
             **native,
         )
@@ -1380,22 +1498,31 @@ def build(deps: Deps, *, poller: gpu_status.GpuStatusPoller | None = None) -> Ta
             rows=rows,
             cols=cols,
             run_rmsnorm=run1,
+            status_rmsnorm=status1,
+            slots_rmsnorm=slots1,
             card_rmsnorm=card1,
             tokens=tokens,
             heads=heads,
             head_dim=head_dim,
             interleaved=interleaved,
             run_rope=run2,
+            status_rope=status2,
+            slots_rope=slots2,
             card_rope=card2,
             vocab=vocab,
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
             run_sampling=run3,
+            status_sampling=status3,
+            slots_sampling=slots3,
             card_sampling=card3,
             snippet_rmsnorm=snip1,
             snippet_rope=snip2,
             snippet_sampling=snip3,
+            on_rmsnorm=on_rmsnorm,
+            on_rope=on_rope,
+            on_sampling=on_sampling,
         )
         return handles
 

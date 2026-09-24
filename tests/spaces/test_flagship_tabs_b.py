@@ -408,6 +408,69 @@ def test_shape_outside_the_contract_is_refused_before_any_call(deps: Deps, fake_
     assert code_of(html) == llm_tab.CODE_BAD_SHAPE
 
 
+def test_refused_shape_marks_its_field_and_a_valid_run_clears_the_slots(deps: Deps, fake_kernel):
+    """Round 10: a refused shape was told by the quiet card alone; the box that caused it
+    carried no word. Now the sentence names the box and its range, lands under that box as the
+    alert (`field_messages`, the Rows slot), the status row under Run echoes `STATUS_NOT_RUN`
+    (`status_row`), the card is the quiet one with its code, nothing ran — and a run that goes
+    through leaves every slot and the status row empty, so an earlier refusal clears."""
+    fields = llm_tab.PANEL_FIELDS["rmsnorm"]
+    assert fields == ("rows", "cols")
+    outcome = llm_tab.run_rmsnorm(deps, 50, 256)
+    assert outcome.refused and outcome.field == "rows" and outcome.message == "Rows: 1 to 32"
+    html, snippet = outcome  # the (card, snippet) pair the `llm_run` endpoint answers
+    assert code_of(html) == llm_tab.CODE_BAD_SHAPE and "alg-card-quiet" in html and snippet == ""
+    assert "Rows: 1 to 32" in html and "alg-card-err" not in html and fake_kernel.calls == []
+    rows_slot, cols_slot = llm_tab.field_messages(outcome, fields)
+    assert (
+        rows_slot == '<p class="alg-field-msg" role="alert">Rows: 1 to 32</p>' and cols_slot == ""
+    )
+    assert llm_tab.status_row(outcome) == common.render_status(echo=common.STATUS_NOT_RUN)
+    assert 'role="status">Not run · fix the marked field</p>' in llm_tab.status_row(outcome)
+    _assert_clean_copy(rows_slot)
+    # the other box: the sentence moves to the Columns slot; a decimal and a non-number too
+    cols = llm_tab.run_rmsnorm(deps, 8, 2048)
+    assert (cols.field, cols.message) == ("cols", "Columns: 64 to 1024")
+    assert llm_tab.field_messages(cols, fields) == ("", common.render_field_message(cols.message))
+    decimal = llm_tab.run_rmsnorm(deps, 8.5, 256)
+    assert (decimal.field, decimal.message) == ("rows", "Rows: a whole number, 1 to 32")
+    text = llm_tab.run_sampling(deps, "many", 0.8, 40, 0.95)
+    assert (text.field, text.message) == ("vocab", "Vocabulary: a number, 256 to 32768")
+    assert llm_tab.field_messages(text, llm_tab.PANEL_FIELDS["sampling"])[1:] == ("", "", "")
+    odd = llm_tab.run_rope(deps, 16, 4, 63, False)
+    assert odd.field == "head_dim" and odd.message == llm_tab.HINT_HEAD_DIM_ODD
+    assert odd.message.startswith("Head dimension: an even number, 16 to 128")
+    assert llm_tab.field_messages(odd, llm_tab.PANEL_FIELDS["rope"])[2] == (
+        common.render_field_message(odd.message)
+    )
+    # a sentence that names no box of the panel lands under the first one, never nowhere
+    stray = llm_tab.Outcome("card", "", "elsewhere", "Something is off")
+    assert llm_tab.field_messages(stray, fields)[0] == common.render_field_message(stray.message)
+    with pytest.raises(ValueError):
+        llm_tab.field_messages(stray, ())
+    # the staged handler: the loading card first with everything else kept, then the outcome
+    keep = object()
+    stages = list(llm_tab.panel_updates("T", fields, lambda: outcome, keep))
+    assert len(stages) == 2 and LOADING_RE.search(stages[0][0])
+    assert stages[0][1:] == (keep, keep, keep, keep)
+    assert stages[1] == (html, "", llm_tab.status_row(outcome), rows_slot, "")
+    # a run that goes through: no message, no echo — the slots are cleared, not left as they were
+    pytest.importorskip("torch")
+    ok = llm_tab.run_rmsnorm(deps, 4, 64)
+    assert not ok.refused and ok.field == "" and ok.message == ""
+    assert llm_tab.field_messages(ok, fields) == ("", "")
+    assert llm_tab.status_row(ok) == common.render_status() and "alg-status-echo" not in (
+        llm_tab.status_row(ok)
+    )
+    assert list(llm_tab.panel_updates("T", fields, lambda: ok, keep))[1] == (
+        ok.card,
+        ok.snippet,
+        common.render_status(),
+        "",
+        "",
+    )
+
+
 def test_missing_kernel_and_kill_switch_render_the_quiet_card(deps: Deps):
     empty = Deps(kernels={}, lane=Lane(), hardware=HARDWARE, env={})
     html, _ = llm_tab.run_rmsnorm(empty, 4, 64)
@@ -506,6 +569,11 @@ def test_llm_copy_and_css_discipline():
     )
     assert llm_tab.API_NAMES[0] == "llm_run"
     assert llm_tab.RUN_VARIANT == "secondary", "three peer panels share one button hierarchy"
+    # round 10: the disclosure describes the parity card the tab shows — no medians, no split
+    assert "parity check" in llm_tab.HOW_TEXT and "prints no time" in llm_tab.HOW_TEXT
+    assert "medians on the card" not in llm_tab.HOW_TEXT
+    assert "shown beside the remainder" not in llm_tab.HOW_TEXT
+    assert "both latencies" not in llm_tab.HOW_TEXT and "not a race" not in llm_tab.HOW_TEXT
     pending = llm_tab.render_empty_card("T", "Press run.", rows=("a",), pending_text="not run yet")
     assert 'alg-sr">not run yet<' in pending and llm_tab.PENDING_TEXT not in pending
     assert llm_tab.PENDING_TEXT in llm_tab.render_empty_card("T", "Press run.", rows=("a",))
@@ -1651,6 +1719,15 @@ def test_gov_copy_and_css_discipline():
     _assert_stylesheet_discipline(gov_tab.GOV_CSS)
     _assert_four_class_selectors(gov_tab.GOV_CSS)
     assert gov_tab.API_NAMES[0] == "gov_run"
+    # round 10: at 1024 px the four Profile pills wrapped to three and an orphan (`Full`);
+    # below 1280 px they are two even rows of two, one row at their natural widths above
+    assert gov_tab.PROFILE_GRID_MAX_WIDTH == 1279 == eco_tab.WRAP_MAX_WIDTH
+    assert f"@media (width <= {gov_tab.PROFILE_GRID_MAX_WIDTH}px)" in gov_tab.GOV_CSS
+    pills = f".{gov_tab.PROFILE_RADIO_CLASS}" * 4 + ' label:has(> input[type="radio"]) {'
+    pill_rule = next(line for line in gov_tab.GOV_CSS.splitlines() if pills in line)
+    assert pill_rule.strip() == pills + " flex: 1 1 40%; }", pill_rule
+    assert gov_tab.GOV_CSS.index("@media") < gov_tab.GOV_CSS.index(pills), "inside the block"
+    assert "padding" not in pill_rule and "height" not in pill_rule, "44 px and the inset stay"
 
 
 def test_gov_primary_copy_carries_human_names_not_identifiers():
@@ -1828,6 +1905,23 @@ def test_hub_table_shows_counts_with_stamp_then_unavailable_after_a_failed_fetch
     assert '<th scope="col">revision</th>' in table and '<th scope="col">kernel</th>' in table
     assert "1,234 functions · 12 modules" in flat(table) and "v1 · a01e2b2 · pinned" in flat(table)
     assert eco_tab.COUNTS_UNAVAILABLE not in table
+    # round 10: the twenty kernel links open a new tab like every other outbound anchor of the
+    # fleet (inside the Hub's iframe a same-frame navigation renders nothing)
+    anchors = re.findall(r"<a [^>]*>", table)
+    assert len(anchors) == len(eco_tab.FAMILY_ORDER)
+    for anchor in anchors:
+        assert 'target="_blank"' in anchor and 'rel="noopener"' in anchor, anchor
+        assert f'href="{eco_tab.HUB_REPO_URL}thyn-ai/algenta' in anchor, anchor
+    for card in (
+        eco_tab.render_sdk_card({"versions": {}, "mcp_tools": 140}),
+        eco_tab.render_oss_card(
+            eco_tab.OssFacts(44, "v0.1.4", "2026-09-22 14:54 UTC", "2026-09-22 15:00 UTC")
+        ),
+    ):
+        outbound = re.findall(r"<a [^>]*>", card)
+        assert outbound and all(
+            'target="_blank"' in a and 'rel="noopener"' in a for a in outbound
+        ), outbound
     assert eco_tab.HUB_API_URL not in table and eco_tab.SOURCE_HUB in table, "source, not a URL"
     assert "next refresh" not in table
     _assert_clean_copy(table)
@@ -2201,6 +2295,54 @@ def test_llm_tab_builds_with_gradio(deps: Deps):
         assert handles[name].buttons == [], f"{name}: no stock reset button"
     for name in ("card_rmsnorm", "card_rope", "card_sampling"):
         assert 'class="alg-card alg-card-empty"' in handles[name].value, name
+    # round 10: every number box stands in a field column over its message slot (one reserved
+    # caption line), Run has its status row, and a run writes card, snippet, status, slots
+    fns = {f.api_name: f for f in blocks.fns.values() if f.api_name}
+    for panel, boxes in (
+        ("rmsnorm", ("rows", "cols")),
+        ("rope", ("tokens", "heads", "head_dim")),
+        ("sampling", ("vocab", "temperature", "top_k", "top_p")),
+    ):
+        slots = handles[f"slots_{panel}"]
+        assert len(slots) == len(boxes) == len(llm_tab.PANEL_FIELDS[panel]), panel
+        for box_name, slot in zip(boxes, slots, strict=True):
+            assert slot.value == "" and "alg-field-slot" in slot.elem_classes, box_name
+            assert "alg-status-row" in slot.elem_classes
+            box = handles[box_name]
+            assert ids.index(box._id) + 1 == ids.index(slot._id), f"{box_name}: slot under its box"
+            column = box.parent  # Gradio wraps a Number in a Form inside its Column
+            while column is not None and "alg-field" not in column.elem_classes:
+                column = column.parent
+            assert column is not None and column is slot.parent, f"{box_name}: a field column"
+            assert column.parent.elem_classes == ["alg-form-row"], f"{box_name}: top-aligned row"
+        status = handles[f"status_{panel}"]
+        assert status.value == common.render_status() and "alg-status-row" in status.elem_classes
+        assert (
+            ids.index(handles[f"run_{panel}"]._id)
+            < ids.index(status._id)
+            < ids.index(handles[f"card_{panel}"]._id)
+        ), f"{panel}: Run, its status row, then the card"
+        outputs = [o._id for o in fns[f"llm_{'run' if panel == 'rmsnorm' else panel}"].outputs]
+        assert outputs == [
+            handles[f"card_{panel}"]._id,
+            handles[f"snippet_{panel}"]._id,
+            status._id,
+            *(s._id for s in slots),
+        ], f"{panel}: the run writes the card, the snippet, the status row and every slot"
+    assert "alg-field-slot" not in str(
+        [c.elem_classes for c in blocks.blocks.values() if c is handles["interleaved"]]
+    )
+    checkbox_column = handles["interleaved"].parent
+    while checkbox_column is not None and "alg-field" not in checkbox_column.elem_classes:
+        checkbox_column = checkbox_column.parent
+    assert checkbox_column is not None, "the checkbox stands in a field column too, without a slot"
+    # the refusal reaches the page through the handler: Rows 50 → the quiet card, an empty
+    # snippet, `STATUS_NOT_RUN` beside Run and the sentence in the Rows slot alone
+    stages = list(handles["on_rmsnorm"](50, 256))
+    assert len(stages) == 2 and len(stages[1]) == 5
+    card, snippet, status_html, rows_msg, cols_msg = stages[1]
+    assert code_of(card) == llm_tab.CODE_BAD_SHAPE and snippet == ""
+    assert common.STATUS_NOT_RUN in status_html and "Rows: 1 to 32" in rows_msg and cols_msg == ""
     for name, expected in (
         ("snippet_rmsnorm", llm_tab.snippet_rmsnorm(llm_tab.ROWS[3], llm_tab.COLS[3])),
         (
@@ -2270,6 +2412,8 @@ def test_gov_tab_configured_builds_and_defaults():
     blocks, handles = _render(spec, gr)
     assert handles["configured"] is True and "status_card" not in handles
     assert handles["controls"].visible is True
+    assert handles["profile"].elem_classes == [gov_tab.PROFILE_RADIO_CLASS], "the pills' hook"
+    assert [c for _, c in handles["profile"].choices] == list(gov_tab.PROFILES)
     # a boot probe that did not answer keeps the controls and adds one quiet card above them
     down = hosted_api.HostedStatus(
         hosted_api.ConfigState.UNAVAILABLE, "refused", hosted.base_url, "", "2026-09-22 14:02 UTC"
@@ -2876,7 +3020,7 @@ def test_round_5_launch_review_regressions(deps: Deps, fake_kernel):
     assert "alg-card-quiet" in html and "alg-card-err" not in html
     assert fake_kernel.calls == [], "refused before any call"
     html, _ = llm_tab.run_rmsnorm(deps, 8.5, 256)
-    assert code_of(html) == llm_tab.CODE_BAD_SHAPE and "Rows must be a whole number" in html
+    assert code_of(html) == llm_tab.CODE_BAD_SHAPE and "Rows: a whole number, 1 to 32" in html
     assert "8 × 256" not in html and fake_kernel.calls == []
     hint = llm_tab.STATUS_HINTS[(llm_tab.MODULE_ROPE, "dimension_too_large")]
     assert "even" in hint and "1,024" in hint and "1,048,576" in hint

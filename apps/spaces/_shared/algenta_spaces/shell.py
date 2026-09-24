@@ -144,8 +144,9 @@ GESTURE_MS = 700
 PHONE_MAX_WIDTH = 767
 #: The footer prints this many characters of the deploy sha; the full value is the `title`.
 SHORT_STAMP_CHARS = 12
-#: The deploy's commit is named the way `git log --oneline` does.
-COMMIT_CHARS = 7
+#: The deploy's commit is named the way this repository abbreviates one (`git log --oneline`
+#: prints nine characters here; round 10 read seven beside the twelve of the build).
+COMMIT_CHARS = 9
 #: The footer's stamp pair (`commit … · build …`): one flex item, never split.
 STAMPS_CLASS = "alg-shell-footer-stamps"
 #: The footer's second link group (Kernels Hub, GitHub, Docs, Pricing, Discord), a gap away
@@ -267,7 +268,7 @@ def git_sha(path: Path | str | None = None) -> str:
 
 def _stamp_html(build: str, commit: str = "") -> str:
     """`<span title="build <full>" class="alg-shell-stamp">build <12 hex></span>`, preceded by
-    `<span title="commit <full>" class="alg-shell-commit">commit <7 hex></span>` when the
+    `<span title="commit <full>" class="alg-shell-commit">commit <9 hex></span>` when the
     deploy's git sha is known (round 5: the shared-package stamp alone let no reviewer
     correlate the page with a release).
 
@@ -411,7 +412,7 @@ def render_footer(
 
     The build stamp is one line — twelve hex characters of the shared-package sha with the
     full value as the span's `title` (`short_stamp`), or `dev` when no `.shared_sha` is staged;
-    the deploy's commit (seven characters, full sha in `title`) precedes it when known."""
+    the deploy's commit (nine characters, full sha in `title`) precedes it when known."""
     if active is not None and active not in NAV_LABELS:
         raise ValueError(f"active {active!r} is not a NAV label")
     build = shared_sha() if stamp is None else stamp

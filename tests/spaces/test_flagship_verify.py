@@ -672,7 +672,7 @@ def test_every_check_passes_on_a_healthy_flagship(ctx, client, http) -> None:
     )
     assert _detail(report, "voids") == "14 column samples at 1440 px, no gap over 240 px"
     assert _detail(report, "refusal_convention") == (
-        "4 refusals on play, try: field message under the control + status-row echo, no red"
+        "6 refusals on llm, play, try: field message under the control + status-row echo, no red"
         " card, no toast; not shown: desktop/light/gov: no form to refuse"
         " (hosted_not_configured); phone/dark/gov: no form to refuse (hosted_not_configured)"
     )
@@ -1437,7 +1437,7 @@ def test_round_4_browser_gates_fail_on_each_defect(ctx, client, monkeypatch) -> 
     monkeypatch.setattr(vc, "run_refusal_audit", lambda base_url: broken)
     detail = _detail(_run(ctx, "refusal_convention"), "refusal_convention")
     assert detail.startswith(
-        "2 of 4 probes: desktop/light/try 'Successes A'=5000: no field message"
+        "2 of 6 probes: desktop/light/try 'Successes A'=5000: no field message"
     )
     vc.reset_clients()
     monkeypatch.setattr(vc, "run_refusal_audit", lambda base_url: vc.RefusalAudit())
@@ -2688,7 +2688,9 @@ def test_audit_javascript_is_well_formed() -> None:
         and ".cm-lineNumbers" in vc._JS_CODE_CHROME
     )
     assert ".alg-field-msg" in vc._JS_REFUSAL and ".alg-status" in vc._JS_REFUSAL
-    assert [slug for slug, *_ in vc.REFUSAL_PROBES] == ["try", "play", "gov"]
+    assert [slug for slug, *_ in vc.REFUSAL_PROBES] == ["try", "play", "llm", "gov"]
+    # round 10: the LLM tab's Rows box is refused above 32 with a sentence naming the range
+    assert ("llm", "Rows", "50", "rows") in vc.REFUSAL_PROBES
     assert vc.HOOK_NONCE_RE.search("/hook/CTd0spedChhS89CmhN6tCgDyosxUDUX1")
     assert vc.HOOK_NONCE_RE.search("/hook/n0nce") is None, "a short test nonce is not the pattern"
     assert vc.HOOK_URL_RE.search("Webhook https://x.hf.space/hook/CTd0spedChhS89CmhN6tCgDyosxUDUX1")

@@ -83,6 +83,10 @@ NO_QUALIFIED = (
     "latencies."
 )
 QUALIFICATION_FILE_LABEL = "Qualification file:"
+#: The lead of the qualified note: this Space's own file, or another Space's of the same
+#: hardware class (round 10: staging's `qualified.json` read as "on this hardware" here).
+QUALIFIED_HERE = "Qualified on this hardware"
+QUALIFIED_BY = "Qualified on this hardware class by {writer}"
 #: A measured cell the rulebook has not qualified: its ratio is printed as the figure it is,
 #: with this status — never as the hero, never as a sentence that denies the two latencies
 #: beside it (round 6: a 62× kernel win read "not a race" in the ratio column).
@@ -235,14 +239,24 @@ def not_offered_note(state: RaceState) -> str:
     return common.render_note(f"{NOT_OFFERED}: " + " · ".join(parts))
 
 
+def qualified_lead(qualified: races.Qualified, space_id: str) -> str:
+    """`Qualified on this hardware` when this Space wrote the file, or the file names no
+    writer; `Qualified on this hardware class by <space>` when another Space did — the same
+    hardware class (`hardware_id` matched, or the list would be empty), another writer."""
+    writer = qualified.file_space_id
+    if writer and writer != space_id:
+        return QUALIFIED_BY.format(writer=writer)
+    return QUALIFIED_HERE
+
+
 def qualified_note(state: RaceState) -> str:
-    """Which candidates are qualified here, then the file's own rule and date (round 5: the
-    method text promised nightly wins the file never recorded — the file speaks for itself)."""
+    """Which candidates are qualified here — and who qualified them, when it was another Space
+    (`qualified_lead`) — then the file's own rule and date (round 5: the method text promised
+    nightly wins the file never recorded — the file speaks for itself)."""
     if state.qualified.empty:
         return common.render_note(NO_QUALIFIED)
-    note = common.render_note(
-        "Qualified on this hardware: " + qualified_cells_text(state.qualified)
-    )
+    lead = qualified_lead(state.qualified, state.space_id)
+    note = common.render_note(f"{lead}: " + qualified_cells_text(state.qualified))
     return note + qualification_source_note(state.qualified)
 
 

@@ -730,6 +730,9 @@ class Qualified:
     fetched_utc: str
     error: str = ""
     file_hardware_id: str = ""
+    #: The Space that wrote the file (`requalify.py` stamps `space_id`); the tab names it when
+    #: it is not this Space (a staging Space of the same hardware class qualifies here too).
+    file_space_id: str = ""
     #: The file's own statement of its rule and when it was written (printed on the tab).
     rule: str = ""
     generated_utc: str = ""
@@ -746,11 +749,13 @@ def parse_qualified(data: Any, *, hardware_id: str = "") -> Qualified:
     """Accept a list of race ids, a list of ``{race_id, size}`` records, or an object with a
     ``qualified`` list; a file stamped with another ``hardware_id`` qualifies nothing here."""
     file_hardware = ""
+    file_space = ""
     rule = ""
     generated = ""
     entries = data
     if isinstance(data, Mapping):
         file_hardware = str(data.get("hardware_id", "") or "")
+        file_space = str(data.get("space_id", "") or "").strip()
         rule = str(data.get("rule", "") or "").strip()
         generated = str(data.get("generated_utc", "") or "").strip()
         entries = data.get("qualified", [])
@@ -771,6 +776,7 @@ def parse_qualified(data: Any, *, hardware_id: str = "") -> Qualified:
         "",
         utc_stamp(),
         file_hardware_id=file_hardware,
+        file_space_id=file_space,
         rule=rule,
         generated_utc=generated,
     )
@@ -804,6 +810,7 @@ def load_qualified(
         parsed.fetched_utc,
         "",
         parsed.file_hardware_id,
+        file_space_id=parsed.file_space_id,
         rule=parsed.rule,
         generated_utc=parsed.generated_utc,
     )

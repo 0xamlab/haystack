@@ -37,7 +37,7 @@ says so with an error code instead of a stored result.
 | Try it | The opening card: a two-proportion z-test from `thyn-ai/algenta-stats`, gated against statsmodels, then your own inputs. |
 | Playground | Any published function: family, module, function, a form generated from the kernel's own contract, the result and the exact snippet to reproduce it. |
 | Races | Seeded workloads, the Hub kernel against the Python library it replaces, under one measurement protocol; the incumbent's version is on every card. |
-| LLM kernels | RMSNorm, RoPE and sampling from `thyn-ai/algenta-llm` against torch on the CPU: a parity chip and both latencies, labelled as not a race. |
+| LLM kernels | RMSNorm, RoPE and sampling from `thyn-ai/algenta-llm`, checked against torch on the CPU: a parity chip against a stated tolerance with both lanes' provenance, and no timing shown — at these shapes a call is transport around a microsecond kernel. |
 | Governed | One governed execution on the hosted API, from recommendation to receipt or denial, with the engine's webhook shown next to it. |
 | Ecosystem | The families and the umbrella with live Hub counts, the open-source kernels, the SDK and the MCP registry, every count computed here. |
 

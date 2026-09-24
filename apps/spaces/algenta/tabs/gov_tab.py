@@ -19,7 +19,11 @@ The profile radio is the integration contract's four profiles (`observe`,
 thyn-ai/algenta-integrations, mirrored here as data): under `observe` and
 `govern` the execute step is intercepted before the engine is called, exactly
 as every algenta-* integration filters `execute_decision` out of the model-
-facing tool list.
+facing tool list. From 1280 px up its four pills share one row at their natural
+widths; below that (`PROFILE_GRID_MAX_WIDTH`) the controls column is too narrow
+for the four — 465 px of pills in a 422 px row at 1024 — so the pills are two
+even rows of two, each 44 px, never three and an orphan (round 10: `Full` sat
+alone on a second row at 1024 × 768).
 
 **Execute again** re-sends the session's last decision id, and the button says
 what the engine will do with it: after a *failed* delivery the engine executes
@@ -109,6 +113,7 @@ from algenta_spaces.css import (
     CONTROLS_CLASS,
     FILL_CLASS,
     RESULTS_CLASS,
+    block,
     rule,
     stylesheet,
 )
@@ -321,6 +326,11 @@ ENGINE_JSON_TITLE = "Engine responses"
 AUDIT_TITLE = "This session"
 HOW_TITLE = "How this works"
 LABEL_PROFILE = "Profile"
+#: The Profile radio's own class (`GOV_CSS` reaches its option pills through it).
+PROFILE_RADIO_CLASS = "alg-gov-profile-radio"
+#: Up to this width the Profile pills are two even rows of two (see the module docstring);
+#: the fleet's tablet breakpoint (the Ecosystem table wraps its cells up to the same width).
+PROFILE_GRID_MAX_WIDTH = 1279
 LABEL_ACTION = "Action"
 LABEL_LOW = "Pessimistic value"
 LABEL_HIGH = "Optimistic value"
@@ -1458,6 +1468,12 @@ GOV_CSS = stylesheet(
     # a field message under a control takes no block padding of its own
     rule("alg-gov-field-msg", "padding: 0;"),
     rule("alg-gov-field-msg", "padding: 0;", suffix=" > div"),
+    # the Profile pills below 1280 px: two even rows of two, each pill half the row (the flex
+    # basis makes two fit and a third not), 44 px tall; the row is 44 + 8 + 44 on the grid
+    block(
+        f"@media (width <= {PROFILE_GRID_MAX_WIDTH}px)",
+        rule(PROFILE_RADIO_CLASS, "flex: 1 1 40%;", suffix=' label:has(> input[type="radio"])'),
+    ),
 )
 
 
@@ -1556,6 +1572,7 @@ def build(
                     choices=[(PROFILE_LABELS[p], p) for p in PROFILES],
                     value=DEFAULT_PROFILE,
                     label=LABEL_PROFILE,
+                    elem_classes=[PROFILE_RADIO_CLASS],
                 )
                 profile_note = gr.HTML(
                     profile_html(DEFAULT_PROFILE), elem_classes=[common.BLOCK_CLASS]

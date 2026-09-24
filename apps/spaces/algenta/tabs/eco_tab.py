@@ -720,7 +720,8 @@ def render_hub_table(
         body.append(
             "<tr>"
             f'<td data-label="kernel" class="alg-stack-lead">'
-            f'<a class="alg-eco-link" href="{HUB_REPO_URL}{_esc(repo)}">{_esc(repo)}</a></td>'
+            f'<a class="alg-eco-link" href="{HUB_REPO_URL}{_esc(repo)}" target="_blank"'
+            f' rel="noopener">{_esc(repo)}</a></td>'
             f"{_static_cells(row)}{hub}</tr>"
         )
     if stats is None:

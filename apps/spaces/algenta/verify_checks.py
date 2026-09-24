@@ -102,9 +102,9 @@ What each check asserts
 * ``boot_row_live``       the boot card's hero row says what ``/health`` said at the moment the
                           card was read (a measured hero prints its time and ``n``; an
                           unmeasured one ``not recorded``)
-* ``refusal_convention``  every refusal on Try, the Playground and (with a key) Governed is a
-                          field message under the offending control and an echo in the status
-                          row beside the action — never a red card, never a toast
+* ``refusal_convention``  every refusal on Try, the Playground, LLM kernels and (with a key)
+                          Governed is a field message under the offending control and an echo
+                          in the status row beside the action — never a red card, never a toast
 * ``permalink_truth``     ten link shapes are loaded (``PERMALINK_SHAPES``): the box under the
                           strip promises only what the tab restored — every function and
                           argument it names is visible in the form — and the three full shapes
@@ -1489,6 +1489,7 @@ VOID_MAX_PX = 240
 REFUSAL_PROBES: tuple[tuple[str, str, str, str], ...] = (
     ("try", "Successes A", "5000", "exceed"),
     ("play", "successes_a", "-5", "negative"),
+    ("llm", "Rows", "50", "rows"),
     ("gov", "number input for Optimistic value", "1000", "optimistic"),
 )
 REFUSAL_CONTEXTS: tuple[tuple[str, int, int, str], ...] = (
@@ -3964,8 +3965,8 @@ def boot_row_live(ctx: Any) -> str:
 
 def refusal_convention(ctx: Any) -> str:
     """Every refusal is a field message under the offending control and an echo in the status
-    row beside the action — on Try, the Playground and, with a key, Governed — never a red
-    card, never a toast."""
+    row beside the action — on Try, the Playground, LLM kernels and, with a key, Governed —
+    never a red card, never a toast."""
     result = refusal_audit_for(ctx)
     if not result.probes and not result.skipped:
         fail("no refusal was provoked")
