@@ -22,7 +22,8 @@ CREATE_REPOSITORY_SNAPSHOT_SPEC: dict[str, Any] = {
         "triage_repository and query_repository_graph; every later stage references it by "
         "snapshot_id. Reads the repository and persists snapshot, symbol, and dependency "
         "graph artifacts; it never writes to the repository. Returns snapshot_id, "
-        "resolved_revision, content_hash, file_count, language_counts, and artifact refs."
+        "resolved_revision, content_hash, file_count, language_counts, and artifact "
+        "refs. Use get_repository_snapshot to fetch an existing snapshot by id instead."
     ),
     "inputSchema": {
         "type": "object",

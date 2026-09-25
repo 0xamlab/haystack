@@ -90,7 +90,10 @@ GET_RUNTIME_BENCHMARKS_SPEC: dict[str, Any] = {
         "Get the authenticated Algenta runtime benchmark catalog. "
         "Use this when an agent needs benchmark classes, benchmark evidence paths, "
         "evaluation quality gates, SLO budgets, compiled artifacts, or module benchmark "
-        "linkage before reasoning about runtime performance claims. Read-only and "
+        "linkage before reasoning about runtime performance claims. This is the "
+        "performance-evidence surface — for module correctness use get_runtime_manifest "
+        "(signed inventory), get_runtime_modules (module proof and maturity), or "
+        "get_runtime_release_validation (release verdict). Read-only and "
         "non-destructive; not separately rate-limited."
     ),
     "inputSchema": {

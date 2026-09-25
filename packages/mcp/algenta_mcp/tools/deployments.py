@@ -99,7 +99,8 @@ GET_DEPLOYMENT_COST_SPEC: dict[str, Any] = {
         "region, cost_usd_month, billable_cost_usd_month after markup, the applied "
         "billing_markup_pct, and last_updated. Requires an admin API key; an unknown "
         "deployment_id fails with not_found. Use get_deployment to find the active "
-        "deployment first. Read-only."
+        "deployment first, and get_billing_info for the organization's plan and "
+        "subscription state instead of per-deployment cost. Read-only."
     ),
     "inputSchema": {
         "type": "object",

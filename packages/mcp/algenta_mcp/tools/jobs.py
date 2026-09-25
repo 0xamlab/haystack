@@ -15,6 +15,9 @@ SUBMIT_JOB_SPEC: dict[str, Any] = {
     "description": (
         "Submit a long-running async simulation job. "
         "Use for n_simulations > 500,000 or when you need a callback. "
+        "variables is an array of {name, low, high} objects — one uniform range "
+        "per variable; objective defaults to maximize and n_simulations defaults "
+        "to 1000000. "
         "Returns a job_id — poll with get_job_status. Submitting persists the job "
         "under the active API key's organization; when callback_url is set, "
         "completion is delivered to it by outbound webhook."
@@ -22,7 +25,13 @@ SUBMIT_JOB_SPEC: dict[str, Any] = {
     "inputSchema": {
         "type": "object",
         "properties": {
-            "variables": {"type": "array", "items": {"type": "object"}},
+            "variables": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": (
+                    "One {name, low, high} object per variable (uniform range)."
+                ),
+            },
             "objective": {"type": "string", "default": "maximize"},
             "n_simulations": {"type": "integer", "default": 1000000},
             "callback_url": {
@@ -88,9 +97,9 @@ GET_JOB_RESULT_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": True, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Fetch the completed result payload for an async simulation job by id. Read-only "
-        "and non-destructive; not separately rate-limited. Use get_job_status to check "
-        "progress before the job completes. Returns the completed job's result payload."
+        "Fetch an async simulation job's result payload once it has completed. Use "
+        "get_job_status for a progress check (or poll_job to block) before calling "
+        "this. Read-only and non-destructive; not separately rate-limited."
     ),
     "inputSchema": {
         "type": "object",

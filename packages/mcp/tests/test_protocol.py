@@ -17,8 +17,19 @@ import asyncio
 import json
 from typing import Any
 
-import httpx
 import pytest
+
+# This file exercises the standalone package in-process, so it can only run where the
+# package and its test extras are actually installed (the SDK-artifact job's fresh venv,
+# or a dev env with `pip install -e packages/mcp` + respx). The CI check-graph's pixi env
+# deliberately does not install them; module-level skips keep that invocation green
+# ("no tests collected" is not a failure there) instead of dying at import.
+pytest.importorskip("algenta_mcp", reason="packages/mcp is not installed in this environment")
+pytest.importorskip(
+    "respx", reason="packages/mcp test extras are not installed in this environment"
+)
+
+import httpx
 import respx
 from algenta_mcp import registry
 from algenta_mcp.client import request_overrides
@@ -54,6 +65,54 @@ def test_list_tools_is_the_decoupled_catalog() -> None:
     # every spec is well-formed for MCP list-tools
     for spec in specs:
         assert spec.get("name") and isinstance(spec.get("inputSchema"), dict), spec
+
+
+def test_every_spec_carries_mcp_annotations() -> None:
+    for spec in registry.get_tool_specs():
+        annotations = spec.get("annotations")
+        assert annotations is not None, spec["name"]
+        assert set(annotations) == {
+            "readOnlyHint",
+            "destructiveHint",
+            "idempotentHint",
+            "openWorldHint",
+        }, (spec["name"], annotations)
+        assert all(isinstance(value, bool) for value in annotations.values())
+
+
+def test_delete_trigger_annotation_matches_documented_not_found_behavior() -> None:
+    # Handler truth (apps/api_server/routers/triggers.py delete_trigger): an unknown
+    # trigger_id — including an already-deleted one — raises HTTP 404, so a repeated
+    # delete is an error, not a silent no-op. The annotation must not claim
+    # idempotency the description explicitly rules out (TDQS contradiction).
+    spec = registry.TOOLS["delete_trigger"]["spec"]
+    assert spec["annotations"] == {
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": False,
+        "openWorldHint": False,
+    }
+    description = spec["description"].lower()
+    assert "not_found" in description
+    assert "not a silent no-op" in description
+
+
+def test_create_billing_portal_annotation_and_description_disclose_stripe_session() -> None:
+    # Handler truth (apps/api_server/routers/billing.py portal): every call makes an
+    # outbound request to Stripe and creates a new hosted portal session, so
+    # readOnlyHint=false and openWorldHint=true are correct — and the description
+    # must not claim the call "changes nothing".
+    spec = registry.TOOLS["create_billing_portal"]["spec"]
+    assert spec["annotations"] == {
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    }
+    description = spec["description"].lower()
+    assert "changes nothing" not in description
+    assert "outbound request to stripe" in description
+    assert "portal session" in description
 
 
 def test_runtime_library_list_proxies_query_and_auth() -> None:

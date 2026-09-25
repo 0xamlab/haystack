@@ -172,11 +172,13 @@ RESPONSES_SPEC: dict[str, Any] = {
         "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Run the unified Algenta response envelope over one string or a list of independent "
-        "strings, each processed as its own single-turn request. The output item per input "
-        "depends on the model: tokenization models (default text.tokenizer) return the "
-        "input's tokens and token_count; embedding models return a deterministic vector of "
-        "dimensions length; provider-backed chat models advertised by list_models return "
-        "generated text. Use chat_completions for an ordered multi-role transcript and "
+        "strings, each processed as its own single-turn request. The envelope returns id, "
+        "model, status, an output array with one {index, content} item per input, and "
+        "usage with the total token count. The content per item depends on the model: "
+        "tokenization models (default text.tokenizer) return the input's tokens and "
+        "token_count; embedding models return a deterministic vector of dimensions "
+        "length; provider-backed chat models advertised by list_models return generated "
+        "text. Use chat_completions for an ordered multi-role transcript and "
         "embeddings when you specifically need vectors. Stateless and non-destructive: no "
         "conversation state is created, continued, or stored by this tool. An unsupported "
         "model id fails with model_not_supported."

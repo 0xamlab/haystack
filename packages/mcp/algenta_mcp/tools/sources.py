@@ -111,7 +111,9 @@ LIST_SOURCES_SPEC: dict[str, Any] = {
     "description": (
         "Advanced tool. List all registered data sources for this org with their schema "
         "summaries. Use this to discover available tables before calling query_data or "
-        "register_source. Read-only and non-destructive; not separately rate-limited. "
+        "register_source. Use register_source to add a source, get_source_schema for "
+        "one source's full profile, and list_data to browse the connect_data store "
+        "instead. Read-only and non-destructive; not separately rate-limited. "
         "Returns the sources array with each source's id, name, and schema summary "
         "(columns, roles, detected join keys), plus count, total, page, limit, and pages."
     ),
@@ -136,9 +138,10 @@ GET_SOURCE_SPEC: dict[str, Any] = {
     "description": (
         "Advanced tool. Get the full schema for a specific registered source: column types, "
         "cardinality, fill rates, formula relationships, and detected join keys to other "
-        "sources. Read-only and non-destructive; not separately rate-limited. Use "
-        "list_sources to find source ids. Returns source_id and the full schema: column "
-        "types, cardinality, fill rates, formula relationships, and detected join keys."
+        "sources. This reads the source-registry profile built by register_source; "
+        "use get_data_schema for the dataset-level schema view of the connect_data "
+        "flow instead. Read-only and non-destructive; not separately rate-limited. Use "
+        "list_sources to find source ids."
     ),
     "inputSchema": {
         "type": "object",

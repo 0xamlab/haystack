@@ -118,7 +118,8 @@ LIST_DECISIONS_SPEC: dict[str, Any] = {
     "description": (
         "Retrieve the Decision Memory audit trail — all logged decisions, most recent "
         "first. Use with_outcome_only=true to see only decisions where actual results have "
-        "been recorded. outcome_delta = actual_outcome - expected_value: negative means "
+        "been recorded, and get_decision for one record by id. outcome_delta = "
+        "actual_outcome - expected_value: negative means "
         "worse than predicted. Read-only and non-destructive; not separately rate-limited. "
         "Returns decisions with id, chosen_action, expected_value, actual_outcome, "
         "outcome_delta, confidence, context, created_at, and outcome_recorded_at, plus "

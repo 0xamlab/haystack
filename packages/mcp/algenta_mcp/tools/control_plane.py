@@ -413,7 +413,10 @@ CREATE_BILLING_PORTAL_SPEC: dict[str, Any] = {
         "its URL, where the user manages payment methods, invoices, and the "
         "subscription. Requires an owner API key and an existing billing account — an "
         "org that has never checked out fails with no_billing_account (call "
-        "create_billing_checkout first). This call itself changes nothing."
+        "create_billing_checkout first). The call makes an outbound request to "
+        "Stripe and creates a new hosted portal session each time; no plan, payment "
+        "method, or subscription state changes until the user acts inside the "
+        "portal."
     ),
     "inputSchema": {
         "type": "object",

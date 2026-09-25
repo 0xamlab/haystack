@@ -24,8 +24,12 @@ REGISTER_TRIGGER_SPEC: dict[str, Any] = {
         "idempotentHint": False, "openWorldHint": True},
     "description": (
         "Register a real-time trigger that watches a data source for a threshold condition. "
-        "When the condition is met, the engine auto-runs the simulation template and "
-        "optionally fires a webhook. Examples: 'alert me when monthly revenue drops below "
+        "The engine evaluates the condition automatically when the source data updates; "
+        "when the threshold is met it runs the simulation template and POSTs a result "
+        "summary to webhook_url if set. auto_execute=true additionally dispatches the "
+        "full DecisionPlan to execution_webhook_url after every successful fire (same "
+        "payload format as execute_decision, through the execution-policy gates). "
+        "Examples: 'alert me when monthly revenue drops below "
         "$80k', 'simulate expansion if Downtown revenue exceeds $200k'. Use fire_trigger to "
         "test it immediately and delete_trigger to remove it. Returns trigger_id, name, "
         "status, condition, and created_at."
@@ -161,13 +165,14 @@ FIRE_TRIGGER_SPEC: dict[str, Any] = {
 DELETE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "delete_trigger",
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
-        "idempotentHint": True, "openWorldHint": False},
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Delete one trigger by trigger_id (find ids with list_triggers). The trigger "
         "is removed immediately and will no longer fire automatically; its "
         "registration cannot be recovered from this tool. To stop a trigger "
-        "temporarily instead, use pause_trigger. An unknown trigger_id fails with "
-        "not_found. Returns trigger_id with deleted: true."
+        "temporarily instead, use pause_trigger. An unknown trigger_id — including "
+        "an already-deleted one — fails with not_found, so a repeated call is an "
+        "error, not a silent no-op. Returns trigger_id with deleted: true."
     ),
     "inputSchema": {
         "type": "object",
@@ -186,8 +191,10 @@ PAUSE_TRIGGER_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": False,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Pause or resume an existing trigger without deleting it. Returns trigger_id and "
-        "the updated status."
+        "Pause or resume an existing trigger without deleting it: paused=true (the "
+        "default) suspends automatic firing, paused=false resumes it. Use "
+        "delete_trigger to remove a trigger permanently instead. Returns trigger_id "
+        "and the updated status."
     ),
     "inputSchema": {
         "type": "object",

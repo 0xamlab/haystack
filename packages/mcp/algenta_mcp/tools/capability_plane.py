@@ -319,7 +319,10 @@ ROUTE_CAPABILITIES_SPEC: dict[str, Any] = {
         "execution_owner, whether approval is required, confidence and reason, plus "
         "ordered fallbacks (max_fallbacks, default 3). The optional filters narrow "
         "which catalog entries may be selected. Routing never executes anything — "
-        "feed the selected_capability_id to execute_capability. Read-only."
+        "feed the selected_capability_id to execute_capability. This picks a "
+        "capability for an objective; it is not decision analysis — use "
+        "plan_decision or simulate for a DecisionPlan or full risk envelope "
+        "instead. Read-only."
     ),
     "inputSchema": {
         "type": "object",
