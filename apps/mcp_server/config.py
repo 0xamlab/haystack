@@ -18,7 +18,7 @@ from apps.privacy_policy import policy_from_environment
 # tests/test_sdk_package_metadata.py::test_mcp_serverinfo_fallback_version_is_aligned fails CI
 # if the two ever disagree. (The 1.0.4-era drift — embedded VERSION stuck while the package
 # moved on — is exactly what that pair exists to prevent.)
-VERSION: Final[str] = "1.0.29"
+VERSION: Final[str] = "1.0.30"
 
 # The legacy Streamable HTTP handshake version this server negotiates for an `initialize`-opened
 # connection (unchanged; re-exported from the generated platform contract so there is one source
