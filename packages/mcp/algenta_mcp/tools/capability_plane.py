@@ -489,7 +489,9 @@ DISABLE_SKILL_SPEC: dict[str, Any] = {
         "Disable one skill by deleting its capability binding (find binding ids with "
         "list_skills or list_capability_bindings). The skill immediately stops appearing in "
         "the capability catalog and can no longer be routed or executed; the deletion is "
-        "permanent. Returns binding_id with disabled: true. Use this only for permanent "
+        "permanent. Disabling is idempotent: repeating the call on an already-disabled or "
+        "never-existing binding returns success with already_absent: true instead of an "
+        "error. Returns binding_id with disabled: true. Use this only for permanent "
         "removal — re-enabling later requires a fresh enable_skill call."
     ),
     "inputSchema": {
@@ -653,5 +655,8 @@ async def disable_skill_handler(arguments: dict[str, Any]) -> str:
     binding_id = arguments.get("binding_id")
     if not isinstance(binding_id, str) or not binding_id.strip():
         raise ValueError("binding_id must be a non-empty string.")
-    await api("DELETE", f"/v1/capability-bindings/{binding_id.strip()}")
-    return _json_response({"binding_id": binding_id.strip(), "disabled": True})
+    result = await api("DELETE", f"/v1/capability-bindings/{binding_id.strip()}")
+    output: dict[str, Any] = {"binding_id": binding_id.strip(), "disabled": True}
+    if isinstance(result, dict) and result.get("already_absent"):
+        output["already_absent"] = True
+    return _json_response(output)

@@ -2071,7 +2071,7 @@ paths:
     post:
       tags:
       - Agent Runtime
-      summary: Cancel a pending agent run
+      summary: Cancel a pending agent run (idempotent)
       operationId: cancel_run_v1_agent_runs__run_id__cancel_post
       security:
       - BearerAuth: []
@@ -3753,7 +3753,7 @@ paths:
     delete:
       tags:
       - Capability Plane
-      summary: Delete one capability binding
+      summary: Delete one capability binding (idempotent)
       operationId: delete_capability_binding_v1_capability_bindings__binding_id__delete
       security:
       - BearerAuth: []
@@ -4273,7 +4273,7 @@ paths:
     delete:
       tags:
       - Data Connectors
-      summary: Delete a data connector
+      summary: Delete a data connector (idempotent)
       operationId: delete_connector_v1_connectors__connector_id__delete
       security:
       - BearerAuth: []
@@ -5623,8 +5623,7 @@ paths:
             application/json:
               schema:
                 type: object
-                additionalProperties:
-                  type: string
+                additionalProperties: true
                 title: Response Delete Deployment V1 Deployments  Deployment Id  Delete
         '422':
           description: Validation Error
@@ -6281,7 +6280,7 @@ paths:
     post:
       tags:
       - Async Jobs
-      summary: Cancel a job
+      summary: Cancel a job (idempotent)
       operationId: cancel_job_endpoint_v1_jobs__job_id__cancel_post
       security:
       - BearerAuth: []
@@ -8714,7 +8713,7 @@ paths:
     delete:
       tags:
       - Team
-      summary: Remove a team member
+      summary: Remove a team member (idempotent)
       description: Remove a user from the org.
       operationId: remove_member_v1_team__user_id__delete
       security:
@@ -9032,7 +9031,7 @@ paths:
     delete:
       tags:
       - Triggers
-      summary: Delete a trigger
+      summary: Delete a trigger (idempotent)
       operationId: delete_trigger_v1_triggers__trigger_id__delete
       security:
       - BearerAuth: []

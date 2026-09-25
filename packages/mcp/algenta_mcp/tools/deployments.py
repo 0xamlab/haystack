@@ -122,9 +122,10 @@ DELETE_DEPLOYMENT_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": True},
     "description": (
         "Request deprovisioning for one deployment by id. Deprovision with this before "
-        "create_deployment when a deployment already exists. Returns status "
-        "'deprovisioning' with the deployment_id; deprovisioning is asynchronous, and an "
-        "already-deprovisioned deployment fails with already_deprovisioned."
+        "create_deployment when a deployment already exists. Deleting is idempotent: "
+        "repeating the call on an already-deprovisioned or never-existing id returns "
+        "success with already_absent: true instead of an error. Returns status "
+        "'deprovisioning' with the deployment_id; deprovisioning is asynchronous."
     ),
     "inputSchema": {
         "type": "object",

@@ -486,8 +486,10 @@ DISABLE_SKILL_SPEC: dict[str, Any] = {
         "Disable one skill by deleting its capability binding (find binding ids with "
         "list_skills or list_capability_bindings). The skill immediately stops appearing in "
         "the capability catalog and can no longer be routed or executed; the deletion is "
-        "permanent. Returns binding_id with disabled: true. Use this only for permanent "
-        "removal — re-enabling later requires a fresh enable_skill call."
+        "permanent. Disabling is idempotent: repeating the call on an already-disabled or "
+        "never-existing binding returns success with already_absent: true instead of an "
+        "error. Returns binding_id with disabled: true. Use this only for permanent removal "
+        "— re-enabling later requires a fresh enable_skill call."
     ),
     "inputSchema": {
         "type": "object",

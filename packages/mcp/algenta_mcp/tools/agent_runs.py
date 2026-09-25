@@ -475,10 +475,12 @@ CANCEL_AGENT_RUN_SPEC: dict[str, Any] = {
     "description": (
         "Cancel an agent run by run_id, ending its lifecycle at cancelled. Only a "
         "paused or requires_approval run can be cancelled — anything else fails with "
-        "agent_run_invalid_state; an unknown run_id fails with agent_run_not_found. "
-        "Use resume_agent_run or approve_agent_run to continue a waiting run instead. "
-        "The cancellation is audit-logged and checkpointed; the run record is kept, "
-        "not deleted. Returns the updated run resource."
+        "agent_run_invalid_state. Cancelling is idempotent: repeating the call on an "
+        "already-cancelled or never-existing run_id returns success with "
+        "already_absent: true instead of agent_run_not_found. Use resume_agent_run or "
+        "approve_agent_run to continue a waiting run instead. The first cancellation "
+        "is audit-logged and checkpointed; the run record is kept, not deleted, and "
+        "repeats record nothing further. Returns the updated run resource."
     ),
     "inputSchema": {
         "type": "object",

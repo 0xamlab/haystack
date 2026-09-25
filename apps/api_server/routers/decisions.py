@@ -26,6 +26,7 @@ from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -839,7 +840,11 @@ async def delete_decision(
     )
     entry = result.scalar_one_or_none()
     if not entry:
-        raise HTTPException(status_code=404, detail="Decision not found")
+        # Idempotent delete: the decision record is already gone (or invisible to
+        # this caller) — success, not a 404, and nothing is audit-recorded again.
+        return JSONResponse(
+            {"decision_id": str(decision_id), "deleted": True, "already_absent": True}
+        )
     await write_audit_event(
         db,
         org_id=auth["org_id"],

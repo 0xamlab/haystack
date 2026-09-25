@@ -28,6 +28,7 @@ from typing import Annotated, Any, Literal
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, TypeAdapter
 
 from apps.api_server.middleware.auth import get_current_org
@@ -526,7 +527,7 @@ async def pause_trigger(
     "/v1/triggers/{trigger_id}",
     status_code=204,
     response_model=None,
-    summary="Delete a trigger",
+    summary="Delete a trigger (idempotent)",
 )
 async def delete_trigger(
     trigger_id: str,
@@ -535,5 +536,9 @@ async def delete_trigger(
     org_id = str(auth["org_id"])
     key = _trigger_key(org_id, trigger_id)
     if key not in _TRIGGER_STORE:
-        raise HTTPException(status_code=404, detail="Trigger not found")
+        # Idempotent delete: the trigger is already gone (or never existed) — the
+        # desired end state holds, so this is a success, not a 404.
+        return JSONResponse(
+            {"trigger_id": trigger_id, "deleted": True, "already_absent": True}
+        )
     del _TRIGGER_STORE[key]

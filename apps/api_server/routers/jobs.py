@@ -15,6 +15,7 @@ from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -304,17 +305,27 @@ async def get_job_result_endpoint(
 @router.post(
     "/v1/jobs/{job_id}/cancel",
     response_model=JobStatusResponse,
-    summary="Cancel a job",
+    summary="Cancel a job (idempotent)",
 )
 async def cancel_job_endpoint(
     job_id: uuid.UUID,
     request: Request,
     auth: AuthContext = Depends(get_current_org),
     db: AsyncSession = Depends(get_db),
-) -> JobStatusResponse:
+) -> Any:
     job = await cancel_job(job_id, auth["org_id"], db, workspace_id=auth.get("workspace_id"))
+    if job is None:
+        # Idempotent cancel: unknown (or workspace-invisible) job id — the desired
+        # end state holds, so this is a success, not a 404.
+        return JSONResponse(
+            {"job_id": str(job_id), "status": "cancelled", "already_absent": True}
+        )
     base_url = str(request.base_url).rstrip("/")
-    return _job_to_response(job, base_url)
+    response = _job_to_response(job, base_url)
+    if getattr(job, "_already_absent", False):
+        # Idempotent repeat on an already-cancelled job: real job payload + flag.
+        return JSONResponse({**response.model_dump(mode="json"), "already_absent": True})
+    return response
 
 
 @router.post(

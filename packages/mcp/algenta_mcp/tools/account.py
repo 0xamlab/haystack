@@ -165,14 +165,16 @@ CREATE_API_KEY_SPEC: dict[str, Any] = {
 REVOKE_API_KEY_SPEC: dict[str, Any] = {
     "name": "revoke_api_key",
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
-        "idempotentHint": True, "openWorldHint": False},
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Revoke one API key by id (find ids with list_api_keys). The key stops "
-        "authenticating and the revocation cannot be undone from this tool. Guardrails: "
-        "an unknown key_id fails with api_key_not_found, and revoking the "
-        "organization's last active key is refused with cannot_revoke_last_key — "
-        "create a replacement with create_api_key first. Returns key_id with revoked: "
-        "true."
+        "authenticating and the revocation cannot be undone from this tool. This is a "
+        "credential revocation, not an idempotent delete: an unknown key_id — "
+        "including an already-revoked one — fails with api_key_not_found (no silent "
+        "no-op, so a mistyped id can never mask a live credential). Guardrails: "
+        "revoking the organization's last active key is refused with "
+        "cannot_revoke_last_key — create a replacement with create_api_key first. "
+        "Returns key_id with revoked: true."
     ),
     "inputSchema": {
         "type": "object",

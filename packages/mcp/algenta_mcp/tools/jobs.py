@@ -154,8 +154,11 @@ CANCEL_JOB_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Cancel a queued or running async simulation job by id. Use this for queued or "
-        "running jobs; list_jobs shows their states. Returns the updated job record with "
-        "its terminal status."
+        "running jobs; list_jobs shows their states. Cancelling is idempotent: "
+        "repeating the call on an already-cancelled or never-existing id returns "
+        "success with already_absent: true instead of an error; a completed or failed "
+        "job is still refused with job_already_terminal. Returns the updated job "
+        "record with its terminal status."
     ),
     "inputSchema": {
         "type": "object",

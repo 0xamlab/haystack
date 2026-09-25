@@ -279,15 +279,14 @@ async def disconnect_data(
     org_id = str(auth["org_id"])
     entry = get_visible_dataset_entry(org_id, dataset_id, auth)
     if entry is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": {
-                    "code": "not_found",
-                    "message": f"Dataset '{dataset_id}' not found.",
-                }
-            },
-        )
+        # Idempotent delete: the dataset is already gone (or invisible to this caller,
+        # which intentionally looks the same) — success, not a 404.
+        return {
+            "dataset_id": dataset_id,
+            "status": "deleted",
+            "connection_deleted": False,
+            "already_absent": True,
+        }
     if not dataset_manageable(entry, auth):
         raise HTTPException(
             status_code=403,

@@ -165,14 +165,15 @@ FIRE_TRIGGER_SPEC: dict[str, Any] = {
 DELETE_TRIGGER_SPEC: dict[str, Any] = {
     "name": "delete_trigger",
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
-        "idempotentHint": False, "openWorldHint": False},
+        "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Delete one trigger by trigger_id (find ids with list_triggers). The trigger "
         "is removed immediately and will no longer fire automatically; its "
         "registration cannot be recovered from this tool. To stop a trigger "
-        "temporarily instead, use pause_trigger. An unknown trigger_id — including "
-        "an already-deleted one — fails with not_found, so a repeated call is an "
-        "error, not a silent no-op. Returns trigger_id with deleted: true."
+        "temporarily instead, use pause_trigger. Deleting is idempotent: repeating "
+        "the call on an already-deleted or never-existing id returns success with "
+        "already_absent: true instead of an error. Returns trigger_id with deleted: "
+        "true."
     ),
     "inputSchema": {
         "type": "object",
@@ -321,5 +322,8 @@ async def delete_trigger_handler(arguments: dict[str, Any]) -> str:
     trigger_id = arguments.get("trigger_id")
     if not trigger_id:
         return json.dumps({"error": "trigger_id is required"})
-    await api("DELETE", f"/v1/triggers/{trigger_id}")
-    return json.dumps({"trigger_id": trigger_id, "deleted": True})
+    result = await api("DELETE", f"/v1/triggers/{trigger_id}")
+    output: dict[str, Any] = {"trigger_id": trigger_id, "deleted": True}
+    if isinstance(result, dict) and result.get("already_absent"):
+        output["already_absent"] = True
+    return json.dumps(output)

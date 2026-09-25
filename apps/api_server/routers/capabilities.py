@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 
 from apps.api_server.db.session import AsyncSessionDep
 from apps.api_server.middleware.auth import get_current_org, require_verified_email
@@ -169,7 +170,7 @@ async def update_capability_binding(
 @router.delete(
     "/v1/capability-bindings/{binding_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete one capability binding",
+    summary="Delete one capability binding (idempotent)",
 )
 async def delete_capability_binding(
     binding_id: str,
@@ -179,6 +180,12 @@ async def delete_capability_binding(
     try:
         await delete_capability_binding_service(db, auth, binding_id)
     except CapabilityPlaneError as exc:
+        if exc.code == "binding_not_found":
+            # Idempotent delete: the binding is already gone (or invisible to this
+            # caller, which intentionally looks the same) — success, not a 404.
+            return JSONResponse(
+                {"binding_id": binding_id, "disabled": True, "already_absent": True}
+            )
         _raise_http_exception(exc)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -198,12 +198,18 @@ async def cancel_job(
     org_id: uuid.UUID,
     db: AsyncSession,
     workspace_id: uuid.UUID | None = None,
-) -> Job:
+) -> Job | None:
     """Cancel a job if it's still in a cancellable state. Enforces org isolation, and
-    workspace isolation when ``workspace_id`` is set."""
+    workspace isolation when ``workspace_id`` is set.
+
+    Idempotent delete-family semantics: returns None when the job is unknown (or
+    invisible to this workspace), and returns the already-cancelled job unchanged
+    (marked with the ephemeral ``_already_absent`` attribute) on a repeat cancel.
+    Completed/failed jobs still refuse with 409; org mismatch still refuses with 403.
+    """
     job = await _get_job_for_update(job_id, db)
     if job is None:
-        raise _job_not_found(job_id)
+        return None
     if job.org_id != org_id:
         raise HTTPException(
             status_code=403,
@@ -215,7 +221,10 @@ async def cancel_job(
             },
         )
     if workspace_id is not None and job.workspace_id != workspace_id:
-        raise _job_not_found(job_id)
+        return None
+    if job.status == JobStatus.CANCELLED:
+        job._already_absent = True  # ephemeral, never persisted
+        return job
     if is_terminal(job.status):
         raise HTTPException(
             status_code=409,

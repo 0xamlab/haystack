@@ -276,7 +276,9 @@ DELETE_CONNECTOR_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Delete one saved connector by id. Use update_connector to change config without "
-        "losing the saved definition. Returns connector_id with deleted: true."
+        "losing the saved definition. Deleting is idempotent: repeating the call on an "
+        "already-deleted or never-existing id returns success with already_absent: "
+        "true instead of an error. Returns connector_id with deleted: true."
     ),
     "inputSchema": {
         "type": "object",
@@ -447,8 +449,11 @@ async def delete_connector_handler(arguments: dict[str, Any]) -> str:
     connector_id = _connector_id(arguments)
     if connector_id is None:
         return json.dumps({"error": "connector_id is required"})
-    await api("DELETE", f"/v1/connectors/{connector_id}")
-    return json.dumps({"connector_id": connector_id, "deleted": True}, indent=2)
+    result = await api("DELETE", f"/v1/connectors/{connector_id}")
+    output: dict[str, Any] = {"connector_id": connector_id, "deleted": True}
+    if isinstance(result, dict) and result.get("already_absent"):
+        output["already_absent"] = True
+    return json.dumps(output, indent=2)
 
 
 # Backward-compatible aliases used by older focused tests.

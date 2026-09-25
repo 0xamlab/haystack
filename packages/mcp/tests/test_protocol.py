@@ -80,21 +80,21 @@ def test_every_spec_carries_mcp_annotations() -> None:
         assert all(isinstance(value, bool) for value in annotations.values())
 
 
-def test_delete_trigger_annotation_matches_documented_not_found_behavior() -> None:
-    # Handler truth (apps/api_server/routers/triggers.py delete_trigger): an unknown
-    # trigger_id — including an already-deleted one — raises HTTP 404, so a repeated
-    # delete is an error, not a silent no-op. The annotation must not claim
-    # idempotency the description explicitly rules out (TDQS contradiction).
+def test_delete_trigger_annotation_matches_documented_idempotent_behavior() -> None:
+    # Handler truth (apps/api_server/routers/triggers.py delete_trigger): the first
+    # call deletes; an unknown trigger_id — including an already-deleted one —
+    # returns success with already_absent: true (owner-ratified idempotent delete
+    # family). Annotation, description, and handler must agree (TDQS contradiction).
     spec = registry.TOOLS["delete_trigger"]["spec"]
     assert spec["annotations"] == {
         "readOnlyHint": False,
         "destructiveHint": True,
-        "idempotentHint": False,
+        "idempotentHint": True,
         "openWorldHint": False,
     }
     description = spec["description"].lower()
-    assert "not_found" in description
-    assert "not a silent no-op" in description
+    assert "already_absent" in description
+    assert "not a silent no-op" not in description
 
 
 def test_create_billing_portal_annotation_and_description_disclose_stripe_session() -> None:

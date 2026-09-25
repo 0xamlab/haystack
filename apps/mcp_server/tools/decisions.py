@@ -250,7 +250,9 @@ DELETE_DECISION_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Delete one decision-memory record by id. Deletion is permanent; review with "
-        "list_decisions first. Returns the deletion confirmation for the decision_id."
+        "list_decisions first. Deleting is idempotent: repeating the call on an "
+        "already-deleted or never-existing id returns success with already_absent: true "
+        "instead of an error. Returns the deletion confirmation for the decision_id."
     ),
     "inputSchema": {
         "type": "object",

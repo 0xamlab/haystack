@@ -163,11 +163,12 @@ DELETE_TRIGGER_SPEC: dict[str, Any] = {
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
         "idempotentHint": True, "openWorldHint": False},
     "description": (
-        "Delete one trigger by trigger_id (find ids with list_triggers). The trigger "
-        "is removed immediately and will no longer fire automatically; its "
-        "registration cannot be recovered from this tool. To stop a trigger "
-        "temporarily instead, use pause_trigger. An unknown trigger_id fails with "
-        "not_found. Returns trigger_id with deleted: true."
+        "Delete one trigger by trigger_id (find ids with list_triggers). The trigger is "
+        "removed immediately and will no longer fire automatically; its registration cannot "
+        "be recovered from this tool. To stop a trigger temporarily instead, use "
+        "pause_trigger. Deleting is idempotent: repeating the call on an already-deleted or "
+        "never-existing id returns success with already_absent: true instead of an error. "
+        "Returns trigger_id with deleted: true."
     ),
     "inputSchema": {
         "type": "object",

@@ -322,7 +322,7 @@ async def delete_deployment(
     deployment_id: uuid.UUID,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(require_role("owner"))],
-) -> dict[str, str]:
+) -> dict[str, Any]:
     result = await db.execute(
         select(Deployment).where(
             Deployment.id == deployment_id,
@@ -331,21 +331,26 @@ async def delete_deployment(
     )
     deployment = result.scalar_one_or_none()
     if deployment is None:
-        raise HTTPException(
-            status_code=404,
-            detail={"error": {"code": "not_found", "message": "Deployment not found."}},
-        )
+        # Idempotent delete: no such deployment exists for this caller — the desired
+        # end state (nothing to deprovision) already holds, so this is a success.
+        return {
+            "status": "deprovisioned",
+            "deployment_id": str(deployment_id),
+            "already_absent": True,
+        }
 
-    if deployment.status == DeploymentStatus.DEPROVISIONED:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "error": {
-                    "code": "already_deprovisioned",
-                    "message": "This deployment is already deprovisioned.",
-                }
-            },
-        )
+    if deployment.status in {DeploymentStatus.DEPROVISIONED, DeploymentStatus.DEPROVISIONING}:
+        # Idempotent repeat: already torn down, or teardown already requested and under
+        # way — success with the flag, no second deprovision task, no state churn.
+        # NOTE: a deployment whose async provision task is still racing can be flipped
+        # back to ACTIVE/FAILED after a first delete; that engine-level race predates
+        # this change, and the eventual deprovision task run still completes the
+        # teardown (re-requesting it is itself idempotent).
+        return {
+            "status": "deprovisioned",
+            "deployment_id": str(deployment_id),
+            "already_absent": True,
+        }
 
     deployment.status = DeploymentStatus.DEPROVISIONING
     await db.commit()

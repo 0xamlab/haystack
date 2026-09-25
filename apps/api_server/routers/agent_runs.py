@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.api_server.db.session import get_db
 from apps.api_server.middleware.auth import get_current_org, get_redis, require_verified_email
@@ -624,14 +624,27 @@ async def resume_run(
 @router.post(
     "/v1/agent/runs/{run_id}/cancel",
     response_model=AgentRunResource,
-    summary="Cancel a pending agent run",
+    summary="Cancel a pending agent run (idempotent)",
 )
 async def cancel_run(
     run_id: UUID,
     request: Request,
     auth: Annotated[AuthContext, Depends(get_current_org)],
     db: Any = Depends(get_db),
-) -> AgentRunResource:
+) -> Any:
+    try:
+        existing = get_agent_run(run_id=str(run_id), auth=auth)
+    except AgentRunServiceError as exc:
+        if exc.code == "agent_run_not_found":
+            # Idempotent cancel: unknown run id — nothing to cancel, success.
+            return JSONResponse(
+                {"run_id": str(run_id), "status": "cancelled", "already_absent": True}
+            )
+        raise _agent_run_http_exception(exc) from exc
+    if existing.status == "cancelled":
+        # Idempotent repeat: already cancelled — return the stored run with the flag
+        # and record nothing (no second audit event, ledger entry, event, or checkpoint).
+        return JSONResponse({**existing.model_dump(mode="json"), "already_absent": True})
     try:
         run = cancel_agent_run(run_id=str(run_id), auth=auth)
     except AgentRunServiceError as exc:

@@ -252,7 +252,10 @@ DELETE_DECISION_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Delete one decision-memory record by id. Deletion is permanent; review with "
-        "list_decisions first. Returns the deletion confirmation for the decision_id."
+        "list_decisions first. Deleting is idempotent: repeating the call on an "
+        "already-deleted or never-existing id returns success with already_absent: "
+        "true instead of an error. Returns the deletion confirmation for the "
+        "decision_id."
     ),
     "inputSchema": {
         "type": "object",
@@ -416,5 +419,8 @@ async def execute_decision_handler(arguments: dict[str, Any]) -> str:
 
 async def delete_decision_handler(arguments: dict[str, Any]) -> str:
     decision_id = arguments["decision_id"]
-    await api("DELETE", f"/v1/decisions/{decision_id}")
-    return json.dumps({"decision_id": decision_id, "deleted": True}, indent=2)
+    result = await api("DELETE", f"/v1/decisions/{decision_id}")
+    output: dict[str, Any] = {"decision_id": decision_id, "deleted": True}
+    if isinstance(result, dict) and result.get("already_absent"):
+        output["already_absent"] = True
+    return json.dumps(output, indent=2)

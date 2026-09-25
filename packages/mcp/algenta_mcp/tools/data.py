@@ -235,10 +235,12 @@ DISCONNECT_SPEC: dict[str, Any] = {
         "Delete a saved dataset and disconnect it from future use. When no other "
         "dataset in the workspace still uses the backing saved connection, that "
         "connection is deleted too and connection_deleted is true in the response. "
-        "Requires manage permission on the dataset (access_scope_denied otherwise); "
-        "an unknown dataset_id fails with not_found. Use list_data to confirm the "
-        "dataset first — deletion is immediate. Returns dataset_id, status 'deleted', "
-        "and connection_deleted."
+        "Requires manage permission on the dataset (access_scope_denied otherwise). "
+        "Use list_data to confirm the "
+        "dataset first — deletion is immediate. Deleting is idempotent: repeating "
+        "the call on an already-deleted or never-existing dataset_id returns success "
+        "with already_absent: true instead of not_found. Returns dataset_id, status "
+        "'deleted', and connection_deleted."
     ),
     "inputSchema": {
         "type": "object",

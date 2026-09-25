@@ -11,6 +11,7 @@ from typing import Annotated, Any, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from apps.api_server.db.session import AsyncSessionDep
@@ -457,13 +458,24 @@ async def test_connector_preview(
     )
 
 
-@router.delete("/v1/connectors/{connector_id}", status_code=204, summary="Delete a data connector")
+@router.delete(
+    "/v1/connectors/{connector_id}", status_code=204, summary="Delete a data connector (idempotent)"
+)
 async def delete_connector(
     connector_id: UUID,
     db: AsyncSessionDep,
     auth: Annotated[AuthContext, Depends(get_current_org)],
 ) -> None:
-    connector = await get_visible_connector(db, connector_id, auth, for_update=True)
+    try:
+        connector = await get_visible_connector(db, connector_id, auth, for_update=True)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            # Idempotent delete: the connector is already gone (or invisible to this
+            # caller, which intentionally looks the same) — success, not a 404.
+            return JSONResponse(
+                {"connector_id": str(connector_id), "deleted": True, "already_absent": True}
+            )
+        raise
     if not connector_manageable(connector, auth):
         raise HTTPException(
             status_code=403,

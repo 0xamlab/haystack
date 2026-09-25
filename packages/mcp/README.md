@@ -130,6 +130,17 @@ curl -s http://localhost:8001/mcp/tools | jq '.tools | length'
 In an MCP client, call `get_contract` first, then use `list_data` and `get_data_summary` before
 querying a dataset. Tool names, descriptions, and input schemas are returned by MCP `tools/list`.
 
+## Delete, cancel, and revocation semantics
+
+- **Deletes and cancels are idempotent.** Repeating `delete_connector`, `disconnect_data`,
+  `delete_decision`, `delete_trigger`, `delete_deployment`, `disable_skill`, `cancel_job`,
+  `cancel_agent_run`, or `remove_team_member` on an already-deleted (or never-existing) id
+  returns success with `already_absent: true` — not a 404. The first call performs the real
+  deletion exactly once; repeats record nothing further (no duplicate audit entries).
+- **Credential revocations are explicit, never silently idempotent.** `revoke_api_key` and
+  `revoke_device` fail with `not_found` on an unknown id — including an already-revoked one —
+  so a mistyped id can never masquerade as a successful revocation.
+
 ## Security
 
 - Tool calls use `Authorization: Bearer <ALGENTA_API_KEY>` or the configured process credential.

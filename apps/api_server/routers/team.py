@@ -10,7 +10,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Path as PathParam, Query
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from fastapi.params import Param
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
@@ -449,7 +449,7 @@ async def update_member_role(
     return {"message": f"Role updated to '{payload.role}'.", "user_id": str(user_id)}
 
 
-@router.delete("/v1/team/{user_id}", status_code=204, summary="Remove a team member")
+@router.delete("/v1/team/{user_id}", status_code=204, summary="Remove a team member (idempotent)")
 async def remove_member(
     user_id: UUID,
     db: AsyncSessionDep,
@@ -459,15 +459,11 @@ async def remove_member(
     """Remove a user from the org."""
     result = await db.execute(select(User).where(User.id == user_id, User.org_id == auth["org_id"]))
     user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": {
-                    "code": "not_found",
-                    "message": "User not found.",
-                }
-            },
+    if user is None or user.status == UserStatus.SUSPENDED:
+        # Idempotent remove: the user is already gone from the active roster (or never
+        # existed) — success with the flag, no re-suspension, no cache churn.
+        return JSONResponse(
+            {"removed": True, "user_id": str(user_id), "already_absent": True}
         )
 
     # Refuse to remove the last active owner (zero-owner guard).

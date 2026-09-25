@@ -276,7 +276,9 @@ DELETE_CONNECTOR_SPEC: dict[str, Any] = {
         "idempotentHint": True, "openWorldHint": False},
     "description": (
         "Delete one saved connector by id. Use update_connector to change config without "
-        "losing the saved definition. Returns connector_id with deleted: true."
+        "losing the saved definition. Deleting is idempotent: repeating the call on an "
+        "already-deleted or never-existing id returns success with already_absent: true "
+        "instead of an error. Returns connector_id with deleted: true."
     ),
     "inputSchema": {
         "type": "object",

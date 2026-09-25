@@ -108,7 +108,9 @@ REMOVE_TEAM_MEMBER_SPEC: dict[str, Any] = {
         "Remove one member from the caller's organization by user_id (find ids with "
         "list_team_members). Requires an admin API key. The member is suspended immediately "
         "— their API keys stop authenticating at once — and removing the last active owner "
-        "is refused (last_owner). An unknown user_id fails with not_found. Returns removed: "
+        "is refused (last_owner). Removing is idempotent: repeating the call on an "
+        "already-removed or never-existing user_id returns success with already_absent: "
+        "true instead of not_found. Returns removed: "
         "true with the removed user_id. Use update_team_member_role to change access "
         "without removing the member."
     ),
@@ -159,12 +161,14 @@ LIST_DEVICES_SPEC: dict[str, Any] = {
 REVOKE_DEVICE_SPEC: dict[str, Any] = {
     "name": "revoke_device",
     "annotations": {"readOnlyHint": False, "destructiveHint": True,
-        "idempotentHint": True, "openWorldHint": False},
+        "idempotentHint": False, "openWorldHint": False},
     "description": (
         "Revoke one registered device by registration_id (find ids with list_devices), "
-        "freeing one device slot. The device loses access on its next license refresh. An "
-        "unknown registration_id fails with not_found. Returns revoked: true with the "
-        "registration_id. Use list_devices to find registration ids."
+        "freeing one device slot. The device loses access on its next license refresh. "
+        "This is a credential revocation, not an idempotent delete: an unknown "
+        "registration_id — including an already-revoked one — fails with not_found "
+        "(no silent no-op, so a mistyped id can never masquerade as a successful "
+        "revocation). Returns revoked: true with the registration_id."
     ),
     "inputSchema": {
         "type": "object",

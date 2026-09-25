@@ -233,6 +233,10 @@ tools = await client.get_tools()
 
 The server exposes one MCP tool per capability. Tool names, descriptions, and input schemas are returned by `GET /mcp/tools` and by the MCP `list_tools` call. The core groups below cover the primary data, utility-model, product, and decision-memory lanes.
 
+### Delete, cancel, and revocation semantics
+
+Deletes and cancels are idempotent: repeating `delete_connector`, `disconnect_data`, `delete_decision`, `delete_trigger`, `delete_deployment`, `disable_skill`, `cancel_job`, `cancel_agent_run`, or `remove_team_member` on an already-deleted (or never-existing) id returns success with `already_absent: true` — not a 404. The first call performs the real deletion exactly once; repeats record nothing further. Credential revocations are explicit instead: `revoke_api_key` and `revoke_device` fail with `not_found` on an unknown id (including an already-revoked one), so a mistyped id can never masquerade as a successful revocation.
+
 ### Discovery and data
 
 | Tool | Description |
