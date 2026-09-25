@@ -42,7 +42,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `GET` | `/v1/agent/runs/telemetry` | Query telemetry batches across agent runs |
 | `GET` | `/v1/agent/runs/{run_id}` | Get a persisted agent run |
 | `POST` | `/v1/agent/runs/{run_id}/approve` | Approve a waiting agent run |
-| `POST` | `/v1/agent/runs/{run_id}/cancel` | Cancel a pending agent run |
+| `POST` | `/v1/agent/runs/{run_id}/cancel` | Cancel a pending agent run (idempotent) |
 | `GET` | `/v1/agent/runs/{run_id}/checkpoints` | List persisted agent run checkpoints |
 | `GET` | `/v1/agent/runs/{run_id}/events` | List persisted agent run events |
 | `POST` | `/v1/agent/runs/{run_id}/fork` | Fork a persisted agent run from a checkpoint |
@@ -58,7 +58,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `POST` | `/v1/jobs` | Submit an async simulation job |
 | `GET` | `/v1/jobs/list` | List async jobs for this org |
 | `GET` | `/v1/jobs/{job_id}` | Poll job status |
-| `POST` | `/v1/jobs/{job_id}/cancel` | Cancel a job |
+| `POST` | `/v1/jobs/{job_id}/cancel` | Cancel a job (idempotent) |
 | `GET` | `/v1/jobs/{job_id}/result` | Fetch job result |
 | `POST` | `/v1/webhooks/test` | Test webhook delivery |
 
@@ -119,7 +119,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `POST` | `/v1/capability-bindings/test` | Preview-test an unsaved capability binding |
 | `GET` | `/v1/capability-bindings/{binding_id}` | Get one capability binding |
 | `PATCH` | `/v1/capability-bindings/{binding_id}` | Update one capability binding |
-| `DELETE` | `/v1/capability-bindings/{binding_id}` | Delete one capability binding |
+| `DELETE` | `/v1/capability-bindings/{binding_id}` | Delete one capability binding (idempotent) |
 | `POST` | `/v1/capability-bindings/{binding_id}/authorize/complete` | Complete capability-binding authorization |
 | `POST` | `/v1/capability-bindings/{binding_id}/authorize/start` | Start capability-binding authorization |
 | `POST` | `/v1/capability-bindings/{binding_id}/discover` | Discover capabilities for a saved binding |
@@ -150,7 +150,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `GET` | `/v1/connectors/types` | List supported connector types |
 | `GET` | `/v1/connectors/{connector_id}` | Get one data connector |
 | `PATCH` | `/v1/connectors/{connector_id}` | Update connector name or config |
-| `DELETE` | `/v1/connectors/{connector_id}` | Delete a data connector |
+| `DELETE` | `/v1/connectors/{connector_id}` | Delete a data connector (idempotent) |
 | `GET` | `/v1/connectors/{connector_id}/browse` | Browse connector schema — list tables, files, or datasets |
 | `POST` | `/v1/connectors/{connector_id}/test` | Test connector — real connection attempt |
 
@@ -393,7 +393,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | `GET` | `/v1/team` | List team members |
 | `POST` | `/v1/team/accept` | Accept a team invitation |
 | `POST` | `/v1/team/invite` | Invite a team member |
-| `DELETE` | `/v1/team/{user_id}` | Remove a team member |
+| `DELETE` | `/v1/team/{user_id}` | Remove a team member (idempotent) |
 | `PATCH` | `/v1/team/{user_id}/role` | Update a team member's role |
 
 ## Triggers
@@ -402,7 +402,7 @@ To call any endpoint live (parameters, schemas, Test it), use the [API explorer]
 | --- | --- | --- |
 | `POST` | `/v1/triggers` | Register a trigger |
 | `GET` | `/v1/triggers` | List all triggers |
-| `DELETE` | `/v1/triggers/{trigger_id}` | Delete a trigger |
+| `DELETE` | `/v1/triggers/{trigger_id}` | Delete a trigger (idempotent) |
 | `POST` | `/v1/triggers/{trigger_id}/fire` | Fire a trigger |
 | `PATCH` | `/v1/triggers/{trigger_id}/pause` | Pause or resume a trigger |
 

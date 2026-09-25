@@ -29,7 +29,6 @@ For symptom-first help, see [Troubleshooting](../troubleshooting.md).
 | `access_scope_denied` | The key's scope does not include this resource. |
 | `account_suspended` | The account is suspended; contact your organization owner or support to restore access. |
 | `algenta_managed_capability_not_executable` | This capability runs on the Algenta-managed plane and can't be executed directly from a client-managed binding. |
-| `already_deprovisioned` | The resource was already deprovisioned. |
 | `already_member` | The user is already a member of this organization. |
 | `api_key_identity_required` | This endpoint needs an API-key identity; the caller authenticated with a non-key credential (e.g. a Microsoft Entra token). |
 | `api_key_not_found` | The referenced API key does not exist. |
