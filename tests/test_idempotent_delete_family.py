@@ -20,8 +20,6 @@ import json
 import uuid
 
 import pytest
-from algenta_mcp import registry as pkg_registry
-from algenta_mcp.tools import triggers as pkg_triggers
 from fastapi.responses import JSONResponse
 
 from apps.api_server.routers import agent_runs as agent_run_router
@@ -146,6 +144,11 @@ def test_cancel_agent_run_first_and_repeat_and_never_existed(monkeypatch, tmp_pa
 
 
 def test_mcp_delete_trigger_handler_surfaces_already_absent(monkeypatch) -> None:
+    pkg_triggers = pytest.importorskip(
+        "algenta_mcp.tools.triggers",
+        reason="packages/mcp is not installed in this environment",
+    )
+
     async def _fake_api(method: str, path: str, **kwargs):
         if method == "DELETE":
             return {"trigger_id": "trig-1", "deleted": True, "already_absent": True}
@@ -173,6 +176,10 @@ REVOCATIONS = ["revoke_api_key", "revoke_device"]
 
 
 def test_idempotent_delete_family_keeps_idempotent_hint() -> None:
+    pkg_registry = pytest.importorskip(
+        "algenta_mcp.registry",
+        reason="packages/mcp is not installed in this environment",
+    )
     for name in IDEMPOTENT_FAMILY:
         annotations = pkg_registry.TOOLS[name]["spec"]["annotations"]
         assert annotations["idempotentHint"] is True, name
@@ -181,6 +188,10 @@ def test_idempotent_delete_family_keeps_idempotent_hint() -> None:
 
 
 def test_credential_revocations_are_explicitly_not_idempotent() -> None:
+    pkg_registry = pytest.importorskip(
+        "algenta_mcp.registry",
+        reason="packages/mcp is not installed in this environment",
+    )
     for name in REVOCATIONS:
         spec = pkg_registry.TOOLS[name]["spec"]
         assert spec["annotations"]["idempotentHint"] is False, name
